@@ -1,0 +1,794 @@
+/* File: app/admin/AdminPage.module.css */
+
+/* ==========================================================================
+   1. LAYOUT UTAMA & CANGKANG (Neo-Brutalism Base)
+   ========================================================================== */
+.wadahUtama {
+  min-height: 100vh;
+  background-color: #fdfbf7;
+  background-image: radial-gradient(#d1d5db 2px, transparent 2px);
+  background-size: 24px 24px;
+  padding: 24px 32px;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.wadahUtama ::selection { background-color: #facc15; color: #111827; }
+
+.wadahKonten { max-width: 1280px; margin: 0 auto; }
+
+.headerAdmin {
+  display: flex; justify-content: space-between; align-items: center;
+  background-color: #2563eb; color: white; padding: 24px 32px;
+  border-radius: 16px; border: 4px solid #111827; box-shadow: 8px 8px 0 #111827;
+  margin-bottom: 24px;
+}
+
+.judulHeader { font-size: 32px; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 1px; text-shadow: 3px 3px 0 #111827; }
+.subJudulHeader { color: #facc15; margin-top: 8px; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #facc15; display: inline-block; }
+
+.tombolKeluar {
+  background-color: #ef4444; color: white; padding: 12px 24px;
+  border-radius: 12px; font-weight: 900; text-transform: uppercase;
+  border: 3px solid #111827; cursor: pointer; box-shadow: 4px 4px 0 #111827; transition: transform 0.1s, box-shadow 0.1s;
+}
+.tombolKeluar:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+
+
+/* ==========================================================================
+   2. NAVIGASI TABS & KOTAK KONTEN (Brutal Tabs)
+   ========================================================================== */
+.wadahTabs { display: flex; background-color: transparent; gap: 8px; margin-bottom: -4px; overflow-x: auto; padding-bottom: 4px; }
+.tombolTab {
+  flex: 1; padding: 16px; font-weight: 900; font-size: 15px; border-radius: 16px 16px 0 0;
+  border: 4px solid #111827; background-color: #e5e7eb; color: #4b5563;
+  cursor: pointer; text-transform: uppercase; transition: all 0.2s; white-space: nowrap;
+}
+.tombolTab:hover { background-color: #d1d5db; }
+.tombolTabAktif { border-bottom: 4px solid white; color: #111827; background-color: white; z-index: 10; position: relative; }
+
+.isiTab { background-color: white; padding: 32px; border-radius: 0 0 16px 16px; border: 4px solid #111827; box-shadow: 8px 8px 0 #111827; position: relative; z-index: 5; }
+.judulIsiTab { font-size: 24px; font-weight: 900; color: #111827; margin-bottom: 24px; text-transform: uppercase; display: inline-block; background-color: #facc15; padding: 4px 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
+
+
+/* ==========================================================================
+   3. UTILITAS GLOBAL 
+   ========================================================================== */
+.flexSatu { flex: 1; }
+.flexDua { flex: 2; }
+@media print {
+  .SembunyiPrint { display: none !important; }
+  .isiTab { border: none; box-shadow: none; padding: 0; }
+  .qrBox { border: 2px solid black !important; box-shadow: none !important; }
+}
+
+
+/* ==========================================================================
+   4. KOMPONEN UMUM: TABEL (Brutalist Grid)
+   ========================================================================== */
+.wadahTabel { overflow-x: auto; border: 4px solid #111827; border-radius: 12px; box-shadow: 6px 6px 0 #111827; }
+.tabelStyle { width: 100%; text-align: left; border-collapse: collapse; min-width: 600px; background-color: white; }
+.tabelStyle th { padding: 16px; font-weight: 900; text-transform: uppercase; background-color: #bfdbfe; color: #111827; border-bottom: 4px solid #111827; border-right: 2px solid #111827; }
+.tabelStyle th:last-child { border-right: none; }
+.tabelStyle td { padding: 16px; border-bottom: 2px solid #111827; border-right: 2px solid #111827; color: #111827; font-weight: 600; }
+.tabelStyle td:last-child { border-right: none; }
+.tabelStyle tbody tr:hover { background-color: #fef08a; }
+.selKosong { text-align: center; padding: 32px; color: #4b5563; font-weight: 900; text-transform: uppercase; }
+
+
+/* ==========================================================================
+   5. KOMPONEN UMUM: BADGE & STATUS ANIMASI
+   ========================================================================== */
+.badgeStatus { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 900; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }
+.statusSelesai { background-color: #4ade80; color: #111827; }
+.statusBerjalan { background-color: #facc15; color: #111827; animation: brutalPulse 1s steps(2) infinite; }
+@keyframes brutalPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+
+/* ==========================================================================
+   6. FILTER BAR & AKSI UMUM
+   ========================================================================== */
+.headerTabWrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+.btnExcel { background-color: #4ade80; color: #111827; border: 3px solid #111827; padding: 10px 20px; border-radius: 12px; font-weight: 900; text-transform: uppercase; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 4px 4px 0 #111827; transition: transform 0.1s; }
+.btnExcel:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.filterBar { display: flex; gap: 12px; margin-bottom: 24px; background: #e5e7eb; padding: 16px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; align-items: center; flex-wrap: wrap; }
+.labelFilter { font-size: 14px; font-weight: 900; color: #111827; text-transform: uppercase; }
+.filterSelect { padding: 10px; border: 3px solid #111827; border-radius: 8px; font-size: 14px; font-weight: 800; outline: none; box-shadow: 2px 2px 0 #111827; }
+.filterSelect:focus { background-color: #dbeafe; }
+.btnReset { padding: 10px 16px; font-size: 13px; font-weight: 900; text-transform: uppercase; cursor: pointer; background: #fca5a5; color: #111827; border: 3px solid #111827; border-radius: 8px; box-shadow: 2px 2px 0 #111827; }
+.btnReset:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111827; }
+
+
+/* ==========================================================================
+   7. SPESIFIK TAB: KELAS / ABSENSI
+   ========================================================================== */
+.teksTanggal { font-weight: 900; color: #111827; margin: 0; font-size: 14px; background-color: #facc15; display: inline-block; padding: 2px 6px; border: 2px solid #111827; margin-bottom: 4px; }
+.teksMapel { margin: 0; font-size: 13px; font-weight: 800; color: #4b5563; text-transform: uppercase; }
+.teksNama { font-weight: 900; color: #111827; margin: 0; font-size: 15px; }
+.teksKelas { margin: 0; font-size: 12px; font-weight: 800; color: #2563eb; background-color: #dbeafe; display: inline-block; padding: 2px 6px; border: 2px solid #111827; margin-top: 4px; }
+.teksJam { color: #111827; font-weight: 900; background-color: white; border: 2px solid #111827; padding: 2px 6px; border-radius: 4px; }
+.teksJamPudar { color: #4b5563; font-weight: 800; }
+.panahJam { margin: 0 4px; color: #111827; font-weight: 900; }
+.teksPudar { color: #9ca3af; font-weight: 900; font-size: 16px; }
+.badgeExtraBadge { background: #c084fc; color: white; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 900; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; }
+.teksAlpa { color: white; background-color: #ef4444; padding: 4px 8px; border: 2px solid #111827; font-weight: 900; font-size: 12px; text-transform: uppercase; }
+.teksTelat { color: white; background-color: #f97316; padding: 4px 8px; border: 2px solid #111827; font-weight: 900; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; }
+.teksTepatWaktu { color: #111827; font-weight: 900; font-size: 12px; text-transform: uppercase; }
+
+.wadahAksiInline { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.wadahAksiInlineHorizontal { display: flex; gap: 6px; justify-content: center; }
+.inlineSelect { padding: 6px; font-size: 12px; font-weight: 800; border-radius: 6px; border: 3px solid #111827; outline: none; }
+.inlineInput { padding: 6px; font-size: 12px; font-weight: 800; border-radius: 6px; border: 3px solid #111827; width: 120px; outline: none; }
+.btnSimpanInline { padding: 6px 12px; font-size: 12px; background: #4ade80; color: #111827; border: 3px solid #111827; border-radius: 6px; cursor: pointer; font-weight: 900; box-shadow: 2px 2px 0 #111827; }
+.btnSimpanInline:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111827; }
+.btnBatalInline { padding: 6px 12px; font-size: 12px; background: #9ca3af; color: #111827; border: 3px solid #111827; border-radius: 6px; cursor: pointer; font-weight: 900; box-shadow: 2px 2px 0 #111827; }
+.btnBatalInline:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111827; }
+.btnEditKet { padding: 6px 10px; font-size: 11px; background: #facc15; color: #111827; border: 3px solid #111827; border-radius: 6px; cursor: pointer; font-weight: 900; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }
+.btnEditKet:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111827; }
+
+
+/* ==========================================================================
+   8. SPESIFIK TAB: KONSUL
+   ========================================================================== */
+.teksErrorItalic { color: #ef4444; font-style: italic; font-weight: 900; }
+.badgeMapelAbu { background-color: #e5e7eb; color: #111827; border: 2px solid #111827; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 900; display: inline-block; text-transform: uppercase; }
+
+
+/* ==========================================================================
+   9. SPESIFIK TAB: SISWA & PENGATURAN FORM
+   ========================================================================== */
+.wadahSiswa { display: flex; flex-direction: column; gap: 32px; }
+@media (min-width: 1024px) { .wadahSiswa { flex-direction: row; } }
+
+.formPanel { 
+  padding: 24px; 
+  border-radius: 16px; 
+  border: 4px solid #111827; 
+  height: fit-content; 
+  box-shadow: 8px 8px 0 #111827; 
+  position: sticky; 
+  top: 24px; 
+  z-index: 10; 
+}
+.formPanelBiasa { background-color: #dbeafe; }
+.formPanelEdit { background-color: #fef08a; }
+.formPanel h3 { font-weight: 900; font-size: 20px; margin-bottom: 24px; display: flex; justify-content: space-between; text-transform: uppercase; }
+.judulFormPanel { color: #111827; margin-top: 0; margin-bottom: 16px; border-bottom: 4px solid #111827; padding-bottom: 8px; }
+.judulFormEdit { color: #111827; margin-top: 0; margin-bottom: 16px; border-bottom: 4px solid #111827; padding-bottom: 8px; }
+
+.labelForm { font-size: 13px; font-weight: 900; color: #111827; display: block; margin-bottom: 8px; text-transform: uppercase; }
+.wadahInputForm { margin-bottom: 16px; }
+.wadahInputSejajar { display: flex; gap: 12px; margin-bottom: 12px; }
+.inputTanpaMarginBawah { margin-bottom: 0 !important; }
+.formInput { width: 100%; padding: 14px; border-radius: 8px; border: 3px solid #111827; font-size: 15px; font-weight: 800; margin-bottom: 16px; box-sizing: border-box; box-shadow: 4px 4px 0 #111827; outline: none; transition: transform 0.1s; }
+.formInput:focus { background-color: #f8fafc; transform: translate(2px, 2px); box-shadow: 2px 2px 0 #111827; }
+
+.teksPesanForm { font-size: 15px; text-align: center; font-weight: 900; margin-top: 16px; padding: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
+.teksPesanSukses { background-color: #4ade80; color: #111827; }
+.teksPesanGagal { background-color: #ef4444; color: white; }
+
+.tombolAksi { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 900; cursor: pointer; text-transform: uppercase; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; transition: transform 0.1s; }
+.tombolAksi:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111827; }
+.btnEdit { background-color: #facc15; color: #111827; }
+.btnHapus { background-color: #ef4444; color: white; }
+
+.wadahTombolAksiForm { display: flex; gap: 12px; margin-top: 24px; }
+.tombolBatalForm { width: 33%; background-color: #9ca3af; color: #111827; padding: 14px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; cursor: pointer; font-weight: 900; text-transform: uppercase; }
+.tombolBatalForm:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.tombolSimpanBiruBaru { flex: 1; background-color: #2563eb; color: white; padding: 14px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; cursor: pointer; font-weight: 900; text-transform: uppercase; }
+.tombolSimpanBiruBaru:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.tombolSimpanKuning { flex: 1; background-color: #facc15; color: #111827; padding: 14px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; cursor: pointer; font-weight: 900; text-transform: uppercase; }
+.tombolSimpanKuning:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.tombolSimpanBiru { width: 100%; background-color: #2563eb; color: white; padding: 16px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; cursor: pointer; font-weight: 900; text-transform: uppercase; margin-top: 16px; }
+.tombolSimpanBiru:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.tombolSimpanBiru:disabled { background-color: #9ca3af; color: #4b5563; cursor: not-allowed; box-shadow: none; transform: none; }
+
+.headerTabSiswa { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.filterSelectMurni { padding: 10px; border: 3px solid #111827; border-radius: 8px; font-size: 13px; font-weight: 900; outline: none; box-shadow: 4px 4px 0 #111827; }
+.teksNamaSiswa { font-weight: 900; margin: 0; font-size: 16px; color: #111827; }
+.teksUsernameSiswa { font-size: 13px; font-weight: 800; color: #111827; margin: 0; background-color: #facc15; display: inline-block; padding: 2px 6px; border: 2px solid #111827; margin-top: 4px; }
+
+/* ==========================================================================
+   10. SPESIFIK TAB: PABRIK QR CODE
+   ========================================================================== */
+.wadahQr { display: flex; flex-direction: column; align-items: center; padding-top: 40px; padding-bottom: 40px; }
+.wadahKontrolQr { width: 100%; max-width: 448px; margin-bottom: 40px; background-color: #bfdbfe; padding: 32px; border-radius: 16px; border: 4px solid #111827; box-shadow: 8px 8px 0 #111827; }
+.judulPabrikQr { font-size: 28px; font-weight: 900; text-align: center; text-transform: uppercase; color: #111827; margin-bottom: 24px; text-shadow: 2px 2px 0 white; }
+.inputPabrikQr { width: 100%; padding: 16px; border: 4px solid #111827; border-radius: 12px; font-weight: 900; font-size: 16px; text-align: center; outline: none; box-shadow: 4px 4px 0 #111827; }
+.inputPabrikQr:focus { background-color: #fef08a; }
+.wadahTombolTemplateQr { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; }
+.tombolTemplateKelas { background-color: #facc15; color: #111827; padding: 12px 20px; border-radius: 8px; cursor: pointer; border: 3px solid #111827; font-weight: 900; text-transform: uppercase; box-shadow: 4px 4px 0 #111827; transition: transform 0.1s; }
+.tombolTemplateKelas:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.tombolTemplateKonsul { background-color: #4ade80; color: #111827; padding: 12px 20px; border-radius: 8px; cursor: pointer; border: 3px solid #111827; font-weight: 900; text-transform: uppercase; box-shadow: 4px 4px 0 #111827; transition: transform 0.1s; }
+.tombolTemplateKonsul:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.qrBox { border: 6px solid #111827; padding: 40px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; background-color: white; box-shadow: 12px 12px 0 #111827; }
+.teksHasilQr { margin-top: 32px; font-size: 36px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #111827; text-shadow: 3px 3px 0 #facc15; }
+.tombolCetakQr { margin-top: 40px; background-color: #ef4444; color: white; padding: 16px 40px; border-radius: 12px; cursor: pointer; border: 4px solid #111827; font-weight: 900; font-size: 18px; text-transform: uppercase; box-shadow: 8px 8px 0 #111827; transition: transform 0.1s; }
+.tombolCetakQr:active { transform: translate(6px, 6px); box-shadow: 2px 2px 0 #111827; }
+
+
+/* ==========================================================================
+   11. SPESIFIK TAB: JURNAL KELAS (Neo-Brutalism Upgraded)
+   ========================================================================== */
+.aksiAtas { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.tombolKembali { display: inline-flex; align-items: center; gap: 8px; margin: 0; background-color: #e5e7eb; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; padding: 10px 16px; border-radius: 12px; font-weight: 900; text-transform: uppercase; color: #111827; cursor: pointer; transition: transform 0.1s; }
+.tombolKembali:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+
+.tombolCetak { background-color: #4ade80; color: #111827; border: 3px solid #111827; padding: 12px 20px; border-radius: 12px; font-weight: 900; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 4px 4px 0 #111827; text-transform: uppercase; transition: transform 0.1s; }
+.tombolCetak:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.tombolCetak:disabled { background-color: #9ca3af; color: #4b5563; cursor: not-allowed; box-shadow: none; transform: none; }
+
+.kartuInfo { background-color: #fef08a; padding: 20px; border-radius: 16px; border: 4px solid #111827; box-shadow: 6px 6px 0 #111827; margin-bottom: 24px; }
+.judulInfo { margin: 0 0 12px 0; font-size: 20px; font-weight: 900; color: #111827; text-transform: uppercase; border-bottom: 3px solid #111827; padding-bottom: 8px; }
+.teksInfo { margin: 0; font-weight: 900; color: #4b5563; text-transform: uppercase; }
+
+.formContainer { display: flex; flex-direction: column; gap: 24px; }
+.formGrid { display: flex; gap: 16px; flex-wrap: wrap; }
+.formKolom { flex: 1 1 300px; }
+.tombolSimpan { padding: 16px; font-size: 16px; width: 100%; background-color: #2563eb; color: white; font-weight: 900; text-transform: uppercase; border: 4px solid #111827; border-radius: 12px; box-shadow: 6px 6px 0 #111827; cursor: pointer; transition: transform 0.1s; margin-top: 16px; }
+.tombolSimpan:active { transform: translate(6px, 6px); box-shadow: 0 0 0 #111827; }
+
+.barisTabelKlik { cursor: pointer; transition: background-color 0.1s; }
+.barisTabelKlik:hover { background-color: #dbeafe; }
+.inputNilai { width: 100%; padding: 10px; border: 3px solid #111827; border-radius: 8px; font-weight: 900; outline: none; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.1); }
+.inputNilai:focus { background-color: #fef08a; }
+.inputNilai:disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed; border-color: #9ca3af; box-shadow: none; }
+
+.badge { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 900; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }
+.badgeBelum { background-color: #e5e7eb; color: #111827; }
+.badgeAbsen { background-color: #ef4444; color: white; }
+.badgeHadir { background-color: #4ade80; color: #111827; }
+
+.wadahCari { position: relative; display: flex; align-items: center; }
+.iconCari { position: absolute; left: 14px; color: #111827; font-size: 16px; }
+.inputCari { padding: 12px 12px 12px 40px; border: 3px solid #111827; border-radius: 12px; outline: none; font-weight: 900; width: 250px; box-shadow: 4px 4px 0 #111827; transition: transform 0.1s; }
+.inputCari:focus { background-color: #dbeafe; transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #2563eb; }
+
+/* ==========================================================================
+   12. ANIMASI LOADING LAYAR PENUH (Super Dashboard)
+   ========================================================================== */
+.layarLoadingPenuh {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fdfbf7;
+  background-image: radial-gradient(#d1d5db 2px, transparent 2px);
+  background-size: 24px 24px;
+}
+
+.kotakLoadingBrutal {
+  background-color: white;
+  border: 4px solid #111827;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 12px 12px 0 #111827;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  animation: brutalMelayang 2s ease-in-out infinite alternate;
+}
+
+@keyframes brutalMelayang {
+  0% { transform: translateY(0); box-shadow: 12px 12px 0 #111827; }
+  100% { transform: translateY(-8px); box-shadow: 16px 20px 0 #2563eb; }
+}
+
+.judulLoading {
+  font-size: 24px;
+  font-weight: 900;
+  color: #111827;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.pitaLoadingKecil {
+  width: 200px;
+  height: 24px;
+  border: 3px solid #111827;
+  border-radius: 8px;
+  background-color: #facc15;
+  background-image: repeating-linear-gradient(45deg, #111827 25%, transparent 25%, transparent 50%, #111827 50%, #111827 75%, transparent 75%, transparent);
+  background-size: 24px 24px;
+  animation: pitaBerjalan 1s linear infinite;
+  box-shadow: 4px 4px 0 #111827;
+}
+
+@keyframes pitaBerjalan {
+  0% { background-position: 0 0; }
+  100% { background-position: 48px 0; }
+}
+
+/* ========================================================================== */
+/* 13. KHUSUS TAB JADWAL (PAPAN CATUR & MANAJEMEN) - NEO BRUTALISM */
+/* ========================================================================== */
+
+/* --- Layout Utama --- */
+.wadahJadwalAllInOne {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background-color: #f3f4f6;
+}
+
+.panelPapanCatur {
+  background-color: white;
+  border-bottom: 4px solid #111827;
+  padding-bottom: 24px;
+}
+
+.panelTabelBawah {
+  padding: 32px 24px;
+  flex: 1;
+}
+
+/* --- Header Papan Catur --- */
+.headerPapanCatur {
+  padding: 24px;
+  background-color: #fef08a;
+  border-bottom: 4px solid #111827;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.judulHeaderPapan {
+  margin: 0;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #111827;
+}
+
+.subJudulHeaderPapan {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 900;
+  color: #4b5563;
+}
+
+.wadahKontrolKanan {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.wadahInputTanggal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.labelTanggal {
+  font-weight: 900;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.inputTanggalNeo {
+  padding: 8px;
+  border: 3px solid #111827;
+  border-radius: 8px;
+  font-weight: 900;
+  box-shadow: 4px 4px 0 #111827;
+  outline: none;
+}
+
+.tombolSimpanServer {
+  padding: 12px 24px;
+  border: 3px solid #111827;
+  border-radius: 8px;
+  font-weight: 900;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  transition: all 0.1s;
+}
+.tombolSimpanServer.aktif {
+  background-color: #4ade80;
+  box-shadow: 4px 4px 0 #111827;
+  cursor: pointer;
+}
+.tombolSimpanServer.aktif:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0px 0px 0 #111827;
+}
+.tombolSimpanServer.nonaktif {
+  background-color: #9ca3af;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* --- Area Amunisi Mapel --- */
+.panelAmunisi {
+  padding: 20px 24px 8px 24px;
+  background-color: #fdfbf7;
+  border-bottom: 3px solid #111827;
+}
+
+.judulAmunisi {
+  margin: 0 0 12px 0;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hintAmunisi {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 800;
+}
+
+.wadahScrollMapel {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+}
+
+.kartuMapelDraggable {
+  padding: 10px 16px;
+  background-color: white;
+  border: 3px solid #111827;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: grab;
+  box-shadow: 3px 3px 0 #111827;
+  user-select: none;
+  touch-action: none;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.kartuMapelDraggable.dragging {
+  opacity: 0.4;
+}
+
+.kartuMapelOverlay {
+  padding: 10px 16px;
+  background-color: #facc15;
+  border: 3px solid #111827;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 6px 6px 0 #111827;
+  cursor: grabbing;
+  white-space: nowrap;
+}
+
+/* --- Matriks Papan Catur --- */
+.wadahPapanCatur {
+  padding: 24px;
+}
+
+.kotakScrollPapan {
+  overflow: auto;
+  max-height: 50vh;
+  border: 4px solid #111827;
+  border-radius: 12px;
+  background-color: white;
+  box-shadow: 6px 6px 0 #111827;
+}
+
+.tabelPapanCatur {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1200px;
+}
+
+.thPojok {
+  padding: 16px;
+  border-right: 3px solid #111827;
+  border-bottom: 4px solid #111827;
+  background-color: #e5e7eb;
+  width: 150px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 20;
+}
+
+.thTanggal {
+  padding: 12px;
+  border-right: 3px solid #111827;
+  border-bottom: 4px solid #111827;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.thTanggal.normal { background-color: #dbeafe; }
+.thTanggal.sabtu { background-color: #fecaca; }
+
+.teksHari {
+  font-weight: 900;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: #111827;
+}
+
+.teksTglCatur {
+  font-weight: 800;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.trKelas {
+  border-bottom: 3px solid #111827;
+}
+.trKelas:last-child {
+  border-bottom: none;
+}
+
+.tdNamaKelas {
+  padding: 16px;
+  border-right: 3px solid #111827;
+  background-color: #f8fafc;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+.namaKelasTebal {
+  font-weight: 900;
+  font-size: 15px;
+  color: #111827;
+}
+
+.badgeSesi {
+  font-weight: 900;
+  font-size: 11px;
+  color: #2563eb;
+  background-color: #dbeafe;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 4px;
+  border: 1px solid #2563eb;
+}
+
+.tdDroppable {
+  padding: 8px;
+  border-right: 3px solid #111827;
+  vertical-align: top;
+  transition: background-color 0.1s;
+  min-width: 140px;
+}
+.tdDroppable.hover { background-color: #fef08a; }
+.tdDroppable.normal { background-color: white; }
+.tdDroppable.sabtu { background-color: #fff5f5; }
+
+.tumpukanJadwal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kartuJadwalPermanen {
+  background-color: #1f2937;
+  color: white;
+  padding: 8px;
+  border-radius: 8px;
+  border: 2px solid #111827;
+  box-shadow: 2px 2px 0 #111827;
+  opacity: 0.9;
+}
+
+.kartuJadwalDraft {
+  background-color: #2563eb;
+  color: white;
+  padding: 8px;
+  border-radius: 8px;
+  border: 2px dashed #111827;
+  box-shadow: 2px 2px 0 #111827;
+  animation: brutalPop 0.2s ease-out;
+}
+
+.labelTersimpan {
+  font-size: 10px;
+  font-weight: 900;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.labelDraftBaru {
+  font-size: 10px;
+  font-weight: 900;
+  color: #facc15;
+  margin-bottom: 4px;
+}
+
+.teksMapelKartu {
+  font-size: 11px;
+  font-weight: 900;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  padding-bottom: 2px;
+}
+
+.teksInfoGuru {
+  font-size: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.teksJamKartu {
+  font-size: 9px;
+  text-align: right;
+  margin-top: 4px;
+  color: #facc15;
+  font-weight: 900;
+}
+
+.kotakKosongTarikan {
+  height: 100%;
+  min-height: 60px;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* --- Area Tabel Bawah --- */
+.headerTabelBawah {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.judulTabelBawah {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #111827;
+}
+
+.subJudulTabelBawah {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #6b7280;
+}
+
+.wadahFilterBawah {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tabelDataBawah {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.trHeaderTabel {
+  background-color: #e5e7eb;
+  border-bottom: 4px solid #111827;
+}
+
+.thTabelData {
+  padding: 16px;
+  font-weight: 900;
+  text-transform: uppercase;
+  border-right: 3px solid #111827;
+}
+
+.trDataTabel {
+  border-bottom: 3px solid #e5e7eb;
+}
+
+.tdDataTabel {
+  padding: 12px 16px;
+  border-right: 3px solid #111827;
+}
+
+/* --- Modal Pop-up --- */
+.overlayModal {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(17,24,39,0.8);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.kotakModal {
+  background-color: white;
+  padding: 24px;
+  border-radius: 16px;
+  border: 4px solid #111827;
+  box-shadow: 8px 8px 0 #111827;
+  width: 90%;
+  max-width: 400px;
+  animation: slideUpBrutal 0.2s ease-out;
+}
+
+.headerModal {
+  margin: 0 0 16px 0;
+  font-weight: 900;
+  text-transform: uppercase;
+  border-bottom: 3px solid #111827;
+  padding-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.infoModalWadah {
+  background-color: #f8fafc;
+  padding: 12px;
+  border: 2px solid #111827;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.wadahInputModal {
+  margin-bottom: 16px;
+}
+
+.labelModal {
+  display: block;
+  font-size: 12px;
+  font-weight: 900;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.inputModal {
+  width: 100%;
+  padding: 12px;
+  border: 3px solid #111827;
+  border-radius: 8px;
+  font-weight: 900;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.tombolModalSimpan {
+  width: 100%;
+  background-color: #4ade80;
+  color: #111827;
+  border: 3px solid #111827;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 16px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 #111827;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}

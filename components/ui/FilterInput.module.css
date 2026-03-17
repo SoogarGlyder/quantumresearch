@@ -1,0 +1,25 @@
+.inputBrutal {
+  padding: 10px 14px;
+  border: 3px solid #111827;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+  outline: none;
+  min-width: 150px;
+  background-color: white;
+  box-shadow: 4px 4px 0 #111827;
+  transition: all 0.1s ease;
+  font-family: inherit;
+}
+
+.inputBrutal:focus {
+  background-color: #dbeafe;
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #111827;
+}
+
+.inputBrutal::placeholder {
+  color: #9ca3af;
+  font-weight: 700;
+}

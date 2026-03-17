@@ -1,0 +1,304 @@
+/* ==========================================================================
+   1. LAYOUT UTAMA (Neo-Brutalism Base)
+   ========================================================================== */
+.wadahUtama {
+  min-height: 100vh;
+  background-color: #fdfbf7;
+  background-image: radial-gradient(#d1d5db 2px, transparent 2px);
+  background-size: 24px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+
+.wadahUtama ::selection {
+  background-color: #fef08a;
+  color: #000;
+}
+
+/* ==========================================================================
+   2. KARTU LOGIN (Hard Box)
+   ========================================================================== */
+.kartuLogin {
+  max-width: 448px;
+  width: 100%;
+  background-color: white;
+  border: 4px solid #111827;
+  border-radius: 16px;
+  box-shadow: 12px 12px 0 #111827;
+  overflow: visible;
+  position: relative;
+  z-index: 10;
+}
+
+/* ==========================================================================
+   3. ANIMASI ORNAMEN (Geometric Brutalism)
+   ========================================================================== */
+@keyframes brutalGoyang {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(5deg) scale(1.05); }
+  50% { transform: rotate(0deg); }
+  75% { transform: rotate(-5deg) scale(0.95); }
+  100% { transform: rotate(0deg); }
+}
+
+.hiasan1 {
+  position: absolute; top: -30px; right: -30px;
+  width: 80px; height: 80px;
+  background-color: #facc15;
+  border: 4px solid #111827;
+  border-radius: 50%;
+  animation: brutalGoyang 3s infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.hiasan2 {
+  position: absolute; bottom: -20px; left: -30px;
+  width: 70px; height: 70px;
+  background-color: #ef4444;
+  border: 4px solid #111827;
+  border-radius: 12px;
+  transform: rotate(-15deg);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   4. KONTEN & TIPOGRAFI
+   ========================================================================== */
+.kontenKartu {
+  padding: 40px 32px;
+  position: relative;
+  z-index: 10;
+}
+
+.wadahLogo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+.wadahLogo img {
+  background-color: #fdfbf7;
+  padding: 8px 16px;
+  border: 3px solid #111827;
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 #111827;
+}
+
+.headerTeks {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.judulUtama {
+  font-size: 28px;
+  font-weight: 900;
+  color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.subJudul {
+  font-size: 14px;
+  color: #4b5563;
+  margin-top: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   5. INPUT FORM (Sturdy Boxes)
+   ========================================================================== */
+.grupInput {
+  margin-bottom: 24px;
+}
+
+.labelInput {
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+  color: #111827;
+  margin-bottom: 8px;
+  margin-left: 0; 
+  text-transform: uppercase;
+}
+
+.wadahInput {
+  position: relative;
+}
+
+.ikonInput {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  padding-left: 20px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  color: #111827;
+  font-size: 18px;
+  transition: transform 0.2s;
+}
+
+.inputField {
+  width: 100%;
+  background-color: #e5e7eb;
+  border: 3px solid #111827;
+  border-radius: 12px; 
+  padding: 16px 20px 16px 52px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #111827;
+  outline: none;
+  transition: all 0.1s ease;
+  box-shadow: 4px 4px 0 #111827;
+  box-sizing: border-box;
+}
+
+.inputField::placeholder {
+  font-weight: 800;
+  color: #9ca3af;
+}
+
+.inputField:focus {
+  background-color: #dbeafe;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #2563eb;
+}
+
+.inputField:focus + .ikonInput,
+.inputField:focus ~ .ikonInput {
+  color: #2563eb;
+  transform: scale(1.1);
+}
+
+/* ==========================================================================
+   6. TOMBOL MASUK (Tactile Physical Button)
+   ========================================================================== */
+.tombolMasuk {
+  width: 100%;
+  background-color: #2563eb;
+  color: white;
+  font-weight: 900;
+  padding: 16px;
+  border-radius: 12px; 
+  border: 3px solid #111827;
+  box-shadow: 6px 6px 0 #111827;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 32px;
+  cursor: pointer;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.tombolMasuk:hover {
+  background-color: #1d4ed8;
+}
+
+.tombolMasuk:active {
+  transform: translate(6px, 6px);
+  box-shadow: 0 0 0 #111827;
+}
+
+@keyframes brutalShimmer { 0% { background-position: 0 0; } 100% { background-position: 40px 40px; } }
+.tombolLoading {
+  background-color: #fef08a;
+  background-image: repeating-linear-gradient(45deg, #facc15 25%, transparent 25%, transparent 50%, #facc15 50%, #facc15 75%, transparent 75%, transparent);
+  background-size: 40px 40px;
+  animation: brutalShimmer 1s linear infinite;
+  color: #111827;
+  cursor: not-allowed;
+}
+.tombolLoading:hover, .tombolLoading:active { 
+  transform: none; 
+  box-shadow: 6px 6px 0 #111827;
+}
+
+/* ==========================================================================
+   7. PESAN & FOOTER (Loud Alerts)
+   ========================================================================== */
+.pesanError {
+  font-size: 14px; text-align: center; font-weight: 900;
+  margin-top: 24px; padding: 14px; border-radius: 12px;
+  background-color: #ef4444; color: white; 
+  border: 3px solid #111827; box-shadow: 4px 4px 0 #111827;
+  text-transform: uppercase;
+}
+
+.pesanSukses {
+  font-size: 14px; text-align: center; font-weight: 900;
+  margin-top: 24px; padding: 14px; border-radius: 12px;
+  background-color: #4ade80; color: #111827; 
+  border: 3px solid #111827; box-shadow: 4px 4px 0 #111827;
+  text-transform: uppercase;
+}
+
+.footerText {
+  margin-top: 40px;
+  font-size: 12px;
+  color: #111827;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+  background-color: #e5e7eb;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 2px solid #111827;
+  display: inline-block;
+  box-shadow: 2px 2px 0 #111827;
+}
+
+/* ==========================================================================
+   8. MEDIA QUERIES (Mobile Responsiveness)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .wadahUtama {
+    padding: 16px;
+  }
+
+  .kartuLogin {
+    border-width: 3px;
+    box-shadow: 6px 6px 0 #111827;
+  }
+
+  .kontenKartu {
+    padding: 32px 20px;
+  }
+
+  .judulUtama {
+    font-size: 24px;
+  }
+
+  .hiasan1 {
+    width: 60px; height: 60px;
+    top: -20px; right: -20px;
+  }
+
+  .hiasan2 {
+    width: 50px; height: 50px;
+    bottom: -15px; left: -20px;
+  }
+
+  .inputField {
+    padding: 14px 16px 14px 48px;
+    font-size: 14px;
+    box-shadow: 3px 3px 0 #111827;
+  }
+
+  .tombolMasuk {
+    padding: 14px;
+    box-shadow: 4px 4px 0 #111827;
+  }
+}
