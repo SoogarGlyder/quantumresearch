@@ -37,7 +37,7 @@ const TabScanner = dynamic(() => import("./student/TabScanner"), {
 // ============================================================================
 // 3. MAIN COMPONENT
 // ============================================================================
-export default function StudentApp({ siswa, riwayat, jadwal }) {
+export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
   const router = useRouter();
 
   const [tab, setTab] = useState("home"); 
