@@ -4,6 +4,8 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react";
+// 👇 Import navigasi Next.js
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -20,10 +22,17 @@ import styles from "../../app/admin/AdminPage.module.css";
 // 2. MAIN COMPONENT (DAFTAR JURNAL)
 // ============================================================================
 export default function TabJurnal({ dataJadwal, muatData }) {
+  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  // Ambil halaman aktif langsung dari URL (Default ke 1)
+  const page = Number(searchParams.get("page")) || 1;
+
   const [filterBulan, setFilterBulan] = useState("");
   const [filterKelas, setFilterKelas] = useState("");
   const [cariTopik, setCariTopik] = useState(""); 
-  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
   const [selectedJadwalId, setSelectedJadwalId] = useState(null);
@@ -34,7 +43,14 @@ export default function TabJurnal({ dataJadwal, muatData }) {
   const [loadingJurnal, setLoadingJurnal] = useState(false);
   const [pesan, setPesan] = useState("");
 
-  useEffect(() => { setPage(1); }, [filterBulan, filterKelas, cariTopik]);
+  // SINKRONISASI FILTER: Jika kriteria pencarian berubah, reset URL page ke 1
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (params.has("page")) {
+      params.delete("page");
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [filterBulan, filterKelas, cariTopik]);
 
   const jadwalTersedia = useMemo(() => {
     const hariIni = formatYYYYMMDD(new Date());
@@ -55,6 +71,7 @@ export default function TabJurnal({ dataJadwal, muatData }) {
     return jadwal.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
   }, [dataJadwal, filterBulan, filterKelas, cariTopik]);
 
+  // Menggunakan 'page' yang ditarik dari URL
   const { totalPage, dataTerpotong: jadwalHalIni } = potongDataPagination(jadwalTersedia, page, ITEMS_PER_PAGE);
 
   const bukaJurnal = async (idJadwal) => {
@@ -205,7 +222,8 @@ export default function TabJurnal({ dataJadwal, muatData }) {
         </table>
       </div>
 
-      <PaginationBar currentPage={page} totalPages={totalPage} setPage={setPage} />
+      {/* PaginationBar sekarang mandiri membaca URL */}
+      <PaginationBar totalPages={totalPage} />
     </div>
   );
 }

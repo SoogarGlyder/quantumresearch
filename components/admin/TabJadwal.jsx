@@ -1,8 +1,8 @@
-// File: components/admin/TabJadwal.jsx
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare } from "react-icons/fa6";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import { DndContext, useDraggable, useDroppable, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
 
@@ -41,6 +41,13 @@ function DroppableSel({ idSel, isSabtu, children }) {
 // KOMPONEN UTAMA
 // ============================================================================
 export default function TabJadwal({ dataJadwal = [], muatData }) {
+  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  // Ambil halaman aktif langsung dari URL (Default ke 1)
+  const page = Number(searchParams.get("page")) || 1;
   
   // --- STATE PAPAN CATUR ---
   const [tanggalMulai, setTanggalMulai] = useState("2026-03-16");
@@ -66,10 +73,16 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
   const [filterTglMulai, setFilterTglMulai] = useState("");
   const [filterTglAkhir, setFilterTglAkhir] = useState("");
   const [filterKelas, setFilterKelas] = useState("");
-  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  useEffect(() => { setPage(1); }, [filterTglMulai, filterTglAkhir, filterKelas]);
+  // SINKRONISASI FILTER: Jika filter berubah, reset halaman ke 1 di URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (params.has("page")) {
+      params.delete("page");
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [filterTglMulai, filterTglAkhir, filterKelas]);
 
   // --- LOGIKA DND CATUR ---
   const sensors = useSensors(
@@ -241,6 +254,7 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
     return jadwal.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
   }, [dataJadwal, filterTglMulai, filterTglAkhir, filterKelas]);
 
+  // Menggunakan 'page' yang diambil dari URL
   const { totalPage, dataTerpotong: dataJadwalHalIni } = potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
 
   const cariDraftLokal = (kelasId, tanggalPenuh) => jadwalLokal.filter(j => j.kelasId === kelasId && j.tanggal === tanggalPenuh);
@@ -397,7 +411,6 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
                       <div style={{ fontSize: '12px', fontWeight: '800', color: '#6b7280' }}>Pertemuan ke-{j.pertemuan || '?'}</div>
                     </td>
                     <td className={styles.tdDataTabel} style={{ textAlign: 'center' }}>
-                      {/* 👇 PENGGUNAAN FUNGSI HAPUS YANG BENAR 👇 */}
                       <button onClick={() => klikHapusJadwalBawah(j._id, j.mapel, j.kelasTarget)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>
                         <FaTrashCan style={{marginRight: '6px'}}/> Hapus
                       </button>
@@ -408,7 +421,7 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
             </tbody>
           </table>
         </div>
-        <PaginationBar currentPage={page} totalPages={totalPage} setPage={setPage} />
+        <PaginationBar totalPages={totalPage} />
       </div>
 
       {/* ==================== MODAL TAMBAH (DROP) ==================== */}

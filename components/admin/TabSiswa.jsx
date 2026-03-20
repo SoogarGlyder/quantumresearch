@@ -1,10 +1,11 @@
-// File: components/admin/TabSiswa.jsx
 "use client";
 
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react"; 
+// 👇 Import navigasi Next.js untuk URL State
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import PaginationBar from "../ui/PaginationBar";
 
@@ -19,6 +20,13 @@ import styles from "../../app/admin/AdminPage.module.css";
 // 2. MAIN COMPONENT (TAB SISWA)
 // ============================================================================
 export default function TabSiswa({ dataSiswa = [], muatData }) {
+  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  // Ambil halaman aktif langsung dari URL (Default ke 1)
+  const page = Number(searchParams.get("page")) || 1;
   
   // --- STATE: FORM SISWA ---
   const initialFormState = { 
@@ -38,12 +46,18 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   const [loadingForm, setLoadingForm] = useState(false);
   const [pesanForm, setPesanForm] = useState("");
 
-  // --- STATE: FILTER & PAGINATION ---
+  // --- STATE: FILTER ---
   const [filterKelas, setFilterKelas] = useState("");
-  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
-  useEffect(() => { setPage(1); }, [filterKelas]);
+  // SINKRONISASI FILTER: Jika filter kelas berubah, reset halaman ke 1 di URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (params.has("page")) {
+      params.delete("page");
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [filterKelas]);
 
   // --- HANDLERS: CRUD ---
   const simpanSiswa = async (e) => { 
@@ -115,27 +129,24 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
     } 
   };
 
-  // --- LOGIKA FILTER SISWA (DENGAN SORTING NOMOR PESERTA) ---
+  // --- LOGIKA FILTER SISWA ---
   const siswaDitampilkan = useMemo(() => {
     let siswa = [...dataSiswa];
     
-    // Filter berdasarkan kelas jika ada
     if (filterKelas) {
       siswa = siswa.filter(s => s.kelas === filterKelas);
     }
     
-    // 👇 FITUR BARU: Sort berdasarkan Nomor Peserta (dari kecil ke besar)
-    // localeCompare menangani campuran angka & huruf (misal: QTM-001 vs QTM-002)
     siswa.sort((a, b) => {
       const npA = a.nomorPeserta || "";
       const npB = b.nomorPeserta || "";
-      // Gunakan numeric: true agar QTM-2 muncul sebelum QTM-10
       return npA.localeCompare(npB, undefined, { numeric: true, sensitivity: 'base' });
     });
 
     return siswa;
   }, [dataSiswa, filterKelas]);
 
+  // Menggunakan 'page' yang ditarik dari URL
   const { totalPage, dataTerpotong: dataSiswaHalIni } = potongDataPagination(siswaDitampilkan, page, ITEMS_PER_PAGE);
 
   // ============================================================================
@@ -144,16 +155,13 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   return (
     <div className={`${styles.isiTab} ${styles.SembunyiPrint} ${styles.wadahSiswa}`}>
       
-      {/* ------------------------------------------------------------- */}
-      {/* PANEL KIRI: FORM SISWA (Kini Sticky via CSS) */}
-      {/* ------------------------------------------------------------- */}
+      {/* PANEL KIRI: FORM SISWA */}
       <div className={`${styles.formPanel} ${idEdit ? styles.formPanelEdit : styles.formPanelBiasa} ${styles.flexSatu}`}>
         <h3 className={idEdit ? styles.judulFormEdit : styles.judulFormPanel}>
           {idEdit ? "✏️ Edit Akun Siswa" : "➕ Tambah Akun Siswa"}
         </h3>
         
         <form onSubmit={simpanSiswa}>
-          
           <input 
             type="text" 
             placeholder="Nama Lengkap" 
@@ -162,7 +170,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             onChange={e => setFormSiswa({...formSiswa, nama: e.target.value})} 
             className={styles.formInput} 
           />
-          
           <input 
             type="text" 
             placeholder="No Peserta Resmi" 
@@ -171,7 +178,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             onChange={e => setFormSiswa({...formSiswa, nomorPeserta: e.target.value})} 
             className={styles.formInput} 
           />
-          
           <input 
             type="text" 
             placeholder="Username (Opsional, def: No Peserta)" 
@@ -179,7 +185,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             onChange={e => setFormSiswa({...formSiswa, username: e.target.value})} 
             className={styles.formInput} 
           />
-          
           <input 
             type="text" 
             placeholder="Nomor WA" 
@@ -188,7 +193,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             onChange={e => setFormSiswa({...formSiswa, noHp: e.target.value})} 
             className={styles.formInput} 
           />
-          
           <input 
             type="text" 
             placeholder={idEdit ? "Kosongkan jika tidak ubah sandi" : "Kata Sandi"} 
@@ -197,7 +201,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             onChange={e => setFormSiswa({...formSiswa, password: e.target.value})} 
             className={styles.formInput} 
           />
-          
           <select 
             value={formSiswa.kelas} 
             onChange={e => setFormSiswa({...formSiswa, kelas: e.target.value})} 
@@ -208,7 +211,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
               <option key={opsiKls} value={opsiKls}>{opsiKls}</option>
             ))}
           </select>
-
           <select 
             value={formSiswa.status} 
             onChange={e => setFormSiswa({...formSiswa, status: e.target.value})} 
@@ -218,37 +220,26 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             <option value="aktif">🟢 Status: Aktif</option>
             <option value="tidak aktif">🔴 Status: Tidak Aktif (Blokir Login)</option>
           </select>
-          
-          {/* Tombol Aksi Form */}
           <div className={styles.wadahTombolAksiForm}>
             {idEdit && (
-              <button type="button" onClick={batalEdit} className={styles.tombolBatalForm}>
-                Batal
-              </button>
+              <button type="button" onClick={batalEdit} className={styles.tombolBatalForm}>Batal</button>
             )}
             <button type="submit" disabled={loadingForm} className={idEdit ? styles.tombolSimpanKuning : styles.tombolSimpanBiruBaru}>
               {loadingForm ? "..." : "Simpan"}
             </button>
           </div>
-          
           {pesanForm && (
             <p className={`${styles.teksPesanForm} ${pesanForm.includes("Berhasil") ? styles.teksPesanSukses : styles.teksPesanGagal}`}>
               {pesanForm}
             </p>
           )}
-
         </form>
       </div>
       
-      {/* ------------------------------------------------------------- */}
       {/* PANEL KANAN: TABEL SISWA */}
-      {/* ------------------------------------------------------------- */}
       <div className={styles.flexDua}>
-        
-        {/* Header & Filter */}
         <div className={styles.headerTabSiswa}>
           <h3 className={styles.judulTabelKanan}>Daftar Siswa ({siswaDitampilkan.length})</h3>
-          
           <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className={styles.filterSelectMurni}>
             <option value="">Semua Kelas</option>
             {OPSI_KELAS.map((opsiKls) => (
@@ -257,7 +248,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
           </select>
         </div>
 
-        {/* Tabel Data */}
         <div className={styles.wadahTabel}>
           <table className={styles.tabelStyle}>
             <thead>
@@ -276,19 +266,13 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
                   const isNonaktif = s.status === 'tidak aktif';
                   return (
                     <tr key={s._id} style={{ opacity: isNonaktif ? 0.6 : 1 }}>
-                      
-                      {/* Kolom 1: Akun */}
                       <td>
                         <p className={styles.teksNamaSiswa} style={{ color: isNonaktif ? '#ef4444' : 'inherit' }}>
                           {s.nama} {isNonaktif && '(Nonaktif)'}
                         </p>
                         <p className={styles.teksUsernameSiswa}>ID: {s.nomorPeserta || "-"} | @{s.username}</p>
                       </td>
-                      
-                      {/* Kolom 2: Kontak */}
                       <td>{s.noHp}</td>
-                      
-                      {/* Kolom 3: Kelas & Status */}
                       <td>
                         <p style={{ margin: 0, fontWeight: '900' }}>{s.kelas || "-"}</p>
                         <span style={{ 
@@ -304,15 +288,12 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
                           {isNonaktif ? '🔴 Tidak Aktif' : '🟢 Aktif'}
                         </span>
                       </td>
-                      
-                      {/* Kolom 4: Aksi */}
                       <td style={{textAlign:'center'}}>
                         <div className={styles.wadahAksiInlineHorizontal}>
                           <button onClick={() => klikEditSiswa(s)} className={`${styles.tombolAksi} ${styles.btnEdit}`}>Edit</button> 
                           <button onClick={() => klikHapusSiswa(s._id, s.nama)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>Hapus</button>
                         </div>
                       </td>
-                      
                     </tr>
                   )
                 })
@@ -321,9 +302,8 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
           </table>
         </div>
         
-        {/* Pagination */}
-        <PaginationBar currentPage={page} totalPages={totalPage} setPage={setPage} />
-      
+        {/* PaginationBar mandiri membaca URL */}
+        <PaginationBar totalPages={totalPage} />
       </div>
     </div>
   );

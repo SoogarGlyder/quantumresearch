@@ -4,6 +4,8 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react"; 
+// 👇 Import navigasi Next.js
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -22,12 +24,19 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa = [], muatData }) {
   
-  // --- STATE: FILTER & PAGINATION ---
+  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  // Ambil halaman aktif langsung dari URL (Default ke 1)
+  const page = Number(searchParams.get("page")) || 1;
+
+  // --- STATE: FILTER ---
   const [filterTglKelas, setFilterTglKelas] = useState("");
   const [filterKelasAbsen, setFilterKelasAbsen] = useState("");
   const [filterMapelKelas, setFilterMapelKelas] = useState("");
   
-  const [pageKelas, setPageKelas] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
   // --- STATE: INLINE EDITING (Edit Langsung di Tabel) ---
@@ -36,7 +45,14 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   const [inlineCatatan, setInlineCatatan] = useState("");
   const [loadingInline, setLoadingInline] = useState(false);
 
-  useEffect(() => { setPageKelas(1); }, [filterTglKelas, filterKelasAbsen, filterMapelKelas]);
+  // SINKRONISASI FILTER: Jika kriteria pencarian berubah, reset URL page ke 1
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (params.has("page")) {
+      params.delete("page");
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [filterTglKelas, filterKelasAbsen, filterMapelKelas]);
 
   // --- HANDLERS ---
   const mulaiEditAbsen = (sesi) => {
@@ -96,8 +112,8 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     return riwayat;
   }, [riwayatKelasMurni, filterTglKelas, filterKelasAbsen, filterMapelKelas]);
   
-  // 3. Potong untuk Pagination
-  const { totalPage, dataTerpotong: dataKelasHalIni } = potongDataPagination(riwayatKelasDifilter, pageKelas, ITEMS_PER_PAGE);
+  // 3. Potong untuk Pagination menggunakan 'page' dari URL
+  const { totalPage, dataTerpotong: dataKelasHalIni } = potongDataPagination(riwayatKelasDifilter, page, ITEMS_PER_PAGE);
 
   // ============================================================================
   // 3. RENDER UI
@@ -243,7 +259,8 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
         </table>
       </div>
       
-      <PaginationBar currentPage={pageKelas} totalPages={totalPage} setPage={setPageKelas} />
+      {/* PaginationBar mandiri membaca URL */}
+      <PaginationBar totalPages={totalPage} />
     </div>
   );
 }

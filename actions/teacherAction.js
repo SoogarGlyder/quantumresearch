@@ -7,8 +7,16 @@ import Jadwal from "../models/Jadwal";
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
-// 1. INTERNAL HELPERS (Security Optimized - FASE 7)
+// 1. INTERNAL HELPERS (Security & Asset Validation)
 // ============================================================================
+
+// Helper untuk memvalidasi apakah link benar-benar dari Cloudinary (Poin 35)
+function isLinkValidCloudinary(url) {
+  if (!url || typeof url !== "string") return false;
+  // Memastikan link mengandung domain cloudinary.com
+  return url.includes("res.cloudinary.com");
+}
+
 async function dapatkanIdentitasPengajar() {
   try {
     const cookieStore = await cookies();
@@ -40,33 +48,42 @@ export async function simpanJurnalGuru(idJadwal, dataJurnal) {
     // 1. Validasi Identitas & Otoritas
     const pengajar = await dapatkanIdentitasPengajar();
     if (!pengajar) {
-      return { sukses: false, pesan: "Sesi berakhir atau Anda tidak memiliki akses pengajar." };
+      return { sukses: false, pesan: "Sesi berakhir. Silakan login kembali." };
     }
 
-    // 2. Sanitasi & Normalisasi Data
+    // 2. Sanitasi & Normalisasi Data Teks
     const babClean = (dataJurnal.bab || "").trim();
     const subBabClean = (dataJurnal.subBab || "").trim();
 
-    if (!babClean) return { sukses: false, pesan: "Bab materi wajib diisi!" };
+    if (!babClean) return { sukses: false, pesan: "Materi (Bab) wajib diisi!" };
 
-    // Poin 33: Normalisasi link galeri (String ke Array yang bersih)
+    // 3. OPTIMALISASI ASET (Poin 16, 33, 35)
     let arrayGaleri = [];
-    if (typeof dataJurnal.galeriPapan === "string") {
-      arrayGaleri = dataJurnal.galeriPapan
-        .split(",")
-        .map(link => link.trim())
-        .filter(link => link !== ""); // Hapus string kosong
-    } else if (Array.isArray(dataJurnal.galeriPapan)) {
-      arrayGaleri = dataJurnal.galeriPapan.filter(link => link && link.trim() !== "");
-    }
+    
+    // Normalisasi Galeri: Mengubah string/array menjadi array bersih & unik
+    const rawGaleri = typeof dataJurnal.galeriPapan === "string" 
+      ? dataJurnal.galeriPapan.split(",") 
+      : Array.isArray(dataJurnal.galeriPapan) ? dataJurnal.galeriPapan : [];
 
-    // 3. Update dengan Filter Keamanan (Poin 29: Null-safe)
+    arrayGaleri = rawGaleri
+      .map(link => (typeof link === "string" ? link.trim() : ""))
+      .filter(link => link !== "" && isLinkValidCloudinary(link)); // Hanya simpan link Cloudinary yang valid
+    
+    // Hapus duplikat (Poin 33)
+    arrayGaleri = [...new Set(arrayGaleri)];
+
+    // Validasi Foto Bersama
+    const fotoBersamaClean = isLinkValidCloudinary(dataJurnal.fotoBersama) 
+      ? dataJurnal.fotoBersama 
+      : "";
+
+    // 4. Update dengan Filter Keamanan (Poin 29)
     const queryKeamanan = { 
       _id: idJadwal, 
-      pengajar: pengajar.nama // Memastikan guru hanya mengisi jurnalnya sendiri
+      pengajar: pengajar.nama 
     };
 
-    // Bypass jika admin yang mengisi
+    // Admin bypass keamanan pengajar
     if (pengajar.peran === "admin") delete queryKeamanan.pengajar;
 
     const hasilUpdate = await Jadwal.findOneAndUpdate(
@@ -76,7 +93,7 @@ export async function simpanJurnalGuru(idJadwal, dataJurnal) {
           bab: babClean,
           subBab: subBabClean,
           galeriPapan: arrayGaleri,
-          fotoBersama: dataJurnal.fotoBersama || "",
+          fotoBersama: fotoBersamaClean,
           jurnalTerakhirUpdate: new Date() 
         }
       },
@@ -84,16 +101,17 @@ export async function simpanJurnalGuru(idJadwal, dataJurnal) {
     );
 
     if (!hasilUpdate) {
-      return { sukses: false, pesan: "Gagal: Jadwal tidak ditemukan atau Anda tidak berhak mengisi jadwal ini." };
+      return { sukses: false, pesan: "Jadwal tidak ditemukan atau Anda tidak berhak mengubahnya." };
     }
 
-    // Refresh cache agar data terbaru langsung muncul di dashboard guru
+    // Revalidasi spesifik agar dashboard admin & guru sinkron
     revalidatePath("/"); 
+    revalidatePath("/admin");
 
-    return { sukses: true, pesan: "Jurnal & Foto berhasil diamankan ke server!" };
+    return { sukses: true, pesan: "✅ Jurnal & Foto Berhasil Diamankan!" };
 
   } catch (error) {
     console.error("[ERROR simpanJurnalGuru]:", error.message);
-    return { sukses: false, pesan: "Terjadi gangguan sistem saat menyimpan jurnal." };
+    return { sukses: false, pesan: "Gangguan server: Gagal menyimpan data jurnal." };
   }
 }

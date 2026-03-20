@@ -4,6 +4,8 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react"; 
+// 👇 Import navigasi Next.js untuk URL State
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -19,16 +21,29 @@ import styles from "../../app/admin/AdminPage.module.css";
 // 2. MAIN COMPONENT (TAB KONSUL)
 // ============================================================================
 export default function TabKonsul({ dataRiwayat = [] }) {
+  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  // Ambil halaman aktif langsung dari URL (Default ke 1)
+  const page = Number(searchParams.get("page")) || 1;
   
-  // --- STATE: FILTER & PAGINATION ---
+  // --- STATE: FILTER ---
   const [filterBulan, setFilterBulan] = useState("");
   const [filterMapel, setFilterMapel] = useState("");
   const [filterNama, setFilterNama] = useState("");
 
-  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
-  useEffect(() => { setPage(1); }, [filterBulan, filterMapel, filterNama]);
+  // SINKRONISASI FILTER: Jika kriteria filter berubah, reset halaman ke 1 di URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (params.has("page")) {
+      params.delete("page");
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [filterBulan, filterMapel, filterNama]);
 
   // --- HANDLERS ---
   const resetFilter = () => {
@@ -62,6 +77,7 @@ export default function TabKonsul({ dataRiwayat = [] }) {
     return riwayat;
   }, [riwayatKonsulMurni, filterBulan, filterMapel, filterNama]);
 
+  // Menggunakan 'page' yang ditarik dari URL
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(riwayatKonsulDifilter, page, ITEMS_PER_PAGE);
 
   // ============================================================================
@@ -86,7 +102,6 @@ export default function TabKonsul({ dataRiwayat = [] }) {
         <FilterInput type="month" value={filterBulan} onChange={(e) => setFilterBulan(e.target.value)} />
         <FilterInput placeholder="Cari Nama Siswa..." value={filterNama} onChange={(e) => setFilterNama(e.target.value)} />
         
-        {/* Dropdown brutalism (filterSelectMurni) */}
         <select value={filterMapel} onChange={(e) => setFilterMapel(e.target.value)} className={styles.filterSelectMurni}>
           <option value="">Semua Mapel</option>
           {OPSI_MAPEL_KONSUL.map(opsi => (
@@ -158,8 +173,8 @@ export default function TabKonsul({ dataRiwayat = [] }) {
         </table>
       </div>
       
-      {/* PAGINATION */}
-      <PaginationBar currentPage={page} totalPages={totalPage} setPage={setPage} />
+      {/* PAGINATION BAR sekarang mandiri membaca URL */}
+      <PaginationBar totalPages={totalPage} />
       
     </div>
   );
