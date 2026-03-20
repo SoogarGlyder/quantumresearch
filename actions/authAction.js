@@ -34,15 +34,26 @@ export async function prosesLogin(dataFormulir) {
     }
 
     // 🕵️ Tirai password dibuka khusus untuk login (+password)
+    // Tanpa .lean() agar dokumen Mongoose tetap utuh untuk pengecekan password
     const user = await User.findOne({
       $or: [{ username: idInput }, { nomorPeserta: idInput }, { noHp: idInput }]
     }).select("+password"); 
 
     if (!user) return responseHelper.error("Akun tidak ditemukan!");
-    if (user.status === "tidak aktif") return responseHelper.error("Akun dinonaktifkan. Hubungi Admin.");
+    
+    // 🛡️ PAGAR 1: Cek apakah hash password benar-benar ada di DB
+    if (!user.password) {
+      console.error(`[AUTH ERROR]: User ${idInput} tidak memiliki field password di DB.`);
+      return responseHelper.error("Data akun tidak lengkap. Silakan hubungi Admin untuk reset password.");
+    }
 
-    // Verifikasi Password via Helper
+    if (user.status === "tidak aktif") {
+      return responseHelper.error("Akun dinonaktifkan. Hubungi Admin.");
+    }
+
+    // 🛡️ PAGAR 2: Verifikasi via Helper
     const passwordCocok = await authHelper.bandingkanPassword(passwordInput, user.password);
+    
     if (!passwordCocok) return responseHelper.error("Kata sandi salah!");
 
     // Buat Sesi Cookie
@@ -50,7 +61,8 @@ export async function prosesLogin(dataFormulir) {
 
     return responseHelper.success("Login Berhasil! Memuat portal...");
   } catch (error) {
-    return responseHelper.error("Terjadi gangguan pada sistem login.", error);
+    console.error("[CRITICAL LOGIN ERROR]:", error.message);
+    return responseHelper.error("Terjadi gangguan pada sistem login.", error.message);
   }
 }
 
@@ -71,24 +83,19 @@ export async function prosesLogout() {
 // ============================================================================
 
 /**
- * TAMBAH SISWA: Registrasi manual satu per satu
+ * TAMBAH SISWA: Registrasi manual
  */
 export async function prosesTambahSiswa(dataFormulir) {
   try {
     await connectToDatabase();
-    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak! Khusus Admin.");
+    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak!");
 
     const username = validationHelper.sanitize(dataFormulir.username || dataFormulir.nomorPeserta).toLowerCase();
     
-    // Validasi Satpam (Validation Helper)
     if (!validationHelper.isValidUsername(username)) {
-      return responseHelper.error("Username hanya boleh huruf, angka, dan simbol (. - _)");
-    }
-    if (!validationHelper.isValidPassword(dataFormulir.password)) {
-      return responseHelper.error("Password minimal 6 karakter.");
+      return responseHelper.error("Format username tidak valid.");
     }
 
-    // Cek duplikat
     const cekDuplikat = await User.findOne({ 
       $or: [{ username }, { nomorPeserta: dataFormulir.nomorPeserta }] 
     }).select("_id").lean();
@@ -122,13 +129,19 @@ export async function prosesTambahPengajar(dataFormulir) {
 
     const username = validationHelper.sanitize(dataFormulir.username).toLowerCase();
     const kodePengajar = validationHelper.sanitize(dataFormulir.kodePengajar).toUpperCase();
+    
+    // Pastikan password diambil dengan benar dari form
+    const passwordRaw = dataFormulir.password || dataFormulir.kataSandi || "123456";
 
     if (!username || !kodePengajar) return responseHelper.error("Username & Kode Pengajar wajib diisi.");
 
-    const cekDuplikat = await User.findOne({ $or: [{ username }, { kodePengajar }] }).select("_id").lean();
+    const cekDuplikat = await User.findOne({ 
+      $or: [{ username }, { kodePengajar }] 
+    }).select("_id").lean();
+    
     if (cekDuplikat) return responseHelper.error("Username atau Kode Pengajar sudah ada!");
 
-    const passwordHashed = await authHelper.buatHash(dataFormulir.password || "123456");
+    const passwordHashed = await authHelper.buatHash(passwordRaw);
 
     await User.create({
       ...dataFormulir,
@@ -153,10 +166,7 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak!");
-    if (!Array.isArray(daftarSiswaRaw) || daftarSiswaRaw.length === 0) {
-      return responseHelper.error("Tidak ada data untuk diproses.");
-    }
-
+    
     const existing = await User.find({}, "username nomorPeserta").lean();
     const setU = new Set(existing.map(u => u.username));
     const setN = new Set(existing.map(u => u.nomorPeserta));
@@ -190,8 +200,7 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
     revalidatePath("/admin");
     return responseHelper.success(`Bulk Upload Selesai!`, {
       berhasil: dataSiap.length,
-      gagal: laporanGagal.length,
-      detailGagal: laporanGagal
+      gagal: laporanGagal.length
     });
   } catch (error) {
     return responseHelper.error("Gangguan Server saat upload massal.", error);
