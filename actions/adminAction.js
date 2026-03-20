@@ -20,9 +20,6 @@ async function pastikanAdmin() {
   return userId && peran === "admin";
 }
 
-/**
- * Helper untuk membersihkan data MongoDB agar bisa dikirim ke Client Component
- */
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
@@ -63,7 +60,6 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
 
     const dataUpdate = { ...dataBaru };
     
-    // Validasi & Hashing Password via Helpers
     if (dataBaru.password?.trim()) {
       if (!validationHelper.isValidPassword(dataBaru.password)) {
         return responseHelper.error("Password baru minimal 6 karakter.");
@@ -73,7 +69,6 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
       delete dataUpdate.password;
     }
 
-    // Sanitasi Username
     if (dataUpdate.username) {
       dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
     }
@@ -82,7 +77,7 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
     revalidatePath("/admin");
     return responseHelper.success("Profil siswa berhasil diperbarui!");
   } catch (error) {
-    return responseHelper.error("Gagal update siswa. Cek duplikasi ID/Username.", error);
+    return responseHelper.error("Gagal update siswa.", error);
   }
 }
 
@@ -97,7 +92,7 @@ export async function hapusAkunSiswa(idSiswa) {
     ]);
 
     revalidatePath("/admin");
-    return responseHelper.success("Siswa & seluruh riwayatnya berhasil dihapus.");
+    return responseHelper.success("Siswa & riwayat berhasil dihapus.");
   } catch (error) {
     return responseHelper.error("Gagal menghapus data siswa.", error);
   }
@@ -126,9 +121,41 @@ export async function tambahJadwal(dataForm) {
 
     await Jadwal.create(dataForm);
     revalidatePath("/admin/jadwal");
-    return responseHelper.success("Jadwal baru berhasil diterbitkan!");
+    return responseHelper.success("Jadwal baru berhasil dibuat!");
   } catch (error) {
     return responseHelper.error("Gagal membuat jadwal.", error);
+  }
+}
+
+/**
+ * FUNGSI YANG HILANG TADI: editJadwal
+ */
+export async function editJadwal(id, dataBaru) {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak!");
+
+    const update = await Jadwal.findByIdAndUpdate(
+      id,
+      {
+        pengajarId: dataBaru.pengajarId,
+        namaPengajar: dataBaru.namaPengajar,
+        kodePengajar: dataBaru.kodePengajar,
+        mapel: dataBaru.mapel,
+        pertemuan: dataBaru.pertemuan,
+        jamMulai: dataBaru.jamMulai,
+        jamSelesai: dataBaru.jamSelesai,
+        kelasTarget: dataBaru.kelasTarget
+      },
+      { new: true }
+    );
+
+    if (!update) return responseHelper.error("Jadwal tidak ditemukan.");
+
+    revalidatePath("/admin/jadwal");
+    return responseHelper.success("Jadwal berhasil diperbarui!");
+  } catch (error) {
+    return responseHelper.error("Terjadi kesalahan saat edit jadwal.", error);
   }
 }
 
@@ -146,7 +173,7 @@ export async function hapusJadwal(idJadwal) {
 }
 
 // ============================================================================
-// 5. ABSENSI MANUAL & JURNAL (LMS)
+// 5. ABSENSI & JURNAL
 // ============================================================================
 
 export async function inputAbsenManual(data) {
@@ -154,9 +181,7 @@ export async function inputAbsenManual(data) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak!");
 
-    // Menggunakan timeHelper untuk rentang hari WIB
     const { awal, akhir } = timeHelper.getRentangHari(data.tanggal);
-    
     const statusFinal = data.catatan 
       ? `${data.keterangan} (${data.catatan})`.toLowerCase() 
       : data.keterangan.toLowerCase();
@@ -169,10 +194,7 @@ export async function inputAbsenManual(data) {
         waktuMulai: { $gte: awal, $lte: akhir }
       },
       {
-        $set: {
-          status: statusFinal,
-          waktuSelesai: awal
-        },
+        $set: { status: statusFinal, waktuSelesai: awal },
         $setOnInsert: {
           siswaId: data.siswaId,
           jenisSesi: TIPE_SESI.KELAS,
@@ -261,7 +283,7 @@ export async function simpanJurnal(idJadwal, dataJurnal, arrayNilaiSiswa) {
 
     await Promise.all([updateJadwal, updateNilai]);
     revalidatePath("/admin/jadwal");
-    return responseHelper.success("Jurnal & Nilai siswa berhasil diamankan!");
+    return responseHelper.success("Jurnal & Nilai berhasil disimpan!");
   } catch (error) {
     return responseHelper.error("Gagal menyimpan jurnal.", error);
   }
