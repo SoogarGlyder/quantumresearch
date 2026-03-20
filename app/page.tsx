@@ -31,7 +31,7 @@ export default async function Home() {
     redirect("/admin");
   }
 
-  // ==========================================================================
+// ==========================================================================
   // CABANG 2: PENGAJAR / GURU
   // ==========================================================================
   if (userLogin.peran === "pengajar" || userLogin.peran === "guru") {
@@ -43,6 +43,7 @@ export default async function Home() {
       <TeacherApp 
         dataUser={serialize(userLogin)} 
         jadwal={serialize(jadwalGuru)} 
+        onLogout={null}
       />
     );
   }
