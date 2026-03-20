@@ -1,188 +1,202 @@
 "use server";
 
-// ============================================================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================================================
 import connectToDatabase from "../lib/db";
-import { cookies } from "next/headers";
-
+import User from "../models/User";
 import StudySession from "../models/StudySession";
 import Jadwal from "../models/Jadwal";
-import User from "../models/User";
-
-import { PREFIX_BARCODE } from "../utils/constants";
+import { authHelper } from "../utils/authHelper";
+import { responseHelper } from "../utils/responseHelper";
+import { timeHelper } from "../utils/timeHelper";
+import { STATUS_SESI, TIPE_SESI, PREFIX_BARCODE } from "../utils/constants";
+import { revalidatePath } from "next/cache";
 
 // ============================================================================
-// 2. INTERNAL HELPERS (Keamanan & GPS Geofencing)
+// 1. GEOFENCING CONFIG (Wajib di Arjawinangun)
 // ============================================================================
 const HQ_LAT = -6.1672807190869445;
 const HQ_LNG = 106.87065857296675;
 const RADIUS_TOLERANSI_METER = 100;
 
-function hitungJarak(lat1, lon1, lat2, lon2) {
-  const R = 6371e3;
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+function isLokasiValid(lokasi) {
+  if (!lokasi?.lat || !lokasi?.lng) return false;
+
+  const R = 6371e3; // Jari-jari bumi dalam meter
+  const φ1 = (lokasi.lat * Math.PI) / 180;
+  const φ2 = (HQ_LAT * Math.PI) / 180;
+  const Δφ = ((HQ_LAT - lokasi.lat) * Math.PI) / 180;
+  const Δλ = ((HQ_LNG - lokasi.lng) * Math.PI) / 180;
 
   const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
             Math.cos(φ1) * Math.cos(φ2) *
             Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c;
-}
-
-function cekLokasiSah(lat, lng) {
-  if (!lat || !lng) return false;
-  const jarak = hitungJarak(lat, lng, HQ_LAT, HQ_LNG);
+  const jarak = R * c;
   return jarak <= RADIUS_TOLERANSI_METER;
 }
 
-async function dapatkanUserLogin() {
-  const cookieStore = await cookies();
-  const idUser = cookieStore.get("karcis_quantum")?.value;
-  if (!idUser) return null;
-  return await User.findById(idUser).select("_id nama kelas peran status").lean();
-}
-
-function dapatkanTanggalJakarta(tanggalObj) {
-  return tanggalObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-}
-
-function buatWaktuWIB(tanggalStr, jamStr) {
-  return new Date(`${tanggalStr}T${jamStr}:00+07:00`);
-}
-
 // ============================================================================
-// 3. FUNGSI SCAN SISWA (KELAS & KONSUL)
+// 2. CORE SCAN LOGIC (SISWA)
 // ============================================================================
+
 export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
   try {
     await connectToDatabase();
     
-    const siswa = await dapatkanUserLogin();
-    if (!siswa) return { sukses: false, pesan: "Sesi habis, silakan login ulang." };
-    if (siswa.status === "tidak aktif") return { sukses: false, pesan: "Akun nonaktif!" };
+    // 1. Validasi Identitas & Lokasi
+    const { userId } = await authHelper.ambilSesi();
+    if (!userId) return responseHelper.error("Sesi habis, silakan login ulang.");
 
-    if (!cekLokasiSah(lokasi?.lat, lokasi?.lng)) {
-      return { sukses: false, pesan: "📍 Gagal! Anda berada di luar jangkauan Quantum." };
+    const siswa = await User.findById(userId).lean();
+    if (!siswa || siswa.status !== "aktif") return responseHelper.error("Akun dinonaktifkan.");
+
+    if (!isLokasiValid(lokasi)) {
+      return responseHelper.error("📍 Gagal! Anda berada di luar jangkauan Quantum.");
     }
 
     const sekarang = new Date();
-    const tanggalHariIni = dapatkanTanggalJakarta(sekarang);
+    const tglHariIni = timeHelper.getTglJakarta(sekarang);
 
-    let jenisQR = "Tidak Valid";
-    if (teksQR.startsWith(PREFIX_BARCODE.KELAS)) jenisQR = "Kelas";
-    else if (teksQR === PREFIX_BARCODE.KONSUL) jenisQR = "Konsul";
+    // 2. Identifikasi QR
+    let jenisQR = null;
+    if (teksQR.startsWith(PREFIX_BARCODE.KELAS)) jenisQR = TIPE_SESI.KELAS;
+    else if (teksQR === PREFIX_BARCODE.KONSUL) jenisQR = TIPE_SESI.KONSUL;
 
-    if (jenisQR === "Tidak Valid") {
-      return { sukses: false, pesan: "⚠️ Barcode tidak valid." };
-    }
+    if (!jenisQR) return responseHelper.error("⚠️ Barcode tidak valid.");
 
-    let sesiAktif = await StudySession.findOne({ siswaId: siswa._id, status: "Berjalan" });
-    let pesanTambahan = ""; 
+    // 3. Cek Sesi Berjalan (Status lowercase 'berjalan' dari constants)
+    let sesiAktif = await StudySession.findOne({ 
+      siswaId: userId, 
+      status: STATUS_SESI.BERJALAN 
+    });
 
+    // Handle Sesi Lupa Scan Out hari sebelumnya
     if (sesiAktif) {
-      const tglSesiLama = dapatkanTanggalJakarta(sesiAktif.waktuMulai);
-      if (tglSesiLama !== tanggalHariIni) {
-        sesiAktif.status = "Selesai (Lupa Scan Out)";
-        sesiAktif.waktuSelesai = sesiAktif.waktuMulai;
+      const tglSesiLama = timeHelper.getTglJakarta(sesiAktif.waktuMulai);
+      if (tglSesiLama !== tglHariIni) {
+        sesiAktif.status = STATUS_SESI.SELESAI;
+        sesiAktif.waktuSelesai = sesiAktif.waktuMulai; 
         await sesiAktif.save();
-        sesiAktif = null; 
+        sesiAktif = null;
       }
     }
 
+    // --- LOGIKA PULANG (Check-Out) ---
     if (sesiAktif) {
-      const selisihMenit = Math.floor((sekarang - sesiAktif.waktuMulai) / 60000);
-      if (sesiAktif.jenisSesi === "Kelas") {
-        if (selisihMenit < 15) return { sukses: false, pesan: `Tunggu ${15 - selisihMenit}m lagi untuk pulang.` };
-        
+      const durasiMenit = Math.floor((sekarang - sesiAktif.waktuMulai) / 60000);
+
+      if (sesiAktif.jenisSesi === TIPE_SESI.KELAS) {
+        if (durasiMenit < 15) return responseHelper.error(`Belum 15 menit. Tunggu ${15 - durasiMenit}m lagi.`);
+
+        // Hitung Bonus Konsul (Overtime setelah jadwal berakhir)
         let menitExtra = 0;
-        const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tanggalHariIni }).lean();
+        const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tglHariIni }).lean();
         if (jadwal) {
-          const waktuSelesaiJadwal = buatWaktuWIB(tanggalHariIni, jadwal.jamSelesai);
-          if (sekarang > waktuSelesaiJadwal) menitExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
+          const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
+          if (sekarang > waktuSelesaiJadwal) {
+            menitExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
+          }
         }
 
-        sesiAktif.status = "Selesai";
+        sesiAktif.status = STATUS_SESI.SELESAI;
         sesiAktif.waktuSelesai = sekarang;
         sesiAktif.konsulExtraMenit = Math.max(0, menitExtra);
         await sesiAktif.save();
 
-        if (jenisQR === "Kelas" || (jenisQR === "Konsul" && !mapelPilihan)) {
-          return { sukses: true, pesan: `Berhasil Pulang! ${menitExtra > 0 ? '(+'+menitExtra+'m)' : ''}`.trim() };
+        revalidatePath("/dashboard");
+        return responseHelper.success(`Berhasil Pulang! ${menitExtra > 0 ? '(+'+menitExtra+'m Konsul)' : ''}`);
+      }
+
+      if (sesiAktif.jenisSesi === TIPE_SESI.KONSUL) {
+        if (durasiMenit < 5) {
+          await StudySession.findByIdAndDelete(sesiAktif._id);
+          return responseHelper.success("Sesi Konsul dibatalkan (kurang dari 5 menit).");
         }
-        pesanTambahan = `Pulang Kelas. `;
-      } 
-      else if (sesiAktif.jenisSesi === "Konsul") {
-        if (selisihMenit < 5) await StudySession.findByIdAndDelete(sesiAktif._id);
-        else { sesiAktif.status = "Selesai"; sesiAktif.waktuSelesai = sekarang; await sesiAktif.save(); }
-        if (jenisQR === "Konsul" && !mapelPilihan) return { sukses: true, pesan: "Sesi Konsul Selesai!" };
-        pesanTambahan = "Sesi lama ditutup. ";
+        sesiAktif.status = STATUS_SESI.SELESAI;
+        sesiAktif.waktuSelesai = sekarang;
+        await sesiAktif.save();
+        
+        revalidatePath("/dashboard");
+        return responseHelper.success("Sesi Konsul Selesai. Selamat istirahat!");
       }
     }
 
-    if (jenisQR === "Kelas") {
-      const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tanggalHariIni }).lean();
-      if (!jadwal) return { sukses: false, pesan: "Tidak ada jadwal kelas untukmu hari ini." };
+    // --- LOGIKA MASUK (Check-In) ---
+    if (jenisQR === TIPE_SESI.KELAS) {
+      const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tglHariIni }).lean();
+      if (!jadwal) return responseHelper.error("Tidak ada jadwal kelas untukmu hari ini.");
 
-      const barcodeHarusnya = `${PREFIX_BARCODE.KELAS}${jadwal.mapel.toUpperCase()}`;
-      if (teksQR !== barcodeHarusnya) return { sukses: false, pesan: `⚠️ Salah Barcode! Gunakan barcode ${jadwal.mapel}.` };
+      const barcodeValid = `${PREFIX_BARCODE.KELAS}${jadwal.mapel.toUpperCase()}`;
+      if (teksQR !== barcodeValid) return responseHelper.error(`⚠️ Salah Barcode! Gunakan barcode ${jadwal.mapel}.`);
 
-      const waktuMulaiJadwal = buatWaktuWIB(tanggalHariIni, jadwal.jamMulai);
-      const waktuSelesaiJadwal = buatWaktuWIB(tanggalHariIni, jadwal.jamSelesai);
-      if (sekarang < new Date(waktuMulaiJadwal.getTime() - 30 * 60000)) return { sukses: false, pesan: "Scan dibuka 30m sebelum kelas." };
-      if (sekarang > waktuSelesaiJadwal) return { sukses: false, pesan: "Gagal! Kelas sudah berakhir." };
+      const waktuMulaiJadwal = new Date(`${tglHariIni}T${jadwal.jamMulai}:00+07:00`);
+      const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
 
-      let telat = sekarang > waktuMulaiJadwal ? Math.floor((sekarang - waktuMulaiJadwal) / 60000) : 0;
-      await StudySession.create({ siswaId: siswa._id, jenisSesi: "Kelas", namaMapel: jadwal.mapel, terlambatMenit: telat, status: "Berjalan" });
-      return { sukses: true, pesan: `${pesanTambahan}Selamat Belajar! ${telat > 0 ? '(Telat '+telat+'m)' : ''}`.trim() };
+      if (sekarang < new Date(waktuMulaiJadwal.getTime() - 30 * 60000)) return responseHelper.error("Scan dibuka 30m sebelum kelas.");
+      if (sekarang > waktuSelesaiJadwal) return responseHelper.error("Gagal! Kelas sudah berakhir.");
+
+      const telat = sekarang > waktuMulaiJadwal ? Math.floor((sekarang - waktuMulaiJadwal) / 60000) : 0;
+
+      await StudySession.create({
+        siswaId: userId,
+        jenisSesi: TIPE_SESI.KELAS,
+        namaMapel: jadwal.mapel,
+        terlambatMenit: telat,
+        status: STATUS_SESI.BERJALAN,
+        waktuMulai: sekarang
+      });
+
+      revalidatePath("/dashboard");
+      return responseHelper.success(`Selamat Belajar! ${telat > 0 ? '(Telat '+telat+'m)' : 'Tepat Waktu!'}`);
     }
 
-    if (jenisQR === "Konsul") {
-      if (!mapelPilihan) return { sukses: false, pesan: "Pilih Mapel dulu!" };
-      await StudySession.create({ siswaId: siswa._id, jenisSesi: "Konsul", namaMapel: mapelPilihan.trim(), status: "Berjalan" });
-      return { sukses: true, pesan: `${pesanTambahan}Mulai Konsul ${mapelPilihan.trim()}!`.trim() };
+    if (jenisQR === TIPE_SESI.KONSUL) {
+      if (!mapelPilihan) return responseHelper.error("Pilih Mata Pelajaran konsul dulu!");
+
+      await StudySession.create({
+        siswaId: userId,
+        jenisSesi: TIPE_SESI.KONSUL,
+        namaMapel: mapelPilihan.trim(),
+        status: STATUS_SESI.BERJALAN,
+        waktuMulai: sekarang
+      });
+
+      revalidatePath("/dashboard");
+      return responseHelper.success(`Sesi Konsul ${mapelPilihan} Dimulai!`);
     }
+
   } catch (error) {
-    return { sukses: false, pesan: "Error sistem." };
+    return responseHelper.error("Terjadi gangguan sistem absensi.", error);
   }
 }
 
 // ============================================================================
-// 4. FUNGSI SCAN GURU / STAFF
+// 3. CORE SCAN LOGIC (STAFF/GURU)
 // ============================================================================
+
 export async function absenGuruAction(teksQR, lokasi) {
   try {
     await connectToDatabase();
     
-    const guru = await dapatkanUserLogin();
-    if (!guru || (guru.peran !== "pengajar" && guru.peran !== "admin")) {
-      return { sukses: false, pesan: "Akses ditolak! Hanya staf yang bisa absen di sini." };
+    const { userId, peran } = await authHelper.ambilSesi();
+    if (!userId || (peran !== "pengajar" && peran !== "admin")) {
+      return responseHelper.error("Akses ditolak! Khusus Staff.");
     }
 
-    if (!cekLokasiSah(lokasi?.lat, lokasi?.lng)) {
-      return { sukses: false, pesan: "📍 Anda berada di luar area kantor Quantum." };
-    }
-
-    if (teksQR !== PREFIX_BARCODE.ADMIN) {
-      return { sukses: false, pesan: "⚠️ Barcode staf tidak valid." };
-    }
+    if (!isLokasiValid(lokasi)) return responseHelper.error("📍 Di luar jangkauan Quantum.");
+    if (teksQR !== PREFIX_BARCODE.ADMIN) return responseHelper.error("⚠️ Barcode Staf Tidak Valid.");
 
     await StudySession.create({
-      siswaId: guru._id,
-      jenisSesi: "Kelas",
+      siswaId: userId,
+      jenisSesi: TIPE_SESI.KELAS,
       namaMapel: "Kehadiran Pengajar",
-      status: "Selesai",
+      status: STATUS_SESI.SELESAI,
       waktuMulai: new Date(),
       waktuSelesai: new Date()
     });
 
-    return { sukses: true, pesan: `✅ Absen Berhasil! Semangat mengajar, ${guru.nama}!` };
-
+    return responseHelper.success("✅ Absen Berhasil! Semangat mengajar!");
   } catch (error) {
-    return { sukses: false, pesan: "Gagal memproses absen staf." };
+    return responseHelper.error("Gagal memproses absen staf.", error);
   }
 }

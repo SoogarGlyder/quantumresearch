@@ -1,154 +1,131 @@
 "use server";
 
-// ============================================================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================================================
 import connectToDatabase from "../lib/db";
 import StudySession from "../models/StudySession";
-
-// Konstanta
+import { authHelper } from "../utils/authHelper";
+import { responseHelper } from "../utils/responseHelper";
+import { timeHelper } from "../utils/timeHelper";
 import { STATUS_SESI, TIPE_SESI } from "../utils/constants";
 
 // ============================================================================
-// 2. INTERNAL HELPERS (Logika Format & Gamifikasi)
+// 1. INTERNAL HELPERS
 // ============================================================================
+
 function samarkanNama(namaLengkap) {
-  if (!namaLengkap) return "Anonim";
-  
-  const bagianNama = namaLengkap.trim().split(" ");
-  let namaSamaran = bagianNama[0]; // Ambil nama depan utuh
-  
-  // Jika ada nama belakang, ambil huruf pertamanya lalu beri bintang
-  if (bagianNama.length > 1) {
-    namaSamaran += ` ${bagianNama[1].charAt(0)}***`; 
-  }
-  return namaSamaran;
+  if (!namaLengkap) return "Siswa Quantum";
+  const bagian = namaLengkap.trim().split(" ");
+  let hasil = bagian[0];
+  // Samarkan nama belakang untuk privasi di papan publik
+  if (bagian.length > 1) hasil += ` ${bagian[1].charAt(0)}***`;
+  return hasil;
 }
 
-function tentukanGelar(jamKonsul) {
-  if (jamKonsul >= 30) return "👑 Yang Punya Quantum";
-  if (jamKonsul >= 20) return "🔥 Sepuh Quantum";
-  if (jamKonsul >= 10) return "⚔️ Pejuang Ambis";
-  if (jamKonsul >= 5)  return "🚀 Mulai Panas";
+function tentukanGelar(jamTotal) {
+  if (jamTotal >= 30) return "👑 Yang Punya Quantum";
+  if (jamTotal >= 20) return "🔥 Sepuh Quantum";
+  if (jamTotal >= 10) return "⚔️ Pejuang Ambis";
+  if (jamTotal >= 5)  return "🚀 Mulai Panas";
   return "🐢 Masih Pemanasan";
 }
 
 // ============================================================================
-// 3. KLASEMEN ACTIONS (PIPELINE AGREGASI MONGODB)
+// 2. MAIN ACTION (HIGH PERFORMANCE AGGREGATION)
 // ============================================================================
+
 export async function dapatkanKlasemenBulanIni() {
   try {
     await connectToDatabase();
 
-    // ------------------------------------------------------------------------
-    // ANTI-TIMEZONE BUG LOGIC: Menentukan Awal & Akhir Bulan (Kunci di WIB)
-    // ------------------------------------------------------------------------
-    // 1. Dapatkan waktu sekarang persis di Jakarta
-    const sekarangWIB = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-    const tahun = sekarangWIB.getFullYear();
-    const bulanAngka = String(sekarangWIB.getMonth() + 1).padStart(2, '0');
+    // 1. Proteksi Sesi: Pastikan hanya user login yang bisa lihat (opsional tapi disarankan)
+    const { userId } = await authHelper.ambilSesi();
+    if (!userId) return responseHelper.error("Silakan login untuk melihat klasemen.");
 
-    // 2. Kunci awal bulan ke 00:00:00 WIB (+07:00)
-    const awalBulan = new Date(`${tahun}-${bulanAngka}-01T00:00:00+07:00`);
+    // 2. Logika Waktu Jakarta via timeHelper
+    const awalBulan = timeHelper.getAwalBulan();
     
-    // 3. Cari akhir bulan dengan mencari tanggal 1 bulan depan, lalu kurangi 1 milidetik
-    let tahunDepan = tahun;
-    let bulanDepan = sekarangWIB.getMonth() + 2;
-    if (bulanDepan > 12) {
-      bulanDepan = 1;
-      tahunDepan++;
-    }
-    const bulanDepanStr = String(bulanDepan).padStart(2, '0');
-    const awalBulanDepan = new Date(`${tahunDepan}-${bulanDepanStr}-01T00:00:00+07:00`);
-    
-    // Akhir bulan = Jam 23:59:59.999 di hari terakhir bulan ini
-    const akhirBulan = new Date(awalBulanDepan.getTime() - 1);
+    // Cari awal bulan depan untuk batas atas query ($lt)
+    const kini = new Date();
+    const awalBulanDepan = new Date(Date.UTC(kini.getFullYear(), kini.getMonth() + 1, 1, -7, 0, 0, 0));
 
-    // ------------------------------------------------------------------------
-    // MONGODB AGGREGATION PIPELINE
-    // ------------------------------------------------------------------------
+    // 3. MONGODB AGGREGATION PIPELINE
     const klasemenMentah = await StudySession.aggregate([
-      // Tahap A: Saring hanya sesi Konsul yang Selesai pada bulan ini
+      // TAHAP A: Filter data bulan ini yang sudah selesai
       {
         $match: {
-          jenisSesi: TIPE_SESI.KONSUL,
-          status: STATUS_SESI.SELESAI,
-          waktuMulai: { $gte: awalBulan, $lte: akhirBulan },
-          waktuSelesai: { $exists: true }
+          waktuMulai: { $gte: awalBulan, $lt: awalBulanDepan },
+          status: STATUS_SESI.SELESAI 
         }
       },
-      // Tahap B: Hitung durasi tiap sesi (dalam milidetik, lalu ubah ke menit)
+      // TAHAP B: Proyeksi menit (Durasi murni konsul + Bonus extra menit dari kelas)
       {
         $project: {
           siswaId: 1,
-          durasiMenit: {
-            $divide: [
-              { $subtract: ["$waktuSelesai", "$waktuMulai"] },
-              60000 
+          menitMurni: {
+            $cond: [
+              { $eq: ["$jenisSesi", TIPE_SESI.KONSUL] },
+              { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60000] },
+              0
             ]
-          }
+          },
+          menitBonus: { $ifNull: ["$konsulExtraMenit", 0] }
         }
       },
-      // Tahap C: Gabungkan (Group) total menit berdasarkan ID Siswa
+      // TAHAP C: Akumulasi total per baris
+      {
+        $project: {
+          siswaId: 1,
+          totalSesi: { $add: ["$menitMurni", "$menitBonus"] }
+        }
+      },
+      // TAHAP D: Grouping berdasarkan Siswa
       {
         $group: {
           _id: "$siswaId",
-          totalMenit: { $sum: "$durasiMenit" }
+          akumulasiMenit: { $sum: "$totalSesi" }
         }
       },
-      // Tahap D: Filter tambahan, singkirkan yang total menitnya 0 atau minus
-      {
-        $match: {
-          totalMenit: { $gt: 0 }
-        }
-      },
-      // Tahap E: Urutkan dari menit terbanyak (Ranking 1 di atas)
-      {
-        $sort: { totalMenit: -1 }
-      },
-      // Tahap F: Ambil hanya Top 10 (Sangat menghemat memori sebelum Lookup!)
-      {
-        $limit: 10
-      },
-      // Tahap G: Join dengan tabel Users untuk mengambil Nama siswa
+      // TAHAP E: Filter hanya yang punya record menit positif
+      { $match: { akumulasiMenit: { $gt: 0 } } },
+      // TAHAP F: Sorting & Limiting (Top 10)
+      { $sort: { akumulasiMenit: -1 } },
+      { $limit: 10 },
+      // TAHAP G: Join ke User untuk ambil Nama (Gunakan $lookup)
       {
         $lookup: {
-          from: "users", // Nama collection bawaan Mongoose (jamak & huruf kecil)
+          from: "users",
           localField: "_id",
           foreignField: "_id",
-          as: "dataSiswa"
+          as: "siswa"
         }
       },
-      // Tahap H: Buka array hasil join agar menjadi object tunggal
+      { $unwind: "$siswa" },
+      // TAHAP H: Bersihkan data (Hanya ambil field yang diperlukan)
       {
-        $unwind: "$dataSiswa"
+        $project: {
+          nama: "$siswa.nama",
+          akumulasiMenit: 1
+        }
       }
     ]);
 
-    // ------------------------------------------------------------------------
-    // FINALISASI FORMAT UNTUK FRONTEND
-    // ------------------------------------------------------------------------
-    const klasemenFinal = klasemenMentah.map((item, index) => {
-      // Pastikan angkanya bulat dan tidak negatif
-      const totalMenit = Math.max(0, Math.floor(item.totalMenit)); 
-      
-      const jamKonsul = Math.floor(totalMenit / 60);
-      const menitSisa = totalMenit % 60;
+    // 4. Final Mapping untuk Frontend
+    const dataFinal = klasemenMentah.map((item, index) => {
+      const total = Math.floor(item.akumulasiMenit);
+      const jam = Math.floor(total / 60);
+      const menit = total % 60;
 
       return {
         peringkat: index + 1,
-        idSiswa: item._id.toString(),
-        namaTampil: samarkanNama(item.dataSiswa?.nama),
-        jam: jamKonsul,
-        menit: menitSisa,
-        gelar: tentukanGelar(jamKonsul),
+        nama: samarkanNama(item.nama),
+        jam,
+        menit,
+        gelar: tentukanGelar(jam)
       };
     });
 
-    return { sukses: true, data: klasemenFinal };
+    return responseHelper.success("Klasemen berhasil dimuat.", dataFinal);
 
   } catch (error) {
-    console.error("[ERROR dapatkanKlasemenBulanIni]:", error.message);
-    return { sukses: false, pesan: "Gagal memuat papan klasemen.", data: [] };
+    return responseHelper.error("Gagal memproses ranking klasemen.", error);
   }
 }

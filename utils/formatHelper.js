@@ -9,9 +9,10 @@ export function formatTanggal(tanggalString) {
 
   return d.toLocaleDateString('id-ID', { 
     timeZone: 'Asia/Jakarta',
-    weekday: 'short', 
+    weekday: 'long', 
     day: 'numeric', 
-    month: 'short' 
+    month: 'long',
+    year: 'numeric'
   });
 }
 
@@ -20,7 +21,6 @@ export function formatJam(waktuString) {
   const d = new Date(waktuString);
   if (isNaN(d)) return "--:--";
 
-  // 👇 Tweak: Ganti titik menjadi titik dua jika locale id-ID memberikan titik
   return d.toLocaleTimeString('id-ID', { 
     timeZone: 'Asia/Jakarta',
     hour: '2-digit', 
@@ -33,18 +33,25 @@ export function formatYYYYMMDD(tanggalString) {
   if (!tanggalString) return "";
   const d = new Date(tanggalString);
   if (isNaN(d)) return "";
-
-  // en-CA menghasilkan format YYYY-MM-DD yang bersih
   return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+}
+
+/**
+ * Fungsi yang dicari oleh TabBeranda.jsx dan TabKonsul.jsx
+ */
+export function formatBulanTahun(tanggalString = new Date()) {
+  const d = new Date(tanggalString);
+  return d.toLocaleDateString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    month: 'long',
+    year: 'numeric'
+  });
 }
 
 // ============================================================================
 // 2. LOGIKA & MANIPULASI DATA
 // ============================================================================
 
-/**
- * Mengubah "alpa" menjadi "Alpa" untuk kebutuhan UI
- */
 export function kapitalisasi(teks) {
   if (!teks) return "-";
   return teks.charAt(0).toUpperCase() + teks.slice(1);
@@ -70,9 +77,16 @@ export function potongDataPagination(dataArray = [], pageSaatIni = 1, itemsPerPa
 }
 
 /**
- * Membersihkan kode barcode dari prefix (Contoh: KELAS_123 -> 123)
+ * Fungsi yang dicari oleh TabKelas.jsx (Mengurai keterangan dari status DB)
+ * Contoh: "tidak hadir (Sakit: Demam)" -> "Sakit: Demam"
  */
-export function bersihkanBarcode(rawCode, prefix = "KELAS_") {
+export function ekstrakKeteranganAbsen(statusStr) {
+  if (!statusStr) return "";
+  const match = statusStr.match(/\(([^)]+)\)/);
+  return match ? match[1] : "";
+}
+
+export function bersihkanBarcode(rawCode, prefix = "QR-KLS-") {
   if (!rawCode) return "";
   return rawCode.replace(prefix, "");
 }
@@ -83,7 +97,7 @@ export function bersihkanBarcode(rawCode, prefix = "KELAS_") {
 
 export function cekPesanErrorScanner(pesanSistem) {
   if (!pesanSistem || typeof pesanSistem !== "string") return false;
-  const kataError = ["gagal", "ups", "salah", "maaf", "belum", "sabar"];
+  const kataError = ["gagal", "ups", "salah", "maaf", "belum", "sabar", "luar", "tolak"];
   const pesanKecil = pesanSistem.toLowerCase();
   return kataError.some(kata => pesanKecil.includes(kata));
 }

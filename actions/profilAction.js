@@ -1,56 +1,39 @@
 "use server";
 
-// ============================================================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================================================
 import connectToDatabase from "../lib/db";
-import { cookies } from "next/headers";
-import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
-
-// Models
 import User from "../models/User";
 import StudySession from "../models/StudySession";
+import { authHelper } from "../utils/authHelper";
+import { responseHelper } from "../utils/responseHelper";
+import { timeHelper } from "../utils/timeHelper";
+import { validationHelper } from "../utils/validationHelper";
+import { STATUS_SESI } from "../utils/constants";
+import { revalidatePath } from "next/cache";
 
 // ============================================================================
-// 2. INTERNAL HELPERS (Middleware Auth & Security)
+// 1. INTERNAL SECURITY
 // ============================================================================
-async function validasiAkses(idTarget) {
-  try {
-    const cookieStore = await cookies();
-    // Gunakan nama cookie yang konsisten sesuai sistem Quantum Bos
-    const karcis = cookieStore.get("karcis_quantum");
-    
-    if (!karcis || !karcis.value) return false;
-
-    // Jika ID yang login sama dengan ID yang diakses
-    if (String(karcis.value) === String(idTarget)) return true;
-
-    // Cek apakah yang mengakses adalah Admin
-    const userLokal = await User.findById(karcis.value).select("peran").lean();
-    return userLokal && userLokal.peran === "admin";
-  } catch (error) {
-    console.error("[SECURITY validasiAkses]:", error.message);
-    return false;
-  }
+async function pastikanPunyaAkses(idTarget) {
+  const { userId, peran } = await authHelper.ambilSesi();
+  if (!userId) return false;
+  // Akses diizinkan jika pemilik akun atau Admin
+  return String(userId) === String(idTarget) || peran === "admin";
 }
 
 // ============================================================================
-// 3. STATISTIK & GAMIFIKASI (Penebusan Dosa No. 11 - Aggregation)
+// 2. STATISTIK & GAMIFIKASI (STREAK LOGIC)
 // ============================================================================
 export async function getStatistikSiswa(idSiswa) {
   try {
     await connectToDatabase();
-
-    const punyaAkses = await validasiAkses(idSiswa);
-    if (!punyaAkses) return { sukses: false, pesan: "Akses Ditolak!" };
+    if (!(await pastikanPunyaAkses(idSiswa))) return responseHelper.error("Akses Ditolak!");
 
     const oid = new mongoose.Types.ObjectId(idSiswa);
 
-    // --- AGGREGATION: Total Menit & Sesi per Kategori ---
-    // Menghitung (waktuSelesai - waktuMulai) + konsulExtraMenit langsung di DB
+    // --- AGGREGATION: Total Jam Belajar per Kategori ---
     const statsKategori = await StudySession.aggregate([
-      { $match: { siswaId: oid, status: "Selesai" } },
+      { $match: { siswaId: oid, status: STATUS_SESI.SELESAI } },
       {
         $group: {
           _id: "$jenisSesi",
@@ -67,7 +50,7 @@ export async function getStatistikSiswa(idSiswa) {
       }
     ]);
 
-    // --- LOGIC: Streak Kehadiran (Server-Side) ---
+    // --- LOGIC: Streak Kehadiran (WIB Safe via timeHelper) ---
     const riwayatTanggal = await StudySession.aggregate([
       { $match: { siswaId: oid } },
       { 
@@ -81,28 +64,33 @@ export async function getStatistikSiswa(idSiswa) {
 
     let currentStreak = 0;
     if (riwayatTanggal.length > 0) {
-      const hariIni = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
-      const tglUnik = riwayatTanggal.map(d => d._id);
+      const tglUnik = riwayatTanggal.map(d => d._id); // List tanggal YYYY-MM-DD
+      const hariIni = timeHelper.getTglJakarta();
       
-      let indexCek = 0;
-      let tglCek = new Date(hariIni);
+      const dCek = new Date();
+      let tglCekStr = timeHelper.getTglJakarta(dCek);
+      
+      // Jika absen terakhir bukan hari ini dan bukan kemarin, streak putus (reset 0)
+      dCek.setDate(dCek.getDate() - 1);
+      const tglKemarinStr = timeHelper.getTglJakarta(dCek);
 
-      // Proteksi Streak: Jika hari ini belum absen, cek apakah kemarin ada absen
-      if (tglUnik[0] !== hariIni) {
-        tglCek.setDate(tglCek.getDate() - 1);
-        const tglKemarin = tglCek.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
-        if (tglUnik[0] !== tglKemarin) {
-          currentStreak = 0;
+      if (tglUnik[0] !== hariIni && tglUnik[0] !== tglKemarinStr) {
+        currentStreak = 0;
+      } else {
+        // Mulai hitung mundur
+        let pointer = 0;
+        let dHitung = new Date();
+        
+        // Jika hari ini belum scan, mulai pengecekan dari kemarin
+        if (tglUnik[0] !== hariIni) {
+          dHitung.setDate(dHitung.getDate() - 1);
         }
-      }
 
-      // Hitung runutan mundur
-      if (tglUnik[0] === hariIni || tglUnik[0] === tglCek.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" })) {
-        for (let i = indexCek; i < tglUnik.length; i++) {
-          const tglTarget = tglCek.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
-          if (tglUnik[i] === tglTarget) {
+        while (pointer < tglUnik.length) {
+          const target = timeHelper.getTglJakarta(dHitung);
+          if (tglUnik.includes(target)) {
             currentStreak++;
-            tglCek.setDate(tglCek.getDate() - 1);
+            dHitung.setDate(dHitung.getDate() - 1);
           } else {
             break;
           }
@@ -110,68 +98,54 @@ export async function getStatistikSiswa(idSiswa) {
       }
     }
 
-    return { 
-      sukses: true, 
-      data: {
-        stats: statsKategori,
-        streak: currentStreak
-      }
-    };
-
+    return responseHelper.success("Statistik berhasil dimuat.", {
+      stats: statsKategori,
+      streak: currentStreak
+    });
   } catch (error) {
-    console.error("[ERROR getStatistikSiswa]:", error.message);
-    return { sukses: false, pesan: "Gagal memproses statistik di server." };
+    return responseHelper.error("Gagal memuat profil statistik.", error);
   }
 }
 
 // ============================================================================
-// 4. PROFILE ACTIONS
+// 3. PROFILE UPDATES
 // ============================================================================
-export async function updateProfilSiswa(idSiswa, usernameBaru, passwordBaru) {
+export async function updateProfilSiswa(idSiswa, dataUpdate) {
   try {
     await connectToDatabase();
+    if (!(await pastikanPunyaAkses(idSiswa))) return responseHelper.error("Akses Ditolak!");
 
-    const punyaAkses = await validasiAkses(idSiswa);
-    if (!punyaAkses) {
-      return { sukses: false, pesan: "Akses Ditolak! Anda tidak berhak mengubah profil ini." };
-    }
+    const payload = {};
 
-    let updateData = {};
-
-    if (usernameBaru && usernameBaru.trim() !== "") {
-      const cleanUsername = usernameBaru.trim().toLowerCase();
-      const usernameRegex = /^[a-z0-9_.-]+$/;
-      if (!usernameRegex.test(cleanUsername)) {
-        return { sukses: false, pesan: "Format username tidak valid." };
+    // 1. Sanitasi & Validasi Username
+    if (dataUpdate.username) {
+      const cleanUser = validationHelper.sanitize(dataUpdate.username).toLowerCase();
+      if (!validationHelper.isValidUsername(cleanUser)) {
+        return responseHelper.error("Format username tidak valid.");
       }
+      
+      const ada = await User.findOne({ username: cleanUser, _id: { $ne: idSiswa } }).select("_id");
+      if (ada) return responseHelper.error("Username sudah dipakai siswa lain.");
+      payload.username = cleanUser;
+    }
 
-      const cekUsername = await User.findOne({ 
-        username: cleanUsername, 
-        _id: { $ne: idSiswa } 
-      }).select("_id").lean();
-
-      if (cekUsername) {
-        return { sukses: false, pesan: "Username sudah dipakai." };
+    // 2. Validasi & Hashing Password
+    if (dataUpdate.password) {
+      if (!validationHelper.isValidPassword(dataUpdate.password)) {
+        return responseHelper.error("Password minimal 6 karakter.");
       }
-      updateData.username = cleanUsername;
+      payload.password = await authHelper.buatHash(dataUpdate.password);
     }
 
-    if (passwordBaru && passwordBaru.trim() !== "") {
-      if (passwordBaru.trim().length < 6) {
-         return { sukses: false, pesan: "Password minimal 6 karakter!" };
-      }
-      updateData.password = await bcrypt.hash(passwordBaru.trim(), 10);
+    if (Object.keys(payload).length === 0) {
+      return responseHelper.success("Tidak ada data yang diubah.");
     }
 
-    if (Object.keys(updateData).length === 0) {
-       return { sukses: true, pesan: "Tidak ada data yang diubah." };
-    }
-
-    await User.findByIdAndUpdate(idSiswa, updateData);
-    return { sukses: true, pesan: "Profil berhasil diperbarui!" };
+    await User.findByIdAndUpdate(idSiswa, payload);
+    revalidatePath("/profile");
     
+    return responseHelper.success("Profil berhasil diperbarui!");
   } catch (error) {
-    console.error("[ERROR updateProfilSiswa]:", error.message);
-    return { sukses: false, pesan: "Kesalahan server saat update profil." };
+    return responseHelper.error("Kesalahan server saat memperbarui profil.", error);
   }
 }

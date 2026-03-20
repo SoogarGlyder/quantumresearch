@@ -1,198 +1,146 @@
 "use server";
 
 import connectToDatabase from "../lib/db";
-import { cookies } from "next/headers";
 import User from "../models/User";
 import Jadwal from "../models/Jadwal";
+import { authHelper } from "../utils/authHelper";
+import { responseHelper } from "../utils/responseHelper";
+import { validationHelper } from "../utils/validationHelper";
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
-// 1. INTERNAL HELPERS (Security & Asset Validation)
+// 1. INTERNAL HELPERS
 // ============================================================================
 
-// Helper untuk memvalidasi apakah link benar-benar dari Cloudinary (Poin 35)
-function isLinkValidCloudinary(url) {
+async function pastikanOtoritas(roleWajib = ["pengajar", "admin"]) {
+  const { userId, peran } = await authHelper.ambilSesi();
+  if (!userId || !roleWajib.includes(peran)) return null;
+  return { userId, peran };
+}
+
+// Helper lokal untuk Cloudinary (Bisa dipindah ke validationHelper jika sering dipakai)
+function isValidCloudinary(url) {
   if (!url || typeof url !== "string") return false;
-  // Memastikan link mengandung domain cloudinary.com
   return url.includes("res.cloudinary.com");
 }
 
-async function dapatkanIdentitasPengajar() {
-  try {
-    const cookieStore = await cookies();
-    const idUser = cookieStore.get("karcis_quantum")?.value;
-    const peranCookie = cookieStore.get("peran_quantum")?.value;
-    
-    if (!idUser) return null;
-
-    const roleSah = ["pengajar", "admin"];
-    if (peranCookie && roleSah.includes(peranCookie)) {
-      const user = await User.findById(idUser).select("peran nama").lean();
-      return user;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error("[SECURITY dapatkanIdentitasPengajar]:", error.message);
-    return null;
-  }
-}
+const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 2. TEACHER ACTIONS
+// 2. TEACHER ACTIONS (JURNAL & DOKUMENTASI)
 // ============================================================================
+
 export async function simpanJurnalGuru(idJadwal, dataJurnal) {
   try {
     await connectToDatabase();
     
-    // 1. Validasi Identitas & Otoritas
-    const pengajar = await dapatkanIdentitasPengajar();
-    if (!pengajar) {
-      return { sukses: false, pesan: "Sesi berakhir. Silakan login kembali." };
+    const auth = await pastikanOtoritas();
+    if (!auth) return responseHelper.error("Sesi berakhir atau akses ditolak.");
+
+    const babClean = validationHelper.sanitize(dataJurnal.bab);
+    if (!babClean) return responseHelper.error("Materi (Bab) wajib diisi!");
+
+    // Sanitasi Galeri Papan Tulis
+    const rawLinks = Array.isArray(dataJurnal.galeriPapan) 
+      ? dataJurnal.galeriPapan 
+      : (dataJurnal.galeriPapan || "").split(",").filter(Boolean);
+
+    const galeriBersih = [...new Set(
+      rawLinks
+        .map(link => link.trim())
+        .filter(link => isValidCloudinary(link))
+    )];
+
+    // Query Keamanan: Guru hanya bisa edit jadwal miliknya sendiri (ID-based)
+    const query = { _id: idJadwal };
+    if (auth.peran !== "admin") {
+      query.pengajarId = auth.userId; 
     }
 
-    // 2. Sanitasi & Normalisasi Data Teks
-    const babClean = (dataJurnal.bab || "").trim();
-    const subBabClean = (dataJurnal.subBab || "").trim();
-
-    if (!babClean) return { sukses: false, pesan: "Materi (Bab) wajib diisi!" };
-
-    // 3. OPTIMALISASI ASET (Poin 16, 33, 35)
-    let arrayGaleri = [];
-    
-    // Normalisasi Galeri: Mengubah string/array menjadi array bersih & unik
-    const rawGaleri = typeof dataJurnal.galeriPapan === "string" 
-      ? dataJurnal.galeriPapan.split(",") 
-      : Array.isArray(dataJurnal.galeriPapan) ? dataJurnal.galeriPapan : [];
-
-    arrayGaleri = rawGaleri
-      .map(link => (typeof link === "string" ? link.trim() : ""))
-      .filter(link => link !== "" && isLinkValidCloudinary(link)); // Hanya simpan link Cloudinary yang valid
-    
-    // Hapus duplikat (Poin 33)
-    arrayGaleri = [...new Set(arrayGaleri)];
-
-    // Validasi Foto Bersama
-    const fotoBersamaClean = isLinkValidCloudinary(dataJurnal.fotoBersama) 
-      ? dataJurnal.fotoBersama 
-      : "";
-
-    // 4. Update dengan Filter Keamanan (Poin 29)
-    const queryKeamanan = { 
-      _id: idJadwal, 
-      pengajar: pengajar.nama 
-    };
-
-    // Admin bypass keamanan pengajar
-    if (pengajar.peran === "admin") delete queryKeamanan.pengajar;
-
-    const hasilUpdate = await Jadwal.findOneAndUpdate(
-      queryKeamanan,
+    const update = await Jadwal.findOneAndUpdate(
+      query,
       {
         $set: {
           bab: babClean,
-          subBab: subBabClean,
-          galeriPapan: arrayGaleri,
-          fotoBersama: fotoBersamaClean,
-          jurnalTerakhirUpdate: new Date() 
+          subBab: validationHelper.sanitize(dataJurnal.subBab),
+          galeriPapan: galeriBersih,
+          fotoBersama: isValidCloudinary(dataJurnal.fotoBersama) ? dataJurnal.fotoBersama : "",
+          jurnalTerakhirUpdate: new Date()
         }
       },
       { new: true }
     );
 
-    if (!hasilUpdate) {
-      return { sukses: false, pesan: "Jadwal tidak ditemukan atau Anda tidak berhak mengubahnya." };
-    }
+    if (!update) return responseHelper.error("Jadwal tidak ditemukan atau Anda tidak berhak.");
 
-    // Revalidasi spesifik agar dashboard admin & guru sinkron
-    revalidatePath("/"); 
-    revalidatePath("/admin");
-
-    return { sukses: true, pesan: "✅ Jurnal & Foto Berhasil Diamankan!" };
+    revalidatePath("/teacher"); 
+    revalidatePath("/admin/jadwal");
+    return responseHelper.success("✅ Jurnal & Dokumentasi Berhasil Disimpan!");
 
   } catch (error) {
-    console.error("[ERROR simpanJurnalGuru]:", error.message);
-    return { sukses: false, pesan: "Gangguan server: Gagal menyimpan data jurnal." };
+    return responseHelper.error("Gagal menyimpan jurnal pengajar.", error);
   }
 }
 
 // ============================================================================
-// 3. ADMIN ACTIONS: TEACHER MANAGEMENT (Milestone 1 - Updated)
+// 3. ADMIN ACTIONS (MANAGEMENT PENGAJAR)
 // ============================================================================
 
-// Mengambil semua pengajar dengan field lengkap
 export async function ambilSemuaGuru() {
   try {
     await connectToDatabase();
-    const admin = await dapatkanIdentitasPengajar();
-    if (!admin || admin.peran !== "admin") return { sukses: false, pesan: "Akses ditolak." };
+    if (!(await pastikanOtoritas(["admin"]))) return responseHelper.error("Akses Ilegal.");
 
-    const daftarGuru = await User.find({ peran: "pengajar" })
-      .select("-password") // Mengikuti field 'password' di model User.js
-      .sort({ nama: 1 })
-      .lean();
-
-    const dataBersih = daftarGuru.map(g => ({
-      ...g,
-      _id: g._id.toString()
-    }));
-
-    return { sukses: true, data: dataBersih };
+    const guru = await User.find({ peran: "pengajar" }).sort({ nama: 1 }).lean();
+    return responseHelper.success("Data pengajar dimuat.", serialize(guru));
   } catch (error) {
-    console.error("[ERROR ambilSemuaGuru]:", error.message);
-    return { sukses: false, pesan: "Gagal memuat data." };
+    return responseHelper.error("Gagal memuat data pengajar.", error);
   }
 }
 
-// Menambah pengajar dengan skema data lengkap (Kembaran Siswa)
 export async function tambahGuruBaru(formData) {
   try {
     await connectToDatabase();
-    const admin = await dapatkanIdentitasPengajar();
-    if (!admin || admin.peran !== "admin") return { sukses: false, pesan: "Akses ilegal." };
+    if (!(await pastikanOtoritas(["admin"]))) return responseHelper.error("Akses Ilegal.");
 
-    const { nama, nomorPeserta, username, noHp, kataSandi, kodePengajar, status } = formData;
+    const username = validationHelper.sanitize(formData.username).toLowerCase();
+    const kodePengajar = validationHelper.sanitize(formData.kodePengajar).toUpperCase();
 
-    // Validasi Field Wajib
-    if (!nama || !nomorPeserta || !username || !kataSandi || !kodePengajar || !noHp) {
-      return { sukses: false, pesan: "Semua field bertanda bintang wajib diisi!" };
-    }
-
-    // Cek Username & Nomor Peserta (ID Pegawai) Duplikat
-    const userExist = await User.findOne({ 
-      $or: [{ username }, { nomorPeserta }] 
-    });
+    // Cek Duplikat
+    const exist = await User.findOne({ 
+      $or: [{ username }, { kodePengajar }] 
+    }).select("_id").lean();
     
-    if (userExist) return { sukses: false, pesan: "Username atau Nomor Peserta sudah terdaftar!" };
+    if (exist) return responseHelper.error("Username atau Kode Pengajar sudah ada!");
+
+    // Proteksi: Hash password sebelum simpan
+    const hashed = await authHelper.buatHash(formData.password || "123456");
 
     await User.create({
-      nama,
-      nomorPeserta,
+      ...formData,
       username,
-      noHp,
-      password: kataSandi, // Mapping kataSandi UI ke field password DB
       kodePengajar,
+      password: hashed,
       peran: "pengajar",
-      status: status || "aktif"
+      status: "aktif"
     });
 
-    revalidatePath("/admin");
-    return { sukses: true, pesan: "🎉 Pengajar " + nama + " resmi terdaftar!" };
+    revalidatePath("/admin/pengajar");
+    return responseHelper.success(`🎉 Pengajar ${formData.nama} resmi terdaftar!`);
   } catch (error) {
-    return { sukses: false, pesan: "Error: " + error.message };
+    return responseHelper.error("Gagal mendaftarkan pengajar baru.", error);
   }
 }
 
 export async function hapusGuru(idGuru) {
   try {
     await connectToDatabase();
-    const admin = await dapatkanIdentitasPengajar();
-    if (!admin || admin.peran !== "admin") return { sukses: false, pesan: "Akses ilegal." };
+    if (!(await pastikanOtoritas(["admin"]))) return responseHelper.error("Akses Ditolak.");
 
     await User.findByIdAndDelete(idGuru);
-    revalidatePath("/admin");
-    return { sukses: true, pesan: "🗑️ Data pengajar telah dihapus." };
+    revalidatePath("/admin/pengajar");
+    return responseHelper.success("Data pengajar telah dihapus.");
   } catch (error) {
-    return { sukses: false, pesan: "Gagal: " + error.message };
+    return responseHelper.error("Gagal menghapus data pengajar.", error);
   }
 }
