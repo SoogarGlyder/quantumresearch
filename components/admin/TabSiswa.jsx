@@ -3,14 +3,15 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState, useEffect, useMemo } from "react"; 
-// 👇 Import navigasi Next.js untuk URL State
+// 👇 useRef ditambahkan untuk reset input file
+import { useState, useEffect, useMemo, useRef } from "react"; 
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import PaginationBar from "../ui/PaginationBar";
 
 import { editAkunSiswa, hapusAkunSiswa } from "../../actions/adminAction";
-import { prosesTambahSiswa } from "../../actions/authAction";
+// 👇 Import prosesBulkTambahSiswa ditambahkan di sini
+import { prosesTambahSiswa, prosesBulkTambahSiswa } from "../../actions/authAction";
 import { potongDataPagination } from "../../utils/formatHelper";
 import { OPSI_KELAS } from "../../utils/constants"; 
 
@@ -24,6 +25,9 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
+  
+  // 👇 Tambahan Ref untuk input file
+  const fileInputRef = useRef(null);
 
   // Ambil halaman aktif langsung dari URL (Default ke 1)
   const page = Number(searchParams.get("page")) || 1;
@@ -46,6 +50,10 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   const [loadingForm, setLoadingForm] = useState(false);
   const [pesanForm, setPesanForm] = useState("");
 
+  // 👇 STATE BARU UNTUK BULK UPLOAD (Poin 25)
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [hasilBulk, setHasilBulk] = useState(null);
+
   // --- STATE: FILTER ---
   const [filterKelas, setFilterKelas] = useState("");
   const ITEMS_PER_PAGE = 20;
@@ -58,6 +66,56 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
   }, [filterKelas]);
+
+  // 👇 LOGIKA BULK UPLOAD (POIN 25)
+  const unduhTemplate = () => {
+    const header = "nama,nomorPeserta,noHp,kelas,username,password\n";
+    const contoh = "Budi Santoso,QTM-001,08123456789,10-A,budi_qtm,sandi123";
+    const blob = new Blob([header + contoh], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template_siswa_quantum.csv';
+    a.click();
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    setIsBulkLoading(true);
+    setHasilBulk(null);
+
+    reader.onload = async (event) => {
+      const text = event.target.result;
+      const rows = text.split(/\r?\n/);
+      const headers = rows[0].split(",").map(h => h.trim());
+      
+      const jsonData = rows.slice(1)
+        .filter(row => row.trim() !== "")
+        .map(row => {
+          const values = row.split(",");
+          return headers.reduce((obj, header, i) => {
+            obj[header] = values[i]?.trim();
+            return obj;
+          }, {});
+        });
+
+      const res = await prosesBulkTambahSiswa(jsonData);
+      setIsBulkLoading(false);
+      
+      if (res.sukses) {
+        setHasilBulk({ pesan: res.pesan, laporan: res.laporan || [] });
+        if (typeof muatData === 'function') muatData();
+      } else {
+        alert(res.pesan);
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
+  // 👆 AKHIR LOGIKA BULK UPLOAD
 
   // --- HANDLERS: CRUD ---
   const simpanSiswa = async (e) => { 
@@ -234,6 +292,35 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             </p>
           )}
         </form>
+
+        {/* 👇 --- UI BULK ACTIONS (Poin 25) --- 👇 */}
+        {!idEdit && (
+          <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px dashed #ccc' }}>
+            <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#111827', fontWeight: '900' }}>🚀 Pendaftaran Massal (CSV)</h4>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" onClick={unduhTemplate} className={styles.tombolBatalForm} style={{ fontSize: '12px', flex: 1 }}>
+                Unduh Template
+              </button>
+              <label className={styles.tombolSimpanBiruBaru} style={{ fontSize: '12px', flex: 2, textAlign: 'center', cursor: 'pointer', backgroundColor: '#111827' }}>
+                {isBulkLoading ? "Memproses..." : "Upload CSV"}
+                <input type="file" ref={fileInputRef} accept=".csv" hidden onChange={handleFileUpload} disabled={isBulkLoading} />
+              </label>
+            </div>
+            
+            {hasilBulk && (
+              <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '8px', border: '2px solid #111827' }}>
+                <p style={{ fontSize: '12px', fontWeight: '900', margin: 0 }}>{hasilBulk.pesan}</p>
+                {hasilBulk.laporan && hasilBulk.laporan.length > 0 && (
+                  <ul style={{ fontSize: '10px', marginTop: '8px', color: '#ef4444', paddingLeft: '15px', marginBottom: 0 }}>
+                    {hasilBulk.laporan.map((err, i) => <li key={i}>{err}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {/* 👆 --- AKHIR UI BULK ACTIONS --- 👆 */}
+
       </div>
       
       {/* PANEL KANAN: TABEL SISWA */}

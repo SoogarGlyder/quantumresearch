@@ -65,8 +65,8 @@ export default function TabKonsul({ dataRiwayat = [] }) {
     }
     
     if (filterMapel) {
-      const kataKunci = filterMapel.toLowerCase();
-      riwayat = riwayat.filter(s => (s.namaMapel || "").toLowerCase().includes(kataKunci));
+      // 👇 Mengatasi Poin 31: Filter mapel pakai strict equality (===) karena input dari dropdown pasti identik
+      riwayat = riwayat.filter(s => s.namaMapel === filterMapel);
     }
     
     if (filterNama) {
@@ -130,44 +130,53 @@ export default function TabKonsul({ dataRiwayat = [] }) {
             {dataHalIni.length === 0 ? (
               <tr><td colSpan="5" className={styles.selKosong}>Tidak ada data konsul yang cocok.</td></tr>
             ) : (
-              dataHalIni.map(sesi => (
-                <tr key={sesi._id}>
-                  
-                  {/* Kolom 1: Siswa & Kelas */}
-                  <td>
-                    <p className={styles.teksNama}>{sesi.siswaId ? sesi.siswaId.nama : <span className={styles.teksErrorItalic}>Siswa Dihapus</span>}</p>
-                    <p className={styles.teksKelas}>{sesi.siswaId ? sesi.siswaId.kelas : "-"}</p>
-                  </td>
-                  
-                  {/* Kolom 2: Mapel */}
-                  <td>
-                    <span className={styles.badgeMapelAbu}>{sesi.namaMapel || "Bebas"}</span>
-                  </td>
-                  
-                  {/* Kolom 3: Tanggal & Jam */}
-                  <td>
-                    <p className={styles.teksTanggal}>{formatTanggal(sesi.waktuMulai)}</p>
-                    <p className={styles.teksJamPudar}>
-                      {formatJam(sesi.waktuMulai)} - {sesi.waktuSelesai ? formatJam(sesi.waktuSelesai) : "Sekarang"}
-                    </p>
-                  </td>
-                  
-                  {/* Kolom 4: Durasi */}
-                  <td style={{textAlign: 'center'}}>
-                    <span className={styles.teksJam}>
-                      {sesi.waktuSelesai ? `${hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)}m` : "-"}
-                    </span>
-                  </td>
-                  
-                  {/* Kolom 5: Status */}
-                  <td style={{textAlign: 'center'}}>
-                    <span className={`${styles.badgeStatus} ${sesi.status === STATUS_SESI.SELESAI ? styles.statusSelesai : styles.statusBerjalan}`}>
-                      {sesi.status === STATUS_SESI.SELESAI ? 'Selesai' : 'Aktif'}
-                    </span>
-                  </td>
-                  
-                </tr>
-              ))
+              dataHalIni.map(sesi => {
+                // 👇 Hitung apakah status konsul sedang aktif
+                const isAktif = sesi.status !== STATUS_SESI.SELESAI;
+
+                return (
+                  <tr key={sesi._id}>
+                    
+                    {/* Kolom 1: Siswa & Kelas */}
+                    <td>
+                      <p className={styles.teksNama}>{sesi.siswaId ? sesi.siswaId.nama : <span className={styles.teksErrorItalic}>Siswa Dihapus</span>}</p>
+                      <p className={styles.teksKelas}>{sesi.siswaId ? sesi.siswaId.kelas : "-"}</p>
+                    </td>
+                    
+                    {/* Kolom 2: Mapel */}
+                    <td>
+                      <span className={styles.badgeMapelAbu}>{sesi.namaMapel || "Bebas"}</span>
+                    </td>
+                    
+                    {/* Kolom 3: Tanggal & Jam */}
+                    <td>
+                      <p className={styles.teksTanggal}>{formatTanggal(sesi.waktuMulai)}</p>
+                      <p className={styles.teksJamPudar}>
+                        {formatJam(sesi.waktuMulai)} - {sesi.waktuSelesai ? formatJam(sesi.waktuSelesai) : "Sekarang"}
+                      </p>
+                    </td>
+                    
+                    {/* Kolom 4: Durasi */}
+                    <td style={{textAlign: 'center'}}>
+                      <span className={styles.teksJam}>
+                        {sesi.waktuSelesai ? `${hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)}m` : "-"}
+                      </span>
+                    </td>
+                    
+                    {/* Kolom 5: Status */}
+                    <td style={{textAlign: 'center'}}>
+                      {/* 👇 Pemasangan animasi brutalPulse hanya jika isAktif bernilai true */}
+                      <span 
+                        className={`${styles.badgeStatus} ${sesi.status === STATUS_SESI.SELESAI ? styles.statusSelesai : styles.statusBerjalan}`}
+                        style={isAktif ? { animation: 'brutalPulse 2s infinite' } : {}}
+                      >
+                        {sesi.status === STATUS_SESI.SELESAI ? 'Selesai' : 'Aktif'}
+                      </span>
+                    </td>
+                    
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

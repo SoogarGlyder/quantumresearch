@@ -10,6 +10,8 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 import DetailJurnal from "./DetailJurnal";
+// 👇 Import Komponen Toast Brutalism
+import BrutalToast from "../ui/BrutalToast";
 
 import { ambilDetailJurnal, simpanJurnal } from "../../actions/adminAction";
 import { formatTanggal, formatYYYYMMDD, potongDataPagination } from "../../utils/formatHelper";
@@ -42,6 +44,9 @@ export default function TabJurnal({ dataJadwal, muatData }) {
   
   const [loadingJurnal, setLoadingJurnal] = useState(false);
   const [pesan, setPesan] = useState("");
+  
+  // 👇 State untuk memicu Toast
+  const [toastMsg, setToastMsg] = useState("");
 
   // SINKRONISASI FILTER: Jika kriteria pencarian berubah, reset URL page ke 1
   useEffect(() => {
@@ -116,7 +121,9 @@ export default function TabJurnal({ dataJadwal, muatData }) {
 
     if (hasil.sukses) {
       if (typeof muatData === 'function') muatData();
-      setTimeout(() => tutupJurnal(), 1500);
+      // 👇 Memunculkan Toast sukses. Setelah toast tertutup (3 detik), jurnal baru ditutup.
+      setToastMsg("✅ JURNAL BERHASIL DISIMPAN!");
+      setLoadingJurnal(false); // Matikan loading agar form bisa diklik lagi atau user bisa melihat toast dengan santai
     } else {
       setLoadingJurnal(false);
     }
@@ -125,16 +132,35 @@ export default function TabJurnal({ dataJadwal, muatData }) {
   // ============================================================================
   // 3. RENDER UI
   // ============================================================================
+  
+  // Render Wrapper (Menambahkan BrutalToast di luar layer)
+  const renderDenganToast = (konten) => (
+    <>
+      {konten}
+      {/* 👇 Pemasangan Brutal Toast */}
+      {toastMsg && (
+        <BrutalToast 
+          pesan={toastMsg} 
+          tipe="sukses" 
+          onClose={() => {
+            setToastMsg("");
+            tutupJurnal(); // Tutup halaman edit jurnal setelah toast selesai
+          }} 
+        />
+      )}
+    </>
+  );
+
   if (selectedJadwalId) {
     if (loadingJurnal && !detailJadwal) {
-      return (
+      return renderDenganToast(
         <div className={styles.isiTab}>
           <p className={styles.teksPesanMemproses}>Mengumpulkan Arsip Kelas...</p>
         </div>
       );
     }
 
-    return (
+    return renderDenganToast(
       <DetailJurnal 
         detailJadwal={detailJadwal} 
         dataSiswa={dataSiswa} 
@@ -149,7 +175,7 @@ export default function TabJurnal({ dataJadwal, muatData }) {
     );
   }
 
-  return (
+  return renderDenganToast(
     <div className={`${styles.isiTab} ${styles.SembunyiPrint}`}>
       
       {/* HEADER & FILTER */}

@@ -170,6 +170,8 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
               dataKelasHalIni.map(sesi => {
                 const isEditing = editingAbsenId === sesi._id;
                 const isTidakHadir = sesi.status?.includes(STATUS_SESI.TIDAK_HADIR) || false;
+                // 👇 Hitung apakah status sedang aktif/berjalan
+                const isAktif = sesi.status !== STATUS_SESI.SELESAI && !isTidakHadir;
                 
                 return (
                   <tr key={sesi._id}>
@@ -230,7 +232,11 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
                     
                     {/* Kolom 6: Status Tag (Selesai/Aktif/Absen) */}
                     <td style={{textAlign: 'center'}}>
-                      <span className={`${styles.badgeStatus} ${sesi.status === STATUS_SESI.SELESAI || isTidakHadir ? styles.statusSelesai : styles.statusBerjalan}`}>
+                      {/* 👇 Pemasangan animasi brutalPulse hanya jika isAktif bernilai true */}
+                      <span 
+                        className={`${styles.badgeStatus} ${sesi.status === STATUS_SESI.SELESAI || isTidakHadir ? styles.statusSelesai : styles.statusBerjalan}`}
+                        style={isAktif ? { animation: 'brutalPulse 2s infinite' } : {}}
+                      >
                         {sesi.status === STATUS_SESI.SELESAI ? 'Selesai' : isTidakHadir ? 'Absen' : 'Aktif'}
                       </span>
                     </td>

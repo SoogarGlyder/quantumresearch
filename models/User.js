@@ -12,18 +12,21 @@ const userSchema = new mongoose.Schema(
       type: String, 
       required: [true, "Nomor peserta wajib diisi!"], 
       unique: true,
+      index: true, // 👈 Tambahan: Kecepatan cari ID
       trim: true 
     }, 
     username: { 
       type: String, 
       required: [true, "Username wajib diisi!"], 
       unique: true,
+      index: true, // 👈 Tambahan: Kecepatan cari Login
       trim: true,
       lowercase: true
     },
     password: { 
       type: String, 
-      required: [true, "Password wajib diisi!"] 
+      required: [true, "Password wajib diisi!"],
+      select: false // 👈 KRITIS: Password tidak akan ikut ditarik kecuali diminta eksplisit
     },
     noHp: { 
       type: String, 
@@ -35,7 +38,8 @@ const userSchema = new mongoose.Schema(
     peran: { 
       type: String, 
       enum: ["siswa", "admin", "pengajar"], 
-      default: "siswa" 
+      default: "siswa",
+      index: true // 👈 Tambahan: Penting untuk filter list Guru/Siswa
     },
     status: { 
       type: String, 
@@ -43,10 +47,15 @@ const userSchema = new mongoose.Schema(
       default: "aktif" 
     },
 
-    // --- DATA AKADEMIK (Khusus Siswa) ---
+    // --- DATA AKADEMIK ---
     kelas: { 
       type: String, 
       default: "-" 
+    },
+    kodePengajar: { 
+      type: String, 
+      default: "-",
+      index: true // 👈 Tambahan: Kecepatan kueri untuk database guru
     },
     jadwalKelas: { 
       type: String, 
@@ -62,8 +71,8 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Indexing untuk pencarian nama (Full Text Search sederhana)
 userSchema.index({ nama: 1 });
-userSchema.index({ peran: 1 });
 userSchema.index({ kelas: 1 });
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);

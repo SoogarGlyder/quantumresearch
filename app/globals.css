@@ -1,15 +1,46 @@
-@import "tailwindcss";
-
+/* ============================================================================
+   1. KAMUS DESAIN & WARNA (Vanilla CSS Variables)
+   ============================================================================ */
 :root {
+  /* Bawaan Sistem */
   --background: #ffffff;
-  --foreground: #171717;
-}
+  --foreground: #111827; 
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Palet Warna Utama Neo-Brutalism */
+  --brutal-kuning: #facc15;
+  --brutal-hitam: #111827;
+  --brutal-putih: #ffffff;
+  
+  /* Palet Status */
+  --brutal-merah: #ef4444;
+  --brutal-merah-tua: #b91c1c;
+  --brutal-hijau: #22c55e;
+  --brutal-hijau-tua: #15803d;
+  --brutal-biru: #2563eb;
+  
+  /* Palet Netral / Background */
+  --brutal-abu: #f3f4f6;
+  --brutal-abu-tua: #4b5563;
+
+  /* Standar Elemen Neo-Brutalism */
+  --brutal-border: 3px solid var(--brutal-hitam);
+  --brutal-shadow: 4px 4px 0px var(--brutal-hitam);
+  --brutal-shadow-hover: 6px 6px 0px var(--brutal-hitam);
+
+  /* 👇 TAMBAHAN POIN 10: Radius Terpusat agar Konsisten */
+  --brutal-radius: 12px;
+  --brutal-radius-lg: 16px;
+
+  /* Hierarki Z-Index Terpusat (Poin 14) */
+  --z-base: 1;
+  --z-nav: 10;
+  --z-dropdown: 40;
+  --z-overlay: 50;
+  --z-modal: 60;
+  --z-toast: 9999;
+
+  /* 👇 Mantra San Francisco / System Font Stack */
+  --font-premium: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,8 +50,80 @@
   }
 }
 
+/* 👇 TAMBAHAN POIN 10: Selection global agar feel brutal terasa di seluruh web */
+::selection {
+  background-color: var(--brutal-kuning);
+  color: var(--brutal-hitam);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 👇 INI KUNCINYA: Memaksa form element ikut font global (inheritance) */
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* 👇 Panggil variabel font sistem yang sudah dibuat */
+  font-family: var(--font-premium); 
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 👇 Mengatasi Poin 34: Standar visual untuk data kosong/belum diisi */
+.teks-kosong {
+  font-style: italic;
+  color: var(--brutal-abu-tua);
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+/* ============================================================================
+   2. MESIN ANIMASI NEO-BRUTALISM (Poin 20, 22, 30, 32)
+   ============================================================================ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes brutalPulse {
+  0% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); 
+  }
+  50% { 
+    transform: scale(1.05); 
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); 
+  }
+  100% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); 
+  }
+}
+
+@keyframes brutalPop {
+  0% { transform: scale(0.9); opacity: 0; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }

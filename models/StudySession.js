@@ -11,8 +11,9 @@ const studySessionSchema = new mongoose.Schema(
     jenisSesi: { 
       type: String, 
       required: [true, "Jenis sesi wajib diisi!"],
+      lowercase: true, // 👈 Paksa lowercase
       enum: {
-        values: ["Kelas", "Konsul"],
+        values: ["kelas", "konsul"], // 👈 Sesuaikan dengan filter UI
         message: "{VALUE} bukan jenis sesi yang valid!"
       }
     }, 
@@ -33,7 +34,9 @@ const studySessionSchema = new mongoose.Schema(
     // --- STATUS & TRACKING ---
     status: { 
       type: String, 
-      default: "Berjalan",
+      lowercase: true, // 👈 Paksa lowercase
+      enum: ["berjalan", "selesai", "alpha", "izin", "tidak hadir"], // 👈 Kunci status
+      default: "berjalan",
       trim: true
     },
     terlambatMenit: { 
@@ -60,8 +63,10 @@ const studySessionSchema = new mongoose.Schema(
   }
 );
 
+// Indexing tetap dipertahankan karena sudah sangat bagus
 studySessionSchema.index({ siswaId: 1, waktuMulai: -1 });
 studySessionSchema.index({ jenisSesi: 1 });
+studySessionSchema.index({ status: 1 }); // 👈 Tambahan: Untuk filter "Siapa yang sedang belajar"
 studySessionSchema.index({ waktuMulai: -1 });
 
 const StudySession = mongoose.models.StudySession || mongoose.model("StudySession", studySessionSchema);

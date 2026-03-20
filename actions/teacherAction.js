@@ -115,3 +115,84 @@ export async function simpanJurnalGuru(idJadwal, dataJurnal) {
     return { sukses: false, pesan: "Gangguan server: Gagal menyimpan data jurnal." };
   }
 }
+
+// ============================================================================
+// 3. ADMIN ACTIONS: TEACHER MANAGEMENT (Milestone 1 - Updated)
+// ============================================================================
+
+// Mengambil semua pengajar dengan field lengkap
+export async function ambilSemuaGuru() {
+  try {
+    await connectToDatabase();
+    const admin = await dapatkanIdentitasPengajar();
+    if (!admin || admin.peran !== "admin") return { sukses: false, pesan: "Akses ditolak." };
+
+    const daftarGuru = await User.find({ peran: "pengajar" })
+      .select("-password") // Mengikuti field 'password' di model User.js
+      .sort({ nama: 1 })
+      .lean();
+
+    const dataBersih = daftarGuru.map(g => ({
+      ...g,
+      _id: g._id.toString()
+    }));
+
+    return { sukses: true, data: dataBersih };
+  } catch (error) {
+    console.error("[ERROR ambilSemuaGuru]:", error.message);
+    return { sukses: false, pesan: "Gagal memuat data." };
+  }
+}
+
+// Menambah pengajar dengan skema data lengkap (Kembaran Siswa)
+export async function tambahGuruBaru(formData) {
+  try {
+    await connectToDatabase();
+    const admin = await dapatkanIdentitasPengajar();
+    if (!admin || admin.peran !== "admin") return { sukses: false, pesan: "Akses ilegal." };
+
+    const { nama, nomorPeserta, username, noHp, kataSandi, kodePengajar, status } = formData;
+
+    // Validasi Field Wajib
+    if (!nama || !nomorPeserta || !username || !kataSandi || !kodePengajar || !noHp) {
+      return { sukses: false, pesan: "Semua field bertanda bintang wajib diisi!" };
+    }
+
+    // Cek Username & Nomor Peserta (ID Pegawai) Duplikat
+    const userExist = await User.findOne({ 
+      $or: [{ username }, { nomorPeserta }] 
+    });
+    
+    if (userExist) return { sukses: false, pesan: "Username atau Nomor Peserta sudah terdaftar!" };
+
+    await User.create({
+      nama,
+      nomorPeserta,
+      username,
+      noHp,
+      password: kataSandi, // Mapping kataSandi UI ke field password DB
+      kodePengajar,
+      peran: "pengajar",
+      status: status || "aktif"
+    });
+
+    revalidatePath("/admin");
+    return { sukses: true, pesan: "🎉 Pengajar " + nama + " resmi terdaftar!" };
+  } catch (error) {
+    return { sukses: false, pesan: "Error: " + error.message };
+  }
+}
+
+export async function hapusGuru(idGuru) {
+  try {
+    await connectToDatabase();
+    const admin = await dapatkanIdentitasPengajar();
+    if (!admin || admin.peran !== "admin") return { sukses: false, pesan: "Akses ilegal." };
+
+    await User.findByIdAndDelete(idGuru);
+    revalidatePath("/admin");
+    return { sukses: true, pesan: "🗑️ Data pengajar telah dihapus." };
+  } catch (error) {
+    return { sukses: false, pesan: "Gagal: " + error.message };
+  }
+}

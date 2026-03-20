@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+// 👇 Tambahkan memo dan useCallback di import
+import { useState, useMemo, useEffect, memo, useCallback } from "react";
 import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare } from "react-icons/fa6";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
@@ -13,8 +14,11 @@ import { tambahJadwal, hapusJadwal, editJadwal } from "../../actions/adminAction
 import { formatTanggal, potongDataPagination } from "../../utils/formatHelper";
 import styles from "../../app/admin/AdminPage.module.css";
 
-// --- KOMPONEN BANTUAN DND ---
-function DraggableMapel({ mapel }) {
+// ============================================================================
+// --- KOMPONEN BANTUAN DND (Telah Dioptimasi dengan React.memo - Poin 27) ---
+// ============================================================================
+
+const DraggableMapel = memo(({ mapel }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: mapel });
   return (
     <div 
@@ -24,18 +28,51 @@ function DraggableMapel({ mapel }) {
       <FaGripVertical color="#9ca3af" /> {mapel}
     </div>
   );
-}
+});
+DraggableMapel.displayName = "DraggableMapel";
 
-function DroppableSel({ idSel, isSabtu, children }) {
+const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJadwal }) => {
   const { isOver, setNodeRef } = useDroppable({ id: idSel });
   const kelasWarna = isOver ? styles.hover : (isSabtu ? styles.sabtu : styles.normal);
   
   return (
     <td ref={setNodeRef} className={`${styles.tdDroppable} ${kelasWarna}`}>
-      {children}
+      <div className={styles.tumpukanJadwal}>
+        {permanenDB.map(j => (
+          <div key={j._id} onClick={() => klikKartuJadwal(j, "permanen")} className={styles.kartuJadwalPermanen} style={{ cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
+            <div className={styles.labelTersimpan}><FaDatabase /> TERSIMPAN</div>
+            <div className={styles.teksMapelKartu}>{j.mapel}</div>
+            <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.pengajar || '?'}</span><span>P-{j.pertemuan || '?'}</span></div>
+            <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
+          </div>
+        ))}
+        {draftLokal.map(j => (
+          <div key={j.idUnik} onClick={() => klikKartuJadwal(j, "draft")} className={styles.kartuJadwalDraft} style={{ cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
+            <div className={styles.labelDraftBaru}>✨ DRAFT BARU</div>
+            <div className={styles.teksMapelKartu}>{j.mapel}</div>
+            <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.pengajar}</span><span>P-{j.pertemuan}</span></div>
+            <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
+          </div>
+        ))}
+        {permanenDB.length === 0 && draftLokal.length === 0 && (
+          <div className={styles.kotakKosongTarikan}>Tarik ke sini</div>
+        )}
+      </div>
     </td>
   );
-}
+}, (prevProps, nextProps) => {
+  // 👇 Custom equality check agar memo tidak bocor saat array dibuat ulang
+  if (prevProps.idSel !== nextProps.idSel) return false;
+  if (prevProps.isSabtu !== nextProps.isSabtu) return false;
+  if (prevProps.permanenDB.length !== nextProps.permanenDB.length) return false;
+  if (prevProps.draftLokal.length !== nextProps.draftLokal.length) return false;
+
+  const isPermanenSama = prevProps.permanenDB.every((j, i) => j._id === nextProps.permanenDB[i]._id);
+  const isDraftSama = prevProps.draftLokal.every((j, i) => j.idUnik === nextProps.draftLokal[i].idUnik);
+
+  return isPermanenSama && isDraftSama;
+});
+DroppableSel.displayName = "DroppableSel";
 
 // ============================================================================
 // KOMPONEN UTAMA
@@ -140,7 +177,8 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
     setDataDraft(null);
   };
 
-  const klikKartuJadwal = (jadwal, tipe) => {
+  // 👇 Dibungkus useCallback agar fungsi stabil dan tidak memicu render ulang sel memori
+  const klikKartuJadwal = useCallback((jadwal, tipe) => {
     setJadwalEdit(jadwal);
     setTipeEdit(tipe);
     setFormEdit({
@@ -150,7 +188,7 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
       jamSelesai: jadwal.jamSelesai || ""
     });
     setModalEditTerbuka(true);
-  };
+  }, []);
 
   const simpanPerubahanJadwal = async () => {
     if (!formEdit.pengajar || !formEdit.pertemuan) {
@@ -324,29 +362,14 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
                           const permanenDB = cariPermanenDB(kelas.nama, hari.tanggalPenuh);
                           
                           return (
-                            <DroppableSel key={idKordinatSel} idSel={idKordinatSel} isSabtu={hari.isSabtu}>
-                              <div className={styles.tumpukanJadwal}>
-                                {permanenDB.map(j => (
-                                  <div key={j._id} onClick={() => klikKartuJadwal(j, "permanen")} className={styles.kartuJadwalPermanen} style={{ cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
-                                    <div className={styles.labelTersimpan}><FaDatabase /> TERSIMPAN</div>
-                                    <div className={styles.teksMapelKartu}>{j.mapel}</div>
-                                    <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.pengajar || '?'}</span><span>P-{j.pertemuan || '?'}</span></div>
-                                    <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
-                                  </div>
-                                ))}
-                                {draftLokal.map(j => (
-                                  <div key={j.idUnik} onClick={() => klikKartuJadwal(j, "draft")} className={styles.kartuJadwalDraft} style={{ cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
-                                    <div className={styles.labelDraftBaru}>✨ DRAFT BARU</div>
-                                    <div className={styles.teksMapelKartu}>{j.mapel}</div>
-                                    <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.pengajar}</span><span>P-{j.pertemuan}</span></div>
-                                    <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
-                                  </div>
-                                ))}
-                                {permanenDB.length === 0 && draftLokal.length === 0 && (
-                                  <div className={styles.kotakKosongTarikan}>Tarik ke sini</div>
-                                )}
-                              </div>
-                            </DroppableSel>
+                            <DroppableSel 
+                              key={idKordinatSel} 
+                              idSel={idKordinatSel} 
+                              isSabtu={hari.isSabtu}
+                              permanenDB={permanenDB}
+                              draftLokal={draftLokal}
+                              klikKartuJadwal={klikKartuJadwal}
+                            />
                           );
                         })}
                       </tr>
