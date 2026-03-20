@@ -1,35 +1,42 @@
 import * as XLSX from "xlsx";
 
 // ============================================================================
-// 1. HELPER FUNGSI (Pemisah Logika Tanggal & Jam)
+// 1. HELPER FUNGSI (Poin 29: Proteksi & Format Data)
 // ============================================================================
 const formatTanggal = (tanggal) => {
   if (!tanggal) return "-";
-  return new Date(tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' });
+  try {
+    return new Date(tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' });
+  } catch (e) { return "-"; }
 };
 
 const formatJam = (tanggal) => {
   if (!tanggal) return "-";
-  return new Date(tanggal).toLocaleTimeString('id-ID', {
-    hour: '2-digit', 
-    minute: '2-digit',
-    timeZone: 'Asia/Jakarta'
-  });
+  try {
+    return new Date(tanggal).toLocaleTimeString('id-ID', {
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta'
+    });
+  } catch (e) { return "-"; }
 };
 
 const hitungDurasiMenit = (mulai, selesai) => {
   if (!mulai || !selesai) return 0;
-  return Math.floor((new Date(selesai) - new Date(mulai)) / 60000);
+  try {
+    const durasi = Math.floor((new Date(selesai) - new Date(mulai)) / 60000);
+    return durasi > 0 ? durasi : 0;
+  } catch (e) { return 0; }
 };
 
 
 // ============================================================================
-// 2. FUNGSI MAPPER (Pemisah Logika Struktur Kolom)
+// 2. FUNGSI MAPPER (Transformasi Data ke Format Excel)
 // ============================================================================
 const siapkanDataKelas = (data) => {
   return data.map(s => {
-    const isTidakHadir = s.status?.includes('Tidak Hadir');
-    const namaSiswa = s.siswaId?.nama || "Dihapus";
+    const isTidakHadir = s.status?.toLowerCase().includes('tidak hadir');
+    const namaSiswa = s.siswaId?.nama || "Siswa Dihapus";
     const kelasSiswa = s.siswaId?.kelas || "-";
 
     return {
@@ -40,7 +47,7 @@ const siapkanDataKelas = (data) => {
       "Jam Masuk": isTidakHadir ? "-" : formatJam(s.waktuMulai),
       "Jam Keluar": isTidakHadir ? "-" : (s.waktuSelesai ? formatJam(s.waktuSelesai) : "Belum Pulang"),
       "Status Kehadiran": isTidakHadir ? s.status : (s.terlambatMenit > 0 ? `Telat ${s.terlambatMenit} menit` : "Tepat Waktu"),
-      "Extra Konsul (Menit)": s.konsulExtraMenit > 0 ? s.konsulExtraMenit : 0,
+      "Extra Konsul (Menit)": s.konsulExtraMenit || 0,
       "Status Sesi": s.status || "-"
     };
   });
@@ -48,7 +55,7 @@ const siapkanDataKelas = (data) => {
 
 const siapkanDataKonsul = (data) => {
   return data.map(s => {
-    const namaSiswa = s.siswaId?.nama || "Dihapus";
+    const namaSiswa = s.siswaId?.nama || "Siswa Dihapus";
     const kelasSiswa = s.siswaId?.kelas || "-";
 
     return {
@@ -69,10 +76,12 @@ const siapkanDataKonsul = (data) => {
 // 3. FUNGSI UTAMA (EKSPORT EXCEL)
 // ============================================================================
 export const unduhExcel = (data, tipe) => {
+  if (typeof window === "undefined") return;
+
   try {
     if (!data || !Array.isArray(data) || data.length === 0) {
-      alert("⚠️ Gagal: Tidak ada data yang bisa diekspor.");
-      return;
+      console.warn("[EXPORT EXCEL]: Data kosong, pembatalan ekspor.");
+      return false;
     }
 
     let dataFormat = [];
@@ -81,14 +90,13 @@ export const unduhExcel = (data, tipe) => {
     } else if (tipe === "konsul") {
       dataFormat = siapkanDataKonsul(data);
     } else {
-      console.error("[ERROR unduhExcel]: Tipe ekspor tidak dikenali.");
-      return;
+      throw new Error("Tipe ekspor tidak dikenal.");
     }
 
     const worksheet = XLSX.utils.json_to_sheet(dataFormat);
     const workbook = XLSX.utils.book_new();
     
-    const maxWidths = Object.keys(dataFormat[0]).map(key => ({ wch: key.length + 5 }));
+    const maxWidths = Object.keys(dataFormat[0] || {}).map(key => ({ wch: key.length + 10 }));
     worksheet["!cols"] = maxWidths;
 
     const namaSheet = tipe === "kelas" ? "Rekap_Kelas" : "Rekap_Konsul";
@@ -98,9 +106,10 @@ export const unduhExcel = (data, tipe) => {
     const namaFile = `Laporan_Quantum_${tipe.toUpperCase()}_${tglCetak}.xlsx`;
     
     XLSX.writeFile(workbook, namaFile);
+    return true;
 
   } catch (error) {
     console.error("[ERROR unduhExcel]:", error.message);
-    alert("⚠️ Terjadi kesalahan saat mencoba membuat file Excel.");
+    return false;
   }
 };

@@ -14,18 +14,17 @@ import Jadwal from "../models/Jadwal";
 // ============================================================================
 // 2. INTERNAL HELPERS & SECURITY
 // ============================================================================
-/**
- * Memeriksa apakah user yang sedang mengakses memiliki akses Admin
- * @returns {Promise<boolean>}
- */
 async function cekAdmin() {
   try {
     const cookieStore = await cookies();
-    const karcis = cookieStore.get("karcis_quantum");
+    const karcis = cookieStore.get("karcis_quantum")?.value;
+    const peran = cookieStore.get("peran_quantum")?.value;
     
-    if (!karcis || !karcis.value) return false;
+    if (!karcis) return false;
+
+    if (peran === "admin") return true;
     
-    const user = await User.findById(karcis.value).select("peran").lean();
+    const user = await User.findById(karcis).select("peran").lean();
     return user && user.peran === "admin";
   } catch (error) {
     console.error("[SECURITY cekAdmin]:", error.message);
@@ -77,14 +76,13 @@ export async function ambilDataDashboard() {
 }
 
 // ============================================================================
-// 4. MANAJEMEN SISWA ACTIONS (CRUD User)
+// 4. MANAJEMEN SISWA ACTIONS
 // ============================================================================
 export async function editAkunSiswa(idSiswa, dataBaru) {
   try {
     await connectToDatabase();
     if (!(await cekAdmin())) return { sukses: false, pesan: "Akses Ditolak!" };
     
-    // Cek apakah ada data unik yang bentrok dengan siswa lain
     const cekDuplikat = await User.findOne({
       _id: { $ne: idSiswa }, 
       $or: [
@@ -109,7 +107,6 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
       status: dataBaru.status, 
     };
 
-    // Update password hanya jika diisi
     if (dataBaru.password && dataBaru.password.trim() !== "") {
       dataUpdate.password = await bcrypt.hash(dataBaru.password, 10);
     }
@@ -127,7 +124,6 @@ export async function hapusAkunSiswa(idSiswa) {
     await connectToDatabase();
     if (!(await cekAdmin())) return { sukses: false, pesan: "Akses Ditolak!" };
 
-    // Hapus User dan Riwayat Belajarnya sekaligus
     await Promise.all([
       User.findByIdAndDelete(idSiswa),
       StudySession.deleteMany({ siswaId: idSiswa })
@@ -141,14 +137,13 @@ export async function hapusAkunSiswa(idSiswa) {
 }
 
 // ============================================================================
-// 5. MANAJEMEN JADWAL ACTIONS (CRUD Jadwal Papan Catur)
+// 5. MANAJEMEN JADWAL ACTIONS
 // ============================================================================
 export async function ambilSemuaJadwal() {
   try {
     await connectToDatabase();
     if (!(await cekAdmin())) return { sukses: false, data: [] };
 
-    // Ambil semua jadwal, urutkan dari yang terlama ke terbaru
     const jadwal = await Jadwal.find({}).sort({ tanggal: 1 }).lean();
     return { 
       sukses: true, 
@@ -175,7 +170,7 @@ export async function tambahJadwal(dataForm) {
 
 export async function editJadwal(id, dataBaru) {
   try {
-    await connectToDatabase(); // ✅ BUG FIXED: Memanggil koneksi database yang benar
+    await connectToDatabase();
     if (!(await cekAdmin())) return { sukses: false, pesan: "Akses Ditolak!" };
     
     const jadwalDiupdate = await Jadwal.findByIdAndUpdate(
@@ -189,10 +184,7 @@ export async function editJadwal(id, dataBaru) {
       { new: true } 
     );
 
-    if (!jadwalDiupdate) {
-      return { sukses: false, pesan: "Jadwal tidak ditemukan di database." };
-    }
-
+    if (!jadwalDiupdate) return { sukses: false, pesan: "Jadwal tidak ditemukan." };
     return { sukses: true, pesan: "Jadwal berhasil diperbarui!" };
   } catch (error) {
     console.error("[ERROR editJadwal]:", error.message);
@@ -214,13 +206,15 @@ export async function hapusJadwal(idJadwal) {
 }
 
 // ============================================================================
-// 6. MANAJEMEN ABSENSI & JURNAL (LMS) ACTIONS
+// 6. MANAJEMEN ABSENSI & JURNAL (LMS)
 // ============================================================================
 export async function inputAbsenManual(data) {
   try {
     await connectToDatabase();
     if (!(await cekAdmin())) return { sukses: false, pesan: "Akses Ditolak!" };
     
+    if (!data.siswaId) return { sukses: false, pesan: "ID Siswa tidak ditemukan atau tidak valid." };
+
     const statusAkhir = data.catatan 
       ? `Tidak Hadir - ${data.keterangan} (${data.catatan})` 
       : `Tidak Hadir - ${data.keterangan}`;
@@ -264,7 +258,7 @@ export async function ambilDetailJurnal(idJadwal) {
     if (!(await cekAdmin())) return { sukses: false, pesan: "Akses Ditolak!" };
 
     const jadwal = await Jadwal.findById(idJadwal).lean();
-    if (!jadwal) return { sukses: false, pesan: "Jadwal kelas tidak ditemukan!" };
+    if (!jadwal) return { sukses: false, pesan: "Jadwal tidak ditemukan!" };
 
     const { awal, akhir } = buatRentangHariWIB(jadwal.tanggal);
     
@@ -299,7 +293,7 @@ export async function ambilDetailJurnal(idJadwal) {
     };
   } catch (error) {
     console.error("[ERROR ambilDetailJurnal]:", error.message);
-    return { sukses: false, pesan: "Sistem gagal mengambil detail jurnal." };
+    return { sukses: false, pesan: "Gagal mengambil detail jurnal." };
   }
 }
 
@@ -316,7 +310,6 @@ export async function simpanJurnal(idJadwal, dataJurnal, arrayNilaiSiswa) {
     });
 
     let bulkWritePromise = Promise.resolve();
-    
     if (arrayNilaiSiswa && arrayNilaiSiswa.length > 0) {
       const operasiUpdate = arrayNilaiSiswa
         .filter(item => item.sesiId)
@@ -332,9 +325,14 @@ export async function simpanJurnal(idJadwal, dataJurnal, arrayNilaiSiswa) {
       }
     }
 
-    await Promise.all([updateJadwalPromise, bulkWritePromise]);
+    const hasil = await Promise.allSettled([updateJadwalPromise, bulkWritePromise]);
 
-    return { sukses: true, pesan: "Jurnal & Nilai berhasil disimpan permanen!" };
+    const adaGagal = hasil.some(res => res.status === "rejected");
+    if (adaGagal) {
+      return { sukses: true, pesan: "Jurnal disimpan dengan beberapa catatan/peringatan sistem." };
+    }
+
+    return { sukses: true, pesan: "Jurnal & Nilai berhasil disimpan!" };
   } catch (error) {
     console.error("[ERROR simpanJurnal]:", error.message);
     return { sukses: false, pesan: "Gagal menyimpan karena gangguan server." };

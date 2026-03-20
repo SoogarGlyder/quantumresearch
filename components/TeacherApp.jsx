@@ -1,0 +1,95 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { FaHouse, FaQrcode, FaUserAstronaut } from "react-icons/fa6";
+
+import styles from "./TeacherApp.module.css";
+
+// ============================================================================
+// 1. DYNAMIC IMPORTS (Lazy Loading)
+// Optimasi: Mempercepat load awal dengan memuat tab hanya saat dibutuhkan.
+// ============================================================================
+const TabBerandaGuru = dynamic(() => import("./teacher/TabBerandaGuru"), {
+  loading: () => <FallbackLoading teks="Memuat Jadwal..." />,
+});
+const TabScanGuru = dynamic(() => import("./teacher/TabScanGuru"), {
+  loading: () => <FallbackLoading teks="Menyiapkan Kamera..." />,
+});
+const TabProfilGuru = dynamic(() => import("./teacher/TabProfilGuru"), {
+  loading: () => <FallbackLoading teks="Memuat Profil..." />,
+});
+
+// Helper sederhana untuk loading state
+const FallbackLoading = ({ teks }) => (
+  <div style={{ padding: "40px", textAlign: "center", fontWeight: "900", color: "#2563eb", animation: "pulse 1.5s infinite" }}>
+    {teks}
+  </div>
+);
+
+// ============================================================================
+// 2. MAIN COMPONENT
+// ============================================================================
+export default function TeacherApp({ dataUser, jadwal, onLogout }) {
+  const [tab, setTab] = useState("home");
+
+  // Optimasi: Gunakan useMemo untuk menentukan isi tab agar tidak re-render berat
+  const kontenTab = useMemo(() => {
+    switch (tab) {
+      case "home":
+        return <TabBerandaGuru dataUser={dataUser} jadwal={jadwal} />;
+      case "scan":
+        return <TabScanGuru />;
+      case "profil":
+        return <TabProfilGuru dataUser={dataUser} onLogout={onLogout} />;
+      default:
+        return null;
+    }
+  }, [tab, dataUser, jadwal, onLogout]);
+
+  return (
+    <div className={styles.wadahUtama}>
+      
+      {/* AREA KONTEN */}
+      <main style={{ paddingBottom: "110px", minHeight: "100vh" }}>
+        {kontenTab}
+      </main>
+
+      {/* NAVIGASI BAWAH */}
+      <nav className={styles.menuBawah}>
+        
+        {/* Nav: Beranda */}
+        <button 
+          onClick={() => setTab("home")} 
+          className={`${styles.tombolNav} ${tab === "home" ? styles.tombolNavAktif : ""}`}
+          aria-label="Beranda"
+        >
+          <FaHouse className={styles.ikonNav} />
+          <span className={styles.teksNav}>Beranda</span>
+        </button>
+        
+        {/* Nav: Scanner (Tombol Utama) */}
+        <div className={styles.wadahTombolTengah}>
+          <button 
+            onClick={() => setTab("scan")} 
+            className={`${styles.tombolKamera} ${tab === "scan" ? styles.tombolKameraAktif : styles.tombolKameraMati}`}
+            aria-label="Scanner Kehadiran"
+          >
+            <FaQrcode className={styles.ikonKamera} />
+          </button>
+        </div>
+        
+        {/* Nav: Profil */}
+        <button 
+          onClick={() => setTab("profil")} 
+          className={`${styles.tombolNav} ${tab === "profil" ? styles.tombolNavAktif : ""}`}
+          aria-label="Profil"
+        >
+          <FaUserAstronaut className={styles.ikonNav} />
+          <span className={styles.teksNav}>Profil</span>
+        </button>
+
+      </nav>
+    </div>
+  );
+}

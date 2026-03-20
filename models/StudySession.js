@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const studySessionSchema = new mongoose.Schema(
   {
+    // --- RELASI & KATEGORI ---
     siswaId: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: "User", 
@@ -19,6 +20,8 @@ const studySessionSchema = new mongoose.Schema(
       type: String,
       trim: true 
     },
+
+    // --- WAKTU & DURASI ---
     waktuMulai: { 
       type: Date, 
       default: Date.now 
@@ -26,6 +29,8 @@ const studySessionSchema = new mongoose.Schema(
     waktuSelesai: { 
       type: Date 
     },
+
+    // --- STATUS & TRACKING ---
     status: { 
       type: String, 
       default: "Berjalan",
@@ -41,6 +46,8 @@ const studySessionSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Menit konsul ekstra tidak boleh kurang dari 0"]
     },
+
+    // --- AKADEMIK ---
     nilaiTest: { 
       type: Number, 
       default: null,
@@ -52,6 +59,10 @@ const studySessionSchema = new mongoose.Schema(
     timestamps: true 
   }
 );
+
+studySessionSchema.index({ siswaId: 1, waktuMulai: -1 });
+studySessionSchema.index({ jenisSesi: 1 });
+studySessionSchema.index({ waktuMulai: -1 });
 
 const StudySession = mongoose.models.StudySession || mongoose.model("StudySession", studySessionSchema);
 

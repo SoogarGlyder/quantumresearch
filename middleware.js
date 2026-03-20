@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 
-// ============================================================================
-// 1. PENGATURAN MIDDLEWARE
-// ============================================================================
 export function middleware(request) {
   const path = request.nextUrl.pathname;
   
@@ -13,44 +10,46 @@ export function middleware(request) {
   const isLoggedIn = !!karcisId;
 
   // ============================================================================
-  // 2. ATURAN 1: PENGUNJUNG GELAP
+  // 1. PROTEKSI PENGUNJUNG TANPA LOGIN
   // ============================================================================
   if (!isLoggedIn && !isPublicPath) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // ============================================================================
-  // 3. ATURAN 2: PENGUNJUNG RESMI
+  // 2. PROTEKSI PENGUNJUNG YANG SUDAH LOGIN
   // ============================================================================
   if (isLoggedIn) {
-    // --- SKENARIO A: ADMIN ---
-    if (karcisPeran === "admin") {
-      if (path !== "/admin") {
+    
+    // A. JIKA MENCOBA AKSES HALAMAN LOGIN (SAAT SUDAH LOGIN)
+    if (isPublicPath) {
+      if (karcisPeran === "admin") {
         return NextResponse.redirect(new URL("/admin", request.url));
       }
-    } 
-    
-    // --- SKENARIO B: SISWA ---
-    else if (karcisPeran === "siswa") {
-      if (path === "/admin" || isPublicPath) {
-        return NextResponse.redirect(new URL("/", request.url));
-      }
+      return NextResponse.redirect(new URL("/", request.url)); // Siswa & Pengajar
+    }
+
+    // B. PROTEKSI JALUR KHUSUS ADMIN
+    if (path.startsWith("/admin") && karcisPeran !== "admin") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    // C. PROTEKSI JALUR KHUSUS NON-ADMIN (LOCK ADMIN DI /ADMIN)
+    if (path === "/" && karcisPeran === "admin") {
+      return NextResponse.redirect(new URL("/admin", request.url));
     }
   }
 
-  // ============================================================================
-  // 4. JIKA SEMUA AMAN, SILAKAN LEWAT!
-  // ============================================================================
   return NextResponse.next();
 }
 
 // ============================================================================
-// 5. TARGET PENJAGAAN (MATCHER)
+// TARGET PENJAGAAN (MATCHER)
 // ============================================================================
 export const config = {
   matcher: [
     "/", 
     "/login", 
-    "/admin"
+    "/admin/:path*" // Melindungi semua sub-path admin
   ]
 };

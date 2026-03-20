@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
+    // --- IDENTITAS UTAMA ---
     nama: { 
       type: String, 
       required: [true, "Nama wajib diisi!"],
@@ -29,11 +30,20 @@ const userSchema = new mongoose.Schema(
       required: [true, "Nomor HP / WA wajib diisi!"],
       trim: true
     },
+
+    // --- OTORISASI & STATUS ---
     peran: { 
       type: String, 
       enum: ["siswa", "admin", "pengajar"], 
       default: "siswa" 
     },
+    status: { 
+      type: String, 
+      enum: ["aktif", "tidak aktif"], 
+      default: "aktif" 
+    },
+
+    // --- DATA AKADEMIK (Khusus Siswa) ---
     kelas: { 
       type: String, 
       default: "-" 
@@ -46,16 +56,15 @@ const userSchema = new mongoose.Schema(
       type: String, 
       default: "-" 
     },
-    status: { 
-      type: String, 
-      enum: ["aktif", "tidak aktif"], 
-      default: "aktif" 
-    },
   },
   { 
     timestamps: true
   }
 );
+
+userSchema.index({ nama: 1 });
+userSchema.index({ peran: 1 });
+userSchema.index({ kelas: 1 });
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 
