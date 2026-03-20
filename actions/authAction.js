@@ -8,7 +8,7 @@ import { validationHelper } from "../utils/validationHelper";
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
-// 1. SECURITY MIDDLEWARE (Internal)
+// 1. INTERNAL SECURITY
 // ============================================================================
 async function pastikanAdmin() {
   const { userId, peran } = await authHelper.ambilSesi();
@@ -20,45 +20,40 @@ async function pastikanAdmin() {
 // ============================================================================
 
 /**
- * LOGIN: Multi-Identifier (Username / ID / WA)
+ * LOGIN: Mendukung Username, Nomor Peserta, atau No HP
  */
 export async function prosesLogin(dataFormulir) {
   try {
     await connectToDatabase();
 
-    const idInput = validationHelper.sanitize(dataFormulir.identifier || dataFormulir.username).toLowerCase();
-    const passwordInput = dataFormulir.password;
+    const idInput = validationHelper.sanitize(dataFormulir.identifier || dataFormulir.username || dataFormulir.noHp).toLowerCase();
+    
+    // Deteksi password dari berbagai kemungkinan nama field di frontend
+    const passwordInput = (dataFormulir.password || dataFormulir.kataSandi || dataFormulir.pass || "").toString().trim();
 
     if (!idInput || !passwordInput) {
       return responseHelper.error("ID dan Kata Sandi wajib diisi.");
     }
 
-    // 🕵️ Tirai password dibuka khusus untuk login (+password)
-    // Tanpa .lean() agar kita bisa melakukan pengecekan internal Mongoose jika perlu
+    // Ambil user beserta password (select: +password)
     const user = await User.findOne({
       $or: [{ username: idInput }, { nomorPeserta: idInput }, { noHp: idInput }]
     }).select("+password"); 
 
     if (!user) return responseHelper.error("Akun tidak ditemukan!");
-    
-    // 🛡️ PAGAR 1: Deteksi "Data Hantu" (User ada tapi password kosong di DB)
-    if (!user.password) {
-      console.error(`[AUTH DIAGNOSTIC]: User '${idInput}' (Role: ${user.peran}) ditemukan, tapi field 'password' KOSONG.`);
-      return responseHelper.error("Akun ini belum memiliki password yang valid. Silakan hubungi Admin untuk Reset Password.");
-    }
+    if (!user.password) return responseHelper.error("Data password di server kosong. Hubungi Admin.");
+    if (user.status === "tidak aktif") return responseHelper.error("Akun dinonaktifkan.");
 
-    if (user.status === "tidak aktif") {
-      return responseHelper.error("Akun dinonaktifkan. Hubungi Admin.");
-    }
-
-    // 🛡️ PAGAR 2: Verifikasi via Helper (Anti-crash bcrypt)
+    // Verifikasi Password
     const passwordCocok = await authHelper.bandingkanPassword(passwordInput, user.password);
+    
+    // DIAGNOSTIK: Muncul di terminal server/Vercel
+    console.log(`[LOGIN ATTEMPT] User: ${idInput} | Pass Input: ${passwordInput} | Match: ${passwordCocok}`);
     
     if (!passwordCocok) return responseHelper.error("Kata sandi salah!");
 
-    // Buat Sesi Cookie
+    // Set Sesi
     await authHelper.setSesi(user);
-
     return responseHelper.success("Login Berhasil! Memuat portal...");
   } catch (error) {
     console.error("[CRITICAL LOGIN ERROR]:", error.message);
@@ -66,16 +61,9 @@ export async function prosesLogin(dataFormulir) {
   }
 }
 
-/**
- * LOGOUT: Menghapus Sesi
- */
 export async function prosesLogout() {
-  try {
-    await authHelper.hapusSesi();
-    return responseHelper.success("Berhasil keluar dari sistem.");
-  } catch (error) {
-    return responseHelper.error("Gagal membersihkan sesi logout.");
-  }
+  await authHelper.hapusSesi();
+  return responseHelper.success("Berhasil keluar.");
 }
 
 // ============================================================================
@@ -83,48 +71,43 @@ export async function prosesLogout() {
 // ============================================================================
 
 /**
- * TAMBAH SISWA: Registrasi manual satu per satu
+ * TAMBAH SISWA: Password = Input > No HP > 123456
  */
 export async function prosesTambahSiswa(dataFormulir) {
   try {
     await connectToDatabase();
-    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak! Khusus Admin.");
+    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak!");
 
     const username = validationHelper.sanitize(dataFormulir.username || dataFormulir.nomorPeserta).toLowerCase();
-    
-    if (!validationHelper.isValidUsername(username)) {
-      return responseHelper.error("Format username tidak valid (gunakan huruf, angka, . - _)");
-    }
-    if (!validationHelper.isValidPassword(dataFormulir.password)) {
-      return responseHelper.error("Password minimal 6 karakter.");
-    }
+    const noHp = validationHelper.sanitize(dataFormulir.noHp || dataFormulir.whatsapp);
 
-    const cekDuplikat = await User.findOne({ 
-      $or: [{ username }, { nomorPeserta: dataFormulir.nomorPeserta }] 
-    }).select("_id").lean();
-    
+    // Deteksi password dengan fallback ke No HP
+    let passPolos = (dataFormulir.password || dataFormulir.kataSandi || "").toString().trim();
+    if (!passPolos) passPolos = noHp || "123456";
+
+    const cekDuplikat = await User.findOne({ $or: [{ username }, { nomorPeserta: dataFormulir.nomorPeserta }] });
     if (cekDuplikat) return responseHelper.error("ID atau Username sudah terdaftar!");
 
-    const passwordHashed = await authHelper.buatHash(dataFormulir.password || "123456");
+    const passwordHashed = await authHelper.buatHash(passPolos);
 
     await User.create({
       ...dataFormulir,
       username,
+      noHp,
       password: passwordHashed,
       peran: "siswa",
       status: "aktif"
     });
 
     revalidatePath("/admin");
-    return responseHelper.success("Akun siswa berhasil dibuat!");
+    return responseHelper.success(`Siswa berhasil dibuat dengan password: ${passPolos}`);
   } catch (error) {
-    console.error("[ADD_STUDENT_ERROR]:", error.message);
-    return responseHelper.error("Gagal menyimpan data siswa.");
+    return responseHelper.error("Gagal simpan data siswa.");
   }
 }
 
 /**
- * TAMBAH PENGAJAR: Registrasi manual pengajar
+ * TAMBAH PENGAJAR: Anti-Gagal (Detect No HP as Password)
  */
 export async function prosesTambahPengajar(dataFormulir) {
   try {
@@ -134,38 +117,41 @@ export async function prosesTambahPengajar(dataFormulir) {
     const username = validationHelper.sanitize(dataFormulir.username).toLowerCase();
     const kodePengajar = validationHelper.sanitize(dataFormulir.kodePengajar).toUpperCase();
     
-    // 🛡️ Menangani dua kemungkinan nama field password dari form UI
-    const passwordRaw = dataFormulir.password || dataFormulir.kataSandi || "123456";
+    // Deteksi No HP dari berbagai kemungkinan key frontend
+    const noHp = validationHelper.sanitize(dataFormulir.noHp || dataFormulir.nomorHp || dataFormulir.whatsapp || "");
 
-    if (!username || !kodePengajar) return responseHelper.error("Username & Kode Pengajar wajib diisi.");
+    // Deteksi Password: Cek field password, jika kosong ambil No HP
+    let passPolos = (dataFormulir.password || dataFormulir.kataSandi || dataFormulir.pass || "").toString().trim();
+    if (!passPolos) passPolos = noHp || "123456";
 
-    const cekDuplikat = await User.findOne({ 
-      $or: [{ username }, { kodePengajar }] 
-    }).select("_id").lean();
-    
-    if (cekDuplikat) return responseHelper.error("Username atau Kode Pengajar sudah ada!");
+    // DIAGNOSTIK REGISTRASI
+    console.log(`[REGIS GURU] Target: ${username} | Raw Pass: ${passPolos}`);
 
-    const passwordHashed = await authHelper.buatHash(passwordRaw);
+    const passwordHashed = await authHelper.buatHash(passPolos);
+
+    // Hapus data lama agar bersih sebelum ditimpa
+    await User.deleteOne({ $or: [{ username }, { kodePengajar }] });
 
     await User.create({
       ...dataFormulir,
       username,
       kodePengajar,
-      password: passwordHashed, // 👈 Dipastikan masuk ke field 'password' di DB
+      noHp,
+      password: passwordHashed, 
       peran: "pengajar",
       status: "aktif"
     });
 
     revalidatePath("/admin");
-    return responseHelper.success(`Pengajar ${dataFormulir.nama} berhasil didaftarkan!`);
+    return responseHelper.success(`Pengajar SIAP! Password login: ${passPolos}`);
   } catch (error) {
     console.error("[ADD_TEACHER_ERROR]:", error.message);
-    return responseHelper.error("Gagal menyimpan data pengajar.");
+    return responseHelper.error("Gagal mendaftarkan pengajar.");
   }
 }
 
 /**
- * BULK UPLOAD: Pendaftaran massal (Siswa)
+ * BULK UPLOAD: Automatisasi password per baris
  */
 export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
   try {
@@ -177,38 +163,33 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
     const setN = new Set(existing.map(u => u.nomorPeserta));
 
     const dataSiap = [];
-    const laporanGagal = [];
 
     for (const s of daftarSiswaRaw) {
       const id = validationHelper.sanitize(s.nomorPeserta);
       const user = validationHelper.sanitize(s.username || id).toLowerCase();
+      const noHp = validationHelper.sanitize(s.noHp || s.nomorHp);
 
-      if (setU.has(user) || setN.has(id)) {
-        laporanGagal.push(`${s.nama || id}: Duplikat.`);
-        continue;
-      }
+      if (setU.has(user) || setN.has(id)) continue;
+
+      let pRaw = (s.password || s.kataSandi || "").toString().trim();
+      if (!pRaw) pRaw = noHp || "123456";
 
       dataSiap.push({
         ...s,
         nomorPeserta: id,
         username: user,
-        password: await authHelper.buatHash(s.password || "123456"),
+        noHp: noHp,
+        password: await authHelper.buatHash(pRaw),
         peran: "siswa",
         status: "aktif"
       });
-
-      setU.add(user); setN.add(id);
     }
 
     if (dataSiap.length > 0) await User.insertMany(dataSiap);
     
     revalidatePath("/admin");
-    return responseHelper.success(`Bulk Upload Selesai!`, {
-      berhasil: dataSiap.length,
-      gagal: laporanGagal.length
-    });
+    return responseHelper.success(`Bulk Upload Berhasil (${dataSiap.length} siswa).`);
   } catch (error) {
-    console.error("[BULK_UPLOAD_ERROR]:", error.message);
-    return responseHelper.error("Gangguan Server saat upload massal.");
+    return responseHelper.error("Gagal upload massal.");
   }
 }
