@@ -37,7 +37,6 @@ export default async function Home() {
   // CABANG 2: PENGAJAR / GURU
   // ==========================================================================
   if (userLogin.peran === "pengajar" || userLogin.peran === "guru") {
-    // 🛠️ PERBAIKAN: Gunakan kodePengajar sesuai standarisasi Fase 3
     const jadwalGuru = await Jadwal.find({ kodePengajar: userLogin.kodePengajar })
       .sort({ tanggal: 1 })
       .lean();
@@ -46,6 +45,7 @@ export default async function Home() {
       <TeacherApp 
         dataUser={serialize(userLogin)} 
         jadwal={serialize(jadwalGuru)} 
+        onLogout={null}
       />
     );
   }
