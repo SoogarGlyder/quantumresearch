@@ -157,7 +157,7 @@ export default function TabBeranda({ siswa, jadwal, riwayat, setTab, setModeScan
           </div>
         </div>
 
-        <div className={styles.kartuInfo} style={{ marginBottom: '0', transform: 'translateY(24px)', zIndex: 20 }}>
+        <div className={styles.kartuInfo} style={{ marginTop: '-16px', zIndex: 20, position: 'relative' }}>
            <h2 className={styles.judulInfo}>Pencapaian Bulan Ini</h2>
            
            <div className={styles.badgeGelar}>{statsBulanIni.gelar}</div>

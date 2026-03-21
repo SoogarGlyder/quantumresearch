@@ -33,19 +33,25 @@ export function formatYYYYMMDD(tanggalString) {
   if (!tanggalString) return "";
   const d = new Date(tanggalString);
   if (isNaN(d)) return "";
-  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }).split('T')[0]; // Ekstrak murni YYYY-MM-DD
 }
 
 /**
- * Fungsi yang dicari oleh TabBeranda.jsx dan TabKonsul.jsx
+ * Murni mengekstrak Bulan dan Tahun (misal: "Maret 2026")
  */
 export function formatBulanTahun(tanggalString = new Date()) {
+  if (!tanggalString) return "";
   const d = new Date(tanggalString);
-  return d.toLocaleDateString('id-ID', {
+  if (isNaN(d)) return "";
+  
+  // Menggunakan formatter manual agar konsisten di semua browser
+  const formatter = new Intl.DateTimeFormat('id-ID', {
     timeZone: 'Asia/Jakarta',
     month: 'long',
     year: 'numeric'
   });
+  
+  return formatter.format(d);
 }
 
 // ============================================================================
@@ -58,9 +64,12 @@ export function kapitalisasi(teks) {
 }
 
 export function hitungDurasiMenit(waktuMulai, waktuSelesai) {
+  // 🛡️ ANTI NaN: Cek apakah kedua waktu benar-benar ada
   if (!waktuMulai || !waktuSelesai) return 0;
+  
   const d1 = new Date(waktuMulai);
   const d2 = new Date(waktuSelesai);
+  
   if (isNaN(d1) || isNaN(d2)) return 0;
 
   const selisihMs = d2 - d1;
@@ -76,10 +85,6 @@ export function potongDataPagination(dataArray = [], pageSaatIni = 1, itemsPerPa
   return { totalPage, dataTerpotong };
 }
 
-/**
- * Fungsi yang dicari oleh TabKelas.jsx (Mengurai keterangan dari status DB)
- * Contoh: "tidak hadir (Sakit: Demam)" -> "Sakit: Demam"
- */
 export function ekstrakKeteranganAbsen(statusStr) {
   if (!statusStr) return "";
   const match = statusStr.match(/\(([^)]+)\)/);
@@ -97,7 +102,7 @@ export function bersihkanBarcode(rawCode, prefix = "QR-KLS-") {
 
 export function cekPesanErrorScanner(pesanSistem) {
   if (!pesanSistem || typeof pesanSistem !== "string") return false;
-  const kataError = ["gagal", "ups", "salah", "maaf", "belum", "sabar", "luar", "tolak"];
+  const kataError = ["gagal", "ups", "salah", "maaf", "belum", "sabar", "luar", "tolak", "oops"];
   const pesanKecil = pesanSistem.toLowerCase();
   return kataError.some(kata => pesanKecil.includes(kata));
 }

@@ -30,13 +30,16 @@ export default function TabProfil({ siswa, klikLogout }) {
   const handleToggleEdit = () => {
     setIsEditing(!isEditing);
     setPesan({ teks: "", tipe: "" });
-    if (isEditing) {
+    if (!isEditing) { // Diubah: Jika baru mau edit, reset form ke data awal
       setUsernameEdit(siswa.username);
       setPasswordEdit("");
     }
   };
 
-  const handleSimpan = async () => {
+  // 🛡️ PENAWAR UX: Menangkap event submit dari form (termasuk tombol Enter)
+  const handleSimpan = async (e) => {
+    e.preventDefault(); // Mencegah reload halaman bawaan browser
+    
     if (!usernameEdit || usernameEdit.trim() === "") {
       setPesan({ teks: "⚠️ Username tidak boleh kosong!", tipe: "error" });
       return;
@@ -156,7 +159,7 @@ export default function TabProfil({ siswa, klikLogout }) {
           ) : (
             
             /* --- MODE EDIT PROFIL (FORM) --- */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', animation: 'slideDownBrutal 0.2s ease-out' }}>
+            <form onSubmit={handleSimpan} style={{ display: 'flex', flexDirection: 'column', gap: '16px', animation: 'slideDownBrutal 0.2s ease-out' }}>
               
               <div>
                 <label className={styles.labelPilihMapel}>Username Baru</label>
@@ -182,14 +185,14 @@ export default function TabProfil({ siswa, klikLogout }) {
               </div>
 
               <button 
-                onClick={handleSimpan}
+                type="submit" 
                 disabled={loading}
                 className={styles.tombolSimpanBiruBaru}
                 style={{ width: '100%', marginTop: '12px', padding: '16px', fontSize: '16px' }}
               >
                 {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
               </button>
-            </div>
+            </form>
 
           )}
 

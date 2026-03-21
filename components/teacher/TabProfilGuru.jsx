@@ -8,21 +8,20 @@ import {
   FaArrowRightFromBracket, FaPenToSquare, FaXmark, FaCheck 
 } from "react-icons/fa6";
 
-// Import Action Profil (Kita asumsikan menggunakan action yang sama dengan siswa atau serupa)
 import { updateProfilSiswa } from "../../actions/profilAction"; 
+import { prosesLogout } from "../../actions/authAction"; // 🛡️ PERBAIKAN: Impor action logout
 import styles from "../TeacherApp.module.css";
 
-export default function TabProfilGuru({ dataUser, onLogout }) {
+export default function TabProfilGuru({ dataUser }) {
   const router = useRouter();
   
-  // --- STATE MANAGEMENT ---
   const [isEditing, setIsEditing] = useState(false);
   const [passwordBaru, setPasswordBaru] = useState("");
   const [loading, setLoading] = useState(false);
   const [notifikasi, setNotifikasi] = useState({ teks: "", tipe: "" });
 
-  // --- HANDLERS ---
-  const handleSimpanPassword = async () => {
+  const handleSimpanPassword = async (e) => {
+    e.preventDefault(); // 🛡️ PERBAIKAN: Cegah reload
     if (!passwordBaru || passwordBaru.length < 6) {
       setNotifikasi({ teks: "⚠️ Password minimal 6 karakter!", tipe: "error" });
       return;
@@ -30,7 +29,6 @@ export default function TabProfilGuru({ dataUser, onLogout }) {
 
     setLoading(true);
     try {
-      // Kita gunakan username yang sudah ada, hanya update password
       const hasil = await updateProfilSiswa(dataUser?._id, dataUser?.username, passwordBaru);
       
       if (hasil.sukses) {
@@ -48,12 +46,14 @@ export default function TabProfilGuru({ dataUser, onLogout }) {
     }
   };
 
+  // 🛡️ PERBAIKAN: Handler Logout yang benar memanggil backend
+  const handleLogout = async () => {
+    await prosesLogout();
+    router.push("/login");
+  };
+
   return (
     <div className={styles.areaKonten} style={{ padding: 0 }}>
-      
-      {/* ------------------------------------------------------------- */}
-      {/* HEADER (Identik dengan Siswa & Beranda) */}
-      {/* ------------------------------------------------------------- */}
       <div className={styles.headerHalaman}>
         <div className={styles.hiasanBulat1}></div>
         <div className={styles.hiasanBulat2}></div>
@@ -66,14 +66,8 @@ export default function TabProfilGuru({ dataUser, onLogout }) {
       </div>
 
       <div style={{ padding: '24px' }}>
-        
-        {/* ------------------------------------------------------------- */}
-        {/* KARTU PROFIL UTAMA */}
-        {/* ------------------------------------------------------------- */}
         <div className={styles.kartuInfo} style={{ transform: 'none', marginBottom: '32px' }}>
-    
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '3px solid #111827', paddingBottom: '16px' }}>
-            
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ width: '64px', height: '64px', backgroundColor: '#fef08a', border: '3px solid #111827', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '4px 4px 0 #111827' }}>
                 <FaChalkboardUser size={32} color="#111827" />
@@ -88,7 +82,6 @@ export default function TabProfilGuru({ dataUser, onLogout }) {
               </div>
             </div>
 
-            {/* Tombol Ganti Password */}
             <button 
               onClick={() => { setIsEditing(!isEditing); setNotifikasi({ teks: "", tipe: "" }); }}
               className={styles.tombolNav}
@@ -98,19 +91,18 @@ export default function TabProfilGuru({ dataUser, onLogout }) {
             </button>
           </div>
 
-          {/* Notifikasi Status */}
           {notifikasi.teks && (
             <div style={{ marginBottom: '16px', padding: '10px', borderRadius: '8px', border: '2px solid #111827', fontSize: '12px', fontWeight: '800', backgroundColor: notifikasi.tipe === 'error' ? '#fecaca' : '#dcfce3' }}>
               {notifikasi.teks}
             </div>
           )}
 
-          {/* Konten Data Diri */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <InfoRow icon={<FaIdCard />} label="Username" value={`@${dataUser?.username || "-"}`} highlight />
             
             {isEditing ? (
-              <div style={{ marginTop: '4px', animation: 'slideDown 0.2s ease-out' }}>
+              // 🛡️ PERBAIKAN: Dibungkus form agar mendukung "Enter" key
+              <form onSubmit={handleSimpanPassword} style={{ marginTop: '4px', animation: 'slideDown 0.2s ease-out' }}>
                 <label style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Ganti Kata Sandi</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input 
@@ -121,14 +113,14 @@ export default function TabProfilGuru({ dataUser, onLogout }) {
                     style={{ flex: 1, padding: '10px', border: '3px solid #111827', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px' }}
                   />
                   <button 
-                    onClick={handleSimpanPassword}
+                    type="submit"
                     disabled={loading}
                     style={{ backgroundColor: '#22c55e', color: 'white', border: '3px solid #111827', borderRadius: '8px', padding: '0 15px', cursor: 'pointer', boxShadow: '2px 2px 0 #111827' }}
                   >
                     {loading ? "..." : <FaCheck />}
                   </button>
                 </div>
-              </div>
+              </form>
             ) : (
               <>
                 <InfoRow icon={<FaHashtag />} label="ID Pengajar" value={dataUser?.nomorPeserta || "-"} />
@@ -136,13 +128,10 @@ export default function TabProfilGuru({ dataUser, onLogout }) {
               </>
             )}
           </div>
-
         </div>
 
-        {/* ------------------------------------------------------------- */}
-        {/* TOMBOL LOGOUT */}
-        {/* ------------------------------------------------------------- */}
-        <button onClick={onLogout} className={styles.tombolLogout} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '16px', backgroundColor: 'white', border: '4px solid #111827', borderRadius: '16px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '6px 6px 0 #ef4444', transition: '0.1s' }}>
+        {/* 🛡️ PERBAIKAN: Gunakan handleLogout yang baru */}
+        <button onClick={handleLogout} className={styles.tombolLogout} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '16px', backgroundColor: 'white', border: '4px solid #111827', borderRadius: '16px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '6px 6px 0 #ef4444', transition: '0.1s' }}>
           <FaArrowRightFromBracket /> KELUAR APLIKASI
         </button>
 
@@ -151,7 +140,6 @@ export default function TabProfilGuru({ dataUser, onLogout }) {
   );
 }
 
-// Re-usable InfoRow (Internal Optimized)
 function InfoRow({ icon, label, value, highlight = false }) {
   return (
     <div style={{ 
