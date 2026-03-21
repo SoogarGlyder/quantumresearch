@@ -102,24 +102,38 @@ export async function hapusAkunSiswa(idSiswa) {
 // 4. MANAJEMEN JADWAL
 // ============================================================================
 
-export async function ambilSemuaJadwal() {
-  try {
-    await connectToDatabase();
-    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak!");
-
-    const jadwal = await Jadwal.find({}).sort({ tanggal: 1 }).lean();
-    return responseHelper.success("Data jadwal dimuat.", serialize(jadwal));
-  } catch (error) {
-    return responseHelper.error("Gagal mengambil jadwal.", error);
-  }
-}
-
 export async function tambahJadwal(dataForm) {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak!");
 
-    await Jadwal.create(dataForm);
+    // 1. Backend pintar mencari data Guru berdasarkan Kode yang diketik Admin
+    // Kita gunakan regex case-insensitive agar admin bebas ketik mtk-01 atau MTK-01
+    const guru = await User.findOne({ 
+      peran: "guru", 
+      kodePengajar: { $regex: new RegExp(`^${dataForm.pengajar}$`, "i") } 
+    });
+
+    if (!guru) {
+      return responseHelper.error(`Gagal: Pengajar dengan kode "${dataForm.pengajar}" tidak ditemukan!`);
+    }
+
+    // 2. Susun payload sesuai permintaan ketat Schema MongoDB
+    const payloadJadwal = {
+      tanggal: dataForm.tanggal,
+      mapel: dataForm.mapel,
+      kelasTarget: dataForm.kelasTarget,
+      jamMulai: dataForm.jamMulai,
+      jamSelesai: dataForm.jamSelesai,
+      pertemuan: dataForm.pertemuan,
+      
+      // Ini 3 serangkai yang ditagih MongoDB:
+      pengajarId: guru._id,
+      namaPengajar: guru.nama,
+      kodePengajar: guru.kodePengajar
+    };
+
+    await Jadwal.create(payloadJadwal);
     revalidatePath("/admin/jadwal");
     return responseHelper.success("Jadwal baru berhasil dibuat!");
   } catch (error) {
@@ -127,28 +141,36 @@ export async function tambahJadwal(dataForm) {
   }
 }
 
-/**
- * FUNGSI YANG HILANG TADI: editJadwal
- */
 export async function editJadwal(id, dataBaru) {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak!");
 
-    const update = await Jadwal.findByIdAndUpdate(
-      id,
-      {
-        pengajarId: dataBaru.pengajarId,
-        namaPengajar: dataBaru.namaPengajar,
-        kodePengajar: dataBaru.kodePengajar,
-        mapel: dataBaru.mapel,
-        pertemuan: dataBaru.pertemuan,
-        jamMulai: dataBaru.jamMulai,
-        jamSelesai: dataBaru.jamSelesai,
-        kelasTarget: dataBaru.kelasTarget
-      },
-      { new: true }
-    );
+    // Siapkan wadah update dasar
+    let payloadUpdate = {
+      pertemuan: dataBaru.pertemuan,
+      jamMulai: dataBaru.jamMulai,
+      jamSelesai: dataBaru.jamSelesai,
+    };
+
+    // Jika admin juga mengubah/mengirim kode pengajar saat edit
+    if (dataBaru.pengajar) {
+      const guru = await User.findOne({ 
+        peran: "guru", 
+        kodePengajar: { $regex: new RegExp(`^${dataBaru.pengajar}$`, "i") } 
+      });
+
+      if (!guru) {
+        return responseHelper.error(`Gagal: Pengajar dengan kode "${dataBaru.pengajar}" tidak ditemukan!`);
+      }
+
+      // Masukkan 3 serangkai yang baru
+      payloadUpdate.pengajarId = guru._id;
+      payloadUpdate.namaPengajar = guru.nama;
+      payloadUpdate.kodePengajar = guru.kodePengajar;
+    }
+
+    const update = await Jadwal.findByIdAndUpdate(id, payloadUpdate, { new: true });
 
     if (!update) return responseHelper.error("Jadwal tidak ditemukan.");
 
@@ -156,19 +178,6 @@ export async function editJadwal(id, dataBaru) {
     return responseHelper.success("Jadwal berhasil diperbarui!");
   } catch (error) {
     return responseHelper.error("Terjadi kesalahan saat edit jadwal.", error);
-  }
-}
-
-export async function hapusJadwal(idJadwal) {
-  try {
-    await connectToDatabase();
-    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak!");
-
-    await Jadwal.findByIdAndDelete(idJadwal);
-    revalidatePath("/admin/jadwal");
-    return responseHelper.success("Jadwal telah dihapus.");
-  } catch (error) {
-    return responseHelper.error("Gagal menghapus jadwal.", error);
   }
 }
 
