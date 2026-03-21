@@ -1,4 +1,3 @@
-// File: app/page.tsx
 import connectToDatabase from "../lib/db";
 import User from "../models/User";
 import StudySession from "../models/StudySession";
@@ -19,10 +18,13 @@ export default async function Home() {
 
   if (!karcis) redirect("/login");
 
-  // 1. Ambil data User (Tanpa password)
+  // 1. Ambil data User
   const userLogin = await User.findById(karcis).select("-password").lean();
   
-  if (!userLogin) redirect("/login");
+  // 🛡️ ANTI INFINITE LOOP: Jika cookie ada tapi user dihapus Admin, hapus cookie!
+  if (!userLogin) {
+    redirect("/login?clear=true"); 
+  }
 
   // ==========================================================================
   // CABANG 1: ADMIN -> Lempar ke Dashboard Admin
@@ -31,11 +33,12 @@ export default async function Home() {
     redirect("/admin");
   }
 
-// ==========================================================================
+  // ==========================================================================
   // CABANG 2: PENGAJAR / GURU
   // ==========================================================================
   if (userLogin.peran === "pengajar" || userLogin.peran === "guru") {
-    const jadwalGuru = await Jadwal.find({ pengajar: userLogin.nama })
+    // 🛠️ PERBAIKAN: Gunakan kodePengajar sesuai standarisasi Fase 3
+    const jadwalGuru = await Jadwal.find({ kodePengajar: userLogin.kodePengajar })
       .sort({ tanggal: 1 })
       .lean();
 
@@ -43,7 +46,6 @@ export default async function Home() {
       <TeacherApp 
         dataUser={serialize(userLogin)} 
         jadwal={serialize(jadwalGuru)} 
-        onLogout={null}
       />
     );
   }
@@ -52,22 +54,21 @@ export default async function Home() {
   // CABANG 3: SISWA
   // ==========================================================================
   const statsSiswaPromise = StudySession.aggregate([
-    { $match: { siswaId: userLogin._id, status: "Selesai" } },
+    // 🛠️ PERBAIKAN: Deteksi status dengan huruf kecil / tidak case sensitive
+    { $match: { siswaId: userLogin._id, status: { $regex: /selesai/i } } },
     { 
       $group: { 
         _id: null, 
         totalMenit: { 
           $sum: { 
-            $divide: [
-              { $subtract: ["$waktuSelesai", "$waktuMulai"] }, 
-              60000 
-            ] 
+            // Tambahkan $max agar tidak ada waktu minus jika data salah
+            $max: [0, { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60000] }] 
           } 
         },
         totalSesi: { $count: {} }
       } 
     }
-  ]);
+  ]).exec(); // Gunakan .exec() agar stabil di Promise.all
 
   const [riwayatRaw, jadwalRaw, statsRaw] = await Promise.all([
     StudySession.find({ siswaId: userLogin._id })

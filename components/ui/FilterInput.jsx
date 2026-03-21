@@ -1,50 +1,53 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import styles from "./FilterInput.module.css";
 
 export default function FilterInput({ 
   placeholder = "Ketik di sini...", 
-  value: propValue, // Nilai dari parent
+  value: propValue = "", // Beri default string kosong agar tidak undefined
   onChange, 
   type = "text",
   className = "",
-  delay = 500, // Jeda default 500ms
+  delay = 500,
   ...props
 }) {
-  // 1. State lokal untuk menangani input yang "instan" (tanpa lag)
   const [localValue, setLocalValue] = useState(propValue);
+  const isTyping = useRef(false); // 🛡️ PENAWAR: Penanda apakah user sedang mengetik
 
-  // 2. Sinkronisasi jika propValue diubah dari luar (misal: tombol Reset diklik)
+  // 1. Sinkronisasi dari Parent HANYA JIKA user tidak sedang mengetik
   useEffect(() => {
-    setLocalValue(propValue);
+    if (!isTyping.current) {
+      setLocalValue(propValue);
+    }
   }, [propValue]);
 
-  // 3. Logika Debounce
+  // 2. Logika Debounce yang lebih aman
   useEffect(() => {
-    // Jika tipenya bukan text atau search, tidak perlu debounce (langsung saja)
     if (type !== "text" && type !== "search") return;
 
-    // Jangan jalankan debounce jika nilai lokal masih sama dengan nilai di parent
-    if (localValue === propValue) return;
-
     const timer = setTimeout(() => {
-      // Kirim event buatan ke parent agar tidak merusak logic (e.target.value)
-      onChange({ target: { value: localValue } });
+      // Setelah delay habis, anggap user selesai mengetik sementara
+      isTyping.current = false; 
+      
+      // Kirim data ke parent jika berbeda
+      if (localValue !== propValue) {
+        onChange({ target: { name: props.name, value: localValue } }); // Tambahkan name agar parent tahu field mana yang berubah
+      }
     }, delay);
 
-    // Bersihkan timer jika user mengetik lagi sebelum waktu habis
     return () => clearTimeout(timer);
-  }, [localValue, delay, onChange, propValue, type]);
+  }, [localValue, delay, onChange, type, propValue, props.name]);
 
-  // 4. Handler untuk input non-debounce (date, month, select, dll)
+  // 3. Handler Input
   const handleChange = (e) => {
-    const val = e.target.value;
-    setLocalValue(val);
+    isTyping.current = true; // Tandai user sedang ngetik
+    setLocalValue(e.target.value);
 
-    // Jika bukan tipe text, langsung kirim ke parent tanpa nunggu jeda
+    // Langsung kirim untuk tipe non-teks
     if (type !== "text" && type !== "search") {
       onChange(e);
+      isTyping.current = false;
     }
   };
 

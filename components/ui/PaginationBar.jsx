@@ -9,29 +9,32 @@ export default function PaginationBar({ totalPages }) {
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  // 1. Ambil halaman aktif dari URL (default ke 1 jika tidak ada)
-  const currentPage = Number(searchParams.get("page")) || 1;
+  // 🛡️ PENAWAR: Pastikan angka valid dan tidak tembus batas
+  const rawPage = Number(searchParams.get("page"));
+  const safeTotal = Math.max(1, Number(totalPages) || 1);
+  let currentPage = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+  
+  // Jangan biarkan user berada di halaman 5 jika total halaman cuma 2
+  if (currentPage > safeTotal) currentPage = safeTotal;
 
-  if (totalPages <= 1) return null;
+  // Jika cuma 1 halaman, sembunyikan pagination
+  if (safeTotal <= 1) return null;
 
-  // 2. Fungsi sakti untuk mengubah URL tanpa reload halaman
   const handlePageChange = (newPage) => {
     const params = new URLSearchParams(searchParams);
     
-    if (newPage > 1) {
+    // Validasi ulang sebelum ubah URL
+    if (newPage > 1 && newPage <= safeTotal) {
       params.set("page", newPage.toString());
     } else {
-      params.delete("page"); // Bersihkan URL jika balik ke hal 1
+      params.delete("page"); 
     }
 
-    // Update URL secara halus (shallow routing)
     replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   return (
     <div className={styles.wadahPagination}>
-      
-      {/* Tombol Mundur */}
       <button 
         disabled={currentPage <= 1} 
         onClick={() => handlePageChange(currentPage - 1)}
@@ -41,21 +44,18 @@ export default function PaginationBar({ totalPages }) {
         <FaChevronLeft /> Prev
       </button>
 
-      {/* Indikator Posisi */}
       <span className={styles.teksHalaman}>
-        Hal <b>{currentPage}</b> / {totalPages}
+        Hal <b>{currentPage}</b> / {safeTotal}
       </span>
 
-      {/* Tombol Maju */}
       <button 
-        disabled={currentPage >= totalPages} 
+        disabled={currentPage >= safeTotal} 
         onClick={() => handlePageChange(currentPage + 1)}
         className={styles.tombolPage}
         aria-label="Halaman Selanjutnya"
       >
         Next <FaChevronRight />
       </button>
-
     </div>
   );
 }
