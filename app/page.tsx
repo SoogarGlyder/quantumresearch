@@ -8,35 +8,45 @@ import { redirect } from "next/navigation";
 import StudentApp from "../components/StudentApp";
 import TeacherApp from "../components/TeacherApp";
 
+// Import Konstitusi Quantum
+import { 
+  PERAN, 
+  STATUS_SESI, 
+  KONFIGURASI_SISTEM, 
+  LIMIT_DATA, 
+  LABEL_SISTEM 
+} from "../utils/constants";
+
 const serialize = (data: any) => JSON.parse(JSON.stringify(data));
 
 export default async function Home() {
   await connectToDatabase();
 
   const cookieStore = await cookies();
-  const karcis = cookieStore.get("karcis_quantum")?.value;
+  const karcis = cookieStore.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
 
-  if (!karcis) redirect("/login");
+  // Jika tidak ada cookie, tendang ke login sesuai konstanta
+  if (!karcis) redirect(KONFIGURASI_SISTEM.PATH_LOGIN);
 
-  // 1. Ambil data User
+  // Ambil data User
   const userLogin = await User.findById(karcis).select("-password").lean();
   
-  // 🛡️ ANTI INFINITE LOOP: Jika cookie ada tapi user dihapus Admin, hapus cookie!
+  // Jika cookie ada tapi user tidak ditemukan (mungkin dihapus), bersihkan sesi
   if (!userLogin) {
-    redirect("/login?clear=true"); 
+    redirect(`${KONFIGURASI_SISTEM.PATH_LOGIN}?${LABEL_SISTEM.REDIRECT_CLEAR}`); 
   }
 
   // ==========================================================================
-  // CABANG 1: ADMIN -> Lempar ke Dashboard Admin
+  // CABANG 1: ADMIN (Direct to Admin Home)
   // ==========================================================================
-  if (userLogin.peran === "admin") {
-    redirect("/admin");
+  if (userLogin.peran === PERAN.ADMIN.id) {
+    redirect(PERAN.ADMIN.home);
   }
 
   // ==========================================================================
-  // CABANG 2: PENGAJAR / GURU
+  // CABANG 2: PENGAJAR (Zero Hardcode Check)
   // ==========================================================================
-  if (userLogin.peran === "pengajar" || userLogin.peran === "guru") {
+  if (userLogin.peran === PERAN.PENGAJAR.id) {
     const jadwalGuru = await Jadwal.find({ kodePengajar: userLogin.kodePengajar })
       .sort({ tanggal: 1 })
       .lean();
@@ -53,27 +63,36 @@ export default async function Home() {
   // ==========================================================================
   // CABANG 3: SISWA
   // ==========================================================================
+  
+  // Pipeline Agregasi Statistik yang sinkron dengan Profil & Klasemen
   const statsSiswaPromise = StudySession.aggregate([
-    // 🛠️ PERBAIKAN: Deteksi status dengan huruf kecil / tidak case sensitive
-    { $match: { siswaId: userLogin._id, status: { $regex: /selesai/i } } },
+    { 
+      $match: { 
+        siswaId: userLogin._id, 
+        status: STATUS_SESI.SELESAI.id 
+      } 
+    },
     { 
       $group: { 
         _id: null, 
         totalMenit: { 
           $sum: { 
-            // Tambahkan $max agar tidak ada waktu minus jika data salah
-            $max: [0, { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60000] }] 
+            // Logika: Durasi Belajar + Bonus Konsul
+            $add: [
+              { $max: [0, { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60000] }] },
+              { $ifNull: ["$konsulExtraMenit", 0] }
+            ]
           } 
         },
         totalSesi: { $count: {} }
       } 
     }
-  ]).exec(); // Gunakan .exec() agar stabil di Promise.all
+  ]).exec();
 
   const [riwayatRaw, jadwalRaw, statsRaw] = await Promise.all([
     StudySession.find({ siswaId: userLogin._id })
       .sort({ waktuMulai: -1 })
-      .limit(50)
+      .limit(LIMIT_DATA.DASHBOARD_HISTORY) // Pakai limit dari konstanta
       .lean(),
     Jadwal.find({ kelasTarget: userLogin.kelas })
       .sort({ tanggal: 1 })

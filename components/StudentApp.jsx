@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 import { prosesHasilScan } from "../actions/scanAction";
 import { prosesLogout } from "../actions/authAction";
 
-import { MODE_SCAN, PREFIX_BARCODE } from "../utils/constants";
+import { MODE_SCAN, PREFIX_BARCODE, TIPE_SESI, STATUS_SESI, KONFIGURASI_SISTEM } from "../utils/constants";
 import { cekPesanErrorScanner } from "../utils/formatHelper";
 
 import TabBeranda from "./student/TabBeranda";
@@ -48,7 +48,11 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
   const [mapelPilihan, setMapelPilihan] = useState("");
 
   const apakahError = cekPesanErrorScanner(pesanSistem);
-  const adaKonsulAktif = riwayat?.some(r => r.jenisSesi === "Konsul" && r.status === "Berjalan");
+  
+  // 🛡️ ZERO HARDCODE: Deteksi Sesi Konsul Aktif menggunakan Konstanta
+  const adaKonsulAktif = riwayat?.some(
+    r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id
+  );
 
   const resetScanner = () => { 
     setHasilScan(""); 
@@ -57,7 +61,7 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
 
   const klikLogout = async () => { 
     await prosesLogout(); 
-    router.push("/login"); 
+    router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
   };
 
   async function saatBarcodeTerbaca(teksDariKamera) {

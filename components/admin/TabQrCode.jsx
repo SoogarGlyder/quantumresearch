@@ -6,6 +6,7 @@
 import { useState } from "react";
 import QRCode from "react-qr-code"; 
 
+// 👈 Import Otak Utama (Prefix Barcode & Daftar Mapel)
 import { PREFIX_BARCODE, OPSI_MAPEL_KELAS } from "../../utils/constants";
 import styles from "../../app/admin/AdminPage.module.css";
 
@@ -14,7 +15,7 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 export default function TabQrCode() {
   
-  // --- STATE ---
+  // --- STATE (Default ke QR Konsul sesuai Konstitusi) ---
   const [teksQR, setTeksQR] = useState(PREFIX_BARCODE.KONSUL);
 
   // --- HANDLERS ---
@@ -25,6 +26,7 @@ export default function TabQrCode() {
   const tanganiTemplateKelas = (e) => {
     const mapel = e.target.value;
     if (mapel) {
+      // 🛡️ ZERO HARDCODE: Menggabungkan prefix resmi dengan nama mapel
       setTeksQR(`${PREFIX_BARCODE.KELAS}${mapel.toUpperCase()}`);
     }
   };
@@ -35,11 +37,9 @@ export default function TabQrCode() {
   return (
     <div className={`${styles.isiTab} ${styles.wadahQr}`}>
       
-      {/* ------------------------------------------------------------- */}
-      {/* KONTROL PABRIK QR (Akan disembunyikan saat di-print) */}
-      {/* ------------------------------------------------------------- */}
+      {/* KONTROL PABRIK QR (Disembunyikan saat print) */}
       <div className={`${styles.SembunyiPrint} ${styles.wadahKontrolQr}`}>
-        <h2 className={styles.judulPabrikQr}>Pabrik QR Code</h2>
+        <h2 className={styles.judulPabrikQr}>Pabrik QR Code Resmi</h2>
         
         {/* Input Manual */}
         <input 
@@ -47,28 +47,28 @@ export default function TabQrCode() {
           value={teksQR} 
           onChange={tanganiPerubahanInput} 
           className={styles.inputPabrikQr}
-          placeholder="Ketik kode QR di sini..."
+          placeholder="Ketik kode QR manual..."
         />
         
         {/* Tombol Template Cepat */}
         <div className={styles.wadahTombolTemplateQr}>
           
-          {/* Opsi 1: Generate QR Konsul */}
+          {/* Opsi 1: Reset ke QR Konsul */}
           <button 
             onClick={() => setTeksQR(PREFIX_BARCODE.KONSUL)} 
             className={styles.tombolTemplateKonsul}
           >
-            💡 QR Konsul Bebas
+            💡 QR KONSUL BEBAS
           </button>
           
-          {/* Opsi 2: Generate QR Kelas via Dropdown */}
+          {/* Opsi 2: Generate QR Kelas via Dropdown Resmi */}
           <select 
             onChange={tanganiTemplateKelas} 
             className={styles.tombolTemplateKelas}
             style={{ textAlign: 'center', outline: 'none' }}
             value="" 
           >
-            <option value="" disabled>📚 Cetak QR Kelas (Pilih Mapel) ⬇️</option>
+            <option value="" disabled>📚 TEMPLATE QR KELAS (PILIH MAPEL) ⬇️</option>
             {OPSI_MAPEL_KELAS.map(mapel => (
               <option key={mapel} value={mapel}>{mapel}</option>
             ))}
@@ -77,23 +77,17 @@ export default function TabQrCode() {
         </div>
       </div>
       
-      {/* ------------------------------------------------------------- */}
-      {/* TAMPILAN QR KERTAS (Area yang akan ikut tercetak ke kertas) */}
-      {/* ------------------------------------------------------------- */}
+      {/* TAMPILAN QR KERTAS (Area Cetak Fisik) */}
       <div className={styles.qrBox}>
-        {/* Library QR Code merender SVG yang anti-pecah saat dicetak besar */}
         <QRCode value={teksQR || "KOSONG"} size={250} />
         <p className={styles.teksHasilQr}>{teksQR}</p>
       </div>
       
-      {/* ------------------------------------------------------------- */}
-      {/* TOMBOL CETAK FISIK */}
-      {/* ------------------------------------------------------------- */}
       <button 
         onClick={() => window.print()} 
         className={`${styles.SembunyiPrint} ${styles.tombolCetakQr}`}
       >
-        🖨️ Cetak Barcode ke Kertas
+        🖨️ CETAK BARCODE KE KERTAS
       </button>
       
     </div>

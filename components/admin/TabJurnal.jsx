@@ -4,18 +4,16 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react";
-// 👇 Import navigasi Next.js
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 import DetailJurnal from "./DetailJurnal";
-// 👇 Import Komponen Toast Brutalism
 import BrutalToast from "../ui/BrutalToast";
 
 import { ambilDetailJurnal, simpanJurnal } from "../../actions/adminAction";
 import { formatTanggal, formatYYYYMMDD, potongDataPagination } from "../../utils/formatHelper";
-import { OPSI_KELAS } from "../../utils/constants";
+import { OPSI_KELAS, LIMIT_DATA } from "../../utils/constants";
 
 import { FaBookBookmark, FaMagnifyingGlass } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
@@ -23,19 +21,18 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 // 2. MAIN COMPONENT (DAFTAR JURNAL)
 // ============================================================================
-export default function TabJurnal({ dataJadwal, muatData }) {
-  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+export default function TabJurnal({ dataJadwal = [], muatData }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  // Ambil halaman aktif langsung dari URL (Default ke 1)
   const page = Number(searchParams.get("page")) || 1;
 
   const [filterBulan, setFilterBulan] = useState("");
   const [filterKelas, setFilterKelas] = useState("");
   const [cariTopik, setCariTopik] = useState(""); 
-  const ITEMS_PER_PAGE = 20;
+  
+  const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   const [selectedJadwalId, setSelectedJadwalId] = useState(null);
   const [detailJadwal, setDetailJadwal] = useState(null);
@@ -44,11 +41,8 @@ export default function TabJurnal({ dataJadwal, muatData }) {
   
   const [loadingJurnal, setLoadingJurnal] = useState(false);
   const [pesan, setPesan] = useState("");
-  
-  // 👇 State untuk memicu Toast
   const [toastMsg, setToastMsg] = useState("");
 
-  // SINKRONISASI FILTER: Jika kriteria pencarian berubah, reset URL page ke 1
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
@@ -57,46 +51,29 @@ export default function TabJurnal({ dataJadwal, muatData }) {
     }
   }, [filterBulan, filterKelas, cariTopik]);
 
-  const jadwalTersedia = useMemo(() => {
-    const hariIni = formatYYYYMMDD(new Date());
-
-    let jadwal = dataJadwal.filter(j => j.tanggal <= hariIni); 
-    
-    if (filterBulan) jadwal = jadwal.filter(j => j.tanggal.startsWith(filterBulan));
-    if (filterKelas) jadwal = jadwal.filter(j => j.kelasTarget === filterKelas);
-    if (cariTopik) {
-      const keyword = cariTopik.toLowerCase();
-      jadwal = jadwal.filter(j => 
-        (j.bab && j.bab.toLowerCase().includes(keyword)) || 
-        (j.subBab && j.subBab.toLowerCase().includes(keyword)) ||
-        (j.mapel && j.mapel.toLowerCase().includes(keyword))
-      );
-    }
-
-    return jadwal.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-  }, [dataJadwal, filterBulan, filterKelas, cariTopik]);
-
-  // Menggunakan 'page' yang ditarik dari URL
-  const { totalPage, dataTerpotong: jadwalHalIni } = potongDataPagination(jadwalTersedia, page, ITEMS_PER_PAGE);
-
+  // --- HANDLER BUKA JURNAL (SUDAH DIPERBAIKI) ---
   const bukaJurnal = async (idJadwal) => {
     setSelectedJadwalId(idJadwal);
     setLoadingJurnal(true);
     setPesan("Menghubungi server...");
 
     const hasil = await ambilDetailJurnal(idJadwal);
-    if (hasil.sukses) {
-      setDetailJadwal(hasil.jadwal);
-      setDataSiswa(hasil.dataSiswa);
+    
+    // 🛡️ PERBAIKAN: Masuk ke .data dulu baru ambil jadwal & dataSiswa
+    if (hasil.sukses && hasil.data) {
+      const { jadwal, dataSiswa: listSiswa } = hasil.data;
+
+      setDetailJadwal(jadwal);
+      setDataSiswa(listSiswa);
       setFormJurnal({
-        bab: hasil.jadwal.bab || "",
-        subBab: hasil.jadwal.subBab || "",
-        galeriLink: hasil.jadwal.galeriPapan?.join(", ") || "",
-        fotoBersama: hasil.jadwal.fotoBersama || "" 
+        bab: jadwal.bab || "",
+        subBab: jadwal.subBab || "",
+        galeriLink: jadwal.galeriPapan?.join(", ") || "",
+        fotoBersama: jadwal.fotoBersama || "" 
       });
       setPesan("");
     } else {
-      setPesan(hasil.pesan);
+      setPesan(hasil.pesan || "Gagal memuat detail jurnal.");
     }
     setLoadingJurnal(false);
   };
@@ -117,34 +94,45 @@ export default function TabJurnal({ dataJadwal, muatData }) {
     const payloadJurnal = { bab: formJurnal.bab, subBab: formJurnal.subBab, galeriPapan: arrayGaleri, fotoBersama: formJurnal.fotoBersama };
 
     const hasil = await simpanJurnal(selectedJadwalId, payloadJurnal, dataSiswa);
-    setPesan(hasil.pesan);
-
+    
     if (hasil.sukses) {
       if (typeof muatData === 'function') muatData();
-      // 👇 Memunculkan Toast sukses. Setelah toast tertutup (3 detik), jurnal baru ditutup.
       setToastMsg("✅ JURNAL BERHASIL DISIMPAN!");
-      setLoadingJurnal(false); // Matikan loading agar form bisa diklik lagi atau user bisa melihat toast dengan santai
     } else {
-      setLoadingJurnal(false);
+      setPesan(hasil.pesan);
     }
+    setLoadingJurnal(false);
   };
 
-  // ============================================================================
-  // 3. RENDER UI
-  // ============================================================================
-  
-  // Render Wrapper (Menambahkan BrutalToast di luar layer)
+  const jadwalTersedia = useMemo(() => {
+    const hariIni = formatYYYYMMDD(new Date());
+    let jadwal = (dataJadwal || []).filter(j => j.tanggal <= hariIni); 
+    
+    if (filterBulan) jadwal = jadwal.filter(j => j.tanggal.startsWith(filterBulan));
+    if (filterKelas) jadwal = jadwal.filter(j => j.kelasTarget === filterKelas);
+    if (cariTopik) {
+      const keyword = cariTopik.toLowerCase();
+      jadwal = jadwal.filter(j => 
+        (j.bab && j.bab.toLowerCase().includes(keyword)) || 
+        (j.subBab && j.subBab.toLowerCase().includes(keyword)) ||
+        (j.mapel && j.mapel.toLowerCase().includes(keyword))
+      );
+    }
+    return jadwal.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+  }, [dataJadwal, filterBulan, filterKelas, cariTopik]);
+
+  const { totalPage, dataTerpotong: jadwalHalIni } = potongDataPagination(jadwalTersedia, page, ITEMS_PER_PAGE);
+
   const renderDenganToast = (konten) => (
     <>
       {konten}
-      {/* 👇 Pemasangan Brutal Toast */}
       {toastMsg && (
         <BrutalToast 
           pesan={toastMsg} 
           tipe="sukses" 
           onClose={() => {
             setToastMsg("");
-            tutupJurnal(); // Tutup halaman edit jurnal setelah toast selesai
+            tutupJurnal();
           }} 
         />
       )}
@@ -177,8 +165,6 @@ export default function TabJurnal({ dataJadwal, muatData }) {
 
   return renderDenganToast(
     <div className={`${styles.isiTab} ${styles.SembunyiPrint}`}>
-      
-      {/* HEADER & FILTER */}
       <div className={styles.headerTabWrapper}>
         <h2 className={styles.judulIsiTab} style={{margin: 0}}><FaBookBookmark /> Jurnal Kelas & LMS</h2>
       </div>
@@ -187,7 +173,7 @@ export default function TabJurnal({ dataJadwal, muatData }) {
         <span className={styles.labelFilter}>Filter:</span>
         <FilterInput type="month" value={filterBulan} onChange={(e) => setFilterBulan(e.target.value)} />
         
-        <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className={styles.filterSelect}>
+        <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className={styles.filterSelectMurni}>
           <option value="">Semua Kelas</option>
           {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
         </select>
@@ -206,7 +192,6 @@ export default function TabJurnal({ dataJadwal, muatData }) {
         <button onClick={() => { setFilterBulan(""); setFilterKelas(""); setCariTopik(""); }} className={styles.btnReset}>Reset</button>
       </div>
 
-      {/* TABEL JURNAL */}
       <div className={styles.wadahTabel}>
         <table className={styles.tabelStyle}>
           <thead>
@@ -248,7 +233,6 @@ export default function TabJurnal({ dataJadwal, muatData }) {
         </table>
       </div>
 
-      {/* PaginationBar sekarang mandiri membaca URL */}
       <PaginationBar totalPages={totalPage} />
     </div>
   );

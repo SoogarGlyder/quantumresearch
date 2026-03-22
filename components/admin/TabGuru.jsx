@@ -10,6 +10,9 @@ import PaginationBar from "../ui/PaginationBar";
 import { tambahGuruBaru, hapusGuru } from "../../actions/teacherAction";
 import { potongDataPagination } from "../../utils/formatHelper";
 
+// 👈 Import Konstanta Sistem
+import { STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM } from "../../utils/constants";
+
 import styles from "../../app/admin/AdminPage.module.css";
 
 // ============================================================================
@@ -18,9 +21,11 @@ import styles from "../../app/admin/AdminPage.module.css";
 export default function TabGuru({ dataGuru = [], muatData }) {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
-  const ITEMS_PER_PAGE = 10;
+  
+  // 🛡️ ZERO HARDCODE LIMIT
+  const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // --- STATE: FORM GURU LENGKAP ---
+  // --- STATE: FORM GURU LENGKAP (🛡️ ZERO HARDCODE STATUS) ---
   const initialFormState = { 
     nama: "", 
     nomorPeserta: "", 
@@ -28,7 +33,7 @@ export default function TabGuru({ dataGuru = [], muatData }) {
     noHp: "", 
     kataSandi: "", 
     kodePengajar: "", 
-    status: "aktif" 
+    status: STATUS_USER.AKTIF 
   };
   
   const [formGuru, setFormGuru] = useState(initialFormState);
@@ -38,6 +43,13 @@ export default function TabGuru({ dataGuru = [], muatData }) {
   // --- HANDLERS: CRUD ---
   const simpanGuru = async (e) => { 
     e.preventDefault(); 
+    
+    // 🛡️ Validasi Kata Sandi (jika diisi)
+    if (formGuru.kataSandi && formGuru.kataSandi.length < VALIDASI_SISTEM.MIN_PASSWORD) {
+      setPesanForm(`⚠️ Sandi minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter!`);
+      return;
+    }
+
     setLoadingForm(true); 
     setPesanForm("Memproses..."); 
     
@@ -140,7 +152,10 @@ export default function TabGuru({ dataGuru = [], muatData }) {
           <div className={styles.wadahInputForm}>
             <label className={styles.labelForm}>Kata Sandi Awal *</label>
             <input 
-              type="text" placeholder="Minimal 6 karakter" required 
+              type="text" 
+              // 🛡️ ZERO HARDCODE PLACEHOLDER
+              placeholder={`Minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter`} 
+              required 
               value={formGuru.kataSandi} onChange={e => setFormGuru({...formGuru, kataSandi: e.target.value})} 
               className={styles.formInput} 
             />
@@ -151,10 +166,11 @@ export default function TabGuru({ dataGuru = [], muatData }) {
             <select 
               value={formGuru.status} onChange={e => setFormGuru({...formGuru, status: e.target.value})} 
               className={styles.formInput} 
-              style={{ fontWeight: '900', color: formGuru.status === 'tidak aktif' ? '#ef4444' : '#15803d' }}
+              style={{ fontWeight: '900', color: formGuru.status === STATUS_USER.NONAKTIF ? '#ef4444' : '#15803d' }}
             >
-              <option value="aktif">🟢 Aktif (Bisa Login)</option>
-              <option value="tidak aktif">🔴 Nonaktif (Blokir)</option>
+              {/* 🛡️ ZERO HARDCODE STATUS */}
+              <option value={STATUS_USER.AKTIF}>🟢 Aktif (Bisa Login)</option>
+              <option value={STATUS_USER.NONAKTIF}>🔴 Nonaktif (Blokir)</option>
             </select>
           </div>
 
@@ -191,7 +207,8 @@ export default function TabGuru({ dataGuru = [], muatData }) {
                 <tr><td colSpan="4" className={styles.selKosong}>Belum ada data pengajar.</td></tr>
               ) : (
                 dataGuruHalIni.map(g => {
-                  const isNonaktif = g.status === 'tidak aktif';
+                  // 🛡️ ZERO HARDCODE STATUS
+                  const isNonaktif = g.status === STATUS_USER.NONAKTIF;
                   return (
                     <tr key={g._id} style={{ opacity: isNonaktif ? 0.6 : 1 }}>
                       <td>

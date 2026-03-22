@@ -1,0 +1,62 @@
+/* Base Style untuk Wadah Toast */
+.toastBase {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 16px 24px;
+  border: var(--brutal-border);
+  box-shadow: var(--brutal-shadow);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  font-weight: 900;
+  animation: brutalPop 0.3s ease-out forwards;
+}
+
+/* Modifier: Sukses */
+.toastSukses {
+  background-color: var(--brutal-kuning);
+  color: var(--brutal-hitam);
+}
+
+/* Modifier: Error/Peringatan */
+.toastError {
+  background-color: var(--brutal-merah);
+  color: var(--brutal-putih);
+}
+
+/* Teks Pesan */
+.toastText {
+  font-size: 15px;
+}
+
+/* Tombol Tutup */
+.closeButton {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  margin-left: 16px;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: transform 0.1s ease;
+}
+
+.closeButton:hover {
+  transform: scale(1.1);
+}
+
+/* Animasi Pop (Opsional, jika belum ada di globals.css) */
+@keyframes brutalPop {
+  0% {
+    transform: translateY(100px) scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}

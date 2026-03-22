@@ -2,53 +2,39 @@
 
 import { useEffect } from "react";
 import { FaCheck, FaTriangleExclamation, FaXmark } from "react-icons/fa6";
+import { KONFIGURASI_SISTEM } from "@/utils/constants";
+import styles from "./BrutalToast.module.css"; // 👈 Import CSS Module
 
 export default function BrutalToast({ pesan, tipe = "sukses", onClose }) {
-  // Otomatis hilang setelah 3 detik
+  // Otomatis hilang sesuai konfigurasi sistem
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 3000);
+    }, KONFIGURASI_SISTEM.TOAST_DELAY_MS);
+    
     return () => clearTimeout(timer);
   }, [onClose]);
 
   const isSukses = tipe === "sukses";
 
+  // Tentukan class berdasarkan tipe
+  const toastClass = isSukses ? styles.toastSukses : styles.toastError;
+
   return (
-    <div style={{
-      position: "fixed",
-      bottom: "24px",
-      right: "24px",
-      backgroundColor: isSukses ? "var(--brutal-kuning)" : "var(--brutal-merah)",
-      color: isSukses ? "var(--brutal-hitam)" : "var(--brutal-putih)",
-      padding: "16px 24px",
-      border: "var(--brutal-border)",
-      boxShadow: "var(--brutal-shadow)",
-      borderRadius: "8px",
-      display: "flex",
-      alignItems: "center",
-      gap: "12px",
-      zIndex: 9999, // Selalu di paling atas
-      fontWeight: "900",
-      animation: "brutalPop 0.3s ease-out forwards" // Memanggil animasi dari globals.css
-    }}>
+    <div className={`${styles.toastBase} ${toastClass}`}>
       {isSukses ? <FaCheck size={20} /> : <FaTriangleExclamation size={20} />}
       
-      <span style={{ fontSize: "15px" }}>{pesan}</span>
+      <span className={styles.toastText}>{pesan}</span>
       
       <button 
         onClick={onClose} 
-        style={{ 
-          background: "transparent", 
-          border: "none", 
-          cursor: "pointer", 
-          marginLeft: "16px",
-          display: "flex",
-          alignItems: "center"
-        }}
+        className={styles.closeButton}
         aria-label="Tutup Notifikasi"
       >
-        <FaXmark size={20} color={isSukses ? "var(--brutal-hitam)" : "var(--brutal-putih)"} />
+        <FaXmark 
+          size={20} 
+          color={isSukses ? "var(--brutal-hitam)" : "var(--brutal-putih)"} 
+        />
       </button>
     </div>
   );

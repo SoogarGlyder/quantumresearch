@@ -11,6 +11,9 @@ import {
 } from "react-icons/fa6";
 
 import { simpanJurnalGuru } from "../../actions/teacherAction";
+import { PREFIX_BARCODE } from "../../utils/constants"; // 👈 Import Konstanta
+import { timeHelper } from "../../utils/timeHelper";     // 👈 Import Helper
+
 import styles from "../TeacherApp.module.css";
 
 export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
@@ -20,7 +23,7 @@ export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
   const [pesanJurnal, setPesanJurnal] = useState({ teks: "", tipe: "" });
 
   const jadwalHariIni = useMemo(() => {
-    const hariIni = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+    const hariIni = timeHelper.getTglJakarta(); // 👈 Zero Hardcode Timezone
     return (jadwal || []).filter(j => j?.tanggal === hariIni);
   }, [jadwal]);
 
@@ -62,6 +65,7 @@ export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
 
   return (
     <div className={styles.areaKontenBeranda}>
+      {/* ... (Header Tetap Sama) ... */}
       <div className={styles.headerBeranda} style={{ paddingBottom: '40px' }}>
         <div className={styles.hiasanBulat1}></div>
         <div className={styles.hiasanBulat2}></div>
@@ -106,24 +110,17 @@ export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
 
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
               <div style={{ background: 'white', padding: '16px', border: '4px solid #111827', borderRadius: '16px', display: 'inline-block', boxShadow: '6px 6px 0 #fef08a' }}>
-                {/* 🛡️ PERBAIKAN: Prefix QR disesuaikan standar Admin (QR-KLS-) */}
-                <QRCodeSVG value={`QR-KLS-${jadwalTerpilih._id}`} size={180} level="H" />
+                {/* 🛡️ PERBAIKAN: Format QR disamakan dengan scanAction (QR-KLS-MAPEL) */}
+                <QRCodeSVG value={`${PREFIX_BARCODE.KELAS}${jadwalTerpilih.mapel.toUpperCase()}`} size={180} level="H" />
               </div>
               <p style={{marginTop: '8px', fontSize: '12px', fontWeight: 'bold', color: '#64748b'}}>Arahkan siswa untuk scan QR ini.</p>
             </div>
 
-            {/* 🛡️ PERBAIKAN: Form jurnal selalu terbuka, menghilangkan rasa frustasi guru */}
             <form onSubmit={klikSimpanJurnal} style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '3px dashed #111827', paddingTop: '20px' }}>
               <h3 style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '14px' }}><FaBookBookmark /> Isi Jurnal Mengajar</h3>
               
-              <input 
-                className={styles.opsiMapel} placeholder="Bab Materi..." required
-                value={formJurnal.bab} onChange={e => setFormJurnal({...formJurnal, bab: e.target.value})}
-              />
-              <textarea 
-                className={styles.opsiMapel} placeholder="Detail Sub-bab..." rows={2} required
-                value={formJurnal.subBab} onChange={e => setFormJurnal({...formJurnal, subBab: e.target.value})}
-              />
+              <input className={styles.opsiMapel} placeholder="Bab Materi..." required value={formJurnal.bab} onChange={e => setFormJurnal({...formJurnal, bab: e.target.value})} />
+              <textarea className={styles.opsiMapel} placeholder="Detail Sub-bab..." rows={2} required value={formJurnal.subBab} onChange={e => setFormJurnal({...formJurnal, subBab: e.target.value})} />
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <CldUploadWidget uploadPreset="quantum_unsigned" onSuccess={res => setFormJurnal({...formJurnal, galeriPapan: res.info.secure_url})}>
@@ -166,11 +163,7 @@ export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {jadwalHariIni.map((j) => (
-                  <div 
-                    key={j._id} onClick={() => setJadwalTerpilih(j)}
-                    className={styles.kartuJadwalPintar}
-                    style={{ cursor: 'pointer', backgroundColor: j.bab ? '#dcfce3' : '#fdfbf7' }}
-                  >
+                  <div key={j._id} onClick={() => setJadwalTerpilih(j)} className={styles.kartuJadwalPintar} style={{ cursor: 'pointer', backgroundColor: j.bab ? '#dcfce3' : '#fdfbf7' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                        <div>
                          <h4 style={{ margin: 0, fontSize: '18px', fontWeight: '900' }}>{j.mapel}</h4>

@@ -1,4 +1,3 @@
-// File: components/student/TabBeranda.jsx
 "use client";
 
 // ============================================================================
@@ -8,7 +7,7 @@ import { useMemo, useState, useEffect } from "react";
 import Image from "next/image"; 
 
 import { pilahJadwalSiswa } from "../../utils/kalkulatorData";
-import { PERIODE_BELAJAR } from "../../utils/constants";
+import { PERIODE_BELAJAR, TIPE_SESI, STATUS_SESI, EVENT_PENTING } from "../../utils/constants";
 import { dapatkanKlasemenBulanIni } from "../../actions/klasemenAction";
 import { formatYYYYMMDD, formatBulanTahun } from "../../utils/formatHelper";
 
@@ -44,9 +43,10 @@ export default function TabBeranda({ siswa, jadwal, riwayat, setTab, setModeScan
   const streakKonsul = useMemo(() => {
     if (!riwayat || riwayat.length === 0) return 0;
     
+    // 🛡️ ZERO HARDCODE STATUS & JENIS SESI
     const tanggalUnikKonsul = new Set(
       riwayat
-        .filter(r => r.jenisSesi === "Konsul" && r.status === "Selesai" && r.waktuMulai)
+        .filter(r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.SELESAI.id && r.waktuMulai)
         .map(r => formatYYYYMMDD(r.waktuMulai))
     );
     
@@ -84,13 +84,14 @@ export default function TabBeranda({ siswa, jadwal, riwayat, setTab, setModeScan
     let mapelCount = {};
     let kelasHadir = 0;
 
+    // 🛡️ ZERO HARDCODE STATUS & JENIS SESI
     riwayatBulanIni.forEach(r => {
-      if (r.jenisSesi === "Konsul" && r.status === "Selesai" && r.waktuSelesai) {
+      if (r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.SELESAI.id && r.waktuSelesai) {
         totalMenitKonsul += Math.floor((new Date(r.waktuSelesai) - new Date(r.waktuMulai)) / 60000);
         const namaMapel = r.namaMapel || "Umum";
         mapelCount[namaMapel] = (mapelCount[namaMapel] || 0) + 1;
       }
-      if (r.jenisSesi === "Kelas" && r.status === "Selesai") {
+      if (r.jenisSesi === TIPE_SESI.KELAS && r.status === STATUS_SESI.SELESAI.id) {
         kelasHadir++;
         totalMenitKonsul += (r.konsulExtraMenit || 0); 
       }
@@ -117,7 +118,8 @@ export default function TabBeranda({ siswa, jadwal, riwayat, setTab, setModeScan
               : jamKonsul >= 5 ? "🚀 Mulai Panas" 
               : "🐢 Masih Pemanasan";
     
-    const tanggalUTBK = new Date("2026-05-05T00:00:00+07:00");
+    // 🛡️ ZERO HARDCODE TANGGAL UTBK
+    const tanggalUTBK = new Date(EVENT_PENTING.TANGGAL_UTBK);
     const selisihHariUTBK = Math.max(0, Math.ceil((tanggalUTBK - sekarang) / (1000 * 60 * 60 * 24)));
 
     return { jamKonsul, menitSisa, persenHadir, kelasHadir, jadwalWajibBulanIni, mapelTerambis, gelar, selisihHariUTBK };
@@ -249,7 +251,7 @@ export default function TabBeranda({ siswa, jadwal, riwayat, setTab, setModeScan
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* JADWAL KELAS HARI INI (DIUPDATE DENGAN DATA GURU) */}
+      {/* JADWAL KELAS HARI INI */}
       {/* ------------------------------------------------------------- */}
       <div style={{ padding: '0 16px', paddingBottom: '32px' }}>
         <h3 className={styles.judulJadwal}><FaCalendarDays color="#2563eb" /> Pengingat Kelas</h3>
@@ -260,13 +262,12 @@ export default function TabBeranda({ siswa, jadwal, riwayat, setTab, setModeScan
           <div className={styles.wadahDaftarJadwal} style={{ padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {jadwalAktif.map(({ item: j }) => (
               
-              // 👇 KARTU JADWAL NEO-BRUTALISM DIPERBARUI 👇
               <div key={j._id} className={styles.kartuJadwalPintar} onClick={() => { setTab("scan"); setModeScan("kelas"); resetScanner(); }} style={{ cursor: 'pointer', backgroundColor: '#fdfbf7', border: '3px solid #111827', borderRadius: '12px', padding: '16px', boxShadow: '4px 4px 0 #111827', transition: 'transform 0.1s', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 
-                {/* Baris Atas: Tanggal & Pertemuan */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ fontSize: '11px', fontWeight: '900', color: '#111827', backgroundColor: '#fef08a', padding: '4px 8px', borderRadius: '6px', border: '2px solid #111827', textTransform: 'uppercase' }}>
-                    {new Date(j.tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'short' })}
+                    {/* 🛡️ ZERO HARDCODE TIMEZONE */}
+                    {new Date(j.tanggal).toLocaleDateString('id-ID', { timeZone: PERIODE_BELAJAR.TIMEZONE, weekday: 'long', day: 'numeric', month: 'short' })}
                   </div>
                   
                   {j.pertemuan && (
@@ -276,7 +277,6 @@ export default function TabBeranda({ siswa, jadwal, riwayat, setTab, setModeScan
                   )}
                 </div>
                 
-                {/* Baris Tengah: Nama Mapel Besar */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <p className={styles.hariJadwal} style={{ margin: 0, fontSize: '20px', color: '#111827', letterSpacing: '-0.5px' }}>{j.mapel}</p>
                   <div className={styles.waktuJadwal} style={{ margin: 0, backgroundColor: 'white', color: '#ef4444', border: '2px solid #111827', boxShadow: '2px 2px 0 #111827', padding: '4px 8px' }}>
@@ -284,7 +284,6 @@ export default function TabBeranda({ siswa, jadwal, riwayat, setTab, setModeScan
                   </div>
                 </div>
 
-                {/* Baris Bawah: Nama Pengajar */}
                 {j.pengajar && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '8px', borderRadius: '8px', border: '2px dashed #9ca3af' }}>
                     <FaUserTie color="#2563eb" size={14} /> 

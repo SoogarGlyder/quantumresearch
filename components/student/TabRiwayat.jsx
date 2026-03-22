@@ -6,7 +6,8 @@
 import { useState, useMemo } from "react"; 
 import Image from "next/image"; 
 
-import { TIPE_SESI, STATUS_SESI } from "../../utils/constants";
+// 👈 Import Konstanta Lengkap
+import { TIPE_SESI, STATUS_SESI, PERIODE_BELAJAR } from "../../utils/constants";
 import { formatTanggal, hitungDurasiMenit, formatJam } from "../../utils/formatHelper";
 
 import { FaFilter, FaBoxOpen, FaChevronDown, FaChevronUp } from "react-icons/fa6";
@@ -21,11 +22,11 @@ export default function TabRiwayat({ riwayat = [] }) {
   const [filterMapel, setFilterMapel] = useState("");
   const [idTerbuka, setIdTerbuka] = useState(null);
 
-  // --- HELPER TIMEZONE LOKAL ---
+  // --- HELPER TIMEZONE LOKAL (🛡️ ZERO HARDCODE) ---
   const dapatkanLabelBulan = (tanggalStr) => {
     if (!tanggalStr) return "-";
     return new Date(tanggalStr).toLocaleDateString('id-ID', { 
-      timeZone: 'Asia/Jakarta', 
+      timeZone: PERIODE_BELAJAR.TIMEZONE, 
       month: 'long', 
       year: 'numeric' 
     });
@@ -36,6 +37,7 @@ export default function TabRiwayat({ riwayat = [] }) {
     setIdTerbuka(prevId => prevId === id ? null : id);
   };
 
+  // Filter khusus untuk tipe sesi Konsul
   const riwayatKonsul = useMemo(() => {
     return riwayat.filter(r => r.jenisSesi === TIPE_SESI.KONSUL);
   }, [riwayat]);
@@ -118,7 +120,8 @@ export default function TabRiwayat({ riwayat = [] }) {
         ) : (
           
           konsulDitampilkan.map(sesi => {
-            const isSelesai = sesi.status === STATUS_SESI.SELESAI;
+            // 🛡️ ZERO HARDCODE: Cek Status Selesai
+            const isSelesai = sesi.status === STATUS_SESI.SELESAI.id;
             const isOpen = idTerbuka === sesi._id;
 
             return (
@@ -146,7 +149,8 @@ export default function TabRiwayat({ riwayat = [] }) {
                           color: '#111827'
                         }}
                       >
-                        {sesi.status}
+                        {/* Kapitalisasi status untuk tampilan UI yang rapi */}
+                        {sesi.status.charAt(0).toUpperCase() + sesi.status.slice(1)}
                       </span>
                       
                       {isSelesai && (

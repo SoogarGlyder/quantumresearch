@@ -4,7 +4,6 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react"; 
-// 👇 Import navigasi Next.js untuk URL State
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import FilterInput from "../ui/FilterInput";
@@ -12,7 +11,8 @@ import PaginationBar from "../ui/PaginationBar";
 
 import { unduhExcel } from "../../utils/exportExcel";
 import { formatTanggal, formatJam, formatBulanTahun, hitungDurasiMenit, potongDataPagination } from "../../utils/formatHelper";
-import { TIPE_SESI, STATUS_SESI, OPSI_MAPEL_KONSUL } from "../../utils/constants";
+// 👈 Import Konstanta Lengkap
+import { TIPE_SESI, STATUS_SESI, OPSI_MAPEL_KONSUL, LIMIT_DATA } from "../../utils/constants";
 
 import { FaFileExcel, FaFilter } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
@@ -21,7 +21,7 @@ import styles from "../../app/admin/AdminPage.module.css";
 // 2. MAIN COMPONENT (TAB KONSUL)
 // ============================================================================
 export default function TabKonsul({ dataRiwayat = [] }) {
-  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+  // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
@@ -34,7 +34,8 @@ export default function TabKonsul({ dataRiwayat = [] }) {
   const [filterMapel, setFilterMapel] = useState("");
   const [filterNama, setFilterNama] = useState("");
 
-  const ITEMS_PER_PAGE = 20;
+  // 🛡️ ZERO HARDCODE LIMIT
+  const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   // SINKRONISASI FILTER: Jika kriteria filter berubah, reset halaman ke 1 di URL
   useEffect(() => {
@@ -65,7 +66,6 @@ export default function TabKonsul({ dataRiwayat = [] }) {
     }
     
     if (filterMapel) {
-      // 👇 Mengatasi Poin 31: Filter mapel pakai strict equality (===) karena input dari dropdown pasti identik
       riwayat = riwayat.filter(s => s.namaMapel === filterMapel);
     }
     
@@ -77,7 +77,6 @@ export default function TabKonsul({ dataRiwayat = [] }) {
     return riwayat;
   }, [riwayatKonsulMurni, filterBulan, filterMapel, filterNama]);
 
-  // Menggunakan 'page' yang ditarik dari URL
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(riwayatKonsulDifilter, page, ITEMS_PER_PAGE);
 
   // ============================================================================
@@ -131,8 +130,8 @@ export default function TabKonsul({ dataRiwayat = [] }) {
               <tr><td colSpan="5" className={styles.selKosong}>Tidak ada data konsul yang cocok.</td></tr>
             ) : (
               dataHalIni.map(sesi => {
-                // 👇 Hitung apakah status konsul sedang aktif
-                const isAktif = sesi.status !== STATUS_SESI.SELESAI;
+                // 🛡️ ZERO HARDCODE: Hitung apakah status konsul sedang aktif
+                const isAktif = sesi.status !== STATUS_SESI.SELESAI.id;
 
                 return (
                   <tr key={sesi._id}>
@@ -151,9 +150,11 @@ export default function TabKonsul({ dataRiwayat = [] }) {
                     {/* Kolom 3: Tanggal & Jam */}
                     <td>
                       <p className={styles.teksTanggal}>{formatTanggal(sesi.waktuMulai)}</p>
-                      <p className={styles.teksJamPudar}>
-                        {formatJam(sesi.waktuMulai)} - {sesi.waktuSelesai ? formatJam(sesi.waktuSelesai) : "Sekarang"}
-                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className={styles.teksJamPudar}>{formatJam(sesi.waktuMulai)}</span>
+                        <span className={styles.teksJamPudar}>-</span>
+                        <span className={styles.teksJamPudar}>{sesi.waktuSelesai ? formatJam(sesi.waktuSelesai) : "Sekarang"}</span>
+                      </div>
                     </td>
                     
                     {/* Kolom 4: Durasi */}
@@ -165,12 +166,11 @@ export default function TabKonsul({ dataRiwayat = [] }) {
                     
                     {/* Kolom 5: Status */}
                     <td style={{textAlign: 'center'}}>
-                      {/* 👇 Pemasangan animasi brutalPulse hanya jika isAktif bernilai true */}
                       <span 
-                        className={`${styles.badgeStatus} ${sesi.status === STATUS_SESI.SELESAI ? styles.statusSelesai : styles.statusBerjalan}`}
+                        className={`${styles.badgeStatus} ${sesi.status === STATUS_SESI.SELESAI.id ? styles.statusSelesai : styles.statusBerjalan}`}
                         style={isAktif ? { animation: 'brutalPulse 2s infinite' } : {}}
                       >
-                        {sesi.status === STATUS_SESI.SELESAI ? 'Selesai' : 'Aktif'}
+                        {sesi.status === STATUS_SESI.SELESAI.id ? STATUS_SESI.SELESAI.label : STATUS_SESI.BERJALAN.label}
                       </span>
                     </td>
                     

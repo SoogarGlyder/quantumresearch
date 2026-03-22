@@ -1,13 +1,15 @@
+import { VALIDASI_SISTEM } from "./constants"; // 👈 Import Konstanta
+
 export const validationHelper = {
-  // Hanya huruf kecil, angka, titik, minus, dan underscore
-  isValidUsername: (username) => /^[a-z0-9_.-]+$/.test(username),
+  // Hanya huruf kecil, angka, titik, minus, dan underscore (Ditarik dari constants)
+  isValidUsername: (username) => VALIDASI_SISTEM.REGEX_USERNAME.test(username),
   
-  // Minimal 6 karakter
-  isValidPassword: (password) => password && password.length >= 6,
+  // Minimal karakter berdasarkan aturan di constants
+  isValidPassword: (password) => password && password.length >= VALIDASI_SISTEM.MIN_PASSWORD,
   
-  // Format nomor WA Indonesia (Harus diawali 08 atau 62)
-  isValidPhone: (phone) => /^(08|628)\d{8,13}$/.test(phone),
+  // Format nomor WA Indonesia (Ditarik dari constants)
+  isValidPhone: (phone) => VALIDASI_SISTEM.REGEX_PHONE.test(phone),
   
-  // Membersihkan teks dari karakter aneh
+  // Membersihkan teks dari spasi berlebih atau karakter aneh (tetap dinamis)
   sanitize: (text) => text?.trim() || ""
 };

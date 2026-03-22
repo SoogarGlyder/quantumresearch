@@ -1,5 +1,7 @@
 import * as XLSX from "xlsx";
-import { STATUS_SESI, TIPE_SESI } from "./constants";
+import { STATUS_SESI, TIPE_SESI, PERIODE_BELAJAR } from "./constants"; // 👈 Import Timezone
+
+const TZ = PERIODE_BELAJAR.TIMEZONE;
 
 // ============================================================================
 // 1. HELPER INTERNAL (Format Khusus Laporan)
@@ -8,11 +10,7 @@ const formatTanggalLaporan = (tanggal) => {
   if (!tanggal) return "-";
   try {
     return new Date(tanggal).toLocaleDateString('id-ID', { 
-      timeZone: 'Asia/Jakarta',
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
+      timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
     });
   } catch (e) { return "-"; }
 };
@@ -21,22 +19,18 @@ const formatJamLaporan = (tanggal) => {
   if (!tanggal) return "-";
   try {
     return new Date(tanggal).toLocaleTimeString('id-ID', {
-      hour: '2-digit', 
-      minute: '2-digit',
-      timeZone: 'Asia/Jakarta',
-      hour12: false
-    }).replace(/\./g, ':'); // Pastikan format 14:30
+      timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false
+    }).replace(/\./g, ':');
   } catch (e) { return "-"; }
 };
 
 // ============================================================================
-// 2. FUNGSI MAPPER (Transformasi Data)
+// 2. FUNGSI MAPPER
 // ============================================================================
 const siapkanDataKelas = (data) => {
   return data.map(s => {
-    // Deteksi apakah ini Alpha otomatis dari sistem
     const isVirtual = s.isVirtual === true;
-    const isAlpha = s.status === STATUS_SESI.ALPA;
+    const isAlpha = s.status === STATUS_SESI.ALPA.id; // 👈 .id check
     
     const namaSiswa = s.siswaId?.nama || "Siswa Dihapus";
     const kelasSiswa = s.siswaId?.kelas || "-";
@@ -85,13 +79,12 @@ export const unduhExcel = (data, tipe) => {
     const worksheet = XLSX.utils.json_to_sheet(dataFormat);
     const workbook = XLSX.utils.book_new();
     
-    // Auto-size kolom (Simple logic)
     const maxWidths = Object.keys(dataFormat[0] || {}).map(key => ({ wch: key.length + 15 }));
     worksheet["!cols"] = maxWidths;
 
     XLSX.utils.book_append_sheet(workbook, worksheet, tipe === TIPE_SESI.KELAS ? "Laporan_Kelas" : "Laporan_Konsul");
     
-    const tglCetak = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+    const tglCetak = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
     XLSX.writeFile(workbook, `Laporan_Quantum_${tipe.toUpperCase()}_${tglCetak}.xlsx`);
     
     return true;

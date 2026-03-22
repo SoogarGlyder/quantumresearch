@@ -6,19 +6,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
+// 🛡️ Bersih: Hanya import fungsi yang dibutuhkan untuk operasional
 import { ambilDataDashboard, ambilSemuaJadwal } from "../../actions/adminAction";
 import { ambilSemuaGuru } from "../../actions/teacherAction";
 import { prosesLogout } from "../../actions/authAction";
 
+import { KONFIGURASI_SISTEM } from "../../utils/constants";
+
 import styles from "./AdminPage.module.css";
 import { FaArrowRightFromBracket, FaQrcode } from "react-icons/fa6"; 
 
-// Impor Komponen Terpadu & Modal
+// Impor Komponen Tab & Modal
 import TabMonitoring from "../../components/admin/TabMonitoring";
 import TabUser from "../../components/admin/TabUser";
 import TabJurnal from "../../components/admin/TabJurnal"; 
 import TabJadwal from "../../components/admin/TabJadwal";
-import ModalQr from "../../components/admin/ModalQr"; // 👈 Utility Modal Baru
+import ModalQr from "../../components/admin/ModalQr"; 
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
 
 // ============================================================================
@@ -29,7 +32,7 @@ export default function SuperDashboardAdmin() {
   
   // --- STATE MANAGEMENT ---
   const [tab, setTab] = useState("monitoring"); 
-  const [isModalQrOpen, setIsModalQrOpen] = useState(false); // 👈 State Modal QR
+  const [isModalQrOpen, setIsModalQrOpen] = useState(false); 
   
   const [dataRiwayat, setDataRiwayat] = useState([]);
   const [dataSiswa, setDataSiswa] = useState([]);
@@ -47,35 +50,36 @@ export default function SuperDashboardAdmin() {
         ambilSemuaGuru()
       ]);
 
-      if (hasilDashboard.sukses) { 
-        setDataRiwayat(hasilDashboard.riwayat); 
-        setDataSiswa(hasilDashboard.siswa); 
+      // 🛡️ Data Akses via .data (Standar ResponseHelper)
+      if (hasilDashboard.sukses && hasilDashboard.data) { 
+        setDataRiwayat(hasilDashboard.data.riwayat || []); 
+        setDataSiswa(hasilDashboard.data.siswa || []); 
       } else { 
-        router.push("/login"); 
+        router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
         return; 
       }
 
-      if (hasilJadwal.sukses) setDataJadwal(hasilJadwal.data);
-      if (hasilGuru.sukses) setDataGuru(hasilGuru.data);
+      if (hasilJadwal.sukses) setDataJadwal(hasilJadwal.data || []);
+      if (hasilGuru.sukses) setDataGuru(hasilGuru.data || []);
 
     } catch (error) {
       console.error("[ERROR muatData Admin]:", error);
-      alert("⚠️ Gagal terhubung ke server.");
     } finally {
       setLoadingData(false);
     }
   }, [router]);
 
+  // 🛠️ VERSI BERSIH: Hanya memanggil muatData saat halaman dibuka
   useEffect(() => { 
     muatData(); 
   }, [muatData]);
 
   const klikLogout = async () => { 
     await prosesLogout(); 
-    router.push("/login"); 
+    router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
   };
 
-  // --- RENDER HELPERS ---
+  // --- RENDER HELPERS (Switch Tab) ---
   const renderIsiTab = () => {
     switch (tab) {
       case "monitoring": 
@@ -109,7 +113,7 @@ export default function SuperDashboardAdmin() {
     <div className={styles.wadahUtama}>
       <div className={styles.wadahKonten}>
 
-        {/* HEADER ADMIN (Pusat Aksi & Utilitas) */}
+        {/* HEADER ADMIN */}
         <div className={`${styles.headerAdmin} ${styles.SembunyiPrint}`}>
           <div>
             <h1 className={styles.judulHeader}>Super Admin</h1>
@@ -117,11 +121,10 @@ export default function SuperDashboardAdmin() {
           </div>
           
           <div style={{ display: 'flex', gap: '12px' }}>
-            {/* 👇 TOMBOL UTILITY QR (Kuning Quantum) */}
             <button 
               onClick={() => setIsModalQrOpen(true)} 
               className={styles.tombolKeluar}
-              style={{ backgroundColor: 'var(--brutal-kuning)', color: 'var(--brutal-hitam)' }}
+              style={{ backgroundColor: '#facc15', color: '#111827' }} 
             >
               <FaQrcode /> CETAK QR
             </button>
@@ -132,14 +135,9 @@ export default function SuperDashboardAdmin() {
           </div>
         </div>
 
-        {/* MENU TABS (4 Pilar Utama) */}
-        <div 
-          className={`${styles.wadahTabs} ${styles.SembunyiPrint}`} 
-          role="tablist" 
-          aria-label="Navigasi Menu Admin"
-        >
+        {/* NAVIGASI TAB */}
+        <div className={`${styles.wadahTabs} ${styles.SembunyiPrint}`} role="tablist">
           <button 
-            role="tab" aria-selected={tab === "monitoring"} 
             onClick={() => setTab("monitoring")} 
             className={`${styles.tombolTab} ${tab === "monitoring" ? styles.tombolTabAktif : ""}`}
           >
@@ -147,7 +145,6 @@ export default function SuperDashboardAdmin() {
           </button>
           
           <button 
-            role="tab" aria-selected={tab === "jurnal"} 
             onClick={() => setTab("jurnal")} 
             className={`${styles.tombolTab} ${tab === "jurnal" ? styles.tombolTabAktif : ""}`}
           >
@@ -155,7 +152,6 @@ export default function SuperDashboardAdmin() {
           </button>
           
           <button 
-            role="tab" aria-selected={tab === "jadwal"} 
             onClick={() => setTab("jadwal")} 
             className={`${styles.tombolTab} ${tab === "jadwal" ? styles.tombolTabAktif : ""}`}
           >
@@ -163,7 +159,6 @@ export default function SuperDashboardAdmin() {
           </button>
           
           <button 
-            role="tab" aria-selected={tab === "user"} 
             onClick={() => setTab("user")} 
             className={`${styles.tombolTab} ${tab === "user" ? styles.tombolTabAktif : ""}`}
           >
@@ -171,14 +166,14 @@ export default function SuperDashboardAdmin() {
           </button>
         </div>
 
-        {/* AREA KONTEN TAB */}
+        {/* KONTEN AKTIF */}
         <div className={styles.areaKontenTab} role="tabpanel">
           <ErrorBoundary>
             {renderIsiTab()}
           </ErrorBoundary>
         </div>
 
-        {/* 🛠️ MODAL UTILITY QR CODE */}
+        {/* MODAL QR */}
         <ModalQr 
           isOpen={isModalQrOpen} 
           onClose={() => setIsModalQrOpen(false)} 

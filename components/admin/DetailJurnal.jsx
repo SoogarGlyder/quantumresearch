@@ -4,6 +4,9 @@ import { CldUploadWidget } from 'next-cloudinary';
 import html2canvas from "html2canvas";
 
 import { formatTanggal, formatYYYYMMDD } from "../../utils/formatHelper";
+// 👈 Import Konstanta Sistem
+import { KONFIGURASI_MEDIA, STATUS_SESI, LABEL_SISTEM } from "../../utils/constants";
+
 import styles from "../../app/admin/AdminPage.module.css";
 import cetakStyles from "../../app/admin/LaporanCetak.module.css";
 
@@ -20,9 +23,10 @@ export default function DetailJurnal({
 }) {
   const [sedangMencetak, setSedangMencetak] = useState(false);
 
+  // 🛡️ ZERO HARDCODE: Gunakan domain resmi dari constants
   const ubahKeJpg = (url) => {
     if (!url) return "";
-    if (url.includes("cloudinary.com")) {
+    if (url.includes(KONFIGURASI_MEDIA.DOMAIN_RESMI)) {
       return url.replace(/\.[^/.]+$/, ".jpg");
     }
     return url;
@@ -49,7 +53,6 @@ export default function DetailJurnal({
       
       elemenLaporan.style.display = "none";
 
-      // Buat file dan trigger download
       const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = image;
@@ -127,12 +130,16 @@ export default function DetailJurnal({
               </thead>
               <tbody>
                 {dataSiswa.map(siswa => {
-                  const isAbsen = siswa.statusAbsen.includes("Tidak Hadir");
+                  // 🛡️ ZERO HARDCODE: Cek apakah absen (selain Hadir/Berjalan/Belum)
+                  const isHadir = siswa.statusAbsen === STATUS_SESI.SELESAI.id || siswa.statusAbsen === STATUS_SESI.BERJALAN.id;
+                  const isBelumAbsen = siswa.statusAbsen === LABEL_SISTEM.BELUM_ABSEN;
+                  const isAbsen = !isHadir && !isBelumAbsen;
+
                   return (
                     <tr key={siswa.siswaId}>
                       <td className={cetakStyles.namaSiswa}>{siswa.nama}</td>
                       <td className={`${cetakStyles.statusSiswa} ${isAbsen ? cetakStyles.bgAbsen : cetakStyles.bgHadir}`}>
-                        {isAbsen ? "Absen" : "Hadir"}
+                        {isAbsen ? "Absen" : isBelumAbsen ? "Belum" : "Hadir"}
                       </td>
                       <td className={cetakStyles.nilaiTest}>
                         {siswa.nilaiTest !== null && siswa.nilaiTest !== "" ? siswa.nilaiTest : "-"}
@@ -240,7 +247,12 @@ export default function DetailJurnal({
                     <tr><td colSpan="3" className={styles.selKosong}>Tidak ada siswa di kelas ini.</td></tr>
                   ) : (
                     dataSiswa.map((siswa, idx) => {
-                      const isDisabled = siswa.statusAbsen === "Belum Absen" || siswa.statusAbsen.includes("Tidak Hadir");
+                      // 🛡️ ZERO HARDCODE STATUS
+                      const isBelumAbsen = siswa.statusAbsen === LABEL_SISTEM.BELUM_ABSEN;
+                      const isHadir = siswa.statusAbsen === STATUS_SESI.SELESAI.id || siswa.statusAbsen === STATUS_SESI.BERJALAN.id;
+                      const isAbsen = !isHadir && !isBelumAbsen;
+                      const isDisabled = isBelumAbsen || isAbsen;
+
                       return (
                         <tr key={siswa.siswaId}>
                           <td>
@@ -248,8 +260,8 @@ export default function DetailJurnal({
                             <p className={styles.teksUsernameSiswa}>ID: {siswa.nomorPeserta}</p>
                           </td>
                           <td>
-                            <span className={`${styles.badge} ${siswa.statusAbsen === "Belum Absen" ? styles.badgeBelum : siswa.statusAbsen.includes("Tidak Hadir") ? styles.badgeAbsen : styles.badgeHadir}`}>
-                              {siswa.statusAbsen}
+                            <span className={`${styles.badge} ${isBelumAbsen ? styles.badgeBelum : isAbsen ? styles.badgeAbsen : styles.badgeHadir}`}>
+                              {siswa.statusAbsen.toUpperCase()}
                             </span>
                           </td>
                           <td>

@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image"; 
 
 import { updateProfilSiswa } from "../../actions/profilAction"; 
+// 👈 Import Konstanta Keamanan
+import { VALIDASI_SISTEM } from "../../utils/constants";
 import { FaUserAstronaut, FaIdCard, FaSchool, FaArrowRightFromBracket, FaPenToSquare, FaWhatsapp, FaHashtag, FaXmark } from "react-icons/fa6";
 
 import styles from "../StudentApp.module.css";
@@ -30,18 +32,25 @@ export default function TabProfil({ siswa, klikLogout }) {
   const handleToggleEdit = () => {
     setIsEditing(!isEditing);
     setPesan({ teks: "", tipe: "" });
-    if (!isEditing) { // Diubah: Jika baru mau edit, reset form ke data awal
+    if (!isEditing) { 
+      // Reset form ke data awal jika baru mau edit
       setUsernameEdit(siswa.username);
       setPasswordEdit("");
     }
   };
 
-  // 🛡️ PENAWAR UX: Menangkap event submit dari form (termasuk tombol Enter)
+  // 🛡️ PENAWAR UX & VALIDASI
   const handleSimpan = async (e) => {
-    e.preventDefault(); // Mencegah reload halaman bawaan browser
+    e.preventDefault(); 
     
     if (!usernameEdit || usernameEdit.trim() === "") {
       setPesan({ teks: "⚠️ Username tidak boleh kosong!", tipe: "error" });
+      return;
+    }
+
+    // 🛡️ ZERO HARDCODE: Validasi panjang password dari constants.js
+    if (passwordEdit && passwordEdit.length < VALIDASI_SISTEM.MIN_PASSWORD) {
+      setPesan({ teks: `⚠️ Kata sandi minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter!`, tipe: "error" });
       return;
     }
 
@@ -178,7 +187,8 @@ export default function TabProfil({ siswa, klikLogout }) {
                   type="password" 
                   value={passwordEdit} 
                   onChange={(e) => setPasswordEdit(e.target.value)}
-                  placeholder="Kosongkan jika tidak ubah sandi"
+                  // 🛡️ ZERO HARDCODE PLACEHOLDER
+                  placeholder={`Min ${VALIDASI_SISTEM.MIN_PASSWORD} karakter (kosongkan jika tak diubah)`}
                   className={styles.opsiMapel} 
                   style={{ backgroundColor: '#f8fafc', fontSize: '14px' }}
                 />

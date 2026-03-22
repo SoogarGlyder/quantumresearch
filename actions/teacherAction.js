@@ -6,22 +6,28 @@ import Jadwal from "../models/Jadwal";
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { validationHelper } from "../utils/validationHelper";
+import { 
+  PERAN, 
+  STATUS_USER, 
+  KONFIGURASI_MEDIA, 
+  KONFIGURASI_SISTEM, 
+  PESAN_SISTEM 
+} from "../utils/constants";
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
 // 1. INTERNAL HELPERS
 // ============================================================================
 
-async function pastikanOtoritas(roleWajib = ["pengajar", "admin"]) {
+async function pastikanOtoritas(roleWajib = [PERAN.PENGAJAR.id, PERAN.ADMIN.id]) {
   const { userId, peran } = await authHelper.ambilSesi();
   if (!userId || !roleWajib.includes(peran)) return null;
   return { userId, peran };
 }
 
-// Helper lokal untuk Cloudinary (Bisa dipindah ke validationHelper jika sering dipakai)
 function isValidCloudinary(url) {
   if (!url || typeof url !== "string") return false;
-  return url.includes("res.cloudinary.com");
+  return url.includes(KONFIGURASI_MEDIA.DOMAIN_RESMI); // 👈 Ambil dari konstanta
 }
 
 const serialize = (data) => JSON.parse(JSON.stringify(data));
@@ -35,12 +41,11 @@ export async function simpanJurnalGuru(idJadwal, dataJurnal) {
     await connectToDatabase();
     
     const auth = await pastikanOtoritas();
-    if (!auth) return responseHelper.error("Sesi berakhir atau akses ditolak.");
+    if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const babClean = validationHelper.sanitize(dataJurnal.bab);
     if (!babClean) return responseHelper.error("Materi (Bab) wajib diisi!");
 
-    // Sanitasi Galeri Papan Tulis
     const rawLinks = Array.isArray(dataJurnal.galeriPapan) 
       ? dataJurnal.galeriPapan 
       : (dataJurnal.galeriPapan || "").split(",").filter(Boolean);
@@ -51,9 +56,8 @@ export async function simpanJurnalGuru(idJadwal, dataJurnal) {
         .filter(link => isValidCloudinary(link))
     )];
 
-    // Query Keamanan: Guru hanya bisa edit jadwal miliknya sendiri (ID-based)
     const query = { _id: idJadwal };
-    if (auth.peran !== "admin") {
+    if (auth.peran !== PERAN.ADMIN.id) {
       query.pengajarId = auth.userId; 
     }
 
@@ -71,14 +75,14 @@ export async function simpanJurnalGuru(idJadwal, dataJurnal) {
       { new: true }
     );
 
-    if (!update) return responseHelper.error("Jadwal tidak ditemukan atau Anda tidak berhak.");
+    if (!update) return responseHelper.error("Jadwal tidak ditemukan.");
 
-    revalidatePath("/teacher"); 
-    revalidatePath("/admin/jadwal");
-    return responseHelper.success("✅ Jurnal & Dokumentasi Berhasil Disimpan!");
+    revalidatePath(PERAN.PENGAJAR.home); 
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success("✅ Jurnal & Dokumentasi Disimpan.");
 
   } catch (error) {
-    return responseHelper.error("Gagal menyimpan jurnal pengajar.", error);
+    return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
 
@@ -89,58 +93,57 @@ export async function simpanJurnalGuru(idJadwal, dataJurnal) {
 export async function ambilSemuaGuru() {
   try {
     await connectToDatabase();
-    if (!(await pastikanOtoritas(["admin"]))) return responseHelper.error("Akses Ilegal.");
+    if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const guru = await User.find({ peran: "pengajar" }).sort({ nama: 1 }).lean();
-    return responseHelper.success("Data pengajar dimuat.", serialize(guru));
+    const pengajar = await User.find({ peran: PERAN.PENGAJAR.id }).sort({ nama: 1 }).lean();
+    return responseHelper.success("Data pengajar dimuat.", serialize(pengajar));
   } catch (error) {
-    return responseHelper.error("Gagal memuat data pengajar.", error);
+    return responseHelper.error("Gagal memuat data pengajar.");
   }
 }
 
 export async function tambahGuruBaru(formData) {
   try {
     await connectToDatabase();
-    if (!(await pastikanOtoritas(["admin"]))) return responseHelper.error("Akses Ilegal.");
+    if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const username = validationHelper.sanitize(formData.username).toLowerCase();
     const kodePengajar = validationHelper.sanitize(formData.kodePengajar).toUpperCase();
 
-    // Cek Duplikat
     const exist = await User.findOne({ 
       $or: [{ username }, { kodePengajar }] 
     }).select("_id").lean();
     
-    if (exist) return responseHelper.error("Username atau Kode Pengajar sudah ada!");
+    if (exist) return responseHelper.error("Username/Kode sudah terdaftar.");
 
-    // Proteksi: Hash password sebelum simpan
-    const hashed = await authHelper.buatHash(formData.password || "123456");
+    // Gunakan password default dari konstanta
+    const hashed = await authHelper.buatHash(formData.password || KONFIGURASI_SISTEM.DEFAULT_PASSWORD);
 
     await User.create({
       ...formData,
       username,
       kodePengajar,
       password: hashed,
-      peran: "pengajar",
-      status: "aktif"
+      peran: PERAN.PENGAJAR.id,
+      status: STATUS_USER.AKTIF
     });
 
-    revalidatePath("/admin/pengajar");
-    return responseHelper.success(`🎉 Pengajar ${formData.nama} resmi terdaftar!`);
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
   } catch (error) {
-    return responseHelper.error("Gagal mendaftarkan pengajar baru.", error);
+    return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
 
 export async function hapusGuru(idGuru) {
   try {
     await connectToDatabase();
-    if (!(await pastikanOtoritas(["admin"]))) return responseHelper.error("Akses Ditolak.");
+    if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     await User.findByIdAndDelete(idGuru);
-    revalidatePath("/admin/pengajar");
-    return responseHelper.success("Data pengajar telah dihapus.");
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success("Pengajar dihapus.");
   } catch (error) {
-    return responseHelper.error("Gagal menghapus data pengajar.", error);
+    return responseHelper.error("Gagal hapus pengajar.");
   }
 }

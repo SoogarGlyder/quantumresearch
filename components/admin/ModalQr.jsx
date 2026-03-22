@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// Kita asumsikan Bos pakai qrcode.react seperti standar Next.js
 import { QRCodeCanvas } from "qrcode.react"; 
 import styles from "../../app/admin/AdminPage.module.css";
 import { FaXmark, FaPrint, FaQrcode } from "react-icons/fa6";
 
+// 👈 Import Konstanta (Jika ingin memberi default prefix)
+import { PREFIX_BARCODE } from "../../utils/constants";
+
 export default function ModalQr({ isOpen, onClose, dataAwal = "" }) {
   const [teksQr, setTeksQr] = useState(dataAwal);
 
-  // Update teks jika dataAwal berubah (misal klik siswa yang berbeda)
+  // Update teks jika dataAwal berubah (misal klik dari baris tabel tertentu)
   useEffect(() => {
     setTeksQr(dataAwal);
   }, [dataAwal]);
@@ -27,7 +29,7 @@ export default function ModalQr({ isOpen, onClose, dataAwal = "" }) {
         {/* Header Modal */}
         <div className={styles.headerModal}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FaQrcode /> PABRIK QR CODE
+            <FaQrcode /> PABRIK QR CODE CEPAT
           </span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             <FaXmark size={20} />
@@ -42,19 +44,20 @@ export default function ModalQr({ isOpen, onClose, dataAwal = "" }) {
               type="text" 
               className={styles.inputPabrikQr} 
               value={teksQr} 
-              onChange={(e) => setTeksQr(e.target.value)}
-              placeholder="Ketik ID atau Nama..."
+              onChange={(e) => setTeksQr(e.target.value.toUpperCase())}
+              placeholder="Ketik ID, Nama, atau Kode..."
             />
           </div>
 
+          {/* Area yang akan di-print */}
           <div className={styles.qrBox} id="area-cetak-qr">
             <QRCodeCanvas 
-              value={teksQr || "Quantum Research"} 
-              size={200}
+              value={teksQr || "QUANTUM-RESEARCH"} 
+              size={250}
               level={"H"}
               includeMargin={true}
             />
-            <p className={styles.teksHasilQr} style={{ fontSize: '20px', marginTop: '16px' }}>
+            <p className={styles.teksHasilQr} style={{ fontSize: '20px', marginTop: '16px', fontWeight: '900' }}>
               {teksQr || "---"}
             </p>
           </div>

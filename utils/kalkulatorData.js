@@ -1,4 +1,4 @@
-import { TIPE_SESI, STATUS_SESI } from "./constants";
+import { TIPE_SESI, STATUS_SESI, PERIODE_BELAJAR } from "./constants"; // 👈 Import Timezone
 
 // ============================================================================
 // 1. INTERNAL HELPERS
@@ -7,8 +7,8 @@ import { TIPE_SESI, STATUS_SESI } from "./constants";
 function dapatkanTanggalJakartaStr(tanggalObj) {
   if (!tanggalObj) return "";
   const d = new Date(tanggalObj);
-  // en-CA memberikan format YYYY-MM-DD yang stabil untuk perbandingan string
-  return isNaN(d) ? "" : d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+  // Gunakan Timezone dari Constants
+  return isNaN(d) ? "" : d.toLocaleDateString('en-CA', { timeZone: PERIODE_BELAJAR.TIMEZONE });
 }
 
 function cekApakahJadwalLewat(tanggalJadwal, jamSelesai) {
@@ -16,13 +16,10 @@ function cekApakahJadwalLewat(tanggalJadwal, jamSelesai) {
   const tglSekarangStr = dapatkanTanggalJakartaStr(sekarang);
   const tglJadwalStr = dapatkanTanggalJakartaStr(tanggalJadwal);
   
-  // Jika tanggal sudah lewat hari kemarin
   if (tglJadwalStr < tglSekarangStr) return true;
   
-  // Jika hari ini, cek jamnya
   if (tglJadwalStr === tglSekarangStr) {
     const [jamS, menitS] = jamSelesai.split(":").map(Number);
-    // Buat objek waktu pembanding untuk hari ini di Jakarta
     const waktuBatasSelesai = new Date();
     waktuBatasSelesai.setHours(jamS, menitS, 0, 0);
     
@@ -36,10 +33,8 @@ function cekApakahJadwalLewat(tanggalJadwal, jamSelesai) {
 // ============================================================================
 
 export function kalkulasiAbsensiLengkap(dataRiwayat = [], dataJadwal = [], dataSiswa = []) {
-  // 1. Ambil riwayat asli (Gunakan lowercase constant)
   let gabunganRiwayat = dataRiwayat.filter(sesi => sesi.jenisSesi === TIPE_SESI.KELAS);
 
-  // 2. Buat "Map" kehadiran agar pencarian O(1) - Sangat Cepat
   const setKehadiran = new Set(
     gabunganRiwayat.map(r => {
       const tgl = dapatkanTanggalJakartaStr(r.waktuMulai);
@@ -48,13 +43,10 @@ export function kalkulasiAbsensiLengkap(dataRiwayat = [], dataJadwal = [], dataS
     })
   );
 
-  // 3. Loop Jadwal untuk mencari siapa yang tidak hadir (Alpha)
   dataJadwal.forEach(jadwal => {
     if (!cekApakahJadwalLewat(jadwal.tanggal, jadwal.jamSelesai)) return;
 
     const tglJadwalStr = dapatkanTanggalJakartaStr(jadwal.tanggal);
-    
-    // Filter siswa yang memang target kelas tersebut
     const siswaTarget = dataSiswa.filter(s => s.kelas === jadwal.kelasTarget);
 
     siswaTarget.forEach(siswa => {
@@ -62,7 +54,6 @@ export function kalkulasiAbsensiLengkap(dataRiwayat = [], dataJadwal = [], dataS
       const kunciPencarian = `${idSiswaStr}|${jadwal.mapel}|${tglJadwalStr}`;
       
       if (!setKehadiran.has(kunciPencarian)) {
-        // Buat "Data Virtual" untuk ditampilkan di tabel Admin
         gabunganRiwayat.push({
           _id: `virtual_${jadwal._id}_${idSiswaStr}`,
           isVirtual: true,
@@ -70,7 +61,7 @@ export function kalkulasiAbsensiLengkap(dataRiwayat = [], dataJadwal = [], dataS
           namaMapel: jadwal.mapel,
           siswaId: siswa,
           waktuMulai: new Date(`${jadwal.tanggal}T${jadwal.jamMulai}:00`),
-          status: STATUS_SESI.ALPA, // 👈 Gunakan constant alpa
+          status: STATUS_SESI.ALPA.id, // 👈 Pastikan menggunakan .id dari Object ALPA
           terlambatMenit: 0,
           konsulExtraMenit: 0,
           tanggalAsli: jadwal.tanggal
@@ -103,8 +94,7 @@ export function pilahJadwalSiswa(jadwal = [], riwayat = [], periodeMulai, period
     const sesiTerkait = mapRiwayatSiswa.get(kunci) || null;
     const sudahLewat = cekApakahJadwalLewat(j.tanggal, j.jamSelesai);
 
-    // Kelas dianggap selesai jika sudah jamnya lewat ATAU siswa sudah absen 'selesai'
-    const statusSelesai = STATUS_SESI.SELESAI;
+    const statusSelesai = STATUS_SESI.SELESAI.id; // 👈 Gunakan .id
     const kelasSudahBerakhir = sudahLewat || (sesiTerkait && sesiTerkait.status === statusSelesai);
     
     const payload = { item: j, sesiTerkait, sudahLewat };

@@ -3,17 +3,17 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-// 👇 useRef ditambahkan untuk reset input file
 import { useState, useEffect, useMemo, useRef } from "react"; 
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import PaginationBar from "../ui/PaginationBar";
 
 import { editAkunSiswa, hapusAkunSiswa } from "../../actions/adminAction";
-// 👇 Import prosesBulkTambahSiswa ditambahkan di sini
 import { prosesTambahSiswa, prosesBulkTambahSiswa } from "../../actions/authAction";
 import { potongDataPagination } from "../../utils/formatHelper";
-import { OPSI_KELAS } from "../../utils/constants"; 
+
+// 👈 Import Konstanta Sistem
+import { OPSI_KELAS, STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, KONFIGURASI_SISTEM } from "../../utils/constants"; 
 
 import styles from "../../app/admin/AdminPage.module.css";
 
@@ -21,18 +21,17 @@ import styles from "../../app/admin/AdminPage.module.css";
 // 2. MAIN COMPONENT (TAB SISWA)
 // ============================================================================
 export default function TabSiswa({ dataSiswa = [], muatData }) {
-  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+  // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
   
-  // 👇 Tambahan Ref untuk input file
   const fileInputRef = useRef(null);
 
   // Ambil halaman aktif langsung dari URL (Default ke 1)
   const page = Number(searchParams.get("page")) || 1;
   
-  // --- STATE: FORM SISWA ---
+  // --- STATE: FORM SISWA (🛡️ ZERO HARDCODE STATUS) ---
   const initialFormState = { 
     nama: "", 
     nomorPeserta: "", 
@@ -42,7 +41,7 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
     kelas: "", 
     jadwalKelas: "", 
     jamKelas: "", 
-    status: "aktif" 
+    status: STATUS_USER.AKTIF 
   };
   
   const [formSiswa, setFormSiswa] = useState(initialFormState);
@@ -50,13 +49,15 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   const [loadingForm, setLoadingForm] = useState(false);
   const [pesanForm, setPesanForm] = useState("");
 
-  // 👇 STATE BARU UNTUK BULK UPLOAD (Poin 25)
+  // --- STATE BARU UNTUK BULK UPLOAD ---
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [hasilBulk, setHasilBulk] = useState(null);
 
   // --- STATE: FILTER ---
   const [filterKelas, setFilterKelas] = useState("");
-  const ITEMS_PER_PAGE = 20;
+  
+  // 🛡️ ZERO HARDCODE LIMIT
+  const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   // SINKRONISASI FILTER: Jika filter kelas berubah, reset halaman ke 1 di URL
   useEffect(() => {
@@ -67,10 +68,11 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
     }
   }, [filterKelas]);
 
-  // 👇 LOGIKA BULK UPLOAD (POIN 25)
+  // --- LOGIKA BULK UPLOAD ---
   const unduhTemplate = () => {
     const header = "nama,nomorPeserta,noHp,kelas,username,password\n";
-    const contoh = "Budi Santoso,QTM-001,08123456789,10-A,budi_qtm,sandi123";
+    // Sesuaikan contoh dengan default sistem
+    const contoh = `Budi Santoso,QTM-001,08123456789,10 SMA,budi_qtm,${KONFIGURASI_SISTEM.DEFAULT_PASSWORD}`;
     const blob = new Blob([header + contoh], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -115,11 +117,17 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
     };
     reader.readAsText(file);
   };
-  // 👆 AKHIR LOGIKA BULK UPLOAD
 
   // --- HANDLERS: CRUD ---
   const simpanSiswa = async (e) => { 
     e.preventDefault(); 
+    
+    // Validasi panjang password
+    if (formSiswa.password && formSiswa.password.length < VALIDASI_SISTEM.MIN_PASSWORD) {
+      setPesanForm(`⚠️ Sandi minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter!`);
+      return;
+    }
+    
     setLoadingForm(true); 
     setPesanForm("Menyimpan..."); 
     
@@ -160,7 +168,7 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
       kelas: (!siswa.kelas || siswa.kelas === "-") ? "" : siswa.kelas, 
       jadwalKelas: (!siswa.jadwalKelas || siswa.jadwalKelas === "-") ? "" : siswa.jadwalKelas, 
       jamKelas: (!siswa.jamKelas || siswa.jamKelas === "-") ? "" : siswa.jamKelas,
-      status: siswa.status || "aktif" 
+      status: siswa.status || STATUS_USER.AKTIF 
     }); 
     
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
@@ -204,7 +212,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
     return siswa;
   }, [dataSiswa, filterKelas]);
 
-  // Menggunakan 'page' yang ditarik dari URL
   const { totalPage, dataTerpotong: dataSiswaHalIni } = potongDataPagination(siswaDitampilkan, page, ITEMS_PER_PAGE);
 
   // ============================================================================
@@ -253,7 +260,8 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
           />
           <input 
             type="text" 
-            placeholder={idEdit ? "Kosongkan jika tidak ubah sandi" : "Kata Sandi"} 
+            // 🛡️ ZERO HARDCODE PLACEHOLDER
+            placeholder={idEdit ? "Kosongkan jika tak diubah" : `Sandi (Min ${VALIDASI_SISTEM.MIN_PASSWORD} char, Def: No HP)`} 
             required={!idEdit} 
             value={formSiswa.password} 
             onChange={e => setFormSiswa({...formSiswa, password: e.target.value})} 
@@ -273,10 +281,11 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             value={formSiswa.status} 
             onChange={e => setFormSiswa({...formSiswa, status: e.target.value})} 
             className={styles.formInput} 
-            style={{ fontWeight: '900', color: formSiswa.status === 'tidak aktif' ? '#ef4444' : '#15803d' }}
+            style={{ fontWeight: '900', color: formSiswa.status === STATUS_USER.NONAKTIF ? '#ef4444' : '#15803d' }}
           >
-            <option value="aktif">🟢 Status: Aktif</option>
-            <option value="tidak aktif">🔴 Status: Tidak Aktif (Blokir Login)</option>
+            {/* 🛡️ ZERO HARDCODE STATUS */}
+            <option value={STATUS_USER.AKTIF}>🟢 Status: Aktif</option>
+            <option value={STATUS_USER.NONAKTIF}>🔴 Status: Tidak Aktif (Blokir Login)</option>
           </select>
           <div className={styles.wadahTombolAksiForm}>
             {idEdit && (
@@ -293,7 +302,7 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
           )}
         </form>
 
-        {/* 👇 --- UI BULK ACTIONS (Poin 25) --- 👇 */}
+        {/* --- UI BULK ACTIONS --- */}
         {!idEdit && (
           <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px dashed #ccc' }}>
             <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#111827', fontWeight: '900' }}>🚀 Pendaftaran Massal (CSV)</h4>
@@ -319,7 +328,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             )}
           </div>
         )}
-        {/* 👆 --- AKHIR UI BULK ACTIONS --- 👆 */}
 
       </div>
       
@@ -350,7 +358,8 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
                 <tr><td colSpan="4" className={styles.selKosong}>Tidak ada data siswa.</td></tr>
               ) : (
                 dataSiswaHalIni.map(s => {
-                  const isNonaktif = s.status === 'tidak aktif';
+                  // 🛡️ ZERO HARDCODE STATUS
+                  const isNonaktif = s.status === STATUS_USER.NONAKTIF;
                   return (
                     <tr key={s._id} style={{ opacity: isNonaktif ? 0.6 : 1 }}>
                       <td>
@@ -389,7 +398,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
           </table>
         </div>
         
-        {/* PaginationBar mandiri membaca URL */}
         <PaginationBar totalPages={totalPage} />
       </div>
     </div>

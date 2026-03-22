@@ -9,7 +9,9 @@ import {
 } from "react-icons/fa6";
 
 import { updateProfilSiswa } from "../../actions/profilAction"; 
-import { prosesLogout } from "../../actions/authAction"; // 🛡️ PERBAIKAN: Impor action logout
+import { prosesLogout } from "../../actions/authAction"; 
+import { VALIDASI_SISTEM, KONFIGURASI_SISTEM } from "../../utils/constants"; // 👈 Import Konstanta
+
 import styles from "../TeacherApp.module.css";
 
 export default function TabProfilGuru({ dataUser }) {
@@ -21,15 +23,16 @@ export default function TabProfilGuru({ dataUser }) {
   const [notifikasi, setNotifikasi] = useState({ teks: "", tipe: "" });
 
   const handleSimpanPassword = async (e) => {
-    e.preventDefault(); // 🛡️ PERBAIKAN: Cegah reload
-    if (!passwordBaru || passwordBaru.length < 6) {
-      setNotifikasi({ teks: "⚠️ Password minimal 6 karakter!", tipe: "error" });
+    e.preventDefault(); 
+    // Menggunakan panjang password minimal dari Konstanta
+    if (!passwordBaru || passwordBaru.length < VALIDASI_SISTEM.MIN_PASSWORD) {
+      setNotifikasi({ teks: `⚠️ Password minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter!`, tipe: "error" });
       return;
     }
 
     setLoading(true);
     try {
-      const hasil = await updateProfilSiswa(dataUser?._id, dataUser?.username, passwordBaru);
+      const hasil = await updateProfilSiswa(dataUser?._id, { password: passwordBaru });
       
       if (hasil.sukses) {
         setNotifikasi({ teks: "✅ Password berhasil diperbarui!", tipe: "sukses" });
@@ -46,14 +49,14 @@ export default function TabProfilGuru({ dataUser }) {
     }
   };
 
-  // 🛡️ PERBAIKAN: Handler Logout yang benar memanggil backend
   const handleLogout = async () => {
     await prosesLogout();
-    router.push("/login");
+    router.push(KONFIGURASI_SISTEM.PATH_LOGIN); // 👈 Zero Hardcode Path
   };
 
   return (
     <div className={styles.areaKonten} style={{ padding: 0 }}>
+      {/* ... (Header dan UI sisanya sama persis dengan yang Bos kirim) ... */}
       <div className={styles.headerHalaman}>
         <div className={styles.hiasanBulat1}></div>
         <div className={styles.hiasanBulat2}></div>
@@ -101,22 +104,17 @@ export default function TabProfilGuru({ dataUser }) {
             <InfoRow icon={<FaIdCard />} label="Username" value={`@${dataUser?.username || "-"}`} highlight />
             
             {isEditing ? (
-              // 🛡️ PERBAIKAN: Dibungkus form agar mendukung "Enter" key
               <form onSubmit={handleSimpanPassword} style={{ marginTop: '4px', animation: 'slideDown 0.2s ease-out' }}>
                 <label style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Ganti Kata Sandi</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input 
                     type="password" 
-                    placeholder="Minimal 6 karakter"
+                    placeholder={`Minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter`} // 👈 Placeholder dinamis
                     value={passwordBaru}
                     onChange={(e) => setPasswordBaru(e.target.value)}
                     style={{ flex: 1, padding: '10px', border: '3px solid #111827', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px' }}
                   />
-                  <button 
-                    type="submit"
-                    disabled={loading}
-                    style={{ backgroundColor: '#22c55e', color: 'white', border: '3px solid #111827', borderRadius: '8px', padding: '0 15px', cursor: 'pointer', boxShadow: '2px 2px 0 #111827' }}
-                  >
+                  <button type="submit" disabled={loading} style={{ backgroundColor: '#22c55e', color: 'white', border: '3px solid #111827', borderRadius: '8px', padding: '0 15px', cursor: 'pointer', boxShadow: '2px 2px 0 #111827' }}>
                     {loading ? "..." : <FaCheck />}
                   </button>
                 </div>
@@ -130,11 +128,9 @@ export default function TabProfilGuru({ dataUser }) {
           </div>
         </div>
 
-        {/* 🛡️ PERBAIKAN: Gunakan handleLogout yang baru */}
         <button onClick={handleLogout} className={styles.tombolLogout} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '16px', backgroundColor: 'white', border: '4px solid #111827', borderRadius: '16px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '6px 6px 0 #ef4444', transition: '0.1s' }}>
           <FaArrowRightFromBracket /> KELUAR APLIKASI
         </button>
-
       </div>
     </div>
   );
@@ -142,12 +138,7 @@ export default function TabProfilGuru({ dataUser }) {
 
 function InfoRow({ icon, label, value, highlight = false }) {
   return (
-    <div style={{ 
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-      backgroundColor: highlight ? '#dbeafe' : '#f8fafc', 
-      padding: '12px 16px', border: '3px solid #111827', borderRadius: '12px',
-      boxShadow: '2px 2px 0 rgba(0,0,0,0.05)' 
-    }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: highlight ? '#dbeafe' : '#f8fafc', padding: '12px 16px', border: '3px solid #111827', borderRadius: '12px', boxShadow: '2px 2px 0 rgba(0,0,0,0.05)' }}>
       <span style={{ fontSize: '11px', fontWeight: '900', color: '#4b5563', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase' }}>
         {icon} {label}
       </span>

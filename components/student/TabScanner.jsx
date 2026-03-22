@@ -6,6 +6,7 @@
 import Image from "next/image"; 
 import { Scanner } from "@yudiel/react-qr-scanner";
 
+// 👈 Import Konstanta 
 import { MODE_SCAN, OPSI_MAPEL_KONSUL } from "../../utils/constants";
 import { FaQrcode, FaBookOpen, FaLightbulb, FaCircleCheck, FaCircleXmark } from "react-icons/fa6";
 
@@ -30,6 +31,7 @@ export default function TabScanner({
       };
     }
     
+    // Cek kata kunci untuk UI Sukses Pulang vs Sukses Datang
     if (pesanSistem?.includes("Selesai") || pesanSistem?.includes("Pulang")) {
       return {
         icon: <FaCircleCheck size={60} color="#22c55e" />,

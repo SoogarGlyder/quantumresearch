@@ -9,13 +9,15 @@ import { DndContext, useDraggable, useDroppable, MouseSensor, TouchSensor, useSe
 
 import PaginationBar from "../ui/PaginationBar";
 import { DAFTAR_KELAS_BIMBEL, generateDuaMingguKerja, KAMUS_JAM_SESI } from "../../utils/jadwalHelper";
-import { OPSI_MAPEL_KELAS, OPSI_KELAS } from "../../utils/constants";
+
+// 👈 Import Konstanta Lengkap
+import { OPSI_MAPEL_KELAS, OPSI_KELAS, PERIODE_BELAJAR, LIMIT_DATA } from "../../utils/constants";
 import { tambahJadwal, hapusJadwal, editJadwal } from "../../actions/adminAction";
 import { formatTanggal, potongDataPagination } from "../../utils/formatHelper";
 import styles from "../../app/admin/AdminPage.module.css";
 
 // ============================================================================
-// --- KOMPONEN BANTUAN DND (Telah Dioptimasi dengan React.memo - Poin 27) ---
+// --- KOMPONEN BANTUAN DND (Telah Dioptimasi dengan React.memo) ---
 // ============================================================================
 
 const DraggableMapel = memo(({ mapel }) => {
@@ -42,7 +44,7 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
           <div key={j._id} onClick={() => klikKartuJadwal(j, "permanen")} className={styles.kartuJadwalPermanen} style={{ cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
             <div className={styles.labelTersimpan}><FaDatabase /> TERSIMPAN</div>
             <div className={styles.teksMapelKartu}>{j.mapel}</div>
-            <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.pengajar || '?'}</span><span>P-{j.pertemuan || '?'}</span></div>
+            <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.kodePengajar || '?'}</span><span>P-{j.pertemuan || '?'}</span></div>
             <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
           </div>
         ))}
@@ -50,7 +52,7 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
           <div key={j.idUnik} onClick={() => klikKartuJadwal(j, "draft")} className={styles.kartuJadwalDraft} style={{ cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
             <div className={styles.labelDraftBaru}>✨ DRAFT BARU</div>
             <div className={styles.teksMapelKartu}>{j.mapel}</div>
-            <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.pengajar}</span><span>P-{j.pertemuan}</span></div>
+            <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.kodePengajar}</span><span>P-{j.pertemuan}</span></div>
             <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
           </div>
         ))}
@@ -61,7 +63,6 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
     </td>
   );
 }, (prevProps, nextProps) => {
-  // 👇 Custom equality check agar memo tidak bocor saat array dibuat ulang
   if (prevProps.idSel !== nextProps.idSel) return false;
   if (prevProps.isSabtu !== nextProps.isSabtu) return false;
   if (prevProps.permanenDB.length !== nextProps.permanenDB.length) return false;
@@ -78,7 +79,7 @@ DroppableSel.displayName = "DroppableSel";
 // KOMPONEN UTAMA
 // ============================================================================
 export default function TabJadwal({ dataJadwal = [], muatData }) {
-  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+  // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
@@ -87,7 +88,8 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
   const page = Number(searchParams.get("page")) || 1;
   
   // --- STATE PAPAN CATUR ---
-  const [tanggalMulai, setTanggalMulai] = useState("2026-03-16");
+  // 🛡️ ZERO HARDCODE TANGGAL: Mengambil dari konstanta
+  const [tanggalMulai, setTanggalMulai] = useState(PERIODE_BELAJAR.MULAI);
   const [jadwalLokal, setJadwalLokal] = useState([]); 
   
   // Modal Tambah
@@ -110,7 +112,9 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
   const [filterTglMulai, setFilterTglMulai] = useState("");
   const [filterTglAkhir, setFilterTglAkhir] = useState("");
   const [filterKelas, setFilterKelas] = useState("");
-  const ITEMS_PER_PAGE = 10;
+  
+  // 🛡️ ZERO HARDCODE LIMIT
+  const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   // SINKRONISASI FILTER: Jika filter berubah, reset halaman ke 1 di URL
   useEffect(() => {
@@ -177,7 +181,6 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
     setDataDraft(null);
   };
 
-  // 👇 Dibungkus useCallback agar fungsi stabil dan tidak memicu render ulang sel memori
   const klikKartuJadwal = useCallback((jadwal, tipe) => {
     setJadwalEdit(jadwal);
     setTipeEdit(tipe);
@@ -255,7 +258,8 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
       const adaYangGagal = hasilEksekusi.some(res => res.sukses === false);
 
       if (adaYangGagal) {
-        alert("⚠️ Beberapa jadwal gagal disimpan.");
+        const errorPertama = hasilEksekusi.find(res => res.sukses === false);
+        alert(`❌ GAGAL SIMPAN: ${errorPertama?.pesan || "Terjadi kesalahan sistem"}`);
       } else {
         setJadwalLokal([]); 
         if(muatData) await muatData(); 
@@ -292,7 +296,6 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
     return jadwal.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
   }, [dataJadwal, filterTglMulai, filterTglAkhir, filterKelas]);
 
-  // Menggunakan 'page' yang diambil dari URL
   const { totalPage, dataTerpotong: dataJadwalHalIni } = potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
 
   const cariDraftLokal = (kelasId, tanggalPenuh) => jadwalLokal.filter(j => j.kelasId === kelasId && j.tanggal === tanggalPenuh);
@@ -430,7 +433,7 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
                     <td className={styles.tdDataTabel} style={{ fontWeight: '900', color: '#2563eb' }}>{j.kelasTarget}</td>
                     <td className={styles.tdDataTabel}><span className={styles.badgeMapelAbu}>{j.mapel}</span></td>
                     <td className={styles.tdDataTabel}>
-                      <div style={{ fontWeight: '900' }}>👨‍🏫 {j.pengajar || 'Belum diatur'}</div>
+                      <div style={{ fontWeight: '900' }}>👨‍🏫 {j.kodePengajar || 'Belum diatur'}</div>
                       <div style={{ fontSize: '12px', fontWeight: '800', color: '#6b7280' }}>Pertemuan ke-{j.pertemuan || '?'}</div>
                     </td>
                     <td className={styles.tdDataTabel} style={{ textAlign: 'center' }}>

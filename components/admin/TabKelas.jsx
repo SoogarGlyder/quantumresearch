@@ -4,7 +4,6 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react"; 
-// 👇 Import navigasi Next.js
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import FilterInput from "../ui/FilterInput";
@@ -13,8 +12,8 @@ import PaginationBar from "../ui/PaginationBar";
 import { inputAbsenManual } from "../../actions/adminAction";
 import { kalkulasiAbsensiLengkap } from "../../utils/kalkulatorData";
 import { formatTanggal, formatJam, formatYYYYMMDD, potongDataPagination, ekstrakKeteranganAbsen } from "../../utils/formatHelper";
-import { unduhExcel } from "../../utils/exportExcel";
-import { STATUS_SESI, OPSI_KELAS, OPSI_MAPEL_KELAS, OPSI_KETERANGAN_ABSEN } from "../../utils/constants";
+// 👈 Import Konstanta Sistem & Limit
+import { STATUS_SESI, OPSI_KELAS, OPSI_MAPEL_KELAS, OPSI_KETERANGAN_ABSEN, LIMIT_DATA } from "../../utils/constants";
 
 import { FaFileExcel, FaTriangleExclamation, FaClock, FaFilter } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
@@ -24,7 +23,7 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa = [], muatData }) {
   
-  // --- HOOKS UNTUK URL STATE (Poin 9) ---
+  // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
@@ -37,7 +36,8 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   const [filterKelasAbsen, setFilterKelasAbsen] = useState("");
   const [filterMapelKelas, setFilterMapelKelas] = useState("");
   
-  const ITEMS_PER_PAGE = 20;
+  // 🛡️ ZERO HARDCODE: Ambil limit dari konstanta
+  const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   // --- STATE: INLINE EDITING (Edit Langsung di Tabel) ---
   const [editingAbsenId, setEditingAbsenId] = useState(null);
@@ -57,10 +57,13 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   // --- HANDLERS ---
   const mulaiEditAbsen = (sesi) => {
     setEditingAbsenId(sesi._id); 
-    const { keterangan, catatan } = ekstrakKeteranganAbsen(sesi.status); 
     
-    setInlineKet(keterangan || OPSI_KETERANGAN_ABSEN[0] || "Alpa"); 
-    setInlineCatatan(catatan || "");
+    // 🛡️ PERBAIKAN BUG: Pisahkan Keterangan dan Catatan dengan aman
+    const catatanExtracted = ekstrakKeteranganAbsen(sesi.status);
+    const ketExtracted = sesi.status ? sesi.status.split('(')[0].trim() : STATUS_SESI.ALPA.id;
+    
+    setInlineKet(ketExtracted || OPSI_KETERANGAN_ABSEN[0]?.value || STATUS_SESI.ALPA.id); 
+    setInlineCatatan(catatanExtracted || "");
   };
 
   const simpanAbsenInline = async (sesi) => {
@@ -96,12 +99,10 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   };
 
   // --- LOGIKA FILTER ---
-  // 1. Hitung seluruh record (Asli + Virtual) HANYA jika data mentahnya berubah
   const riwayatKelasMurni = useMemo(() => {
     return kalkulasiAbsensiLengkap(dataRiwayat, dataJadwal, dataSiswa);
   }, [dataRiwayat, dataJadwal, dataSiswa]);
   
-  // 2. Terapkan filter di atas data yang sudah dihitung (Sangat Cepat)
   const riwayatKelasDifilter = useMemo(() => {
     let riwayat = [...riwayatKelasMurni];
     
@@ -112,7 +113,6 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     return riwayat;
   }, [riwayatKelasMurni, filterTglKelas, filterKelasAbsen, filterMapelKelas]);
   
-  // 3. Potong untuk Pagination menggunakan 'page' dari URL
   const { totalPage, dataTerpotong: dataKelasHalIni } = potongDataPagination(riwayatKelasDifilter, page, ITEMS_PER_PAGE);
 
   // ============================================================================
@@ -169,39 +169,41 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
             ) : (
               dataKelasHalIni.map(sesi => {
                 const isEditing = editingAbsenId === sesi._id;
-                const isTidakHadir = sesi.status?.includes(STATUS_SESI.TIDAK_HADIR) || false;
-                // 👇 Hitung apakah status sedang aktif/berjalan
-                const isAktif = sesi.status !== STATUS_SESI.SELESAI && !isTidakHadir;
+                
+                // 🛡️ ZERO HARDCODE: Cek Status
+                const isTidakHadir = 
+                  sesi.status?.includes(STATUS_SESI.TIDAK_HADIR.id) || 
+                  sesi.status?.includes(STATUS_SESI.ALPA.id) || 
+                  sesi.status?.includes(STATUS_SESI.SAKIT.id) || 
+                  sesi.status?.includes(STATUS_SESI.IZIN.id);
+                  
+                const isAktif = sesi.status !== STATUS_SESI.SELESAI.id && !isTidakHadir;
                 
                 return (
                   <tr key={sesi._id}>
                     
-                    {/* Kolom 1: Mapel & Tanggal */}
-                    <td>
+                    <td className={styles.tdLebar}>
                       <p className={styles.teksTanggal}>{formatTanggal(sesi.waktuMulai)}</p>
                       <p className={styles.teksMapel}>{sesi.namaMapel || "-"}</p>
                     </td>
                     
-                    {/* Kolom 2: Siswa & Kelas */}
-                    <td>
+                    <td className={styles.tdLebar}>
                       <p className={styles.teksNama}>{sesi.siswaId ? sesi.siswaId.nama : <span style={{color: '#ef4444'}}>Dihapus</span>}</p>
                       <p className={styles.teksKelas}>{sesi.siswaId ? sesi.siswaId.kelas : "-"}</p>
                     </td>
                     
-                    {/* Kolom 3: Waktu (Masuk -> Pulang) */}
                     <td style={{textAlign: 'center'}}>
                       {isTidakHadir ? (
                         <span className={styles.teksPudar}>-</span>
                       ) : (
-                        <>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                           <span className={styles.teksJam}>{formatJam(sesi.waktuMulai)}</span>
                           <span className={styles.panahJam}>→</span>
                           <span className={styles.teksJamPudar}>{sesi.waktuSelesai ? formatJam(sesi.waktuSelesai) : "??:??"}</span>
-                        </>
+                        </div>
                       )}
                     </td>
                     
-                    {/* Kolom 4: Extra Konsul */}
                     <td style={{textAlign: 'center'}}>
                       {sesi.konsulExtraMenit > 0 ? (
                         <span className={styles.badgeExtraBadge}><FaClock style={{marginRight: '4px'}} /> +{sesi.konsulExtraMenit}m</span>
@@ -210,18 +212,20 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
                       )}
                     </td>
                     
-                    {/* Kolom 5: Keterangan (Normal / Edit Mode) */}
                     <td style={{textAlign: 'center'}}>
                       {isEditing ? (
                         <div className={styles.wadahAksiInline}>
+                          {/* 🛡️ PERBAIKAN BUG: Map object {label, value} dengan benar */}
                           <select value={inlineKet} onChange={e => setInlineKet(e.target.value)} className={styles.inlineSelect}>
-                            {OPSI_KETERANGAN_ABSEN.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
+                            {OPSI_KETERANGAN_ABSEN.map(opsi => (
+                              <option key={opsi.value} value={opsi.value}>{opsi.label}</option>
+                            ))}
                           </select>
                           <input type="text" placeholder="Catatan opsional..." value={inlineCatatan} onChange={e => setInlineCatatan(e.target.value)} className={styles.inlineInput} />
                         </div>
                       ) : (
                         isTidakHadir ? (
-                          <span className={styles.teksAlpa}>{sesi.status.split('-')[1]?.trim() || "Absen"}</span>
+                          <span className={styles.teksAlpa}>{sesi.status.toUpperCase()}</span>
                         ) : sesi.terlambatMenit > 0 ? (
                           <span className={styles.teksTelat}><FaTriangleExclamation /> Telat {sesi.terlambatMenit}m</span>
                         ) : (
@@ -230,18 +234,15 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
                       )}
                     </td>
                     
-                    {/* Kolom 6: Status Tag (Selesai/Aktif/Absen) */}
                     <td style={{textAlign: 'center'}}>
-                      {/* 👇 Pemasangan animasi brutalPulse hanya jika isAktif bernilai true */}
                       <span 
-                        className={`${styles.badgeStatus} ${sesi.status === STATUS_SESI.SELESAI || isTidakHadir ? styles.statusSelesai : styles.statusBerjalan}`}
+                        className={`${styles.badgeStatus} ${sesi.status === STATUS_SESI.SELESAI.id || isTidakHadir ? styles.statusSelesai : styles.statusBerjalan}`}
                         style={isAktif ? { animation: 'brutalPulse 2s infinite' } : {}}
                       >
-                        {sesi.status === STATUS_SESI.SELESAI ? 'Selesai' : isTidakHadir ? 'Absen' : 'Aktif'}
+                        {sesi.status === STATUS_SESI.SELESAI.id ? STATUS_SESI.SELESAI.label : isTidakHadir ? 'Absen' : STATUS_SESI.BERJALAN.label}
                       </span>
                     </td>
                     
-                    {/* Kolom 7: Tombol Aksi (Simpan / Batal / Edit) */}
                     <td style={{textAlign: 'center'}}>
                       {isEditing ? (
                         <div className={styles.wadahAksiInlineHorizontal}>
@@ -265,7 +266,6 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
         </table>
       </div>
       
-      {/* PaginationBar mandiri membaca URL */}
       <PaginationBar totalPages={totalPage} />
     </div>
   );

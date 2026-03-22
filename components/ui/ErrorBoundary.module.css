@@ -1,0 +1,60 @@
+/* Container Utama Error */
+.errorContainer {
+  padding: 40px;
+  text-align: center;
+  background-color: var(--brutal-merah);
+  color: var(--brutal-putih);
+  border-radius: 12px;
+  border: var(--brutal-border);
+  margin: 20px;
+  box-shadow: var(--brutal-shadow);
+}
+
+/* Icon Peringatan */
+.errorIcon {
+  margin-bottom: 16px;
+}
+
+/* Judul Error */
+.errorTitle {
+  font-size: 24px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+/* Teks Pesan */
+.errorMessage {
+  margin-bottom: 24px;
+  font-weight: bold;
+}
+
+/* Teks Detail Error */
+.errorDetail {
+  font-style: italic;
+  text-decoration: underline;
+}
+
+/* Tombol Muat Ulang */
+.reloadButton {
+  padding: 12px 24px;
+  background-color: var(--brutal-kuning);
+  color: var(--brutal-hitam);
+  border: var(--brutal-border);
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 2px 2px 0 var(--brutal-hitam);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.reloadButton:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--brutal-hitam);
+}
+
+.reloadButton:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0 var(--brutal-hitam);
+}

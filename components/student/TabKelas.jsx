@@ -1,4 +1,3 @@
-// File: components/student/TabKelas.jsx
 "use client";
 
 // ============================================================================
@@ -8,7 +7,8 @@ import { useMemo } from "react";
 import Image from "next/image";
 
 import { pilahJadwalSiswa } from "../../utils/kalkulatorData";
-import { PERIODE_BELAJAR } from "../../utils/constants";
+// 👈 Import Konstanta Lengkap
+import { PERIODE_BELAJAR, STATUS_SESI } from "../../utils/constants"; 
 
 import { FaClipboardCheck, FaUserTie } from "react-icons/fa6";
 import styles from "../StudentApp.module.css";
@@ -23,26 +23,45 @@ export default function TabKelas({ jadwal = [], riwayat = [] }) {
     return pilahJadwalSiswa(jadwal, riwayat, PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR);
   }, [jadwal, riwayat]);
 
-  // --- HELPER RENDER: BADGE KEHADIRAN ---
+  // --- HELPER RENDER: BADGE KEHADIRAN (🛡️ ZERO HARDCODE) ---
   const renderBadgeKehadiran = (sesiTerkait) => {
+    // Jika tidak ada sesi terkait yang tercatat, berarti Alpa
     if (!sesiTerkait) {
-      return <span className={`${styles.badgeKehadiran} ${styles.badgeAlpa}`}>❌ Tidak Hadir</span>;
+      return <span className={`${styles.badgeKehadiran} ${styles.badgeAlpa}`}>❌ {STATUS_SESI.ALPA.label}</span>;
     }
 
-    if (sesiTerkait.status.includes('Tidak Hadir')) {
-      return <span className={`${styles.badgeKehadiran} ${styles.badgeAlpa}`}>❌ {sesiTerkait.status}</span>;
+    // Pengecekan status tidak hadir (Alpa, Izin, Sakit, dsb)
+    if (
+      sesiTerkait.status === STATUS_SESI.TIDAK_HADIR.id || 
+      sesiTerkait.status === STATUS_SESI.ALPA.id || 
+      sesiTerkait.status === STATUS_SESI.SAKIT.id || 
+      sesiTerkait.status === STATUS_SESI.IZIN.id
+    ) {
+      // Mengkapitalisasi huruf pertama agar rapi di UI
+      const labelTampil = sesiTerkait.status.charAt(0).toUpperCase() + sesiTerkait.status.slice(1);
+      return <span className={`${styles.badgeKehadiran} ${styles.badgeAlpa}`}>❌ {labelTampil}</span>;
     }
 
-    if (sesiTerkait.status === 'Selesai') {
+    // Pengecekan status selesai / hadir
+    if (sesiTerkait.status === STATUS_SESI.SELESAI.id) {
       return (
         <>
           <span className={`${styles.badgeKehadiran} ${styles.badgeHadir}`}>✔️ Hadir</span>
-          {sesiTerkait.terlambatMenit > 0 && <span className={`${styles.badgeKehadiran} ${styles.badgeTelat}`}>⚠️ Telat {sesiTerkait.terlambatMenit}m</span>}
-          {sesiTerkait.konsulExtraMenit > 0 && <span className={`${styles.badgeKehadiran} ${styles.badgeExtra}`}>⏱️ +{sesiTerkait.konsulExtraMenit}m Extra</span>}
+          {sesiTerkait.terlambatMenit > 0 && (
+            <span className={`${styles.badgeKehadiran} ${styles.badgeTelat}`}>
+              ⚠️ Telat {sesiTerkait.terlambatMenit}m
+            </span>
+          )}
+          {sesiTerkait.konsulExtraMenit > 0 && (
+            <span className={`${styles.badgeKehadiran} ${styles.badgeExtra}`}>
+              ⏱️ +{sesiTerkait.konsulExtraMenit}m Extra
+            </span>
+          )}
         </>
       );
     }
 
+    // Jika belum selesai, berarti status sedang berjalan
     return <span className={`${styles.badgeKehadiran} ${styles.badgeBerjalan}`}>🔄 Sedang Kelas</span>;
   };
 
@@ -98,7 +117,8 @@ export default function TabKelas({ jadwal = [], riwayat = [] }) {
                   {/* Baris Atas: Tanggal & Pertemuan */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ fontSize: '11px', fontWeight: '900', color: '#4b5563', backgroundColor: '#e5e7eb', padding: '4px 8px', borderRadius: '6px', border: '2px solid #9ca3af', textTransform: 'uppercase' }}>
-                      {new Date(j.tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'short' })}
+                      {/* 🛡️ ZERO HARDCODE TIMEZONE */}
+                      {new Date(j.tanggal).toLocaleDateString('id-ID', { timeZone: PERIODE_BELAJAR.TIMEZONE, weekday: 'long', day: 'numeric', month: 'short' })}
                     </div>
                     
                     {j.pertemuan && (
