@@ -30,37 +30,78 @@ export async function prosesLogin(dataFormulir) {
   try {
     await connectToDatabase();
 
-    const idInput = validationHelper.sanitize(
+    // 1. Ambil input mentah, lalu siapkan versi huruf kecil dan besarnya
+    const idInputRaw = validationHelper.sanitize(
       dataFormulir.identifier || dataFormulir.username || dataFormulir.noHp || ""
-    ).toLowerCase();
+    ).trim();
+    
+    const idInputLower = idInputRaw.toLowerCase();
+    const idInputUpper = idInputRaw.toUpperCase(); // Untuk pencarian Kode Pengajar (contoh: BC)
     
     const passwordInput = (dataFormulir.password || dataFormulir.kataSandi || dataFormulir.pass || "").toString().trim();
 
-    if (!idInput || !passwordInput) {
+    if (!idInputRaw || !passwordInput) {
       return responseHelper.error("ID dan Kata Sandi wajib diisi.");
     }
 
+    // 🚀 2. LOGIKA PENCARIAN TINGKAT DEWA (Sesuai Peran)
     const user = await User.findOne({
-      $or: [{ username: idInput }, { nomorPeserta: idInput }, { noHp: idInput }]
+      $or: [
+        // 🔒 ADMIN: HANYA bisa login pakai Username
+        { 
+          peran: PERAN.ADMIN.id, 
+          username: idInputLower 
+        },
+        
+        // 🎓 SISWA: Bisa pakai Username, Nomor Peserta, atau No HP
+        { 
+          peran: PERAN.SISWA.id, 
+          $or: [
+            { username: idInputLower }, 
+            { nomorPeserta: { $regex: new RegExp(`^${idInputRaw}$`, "i") } }, // Kebal huruf besar/kecil
+            { noHp: idInputRaw }
+          ] 
+        },
+        
+        // 👨‍🏫 PENGAJAR: Bisa pakai Username, Nomor Peserta, No HP, atau Kode Pengajar
+        { 
+          peran: PERAN.PENGAJAR.id, 
+          $or: [
+            { username: idInputLower }, 
+            { nomorPeserta: { $regex: new RegExp(`^${idInputRaw}$`, "i") } }, 
+            { noHp: idInputRaw },
+            { kodePengajar: idInputUpper } 
+          ] 
+        }
+      ]
     }).select("+password"); 
 
-    if (!user) return responseHelper.error("Akun tidak ditemukan!");
-    if (!user.password) return responseHelper.error("Data password di server kosong. Hubungi Admin.");
+    // 3. Validasi Lanjutan
+    if (!user) {
+      return responseHelper.error("Akun tidak ditemukan atau ID tidak diizinkan untuk peran tersebut!");
+    }
+    
+    if (!user.password) {
+      return responseHelper.error("Data password di server kosong. Hubungi Admin.");
+    }
     
     if (user.status === STATUS_USER.NONAKTIF) {
       return responseHelper.error("Akun Anda telah dinonaktifkan. Silakan hubungi Admin.");
     }
 
+    // 4. Cek Password
     const passwordCocok = await authHelper.bandingkanPassword(passwordInput, user.password);
     
-    console.log(`[AUTH] Login Attempt: ${idInput} | Success: ${passwordCocok}`);
+    console.log(`[AUTH] Login Attempt: ${idInputRaw} | Role: ${user.peran} | Success: ${passwordCocok}`);
     
     if (!passwordCocok) return responseHelper.error("Kata sandi salah!");
 
+    // 5. Buat Sesi Token
     await authHelper.setSesi(user);
     
     return responseHelper.success("Login Berhasil! Memuat portal...");
   } catch (error) {
+    console.error("[CRITICAL ERROR Login]:", error);
     return responseHelper.error("Terjadi gangguan pada sistem login.");
   }
 }

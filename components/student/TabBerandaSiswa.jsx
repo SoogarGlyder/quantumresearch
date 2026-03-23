@@ -17,7 +17,7 @@ import styles from "../StudentApp.module.css";
 // ============================================================================
 // 2. MAIN COMPONENT (TAB BERANDA SISWA)
 // ============================================================================
-export default function TabBeranda({ siswa, jadwal, riwayat, setTab, setModeScan, resetScanner }) {
+export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setModeScan, resetScanner }) {
   
   // --- STATE: MODAL KLASEMEN ---
   const [isKlasemenOpen, setIsKlasemenOpen] = useState(false);

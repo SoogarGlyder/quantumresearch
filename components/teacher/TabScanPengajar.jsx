@@ -8,7 +8,7 @@ import {
   FaUserClock, FaCameraRotate 
 } from "react-icons/fa6";
 
-import { absenPengajarAction } from "../../actions/scanAction"; // 👈 Real Action!
+import { absenPengajarAction } from "../../actions/scanAction"; 
 import styles from "../TeacherApp.module.css";
 
 export default function TabScanPengajar() {
@@ -32,9 +32,8 @@ export default function TabScanPengajar() {
 
     setLoading(true);
     setHasilScan(teksQR);
-    setPesanSistem("Memeriksa lokasi GPS Anda...");
+    setPesanSistem("MEMERIKSA LOKASI GPS...");
 
-    // Mengambil lokasi GPS Pengajar secara langsung!
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
@@ -43,8 +42,7 @@ export default function TabScanPengajar() {
             lng: position.coords.longitude
           };
           
-          setPesanSistem("Memverifikasi data kehadiran...");
-          // Panggil Action Backend sesungguhnya
+          setPesanSistem("MEMVERIFIKASI KEHADIRAN...");
           const hasil = await absenPengajarAction(teksQR, lokasiUser);
           
           setErrorStatus(!hasil.sukses);
@@ -53,14 +51,14 @@ export default function TabScanPengajar() {
         },
         (err) => {
           setErrorStatus(true);
-          setPesanSistem("Gagal mengambil GPS. Pastikan GPS HP Anda aktif.");
+          setPesanSistem("GAGAL MENGAMBIL GPS. AKTIFKAN LOKASI HP.");
           setLoading(false);
         },
         { enableHighAccuracy: true, timeout: 5000 }
       );
     } else {
       setErrorStatus(true);
-      setPesanSistem("Browser Anda tidak mendukung GPS.");
+      setPesanSistem("BROWSER TIDAK MENDUKUNG GPS.");
       setLoading(false);
     }
   }, [loading, hasilScan]);
@@ -72,28 +70,30 @@ export default function TabScanPengajar() {
         <div className={styles.hiasanBulat2}></div>
         <div className={styles.wadahLogoTengah}>
           <div className={styles.kotakLogo}>
-            <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} className={styles.logoScannerPudar} priority />
+            <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
           </div>
         </div>
         <h1 className={styles.judulHalaman}>Presensi Staf</h1>
       </div>
 
-      <div className={styles.areaKonten} style={{ padding: '20px' }}>
+      <div className={styles.areaKonten} style={{ padding: '24px' }}>
         {!hasilScan ? (
           <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-            <div style={{ background: '#fef08a', border: '3px solid #111827', borderRadius: '12px', padding: '16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '4px 4px 0 #111827' }}>
-              <FaUserClock size={28} />
+            <div style={{ background: '#fef08a', border: '4px solid #111827', borderRadius: '16px', padding: '16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '6px 6px 0 #111827' }}>
+              <div style={{ background: 'white', padding: '12px', borderRadius: '12px', border: '3px solid #111827' }}>
+                <FaUserClock size={32} color="#111827" />
+              </div>
               <div>
-                <p style={{ margin: 0, fontWeight: '900', fontSize: '14px' }}>Clock-In / Out</p>
-                <p style={{ margin: 0, fontSize: '12px', fontWeight: '700', color: '#4b5563' }}>Scan barcode di meja pendaftaran Admin.</p>
+                <p style={{ margin: 0, fontWeight: '900', fontSize: '18px', textTransform: 'uppercase', color: '#111827' }}>Clock-In / Out</p>
+                <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#4b5563' }}>Scan barcode di meja pendaftaran Admin.</p>
               </div>
             </div>
 
-            <div className={styles.bingkaiKamera} style={{ position: 'relative', overflow: 'hidden' }}>
-              <div className={styles.wadahKamera}>
+            <div className={styles.bingkaiKamera} style={{ position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: '24px', boxShadow: '8px 8px 0 #111827' }}>
+              <div className={styles.wadahKamera} style={{ borderRadius: '16px', border: '4px solid #111827' }}>
                 <Scanner 
                   onScan={handleScan}
-                  onError={() => setPesanSistem("Izin kamera ditolak atau error.")}
+                  onError={() => setPesanSistem("IZIN KAMERA DITOLAK.")}
                   allowMultiple={false}
                   scanDelay={1500}
                 />
@@ -101,8 +101,8 @@ export default function TabScanPengajar() {
                 <div className={styles.overlayKameraKotak}></div>
               </div>
               
-              <div style={{ position: 'absolute', bottom: '20px', left: '0', right: '0', textAlign: 'center', zIndex: 5 }}>
-                <span style={{ background: 'rgba(255,255,255,0.9)', padding: '6px 12px', borderRadius: '20px', border: '2px solid #111827', fontSize: '11px', fontWeight: '900' }}>
+              <div style={{ position: 'absolute', bottom: '28px', left: '0', right: '0', textAlign: 'center', zIndex: 5 }}>
+                <span style={{ background: '#111827', color: 'white', padding: '8px 16px', borderRadius: '12px', border: '2px solid white', fontSize: '12px', fontWeight: '900', letterSpacing: '1px', boxShadow: '0 4px 0 rgba(0,0,0,0.5)' }}>
                   <FaCameraRotate /> KAMERA AKTIF
                 </span>
               </div>
@@ -112,33 +112,35 @@ export default function TabScanPengajar() {
           <div style={{ animation: 'slideUp 0.3s ease-out' }}>
             <div className={`${styles.layarHasil} ${errorStatus ? styles.layarHasilError : ""}`} 
                  style={{ 
-                   background: errorStatus ? "#fee2e2" : "#dcfce3", 
-                   height: '280px', borderRadius: '24px', border: '4px solid #111827',
+                   background: errorStatus ? "#fca5a5" : "#4ade80", 
+                   height: '300px', borderRadius: '24px', border: '4px solid #111827',
                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                   boxShadow: '8px 8px 0 #111827', gap: '16px'
+                   boxShadow: '8px 8px 0 #111827', gap: '20px'
                  }}>
               
               {loading ? (
-                <div className={styles.loadingSpinnerBesar}></div>
+                <div className={styles.kotakPesanLoading} style={{ padding: '30px', borderRadius: '16px' }}>
+                  <h2 style={{ margin: 0, fontWeight: '900' }}>MEMPROSES...</h2>
+                </div>
               ) : (
                 <>
-                  {errorStatus ? <FaCircleXmark size={80} color="#ef4444" /> : <FaCircleCheck size={80} color="#22c55e" />}
-                  <h2 style={{ fontWeight: '900', textTransform: 'uppercase', margin: 0 }}>
-                    {errorStatus ? "Gagal!" : "Berhasil!"}
+                  {errorStatus ? <FaCircleXmark size={100} color="#111827" /> : <FaCircleCheck size={100} color="#111827" />}
+                  <h2 style={{ fontWeight: '900', textTransform: 'uppercase', margin: 0, fontSize: '32px', color: '#111827', textShadow: '2px 2px 0 white' }}>
+                    {errorStatus ? "GAGAL!" : "BERHASIL!"}
                   </h2>
                 </>
               )}
             </div>
 
             <div style={{ marginTop: '32px', textAlign: 'center' }}>
-              <div style={{ background: 'white', border: '3px solid #111827', borderRadius: '16px', padding: '20px', boxShadow: '4px 4px 0 #111827', marginBottom: '24px' }}>
-                <p style={{ margin: 0, fontWeight: '800', color: '#111827', fontSize: '15px' }}>
+              <div style={{ background: 'white', border: '4px solid #111827', borderRadius: '16px', padding: '24px', boxShadow: '6px 6px 0 #111827', marginBottom: '24px' }}>
+                <p style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '16px', textTransform: 'uppercase' }}>
                   {pesanSistem}
                 </p>
               </div>
 
-              <button onClick={resetScanner} className={styles.tombolSimpanBiruBaru} style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
-                <FaClockRotateLeft /> COBA SCAN ULANG
+              <button onClick={resetScanner} className={styles.tombolSimpanBiruBaru} style={{ width: '100%', padding: '20px', fontSize: '18px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
+                <FaClockRotateLeft /> SCAN ULANG
               </button>
             </div>
           </div>

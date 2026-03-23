@@ -3,15 +3,20 @@
 import connectToDatabase from "../lib/db";
 import User from "../models/User";
 import Jadwal from "../models/Jadwal";
+import StudySession from "../models/StudySession"; 
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { validationHelper } from "../utils/validationHelper";
+import { timeHelper } from "../utils/timeHelper";  
 import { 
   PERAN, 
   STATUS_USER, 
   KONFIGURASI_MEDIA, 
   KONFIGURASI_SISTEM, 
-  PESAN_SISTEM 
+  PESAN_SISTEM,
+  TIPE_SESI,       
+  LABEL_SISTEM,    
+  STATUS_SESI      
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 
@@ -33,10 +38,79 @@ function isValidCloudinary(url) {
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 2. TEACHER ACTIONS (JURNAL & DOKUMENTASI)
+// 2. TEACHER ACTIONS (JURNAL, DOKUMENTASI, ABSENSI & NILAI)
 // ============================================================================
 
-export async function simpanJurnalPengajar(idJadwal, dataJurnal) {
+export async function ambilDetailJurnalPengajar(idJadwal) {
+  try {
+    await connectToDatabase();
+    
+    const auth = await pastikanOtoritas();
+    if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const jadwal = await Jadwal.findById(idJadwal).lean();
+    if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
+
+    if (auth.peran !== PERAN.ADMIN.id && jadwal.pengajarId?.toString() !== auth.userId) {
+       return responseHelper.error("Akses Ditolak: Ini bukan kelas Anda.");
+    }
+
+    const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
+    
+    const [siswaKelas, sesiHariIni] = await Promise.all([
+      User.find({ 
+        peran: PERAN.SISWA.id, 
+        kelas: jadwal.kelasTarget, 
+        status: STATUS_USER.AKTIF 
+      })
+        .select("nama nomorPeserta")
+        .sort({ nama: 1 })
+        .lean(),
+      StudySession.find({
+        jenisSesi: TIPE_SESI.KELAS,
+        namaMapel: jadwal.mapel,
+        waktuMulai: { $gte: awal, $lte: akhir }
+      }).lean()
+    ]);
+
+    const dataSiswaJurnal = siswaKelas.map(siswa => {
+      const sesi = sesiHariIni.find(s => s.siswaId.toString() === siswa._id.toString());
+      
+      // 🚀 LOGIKA BARU: Ekstrak "Sakit (Tipes)" menjadi Status="Sakit", Catatan="Tipes"
+      let baseStatus = LABEL_SISTEM.BELUM_ABSEN;
+      let ekstrakCatatan = "";
+
+      if (sesi && sesi.status) {
+        if (sesi.status.includes("(")) {
+          const splitIdx = sesi.status.indexOf("(");
+          baseStatus = sesi.status.substring(0, splitIdx).trim();
+          ekstrakCatatan = sesi.status.substring(splitIdx + 1).replace(")", "").trim();
+        } else {
+          baseStatus = sesi.status;
+        }
+      }
+
+      return {
+        siswaId: siswa._id.toString(),
+        nama: siswa.nama,
+        nomorPeserta: siswa.nomorPeserta,
+        sesiId: sesi ? sesi._id.toString() : null,
+        statusAbsen: baseStatus,
+        catatan: ekstrakCatatan, // Catatan dikirim ke UI
+        nilaiTest: sesi ? sesi.nilaiTest ?? "" : ""
+      };
+    });
+
+    return responseHelper.success("Detail jurnal dimuat.", {
+      jadwal: serialize(jadwal),
+      dataSiswa: dataSiswaJurnal
+    });
+  } catch (error) {
+    return responseHelper.error("Gagal mengambil detail jurnal kelas.");
+  }
+}
+
+export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa = []) {
   try {
     await connectToDatabase();
     
@@ -61,7 +135,7 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal) {
       query.pengajarId = auth.userId; 
     }
 
-    const update = await Jadwal.findOneAndUpdate(
+    const updateJadwal = await Jadwal.findOneAndUpdate(
       query,
       {
         $set: {
@@ -75,13 +149,58 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal) {
       { new: true }
     );
 
-    if (!update) return responseHelper.error("Jadwal tidak ditemukan.");
+    if (!updateJadwal) return responseHelper.error("Jadwal tidak ditemukan atau Anda tidak memiliki akses.");
+
+    let updateSesi = Promise.resolve();
+    if (arrayNilaiSiswa.length > 0) {
+      const { awal, akhir } = timeHelper.getRentangHari(updateJadwal.tanggal);
+      
+      const ops = arrayNilaiSiswa
+        .filter(item => item.statusAbsen !== LABEL_SISTEM.BELUM_ABSEN) 
+        .map(item => {
+          
+          // 🚀 LOGIKA BARU: Gabung Status + Catatan saat mau disave ke MongoDB
+          const statusFinal = item.catatan?.trim() 
+            ? `${item.statusAbsen} (${item.catatan.trim()})`.toLowerCase() 
+            : item.statusAbsen.toLowerCase();
+
+          return {
+            updateOne: {
+              filter: {
+                siswaId: item.siswaId,
+                jenisSesi: TIPE_SESI.KELAS,
+                namaMapel: updateJadwal.mapel,
+                waktuMulai: { $gte: awal, $lte: akhir }
+              },
+              update: {
+                $set: {
+                  status: statusFinal,
+                  nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest),
+                  waktuSelesai: new Date()
+                },
+                $setOnInsert: {
+                  waktuMulai: awal,
+                  terlambatMenit: 0
+                }
+              },
+              upsert: true
+            }
+          };
+        });
+
+      if (ops.length > 0) {
+        updateSesi = StudySession.bulkWrite(ops);
+      }
+    }
+
+    await Promise.all([updateJadwal, updateSesi]);
 
     revalidatePath(PERAN.PENGAJAR.home); 
     revalidatePath(PERAN.ADMIN.home);
-    return responseHelper.success("✅ Jurnal & Dokumentasi Disimpan.");
+    return responseHelper.success("✅ Jurnal Kelas & Absensi Siswa Berhasil Disimpan.");
 
   } catch (error) {
+    console.error("[ERROR simpanJurnalPengajar]:", error);
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
@@ -147,9 +266,6 @@ export async function hapusPengajar(idPengajar) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// 🚀 FITUR BARU: EDIT DATA PENGAJAR
-// ----------------------------------------------------------------------------
 export async function editPengajar(idPengajar, dataBaru) {
   try {
     await connectToDatabase();
@@ -157,7 +273,6 @@ export async function editPengajar(idPengajar, dataBaru) {
 
     const dataUpdate = { ...dataBaru };
     
-    // Jika password diisi, update dengan hash baru. Jika kosong, biarkan password lama.
     if (dataBaru.password?.trim()) {
       dataUpdate.password = await authHelper.buatHash(dataBaru.password);
     } else {
@@ -180,9 +295,6 @@ export async function editPengajar(idPengajar, dataBaru) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// 🚀 FITUR BARU: UPLOAD MASSAL PENGAJAR VIA CSV
-// ----------------------------------------------------------------------------
 export async function prosesBulkTambahPengajar(dataArray) {
   try {
     await connectToDatabase();
@@ -191,7 +303,6 @@ export async function prosesBulkTambahPengajar(dataArray) {
     let suksesCount = 0;
     let laporan = [];
 
-    // Looping data dari CSV
     for (let [index, item] of dataArray.entries()) {
       try {
         if (!item.nama || !item.kodePengajar) {
@@ -199,12 +310,10 @@ export async function prosesBulkTambahPengajar(dataArray) {
           continue;
         }
 
-        // Tentukan username (jika di CSV kosong, pakai kode pengajar)
         const usernameTarget = item.username || item.kodePengajar;
         const username = validationHelper.sanitize(usernameTarget).toLowerCase();
         const kodePengajar = validationHelper.sanitize(item.kodePengajar).toUpperCase();
 
-        // Cek apakah username/kode sudah terpakai
         const exist = await User.findOne({ 
           $or: [{ username }, { kodePengajar }] 
         }).select("_id").lean();
@@ -217,7 +326,6 @@ export async function prosesBulkTambahPengajar(dataArray) {
         const pwd = item.password || KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
         const hashed = await authHelper.buatHash(pwd);
 
-        // Buat akun
         await User.create({
           nama: item.nama,
           nomorPeserta: item.nomorPeserta || "",

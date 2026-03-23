@@ -119,7 +119,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   // 3. RENDER UI
   // ============================================================================
   return (
-    <div className={`${styles.isiTab} ${styles.SembunyiPrint}`}>
+    <div className={`${styles.isiTab} ${styles.SembunyiPrint} ${styles.wadahMonitoring}`}>
       
       {/* HEADER & TOMBOL EXCEL */}
       <div className={styles.headerTabWrapper}>

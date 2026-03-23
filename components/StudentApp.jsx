@@ -13,10 +13,10 @@ import { prosesLogout } from "../actions/authAction";
 import { MODE_SCAN, PREFIX_BARCODE, TIPE_SESI, STATUS_SESI, KONFIGURASI_SISTEM } from "../utils/constants";
 import { cekPesanErrorScanner } from "../utils/formatHelper";
 
-import TabBeranda from "./student/TabBeranda";
-import TabRiwayat from "./student/TabRiwayat";
-import TabKelas from "./student/TabKelas";
-import TabProfil from "./student/TabProfil"; 
+import TabBerandaSiswa from "./student/TabBerandaSiswa";
+import TabRiwayatSiswa from "./student/TabRiwayatSiswa";
+import TabKelasSiswa from "./student/TabKelasSiswa";
+import TabProfilSiswa from "./student/TabProfilSiswa"; 
 
 import styles from "./StudentApp.module.css";
 import { FaHouse, FaQrcode, FaClockRotateLeft, FaCalendarCheck, FaUserAstronaut } from "react-icons/fa6";
@@ -24,7 +24,7 @@ import { FaHouse, FaQrcode, FaClockRotateLeft, FaCalendarCheck, FaUserAstronaut 
 // ============================================================================
 // 2. DYNAMIC IMPORTS (Lazy Loading)
 // ============================================================================
-const TabScanner = dynamic(() => import("./student/TabScanner"), { 
+const TabScanSiswa = dynamic(() => import("./student/TabScanSiswa"), { 
   ssr: false, 
   loading: () => (
     <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: '16px', color: '#2563eb' }}>
@@ -105,15 +105,15 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
   const renderIsiTab = () => {
     switch (tab) {
       case "home":
-        return <TabBeranda siswa={siswa} jadwal={jadwal} riwayat={riwayat} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} />;
+        return <TabBerandaSiswa siswa={siswa} jadwal={jadwal} riwayat={riwayat} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} />;
       case "scan":
-        return <TabScanner modeScan={modeScan} setModeScan={setModeScan} hasilScan={hasilScan} pesanSistem={pesanSistem} sedangLoading={sedangLoading} mapelPilihan={mapelPilihan} setMapelPilihan={setMapelPilihan} saatBarcodeTerbaca={saatBarcodeTerbaca} resetScanner={resetScanner} apakahError={apakahError} adaKonsulAktif={adaKonsulAktif} />;
+        return <TabScanSiswa modeScan={modeScan} setModeScan={setModeScan} hasilScan={hasilScan} pesanSistem={pesanSistem} sedangLoading={sedangLoading} mapelPilihan={mapelPilihan} setMapelPilihan={setMapelPilihan} saatBarcodeTerbaca={saatBarcodeTerbaca} resetScanner={resetScanner} apakahError={apakahError} adaKonsulAktif={adaKonsulAktif} />;
       case "riwayat":
-        return <TabRiwayat riwayat={riwayat} />;
+        return <TabRiwayatSiswa riwayat={riwayat} />;
       case "kelas":
-        return <TabKelas jadwal={jadwal} riwayat={riwayat} />;
+        return <TabKelasSiswa jadwal={jadwal} riwayat={riwayat} />;
       case "profil":
-        return <TabProfil siswa={siswa} klikLogout={klikLogout} />;
+        return <TabProfilSiswa siswa={siswa} klikLogout={klikLogout} />;
       default:
         return null;
     }

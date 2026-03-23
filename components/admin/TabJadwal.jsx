@@ -405,7 +405,7 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
               <option value="">Semua Kelas</option>
               {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
             </select>
-            <button onClick={() => { setFilterTglMulai(""); setFilterTglAkhir(""); setFilterKelas(""); }} className={styles.tombolResetBiru}>Reset</button>
+            <button onClick={() => { setFilterTglMulai(""); setFilterTglAkhir(""); setFilterKelas(""); }} className={styles.btnReset}>Reset</button>
           </div>
         </div>
 

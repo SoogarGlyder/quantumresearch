@@ -166,7 +166,7 @@ export default function TabJurnal({ dataJadwal = [], muatData }) {
   return renderDenganToast(
     <div className={`${styles.isiTab} ${styles.SembunyiPrint}`}>
       <div className={styles.headerTabWrapper}>
-        <h2 className={styles.judulIsiTab} style={{margin: 0}}><FaBookBookmark /> Jurnal Kelas & LMS</h2>
+        <h2 className={styles.judulIsiTab} style={{margin: 0}}><FaBookBookmark /> Jurnal Kelas</h2>
       </div>
 
       <div className={styles.filterBar}>
