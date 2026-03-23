@@ -8,19 +8,19 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import PaginationBar from "../ui/PaginationBar";
 
-import { editAkunSiswa, hapusAkunSiswa } from "../../actions/adminAction";
-import { prosesTambahSiswa, prosesBulkTambahSiswa } from "../../actions/authAction";
+// ⚠️ Pastikan editPengajar dan prosesBulkTambahPengajar sudah ada di teacherAction.js
+import { tambahPengajarBaru, hapusPengajar, editPengajar, prosesBulkTambahPengajar } from "../../actions/teacherAction";
 import { potongDataPagination } from "../../utils/formatHelper";
 
 // 👈 Import Konstanta Sistem
-import { OPSI_KELAS, STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, KONFIGURASI_SISTEM } from "../../utils/constants"; 
+import { STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, KONFIGURASI_SISTEM } from "../../utils/constants";
 
 import styles from "../../app/admin/AdminPage.module.css";
 
 // ============================================================================
-// 2. MAIN COMPONENT (TAB SISWA)
+// 2. MAIN COMPONENT (TAB PENGAJAR)
 // ============================================================================
-export default function TabSiswa({ dataSiswa = [], muatData }) {
+export default function TabPengajar({ dataPengajar = [], muatData }) {
   // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -28,56 +28,41 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   
   const fileInputRef = useRef(null);
 
-  // Ambil halaman aktif langsung dari URL (Default ke 1)
+  // Ambil halaman aktif langsung dari URL
   const page = Number(searchParams.get("page")) || 1;
   
-  // --- STATE: FORM SISWA (🛡️ ZERO HARDCODE STATUS) ---
+  // --- STATE: FORM PENGAJAR (🛡️ ZERO HARDCODE STATUS) ---
   const initialFormState = { 
     nama: "", 
-    nomorPeserta: "", 
+    nomorPeserta: "", // ID Unik
     username: "", 
-    password: "", 
+    password: "",     // Disamakan dengan form siswa (sebelumnya kataSandi)
     noHp: "", 
-    kelas: "", 
-    jadwalKelas: "", 
-    jamKelas: "", 
+    kodePengajar: "", 
     status: STATUS_USER.AKTIF 
   };
   
-  const [formSiswa, setFormSiswa] = useState(initialFormState);
+  const [formPengajar, setFormPengajar] = useState(initialFormState);
   const [idEdit, setIdEdit] = useState(null); 
   const [loadingForm, setLoadingForm] = useState(false);
   const [pesanForm, setPesanForm] = useState("");
 
-  // --- STATE BARU UNTUK BULK UPLOAD ---
+  // --- STATE UNTUK BULK UPLOAD ---
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [hasilBulk, setHasilBulk] = useState(null);
 
-  // --- STATE: FILTER ---
-  const [filterKelas, setFilterKelas] = useState("");
-  
   // 🛡️ ZERO HARDCODE LIMIT
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // SINKRONISASI FILTER: Jika filter kelas berubah, reset halaman ke 1 di URL
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
-  }, [filterKelas]);
-
   // --- LOGIKA BULK UPLOAD ---
   const unduhTemplate = () => {
-    const header = "nama,nomorPeserta,noHp,kelas,username,password\n";
-    // Sesuaikan contoh dengan default sistem
-    const contoh = `Budi Santoso,QTM-001,08123456789,10 SMA,budi_qtm,${KONFIGURASI_SISTEM.DEFAULT_PASSWORD}`;
+    const header = "nama,nomorPeserta,kodePengajar,noHp,username,password\n";
+    const contoh = `Baskoro Cahhyo,PG-001,BC,08123456789,baskoro_bc,${KONFIGURASI_SISTEM.DEFAULT_PASSWORD}`;
     const blob = new Blob([header + contoh], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'template_siswa_quantum.csv';
+    a.download = 'template_pengajar_quantum.csv';
     a.click();
   };
 
@@ -104,7 +89,8 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
           }, {});
         });
 
-      const res = await prosesBulkTambahSiswa(jsonData);
+      // Panggil fungsi bulk dari action
+      const res = await prosesBulkTambahPengajar(jsonData);
       setIsBulkLoading(false);
       
       if (res.sukses) {
@@ -119,11 +105,11 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   };
 
   // --- HANDLERS: CRUD ---
-  const simpanSiswa = async (e) => { 
+  const simpanPengajar = async (e) => { 
     e.preventDefault(); 
     
     // Validasi panjang password
-    if (formSiswa.password && formSiswa.password.length < VALIDASI_SISTEM.MIN_PASSWORD) {
+    if (formPengajar.password && formPengajar.password.length < VALIDASI_SISTEM.MIN_PASSWORD) {
       setPesanForm(`⚠️ Sandi minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter!`);
       return;
     }
@@ -131,16 +117,16 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
     setLoadingForm(true); 
     setPesanForm("Menyimpan..."); 
     
-    let payloadSiswa = { ...formSiswa };
+    let payloadPengajar = { ...formPengajar };
     
-    if (!payloadSiswa.username || payloadSiswa.username.trim() === "") {
-      payloadSiswa.username = payloadSiswa.nomorPeserta;
+    if (!payloadPengajar.username || payloadPengajar.username.trim() === "") {
+      payloadPengajar.username = payloadPengajar.kodePengajar || payloadPengajar.nomorPeserta;
     }
 
     try {
       const laporan = idEdit 
-        ? await editAkunSiswa(idEdit, payloadSiswa) 
-        : await prosesTambahSiswa(payloadSiswa); 
+        ? await editPengajar(idEdit, payloadPengajar) 
+        : await tambahPengajarBaru(payloadPengajar); 
       
       setPesanForm(laporan.pesan); 
       
@@ -150,25 +136,23 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
         setTimeout(() => setPesanForm(""), 3000);
       }
     } catch (error) {
-      console.error("[ERROR simpanSiswa]:", error);
+      console.error("[ERROR simpanPengajar]:", error);
       setPesanForm("Gagal menghubungi server.");
     } finally {
       setLoadingForm(false); 
     }
   };
   
-  const klikEditSiswa = (siswa) => { 
-    setIdEdit(siswa._id); 
-    setFormSiswa({ 
-      nama: siswa.nama, 
-      nomorPeserta: siswa.nomorPeserta || "", 
-      username: siswa.username || "", 
-      password: "",
-      noHp: siswa.noHp || "", 
-      kelas: (!siswa.kelas || siswa.kelas === "-") ? "" : siswa.kelas, 
-      jadwalKelas: (!siswa.jadwalKelas || siswa.jadwalKelas === "-") ? "" : siswa.jadwalKelas, 
-      jamKelas: (!siswa.jamKelas || siswa.jamKelas === "-") ? "" : siswa.jamKelas,
-      status: siswa.status || STATUS_USER.AKTIF 
+  const klikEditPengajar = (pengajar) => { 
+    setIdEdit(pengajar._id); 
+    setFormPengajar({ 
+      nama: pengajar.nama, 
+      nomorPeserta: pengajar.nomorPeserta || "", 
+      username: pengajar.username || "", 
+      password: "", // Kosongkan password saat edit agar tidak terubah jika tidak diisi
+      noHp: pengajar.noHp || "", 
+      kodePengajar: pengajar.kodePengajar || "", 
+      status: pengajar.status || STATUS_USER.AKTIF 
     }); 
     
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
@@ -176,43 +160,31 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   
   const batalEdit = () => { 
     setIdEdit(null); 
-    setFormSiswa(initialFormState); 
+    setFormPengajar(initialFormState); 
     if(!pesanForm.includes("Berhasil")) setPesanForm(""); 
   };
   
-  const klikHapusSiswa = async (id, nama) => { 
-    if (window.confirm(`Yakin menghapus siswa ${nama}? Semua riwayat belajarnya juga akan hilang!`)) { 
+  const klikHapusPengajar = async (id, nama) => { 
+    if (window.confirm(`Hapus akun pengajar ${nama}? Akun ini tidak akan bisa login lagi.`)) { 
       try {
-        const hasil = await hapusAkunSiswa(id);
+        const hasil = await hapusPengajar(id);
         if(hasil.sukses) {
           if (typeof muatData === 'function') muatData(); 
         } else {
           alert("Gagal menghapus: " + hasil.pesan);
         }
       } catch (error) {
-        console.error("[ERROR Hapus Siswa]:", error);
+        console.error("[ERROR Hapus Pengajar]:", error);
       }
     } 
   };
 
-  // --- LOGIKA FILTER SISWA ---
-  const siswaDitampilkan = useMemo(() => {
-    let siswa = [...dataSiswa];
-    
-    if (filterKelas) {
-      siswa = siswa.filter(s => s.kelas === filterKelas);
-    }
-    
-    siswa.sort((a, b) => {
-      const npA = a.nomorPeserta || "";
-      const npB = b.nomorPeserta || "";
-      return npA.localeCompare(npB, undefined, { numeric: true, sensitivity: 'base' });
-    });
+  // --- LOGIKA FILTER & PAGINATION ---
+  const pengajarDitampilkan = useMemo(() => {
+    return [...dataPengajar].sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [dataPengajar]);
 
-    return siswa;
-  }, [dataSiswa, filterKelas]);
-
-  const { totalPage, dataTerpotong: dataSiswaHalIni } = potongDataPagination(siswaDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataPengajarHalIni } = potongDataPagination(pengajarDitampilkan, page, ITEMS_PER_PAGE);
 
   // ============================================================================
   // 3. RENDER UI
@@ -220,73 +192,54 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   return (
     <div className={`${styles.isiTab} ${styles.SembunyiPrint} ${styles.wadahSiswa}`}>
       
-      {/* PANEL KIRI: FORM SISWA */}
+      {/* PANEL KIRI: FORM PENGAJAR */}
       <div className={`${styles.formPanel} ${idEdit ? styles.formPanelEdit : styles.formPanelBiasa} ${styles.flexSatu}`}>
         <h3 className={idEdit ? styles.judulFormEdit : styles.judulFormPanel}>
-          {idEdit ? "✏️ Edit Akun Siswa" : "➕ Tambah Akun Siswa"}
+          {idEdit ? "✏️ Edit Akun Pengajar" : "➕ Tambah Akun Pengajar"}
         </h3>
         
-        <form onSubmit={simpanSiswa}>
+        <form onSubmit={simpanPengajar}>
           <input 
-            type="text" 
-            placeholder="Nama Lengkap" 
-            required 
-            value={formSiswa.nama} 
-            onChange={e => setFormSiswa({...formSiswa, nama: e.target.value})} 
+            type="text" placeholder="Nama Lengkap & Gelar" required 
+            value={formPengajar.nama} onChange={e => setFormPengajar({...formPengajar, nama: e.target.value})} 
+            className={styles.formInput} 
+          />
+          <input 
+            type="text" placeholder="ID Unik / No Induk" required 
+            value={formPengajar.nomorPeserta} onChange={e => setFormPengajar({...formPengajar, nomorPeserta: e.target.value})} 
+            className={styles.formInput} 
+          />
+          <input 
+            type="text" placeholder="Kode Pengajar (Cth: BC)" required 
+            value={formPengajar.kodePengajar} onChange={e => setFormPengajar({...formPengajar, kodePengajar: e.target.value})} 
+            className={styles.formInput} 
+          />
+          <input 
+            type="text" placeholder="Username (Opsional)" 
+            value={formPengajar.username} onChange={e => setFormPengajar({...formPengajar, username: e.target.value})} 
+            className={styles.formInput} 
+          />
+          <input 
+            type="text" placeholder="Nomor WA" required 
+            value={formPengajar.noHp} onChange={e => setFormPengajar({...formPengajar, noHp: e.target.value})} 
             className={styles.formInput} 
           />
           <input 
             type="text" 
-            placeholder="No Peserta Resmi" 
-            required 
-            value={formSiswa.nomorPeserta} 
-            onChange={e => setFormSiswa({...formSiswa, nomorPeserta: e.target.value})} 
-            className={styles.formInput} 
-          />
-          <input 
-            type="text" 
-            placeholder="Username (Opsional, def: No Peserta)" 
-            value={formSiswa.username} 
-            onChange={e => setFormSiswa({...formSiswa, username: e.target.value})} 
-            className={styles.formInput} 
-          />
-          <input 
-            type="text" 
-            placeholder="Nomor WA" 
-            required 
-            value={formSiswa.noHp} 
-            onChange={e => setFormSiswa({...formSiswa, noHp: e.target.value})} 
-            className={styles.formInput} 
-          />
-          <input 
-            type="text" 
-            // 🛡️ ZERO HARDCODE PLACEHOLDER
-            placeholder={idEdit ? "Kosongkan jika tak diubah" : `Sandi (Min ${VALIDASI_SISTEM.MIN_PASSWORD} char, Def: No HP)`} 
+            placeholder={idEdit ? "Kosongkan jika tak diubah" : `Sandi (Min ${VALIDASI_SISTEM.MIN_PASSWORD} char)`} 
             required={!idEdit} 
-            value={formSiswa.password} 
-            onChange={e => setFormSiswa({...formSiswa, password: e.target.value})} 
+            value={formPengajar.password} onChange={e => setFormPengajar({...formPengajar, password: e.target.value})} 
             className={styles.formInput} 
           />
           <select 
-            value={formSiswa.kelas} 
-            onChange={e => setFormSiswa({...formSiswa, kelas: e.target.value})} 
-            className={styles.formInput}
-          >
-            <option value="">-- Pilih Kelas --</option>
-            {OPSI_KELAS.map((opsiKls) => (
-              <option key={opsiKls} value={opsiKls}>{opsiKls}</option>
-            ))}
-          </select>
-          <select 
-            value={formSiswa.status} 
-            onChange={e => setFormSiswa({...formSiswa, status: e.target.value})} 
+            value={formPengajar.status} onChange={e => setFormPengajar({...formPengajar, status: e.target.value})} 
             className={styles.formInput} 
-            style={{ fontWeight: '900', color: formSiswa.status === STATUS_USER.NONAKTIF ? '#ef4444' : '#15803d' }}
+            style={{ fontWeight: '900', color: formPengajar.status === STATUS_USER.NONAKTIF ? '#ef4444' : '#15803d' }}
           >
-            {/* 🛡️ ZERO HARDCODE STATUS */}
             <option value={STATUS_USER.AKTIF}>🟢 Status: Aktif</option>
-            <option value={STATUS_USER.NONAKTIF}>🔴 Status: Tidak Aktif (Blokir Login)</option>
+            <option value={STATUS_USER.NONAKTIF}>🔴 Status: Tidak Aktif (Blokir)</option>
           </select>
+
           <div className={styles.wadahTombolAksiForm}>
             {idEdit && (
               <button type="button" onClick={batalEdit} className={styles.tombolBatalForm}>Batal</button>
@@ -295,14 +248,15 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
               {loadingForm ? "..." : "Simpan"}
             </button>
           </div>
+
           {pesanForm && (
-            <p className={`${styles.teksPesanForm} ${pesanForm.includes("Berhasil") ? styles.teksPesanSukses : styles.teksPesanGagal}`}>
+            <p className={`${styles.teksPesanForm} ${pesanForm.includes("Berhasil") || pesanForm.includes("Diperbarui") ? styles.teksPesanSukses : styles.teksPesanGagal}`}>
               {pesanForm}
             </p>
           )}
         </form>
 
-        {/* --- UI BULK ACTIONS --- */}
+        {/* --- UI BULK ACTIONS (Hanya Muncul Saat Mode Tambah) --- */}
         {!idEdit && (
           <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px dashed #ccc' }}>
             <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#111827', fontWeight: '900' }}>🚀 Pendaftaran Massal (CSV)</h4>
@@ -328,66 +282,51 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             )}
           </div>
         )}
-
       </div>
       
-      {/* PANEL KANAN: TABEL SISWA */}
+      {/* PANEL KANAN: TABEL PENGAJAR */}
       <div className={styles.flexDua}>
         <div className={styles.headerTabSiswa}>
-          <h3 className={styles.judulTabelKanan}>Daftar Siswa ({siswaDitampilkan.length})</h3>
-          <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className={styles.filterSelectMurni}>
-            <option value="">Semua Kelas</option>
-            {OPSI_KELAS.map((opsiKls) => (
-              <option key={opsiKls} value={opsiKls}>{opsiKls}</option>
-            ))}
-          </select>
+          <h3 className={styles.judulTabelKanan}>Daftar Pengajar ({pengajarDitampilkan.length})</h3>
         </div>
 
         <div className={styles.wadahTabel}>
           <table className={styles.tabelStyle}>
             <thead>
               <tr>
-                <th>Akun</th>
+                <th>Pengajar</th>
+                <th>Akses & Kode</th>
                 <th>Kontak</th>
-                <th>Kelas</th>
                 <th className={styles.kolomAksiKecil}>Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {dataSiswaHalIni.length === 0 ? (
-                <tr><td colSpan="4" className={styles.selKosong}>Tidak ada data siswa.</td></tr>
+              {dataPengajarHalIni.length === 0 ? (
+                <tr><td colSpan="4" className={styles.selKosong}>Tidak ada data pengajar.</td></tr>
               ) : (
-                dataSiswaHalIni.map(s => {
-                  // 🛡️ ZERO HARDCODE STATUS
-                  const isNonaktif = s.status === STATUS_USER.NONAKTIF;
+                dataPengajarHalIni.map(g => {
+                  const isNonaktif = g.status === STATUS_USER.NONAKTIF;
                   return (
-                    <tr key={s._id} style={{ opacity: isNonaktif ? 0.6 : 1 }}>
+                    <tr key={g._id} style={{ opacity: isNonaktif ? 0.6 : 1 }}>
                       <td>
                         <p className={styles.teksNamaSiswa} style={{ color: isNonaktif ? '#ef4444' : 'inherit' }}>
-                          {s.nama} {isNonaktif && '(Nonaktif)'}
+                          {g.nama} {isNonaktif && '(Nonaktif)'}
                         </p>
-                        <p className={styles.teksUsernameSiswa}>ID: {s.nomorPeserta || "-"} | @{s.username}</p>
+                        <p className={styles.teksUsernameSiswa}>ID: {g.nomorPeserta || "-"}</p>
                       </td>
-                      <td>{s.noHp}</td>
                       <td>
-                        <p style={{ margin: 0, fontWeight: '900' }}>{s.kelas || "-"}</p>
-                        {/* <span style={{ 
-                          fontSize: '11px', 
-                          padding: '2px 6px', 
-                          borderRadius: '4px', 
-                          backgroundColor: isNonaktif ? '#fee2e2' : '#dcfce3', 
-                          color: isNonaktif ? '#b91c1c' : '#15803d', 
-                          border: `1px solid ${isNonaktif ? '#ef4444' : '#22c55e'}`,
-                          display: 'inline-block',
-                          marginTop: '4px'
-                        }}>
-                          {isNonaktif ? '🔴 Tidak Aktif' : '🟢 Aktif'}
-                        </span> */}
+                        <p style={{margin: 0, fontWeight: '900'}}>@{g.username}</p>
+                        <span className={styles.badgeStatus} style={{backgroundColor: '#fef08a', color: '#111827', fontSize: '10px'}}>
+                          Kode: {g.kodePengajar || "-"}
+                        </span>
+                      </td>
+                      <td>
+                        <p style={{margin: 0, fontSize: '13px'}}>{g.noHp || "-"}</p>
                       </td>
                       <td style={{textAlign:'center'}}>
                         <div className={styles.wadahAksiInlineHorizontal}>
-                          <button onClick={() => klikEditSiswa(s)} className={`${styles.tombolAksi} ${styles.btnEdit}`}>Edit</button> 
-                          <button onClick={() => klikHapusSiswa(s._id, s.nama)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>Hapus</button>
+                          <button onClick={() => klikEditPengajar(g)} className={`${styles.tombolAksi} ${styles.btnEdit}`}>Edit</button> 
+                          <button onClick={() => klikHapusPengajar(g._id, g.nama)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>Hapus</button>
                         </div>
                       </td>
                     </tr>

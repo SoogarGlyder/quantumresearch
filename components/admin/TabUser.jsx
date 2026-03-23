@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import TabSiswa from "./TabSiswa";
-import TabGuru from "./TabGuru";
+import TabPengajar from "./TabPengajar";
 
 // 👈 Import Konstanta Peran
 import { PERAN } from "../../utils/constants";
@@ -10,7 +10,7 @@ import { PERAN } from "../../utils/constants";
 import styles from "../../app/admin/AdminPage.module.css";
 import { FaUserGraduate, FaChalkboardUser } from "react-icons/fa6";
 
-export default function TabUser({ dataSiswa, dataGuru, muatData }) {
+export default function TabUser({ dataSiswa, dataPengajar, muatData }) {
   // --- STATE DONGLE (Zero Hardcode menggunakan PERAN) ---
   const [subView, setSubView] = useState(PERAN.SISWA.id); 
 
@@ -79,8 +79,8 @@ export default function TabUser({ dataSiswa, dataGuru, muatData }) {
             muatData={muatData} 
           />
         ) : (
-          <TabGuru 
-            dataGuru={dataGuru} 
+          <TabPengajar 
+            dataPengajar={dataPengajar} 
             muatData={muatData} 
           />
         )}

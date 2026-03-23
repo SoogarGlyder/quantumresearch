@@ -184,7 +184,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
 // 3. CORE SCAN LOGIC (STAFF/PENGAJAR)
 // ============================================================================
 
-export async function absenGuruAction(teksQR, lokasi) {
+export async function absenPengajarAction(teksQR, lokasi) {
   try {
     await connectToDatabase();
     const { userId, peran } = await authHelper.ambilSesi();

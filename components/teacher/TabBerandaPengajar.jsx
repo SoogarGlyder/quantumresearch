@@ -10,13 +10,13 @@ import {
   FaBookBookmark, FaCircleInfo
 } from "react-icons/fa6";
 
-import { simpanJurnalGuru } from "../../actions/teacherAction";
+import { simpanJurnalPengajar } from "../../actions/teacherAction";
 import { PREFIX_BARCODE } from "../../utils/constants"; // 👈 Import Konstanta
 import { timeHelper } from "../../utils/timeHelper";     // 👈 Import Helper
 
 import styles from "../TeacherApp.module.css";
 
-export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
+export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
   const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
   const [formJurnal, setFormJurnal] = useState({ bab: "", subBab: "", galeriPapan: "", fotoBersama: "" });
   const [loadingJurnal, setLoadingJurnal] = useState(false);
@@ -27,7 +27,7 @@ export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
     return (jadwal || []).filter(j => j?.tanggal === hariIni);
   }, [jadwal]);
 
-  const statsGuru = useMemo(() => {
+  const statsPengajar = useMemo(() => {
     const totalKelas = (jadwal || []).length;
     const jurnalSelesai = (jadwal || []).filter(j => j?.bab).length;
     return { totalKelas, jurnalSelesai };
@@ -40,7 +40,7 @@ export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
     setLoadingJurnal(true);
     setPesanJurnal({ teks: "Mengamankan data...", tipe: "loading" });
 
-    const hasil = await simpanJurnalGuru(jadwalTerpilih._id, formJurnal);
+    const hasil = await simpanJurnalPengajar(jadwalTerpilih._id, formJurnal);
     setPesanJurnal({ teks: hasil.pesan, tipe: hasil.sukses ? "sukses" : "error" });
     setLoadingJurnal(false);
     
@@ -78,7 +78,7 @@ export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
         <div className={styles.barisSapaan}>
           <div>
             <p className={styles.teksSapaanKecil}>Selamat mengajar!</p>
-            <h1 className={styles.teksNamaBesar}>{dataUser?.nama || "Guru Quantum"}</h1>
+            <h1 className={styles.teksNamaBesar}>{dataUser?.nama || "Pengajar Quantum"}</h1>
           </div>
           <div className={styles.badgeUser} style={{ background: '#2563eb' }}>
              <span className={styles.teksBadge} style={{ color: 'white' }}>ID: {dataUser?.nomorPeserta || "Staff"}</span>
@@ -90,11 +90,11 @@ export default function TabBerandaGuru({ dataUser, jadwal = [] }) {
            <div className={styles.wadahGridStat}>
               <div className={styles.kotakStat}>
                 <span className={styles.labelStat}>📚 Total Sesi</span>
-                <span className={`${styles.nilaiStat} ${styles.nilaiStatBiru}`}>{statsGuru.totalKelas}</span>
+                <span className={`${styles.nilaiStat} ${styles.nilaiStatBiru}`}>{statsPengajar.totalKelas}</span>
               </div>
               <div className={styles.kotakStat}>
                 <span className={styles.labelStat}>📝 Jurnal</span>
-                <span className={`${styles.nilaiStat} ${styles.nilaiStatHijau}`}>{statsGuru.jurnalSelesai}</span>
+                <span className={`${styles.nilaiStat} ${styles.nilaiStatHijau}`}>{statsPengajar.jurnalSelesai}</span>
               </div>
            </div>
         </div>

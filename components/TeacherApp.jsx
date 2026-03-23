@@ -9,13 +9,13 @@ import styles from "./TeacherApp.module.css";
 // ============================================================================
 // 1. DYNAMIC IMPORTS (Lazy Loading)
 // ============================================================================
-const TabBerandaGuru = dynamic(() => import("./teacher/TabBerandaGuru"), {
+const TabBerandaPengajar = dynamic(() => import("./teacher/TabBerandaPengajar"), {
   loading: () => <FallbackLoading teks="Memuat Jadwal..." />,
 });
-const TabScanGuru = dynamic(() => import("./teacher/TabScanGuru"), {
+const TabScanPengajar = dynamic(() => import("./teacher/TabScanPengajar"), {
   loading: () => <FallbackLoading teks="Menyiapkan Kamera..." />,
 });
-const TabProfilGuru = dynamic(() => import("./teacher/TabProfilGuru"), {
+const TabProfilPengajar = dynamic(() => import("./teacher/TabProfilPengajar"), {
   loading: () => <FallbackLoading teks="Memuat Profil..." />,
 });
 
@@ -34,11 +34,11 @@ export default function TeacherApp({ dataUser, jadwal, onLogout }) {
   const kontenTab = useMemo(() => {
     switch (tab) {
       case "home":
-        return <TabBerandaGuru dataUser={dataUser} jadwal={jadwal} />;
+        return <TabBerandaPengajar dataUser={dataUser} jadwal={jadwal} />;
       case "scan":
-        return <TabScanGuru />;
+        return <TabScanPengajar />;
       case "profil":
-        return <TabProfilGuru dataUser={dataUser} onLogout={onLogout} />;
+        return <TabProfilPengajar dataUser={dataUser} onLogout={onLogout} />;
       default:
         return null;
     }

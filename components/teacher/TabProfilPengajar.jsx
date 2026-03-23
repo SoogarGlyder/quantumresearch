@@ -14,7 +14,7 @@ import { VALIDASI_SISTEM, KONFIGURASI_SISTEM } from "../../utils/constants"; // 
 
 import styles from "../TeacherApp.module.css";
 
-export default function TabProfilGuru({ dataUser }) {
+export default function TabProfilPengajar({ dataUser }) {
   const router = useRouter();
   
   const [isEditing, setIsEditing] = useState(false);
@@ -77,7 +77,7 @@ export default function TabProfilGuru({ dataUser }) {
               </div>
               <div>
                 <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#111827', textTransform: 'uppercase' }}>
-                  {dataUser?.nama || "Guru Quantum"}
+                  {dataUser?.nama || "Pengajar Quantum"}
                 </h2>
                 <span style={{ fontSize: '11px', fontWeight: '900', color: 'white', backgroundColor: '#2563eb', padding: '2px 8px', borderRadius: '6px', border: '2px solid #111827', display: 'inline-block', marginTop: '4px' }}>
                   STAFF PENGAJAR

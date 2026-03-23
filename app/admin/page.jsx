@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 // 🛡️ Bersih: Hanya import fungsi yang dibutuhkan untuk operasional
 import { ambilDataDashboard, ambilSemuaJadwal } from "../../actions/adminAction";
-import { ambilSemuaGuru } from "../../actions/teacherAction";
+import { ambilSemuaPengajar } from "../../actions/teacherAction";
 import { prosesLogout } from "../../actions/authAction";
 
 import { KONFIGURASI_SISTEM } from "../../utils/constants";
@@ -36,7 +36,7 @@ export default function SuperDashboardAdmin() {
   
   const [dataRiwayat, setDataRiwayat] = useState([]);
   const [dataSiswa, setDataSiswa] = useState([]);
-  const [dataGuru, setDataGuru] = useState([]); 
+  const [dataPengajar, setDataPengajar] = useState([]); 
   const [dataJadwal, setDataJadwal] = useState([]); 
   const [loadingData, setLoadingData] = useState(true);
 
@@ -44,10 +44,10 @@ export default function SuperDashboardAdmin() {
   const muatData = useCallback(async () => {
     setLoadingData(true);
     try {
-      const [hasilDashboard, hasilJadwal, hasilGuru] = await Promise.all([
+      const [hasilDashboard, hasilJadwal, hasilPengajar] = await Promise.all([
         ambilDataDashboard(),
         ambilSemuaJadwal(),
-        ambilSemuaGuru()
+        ambilSemuaPengajar()
       ]);
 
       // 🛡️ Data Akses via .data (Standar ResponseHelper)
@@ -60,7 +60,7 @@ export default function SuperDashboardAdmin() {
       }
 
       if (hasilJadwal.sukses) setDataJadwal(hasilJadwal.data || []);
-      if (hasilGuru.sukses) setDataGuru(hasilGuru.data || []);
+      if (hasilPengajar.sukses) setDataPengajar(hasilPengajar.data || []);
 
     } catch (error) {
       console.error("[ERROR muatData Admin]:", error);
@@ -89,7 +89,7 @@ export default function SuperDashboardAdmin() {
       case "jadwal": 
         return <TabJadwal dataJadwal={dataJadwal} muatData={muatData} />;
       case "user":    
-        return <TabUser dataSiswa={dataSiswa} dataGuru={dataGuru} muatData={muatData} />;
+        return <TabUser dataSiswa={dataSiswa} dataPengajar={dataPengajar} muatData={muatData} />;
       default:       
         return null;
     }

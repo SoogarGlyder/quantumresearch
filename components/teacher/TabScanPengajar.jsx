@@ -8,10 +8,10 @@ import {
   FaUserClock, FaCameraRotate 
 } from "react-icons/fa6";
 
-import { absenGuruAction } from "../../actions/scanAction"; // 👈 Real Action!
+import { absenPengajarAction } from "../../actions/scanAction"; // 👈 Real Action!
 import styles from "../TeacherApp.module.css";
 
-export default function TabScanGuru() {
+export default function TabScanPengajar() {
   const [hasilScan, setHasilScan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorStatus, setErrorStatus] = useState(false);
@@ -34,7 +34,7 @@ export default function TabScanGuru() {
     setHasilScan(teksQR);
     setPesanSistem("Memeriksa lokasi GPS Anda...");
 
-    // Mengambil lokasi GPS Guru secara langsung!
+    // Mengambil lokasi GPS Pengajar secara langsung!
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
@@ -45,7 +45,7 @@ export default function TabScanGuru() {
           
           setPesanSistem("Memverifikasi data kehadiran...");
           // Panggil Action Backend sesungguhnya
-          const hasil = await absenGuruAction(teksQR, lokasiUser);
+          const hasil = await absenPengajarAction(teksQR, lokasiUser);
           
           setErrorStatus(!hasil.sukses);
           setPesanSistem(hasil.pesan);

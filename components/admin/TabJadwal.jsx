@@ -44,7 +44,7 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
           <div key={j._id} onClick={() => klikKartuJadwal(j, "permanen")} className={styles.kartuJadwalPermanen} style={{ cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
             <div className={styles.labelTersimpan}><FaDatabase /> TERSIMPAN</div>
             <div className={styles.teksMapelKartu}>{j.mapel}</div>
-            <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.kodePengajar || '?'}</span><span>P-{j.pertemuan || '?'}</span></div>
+            <div className={styles.teksInfoPengajar}><span>👨‍🏫 {j.kodePengajar || '?'}</span><span>P-{j.pertemuan || '?'}</span></div>
             <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
           </div>
         ))}
@@ -52,7 +52,7 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
           <div key={j.idUnik} onClick={() => klikKartuJadwal(j, "draft")} className={styles.kartuJadwalDraft} style={{ cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
             <div className={styles.labelDraftBaru}>✨ DRAFT BARU</div>
             <div className={styles.teksMapelKartu}>{j.mapel}</div>
-            <div className={styles.teksInfoGuru}><span>👨‍🏫 {j.kodePengajar}</span><span>P-{j.pertemuan}</span></div>
+            <div className={styles.teksInfoPengajar}><span>👨‍🏫 {j.kodePengajar}</span><span>P-{j.pertemuan}</span></div>
             <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
           </div>
         ))}

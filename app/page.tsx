@@ -47,14 +47,14 @@ export default async function Home() {
   // CABANG 2: PENGAJAR (Zero Hardcode Check)
   // ==========================================================================
   if (userLogin.peran === PERAN.PENGAJAR.id) {
-    const jadwalGuru = await Jadwal.find({ kodePengajar: userLogin.kodePengajar })
+    const jadwalPengajar = await Jadwal.find({ kodePengajar: userLogin.kodePengajar })
       .sort({ tanggal: 1 })
       .lean();
 
     return (
       <TeacherApp 
         dataUser={serialize(userLogin)} 
-        jadwal={serialize(jadwalGuru)} 
+        jadwal={serialize(jadwalPengajar)} 
         onLogout={null}
       />
     );

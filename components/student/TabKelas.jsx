@@ -86,7 +86,7 @@ export default function TabKelas({ jadwal = [], riwayat = [] }) {
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* DAFTAR RIWAYAT KELAS (DIUPDATE DENGAN DATA GURU) */}
+      {/* DAFTAR RIWAYAT KELAS (DIUPDATE DENGAN DATA Pengajar) */}
       {/* ------------------------------------------------------------- */}
       <div style={{ padding: '0 24px' }}>
         
