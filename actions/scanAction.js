@@ -4,7 +4,7 @@ import connectToDatabase from "../lib/db";
 import User from "../models/User";
 import StudySession from "../models/StudySession";
 import Jadwal from "../models/Jadwal";
-import AbsensiPengajar from "../models/AbsensiPengajar"; // 👈 IMPORT MODEL BARU
+import AbsensiPengajar from "../models/AbsensiPengajar"; 
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
@@ -21,7 +21,7 @@ import {
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
-// 1. GEOFENCING LOGIC
+// 1. GEOFENCING LOGIC (Tetap ada, tapi kita bypass di bawah)
 // ============================================================================
 function isLokasiValid(lokasi) {
   if (!lokasi?.lat || !lokasi?.lng) return false;
@@ -57,9 +57,10 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
       return responseHelper.error("Akun dinonaktifkan atau tidak ditemukan.");
     }
 
-    if (!isLokasiValid(lokasi)) {
-      return responseHelper.error("📍 Lokasi tidak valid! Anda berada di luar area Quantum.");
-    }
+    // 🚀 BYPASS GPS SEMENTARA (Siswa)
+    // if (!isLokasiValid(lokasi)) {
+    //   return responseHelper.error("📍 Lokasi tidak valid! Anda berada di luar area Quantum.");
+    // }
 
     const sekarang = new Date();
     const tglHariIni = timeHelper.getTglJakarta(sekarang);
@@ -182,7 +183,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
 }
 
 // ============================================================================
-// 3. CORE SCAN LOGIC (STAFF/PENGAJAR) - 🚀 SUDAH DI-UPGRADE
+// 3. CORE SCAN LOGIC (STAFF/PENGAJAR)
 // ============================================================================
 
 export async function absenPengajarAction(teksQR, lokasi) {
@@ -194,8 +195,8 @@ export async function absenPengajarAction(teksQR, lokasi) {
       return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
     }
 
-    // Validasi Geofencing
-    if (!isLokasiValid(lokasi)) return responseHelper.error("📍 Lokasi tidak valid. Pastikan di ada di Quantum Research.");
+    // 🚀 BYPASS GPS SEMENTARA (Pengajar)
+    // if (!isLokasiValid(lokasi)) return responseHelper.error("📍 Lokasi tidak valid. Pastikan di area HQ.");
     
     // Validasi Barcode
     if (teksQR !== PREFIX_BARCODE.ADMIN) return responseHelper.error("⚠️ Barcode Staf tidak valid.");
@@ -210,14 +211,13 @@ export async function absenPengajarAction(teksQR, lokasi) {
     });
 
     if (absenHariIni) {
-      // Jika waktuKeluar sudah terisi, berarti dia sudah scan pulang hari ini
       if (absenHariIni.waktuKeluar) {
          return responseHelper.success("✅ Anda sudah melakukan Clock-Out untuk hari ini.");
       }
 
       // LOGIKA CLOCK-OUT
       absenHariIni.waktuKeluar = sekarang;
-      absenHariIni.lokasiScanKeluar = lokasi;
+      absenHariIni.lokasiScanKeluar = lokasi; // Akan menyimpan null untuk sekarang
       await absenHariIni.save();
       
       return responseHelper.success("✅ Clock-Out Berhasil! Terima kasih untuk hari ini.");
@@ -226,7 +226,7 @@ export async function absenPengajarAction(teksQR, lokasi) {
       await AbsensiPengajar.create({
         pengajarId: userId,
         waktuMasuk: sekarang,
-        lokasiScanMasuk: lokasi
+        lokasiScanMasuk: lokasi // Akan menyimpan null untuk sekarang
       });
       
       return responseHelper.success("✅ Clock-In Berhasil! Selamat bekerja.");

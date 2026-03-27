@@ -32,35 +32,16 @@ export default function TabScanPengajar() {
 
     setLoading(true);
     setHasilScan(teksQR);
-    setPesanSistem("MEMERIKSA LOKASI GPS...");
+    setPesanSistem("MEMVERIFIKASI KEHADIRAN...");
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lokasiUser = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          
-          setPesanSistem("MEMVERIFIKASI KEHADIRAN...");
-          const hasil = await absenPengajarAction(teksQR, lokasiUser);
-          
-          setErrorStatus(!hasil.sukses);
-          setPesanSistem(hasil.pesan);
-          setLoading(false);
-        },
-        (err) => {
-          setErrorStatus(true);
-          setPesanSistem("GAGAL MENGAMBIL GPS. AKTIFKAN LOKASI HP.");
-          setLoading(false);
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-    } else {
-      setErrorStatus(true);
-      setPesanSistem("BROWSER TIDAK MENDUKUNG GPS.");
-      setLoading(false);
-    }
+    // 🚀 LOKASI DIMATIKAN SEMENTARA: Langsung tembak ke action tanpa tunggu GPS
+    // Mengirim "null" sebagai lokasi
+    const hasil = await absenPengajarAction(teksQR, null);
+    
+    setErrorStatus(!hasil.sukses);
+    setPesanSistem(hasil.pesan);
+    setLoading(false);
+
   }, [loading, hasilScan]);
 
   return (

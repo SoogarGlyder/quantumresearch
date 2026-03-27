@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const absensiPengajarSchema = new mongoose.Schema({
-  // Relasi langsung ke koleksi "User" milik Bos
+  // Relasi langsung ke koleksi "User" (Tabel Utama)
   pengajarId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: "User", 
@@ -21,16 +21,16 @@ const absensiPengajarSchema = new mongoose.Schema({
     default: null 
   },
   
-  // Titik kordinat GPS saat Clock-In
+  // Titik koordinat GPS saat Clock-In (Dibuat opsional/bisa null)
   lokasiScanMasuk: { 
-    lat: { type: Number }, 
-    lng: { type: Number } 
+    lat: { type: Number, default: null }, 
+    lng: { type: Number, default: null } 
   },
   
-  // Titik kordinat GPS saat Clock-Out
+  // Titik koordinat GPS saat Clock-Out (Dibuat opsional/bisa null)
   lokasiScanKeluar: { 
-    lat: { type: Number }, 
-    lng: { type: Number } 
+    lat: { type: Number, default: null }, 
+    lng: { type: Number, default: null } 
   }
 }, { timestamps: true });
 
