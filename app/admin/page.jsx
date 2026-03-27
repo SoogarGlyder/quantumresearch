@@ -3,7 +3,7 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState, useEffect, useCallback, Suspense } from "react"; // 👈 Tambah Suspense
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 import { 
@@ -16,7 +16,7 @@ import { prosesLogout } from "../../actions/authAction";
 
 import { KONFIGURASI_SISTEM } from "../../utils/constants";
 
-// ⚠️ PASTIKAN NAMA FILE CSS DI BAWAH INI PERSIS SAMA DENGAN DI FOLDER BOS
+// ⚠️ Pastikan nama file .module.css ini sesuai dengan di folder Anda
 import styles from "./AdminPage.module.css"; 
 
 import { FaArrowRightFromBracket, FaQrcode } from "react-icons/fa6"; 
@@ -46,8 +46,11 @@ function AdminContent() {
   const [dataAbsenStaf, setDataAbsenStaf] = useState([]); 
   const [loadingData, setLoadingData] = useState(true);
 
+  // 🚀 PERBAIKAN: Fungsi Ganti Tab (Clean State)
+  // Fungsi ini membuang parameter lama (seperti sub=... atau page=...) 
+  // agar tab baru mulai dari kondisi default yang bersih.
   const gantiTab = (namaTabBaru) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(); // Membuat params baru yang kosong
     params.set("tab", namaTabBaru);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
@@ -104,17 +107,24 @@ function AdminContent() {
   return (
     <div className={styles.mainContainer}>
       <div className={styles.wadahKonten}>
+        
+        {/* HEADER ADMIN */}
         <div className={`${styles.headerAdmin} ${styles.SembunyiPrint}`}>
           <div>
             <h1 className={styles.judulHeader}>Super Admin</h1>
             <p className={styles.subJudulHeader}>Pusat Kendali Quantum Research</p>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => setIsModalQrOpen(true)} className={styles.tombolKeluar} style={{ backgroundColor: '#facc15', color: '#111827' }}><FaQrcode /> CETAK QR</button>
-            <button onClick={klikLogout} className={styles.tombolKeluar}><FaArrowRightFromBracket /> KELUAR</button>
+            <button onClick={() => setIsModalQrOpen(true)} className={styles.tombolKeluar} style={{ backgroundColor: '#facc15', color: '#111827' }}>
+              <FaQrcode /> CETAK QR
+            </button>
+            <button onClick={klikLogout} className={styles.tombolKeluar}>
+              <FaArrowRightFromBracket /> KELUAR
+            </button>
           </div>
         </div>
 
+        {/* NAVIGASI TAB UTAMA */}
         <div className={`${styles.wadahTabs} ${styles.SembunyiPrint}`} role="tablist">
           <button onClick={() => gantiTab("monitoring")} className={`${styles.tombolTab} ${tab === "monitoring" ? styles.tombolTabAktif : ""}`}>📟 MONITORING</button>
           <button onClick={() => gantiTab("jurnal")} className={`${styles.tombolTab} ${tab === "jurnal" ? styles.tombolTabAktif : ""}`}>📓 JURNAL</button>
@@ -122,6 +132,7 @@ function AdminContent() {
           <button onClick={() => gantiTab("user")} className={`${styles.tombolTab} ${tab === "user" ? styles.tombolTabAktif : ""}`}>👥 USER</button>
         </div>
 
+        {/* AREA KONTEN AKTIF */}
         <div className={styles.areaKontenTab} role="tabpanel">
           <ErrorBoundary>
             {tab === "monitoring" && <TabMonitoring dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} dataAbsenStaf={dataAbsenStaf} muatData={muatData} />}
@@ -131,6 +142,7 @@ function AdminContent() {
           </ErrorBoundary>
         </div>
 
+        {/* MODAL QR */}
         <ModalQr isOpen={isModalQrOpen} onClose={() => setIsModalQrOpen(false)} />
       </div>
     </div>

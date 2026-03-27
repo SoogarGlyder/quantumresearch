@@ -1,24 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import TabKelas from "./TabKelas";
 import TabKonsul from "./TabKonsul";
-import TabAbsenStaf from "./TabAbsenStaf"; // 👈 Pastikan file ini sudah Bos buat
+import TabAbsenStaf from "./TabAbsenStaf";
 
-// 👈 Import Konstanta
 import { TIPE_SESI } from "../../utils/constants";
-
 import styles from "../../app/admin/AdminPage.module.css";
 import { FaChalkboardUser, FaLightbulb, FaUserShield } from "react-icons/fa6";
 
 export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, dataAbsenStaf, muatData }) {
-  // --- STATE DONGLE ---
-  const [subView, setSubView] = useState(TIPE_SESI.KELAS); 
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  // 🚀 LOGIKA STICKY: Ambil sub-tab dari URL, default ke KELAS
+  const subView = searchParams.get("sub") || TIPE_SESI.KELAS;
+
+  const gantiSubView = (idBaru) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sub", idBaru);
+    // 💡 Penting: Hapus parameter 'page' saat pindah sub-tab agar tidak nyangkut di halaman besar
+    params.delete("page"); 
+    replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div className={styles.isiTab} style={{ padding: '24px' }}>
       
-      {/* 🎚️ DONGLE SWITCHER (Neo-Brutalism Style - 3 Tombol) */}
+      {/* 🎚️ DONGLE SWITCHER (Neo-Brutalism Style) */}
       <div style={{ 
         display: 'flex', 
         backgroundColor: '#e5e7eb', 
@@ -34,7 +44,7 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
       }}>
         {/* BUTTON: ABSENSI KELAS */}
         <button 
-          onClick={() => setSubView(TIPE_SESI.KELAS)}
+          onClick={() => gantiSubView(TIPE_SESI.KELAS)}
           style={{
             padding: '12px 24px',
             borderRadius: '10px',
@@ -55,7 +65,7 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
 
         {/* BUTTON: KONSUL SISWA */}
         <button 
-          onClick={() => setSubView(TIPE_SESI.KONSUL)}
+          onClick={() => gantiSubView(TIPE_SESI.KONSUL)}
           style={{
             padding: '12px 24px',
             borderRadius: '10px',
@@ -74,9 +84,9 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
           <FaLightbulb size={20} /> KONSUL SISWA
         </button>
 
-        {/* 🚀 BUTTON BARU: MONITORING STAF */}
+        {/* BUTTON: MONITORING STAF */}
         <button 
-          onClick={() => setSubView("staf")}
+          onClick={() => gantiSubView("staf")}
           style={{
             padding: '12px 24px',
             borderRadius: '10px',
@@ -100,26 +110,15 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
       {/* 📦 AREA TAMPILAN (Animasi Fade In) */}
       <div key={subView} style={{ animation: 'fadeIn 0.3s ease-out' }}>
         {subView === TIPE_SESI.KELAS && (
-          <TabKelas 
-            dataRiwayat={dataRiwayat} 
-            dataJadwal={dataJadwal} 
-            dataSiswa={dataSiswa} 
-            muatData={muatData} 
-          />
+          <TabKelas dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} muatData={muatData} />
         )}
         
         {subView === TIPE_SESI.KONSUL && (
-          <TabKonsul 
-            dataRiwayat={dataRiwayat} 
-          />
+          <TabKonsul dataRiwayat={dataRiwayat} />
         )}
 
-        {/* 🚀 TAMPILAN BARU: MONITORING STAF */}
         {subView === "staf" && (
-          <TabAbsenStaf 
-            dataAbsenStaf={dataAbsenStaf} 
-            muatData={muatData} 
-          />
+          <TabAbsenStaf dataAbsenStaf={dataAbsenStaf} muatData={muatData} />
         )}
       </div>
 

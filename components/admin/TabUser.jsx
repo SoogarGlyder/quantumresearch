@@ -1,18 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import TabSiswa from "./TabSiswa";
 import TabPengajar from "./TabPengajar";
 
-// 👈 Import Konstanta Peran
 import { PERAN } from "../../utils/constants";
-
 import styles from "../../app/admin/AdminPage.module.css";
 import { FaUserGraduate, FaChalkboardUser } from "react-icons/fa6";
 
 export default function TabUser({ dataSiswa, dataPengajar, muatData }) {
-  // --- STATE DONGLE (Zero Hardcode menggunakan PERAN) ---
-  const [subView, setSubView] = useState(PERAN.SISWA.id); 
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  // 🚀 LOGIKA STICKY: Ambil sub-tab dari URL, default ke SISWA
+  const subView = searchParams.get("sub") || PERAN.SISWA.id;
+
+  const gantiSubView = (idBaru) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sub", idBaru);
+    params.delete("page"); // Reset pagination
+    replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div className={styles.isiTab} style={{ padding: '24px' }}>
@@ -30,7 +39,7 @@ export default function TabUser({ dataSiswa, dataPengajar, muatData }) {
         gap: '8px'
       }}>
         <button 
-          onClick={() => setSubView(PERAN.SISWA.id)}
+          onClick={() => gantiSubView(PERAN.SISWA.id)}
           style={{
             padding: '12px 24px',
             borderRadius: '10px',
@@ -50,7 +59,7 @@ export default function TabUser({ dataSiswa, dataPengajar, muatData }) {
         </button>
 
         <button 
-          onClick={() => setSubView(PERAN.PENGAJAR.id)}
+          onClick={() => gantiSubView(PERAN.PENGAJAR.id)}
           style={{
             padding: '12px 24px',
             borderRadius: '10px',
