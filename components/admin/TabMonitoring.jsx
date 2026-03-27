@@ -3,21 +3,22 @@
 import { useState } from "react";
 import TabKelas from "./TabKelas";
 import TabKonsul from "./TabKonsul";
+import TabAbsenStaf from "./TabAbsenStaf"; // 👈 Pastikan file ini sudah Bos buat
 
 // 👈 Import Konstanta
 import { TIPE_SESI } from "../../utils/constants";
 
 import styles from "../../app/admin/AdminPage.module.css";
-import { FaChalkboardUser, FaLightbulb } from "react-icons/fa6";
+import { FaChalkboardUser, FaLightbulb, FaUserShield } from "react-icons/fa6";
 
-export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, muatData }) {
-  // --- STATE DONGLE (Zero Hardcode menggunakan TIPE_SESI) ---
+export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, dataAbsenStaf, muatData }) {
+  // --- STATE DONGLE ---
   const [subView, setSubView] = useState(TIPE_SESI.KELAS); 
 
   return (
     <div className={styles.isiTab} style={{ padding: '24px' }}>
       
-      {/* 🎚️ DONGLE SWITCHER (Neo-Brutalism Style) */}
+      {/* 🎚️ DONGLE SWITCHER (Neo-Brutalism Style - 3 Tombol) */}
       <div style={{ 
         display: 'flex', 
         backgroundColor: '#e5e7eb', 
@@ -27,8 +28,11 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, muat
         boxShadow: '4px 4px 0 #111827',
         width: 'fit-content',
         margin: '0 auto 32px auto',
-        gap: '8px'
+        gap: '8px',
+        flexWrap: 'wrap',
+        justifyContent: 'center'
       }}>
+        {/* BUTTON: ABSENSI KELAS */}
         <button 
           onClick={() => setSubView(TIPE_SESI.KELAS)}
           style={{
@@ -49,6 +53,7 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, muat
           <FaChalkboardUser size={20} /> ABSENSI KELAS
         </button>
 
+        {/* BUTTON: KONSUL SISWA */}
         <button 
           onClick={() => setSubView(TIPE_SESI.KONSUL)}
           style={{
@@ -68,20 +73,52 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, muat
         >
           <FaLightbulb size={20} /> KONSUL SISWA
         </button>
+
+        {/* 🚀 BUTTON BARU: MONITORING STAF */}
+        <button 
+          onClick={() => setSubView("staf")}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '10px',
+            border: subView === "staf" ? '3px solid #111827' : '3px solid transparent',
+            backgroundColor: subView === "staf" ? '#3b82f6' : 'transparent',
+            color: subView === "staf" ? 'white' : '#111827',
+            fontWeight: '900',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            transition: 'all 0.2s',
+            boxShadow: subView === "staf" ? '4px 4px 0 #111827' : 'none',
+            transform: subView === "staf" ? 'translate(-2px, -2px)' : 'none'
+          }}
+        >
+          <FaUserShield size={20} /> MONITORING STAF
+        </button>
       </div>
 
       {/* 📦 AREA TAMPILAN (Animasi Fade In) */}
       <div key={subView} style={{ animation: 'fadeIn 0.3s ease-out' }}>
-        {subView === TIPE_SESI.KELAS ? (
+        {subView === TIPE_SESI.KELAS && (
           <TabKelas 
             dataRiwayat={dataRiwayat} 
             dataJadwal={dataJadwal} 
             dataSiswa={dataSiswa} 
             muatData={muatData} 
           />
-        ) : (
+        )}
+        
+        {subView === TIPE_SESI.KONSUL && (
           <TabKonsul 
             dataRiwayat={dataRiwayat} 
+          />
+        )}
+
+        {/* 🚀 TAMPILAN BARU: MONITORING STAF */}
+        {subView === "staf" && (
+          <TabAbsenStaf 
+            dataAbsenStaf={dataAbsenStaf} 
+            muatData={muatData} 
           />
         )}
       </div>
