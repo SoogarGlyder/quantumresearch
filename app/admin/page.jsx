@@ -3,8 +3,8 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation"; // 👈 Tambahan useSearchParams & usePathname
+import { useState, useEffect, useCallback, Suspense } from "react"; // 👈 Tambah Suspense
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 import { 
   ambilDataDashboard, 
@@ -16,7 +16,9 @@ import { prosesLogout } from "../../actions/authAction";
 
 import { KONFIGURASI_SISTEM } from "../../utils/constants";
 
+// ⚠️ PASTIKAN NAMA FILE CSS DI BAWAH INI PERSIS SAMA DENGAN DI FOLDER BOS
 import styles from "./AdminPage.module.css"; 
+
 import { FaArrowRightFromBracket, FaQrcode } from "react-icons/fa6"; 
 
 import TabMonitoring from "../../components/admin/TabMonitoring";
@@ -27,15 +29,13 @@ import ModalQr from "../../components/admin/ModalQr";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
 
 // ============================================================================
-// 2. MAIN COMPONENT (SUPER DASHBOARD)
+// 2. SUB-COMPONENT: ADMIN CONTENT (Logika Utama)
 // ============================================================================
-export default function SuperDashboardAdmin() {
+function AdminContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   
-  // --- STATE MANAGEMENT ---
-  // 🚀 LOGIKA BARU: Ambil tab dari URL, kalau tidak ada default ke "monitoring"
   const tab = searchParams.get("tab") || "monitoring"; 
   
   const [isModalQrOpen, setIsModalQrOpen] = useState(false); 
@@ -46,13 +46,9 @@ export default function SuperDashboardAdmin() {
   const [dataAbsenStaf, setDataAbsenStaf] = useState([]); 
   const [loadingData, setLoadingData] = useState(true);
 
-  // --- HANDLERS ---
-
-  // 🚀 FUNGSI BARU: Untuk mengubah tab sekaligus mengubah URL
   const gantiTab = (namaTabBaru) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", namaTabBaru);
-    // Menggunakan replace agar tidak memenuhi history browser (tombol back)
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
@@ -94,29 +90,6 @@ export default function SuperDashboardAdmin() {
     router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
   };
 
-  const renderIsiTab = () => {
-    switch (tab) {
-      case "monitoring": 
-        return (
-          <TabMonitoring 
-            dataRiwayat={dataRiwayat} 
-            dataJadwal={dataJadwal} 
-            dataSiswa={dataSiswa} 
-            dataAbsenStaf={dataAbsenStaf}
-            muatData={muatData} 
-          />
-        );
-      case "jurnal": 
-        return <TabJurnal dataJadwal={dataJadwal} muatData={muatData} />;
-      case "jadwal": 
-        return <TabJadwal dataJadwal={dataJadwal} muatData={muatData} />;
-      case "user":    
-        return <TabUser dataSiswa={dataSiswa} dataPengajar={dataPengajar} muatData={muatData} />;
-      default:       
-        return null;
-    }
-  };
-
   if (loadingData) {
     return (
       <div className={styles.layarLoadingPenuh}>
@@ -142,7 +115,6 @@ export default function SuperDashboardAdmin() {
           </div>
         </div>
 
-        {/* 🚀 NAVIGASI TAB: Sekarang memanggil gantiTab() */}
         <div className={`${styles.wadahTabs} ${styles.SembunyiPrint}`} role="tablist">
           <button onClick={() => gantiTab("monitoring")} className={`${styles.tombolTab} ${tab === "monitoring" ? styles.tombolTabAktif : ""}`}>📟 MONITORING</button>
           <button onClick={() => gantiTab("jurnal")} className={`${styles.tombolTab} ${tab === "jurnal" ? styles.tombolTabAktif : ""}`}>📓 JURNAL</button>
@@ -151,11 +123,34 @@ export default function SuperDashboardAdmin() {
         </div>
 
         <div className={styles.areaKontenTab} role="tabpanel">
-          <ErrorBoundary>{renderIsiTab()}</ErrorBoundary>
+          <ErrorBoundary>
+            {tab === "monitoring" && <TabMonitoring dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} dataAbsenStaf={dataAbsenStaf} muatData={muatData} />}
+            {tab === "jurnal" && <TabJurnal dataJadwal={dataJadwal} muatData={muatData} />}
+            {tab === "jadwal" && <TabJadwal dataJadwal={dataJadwal} muatData={muatData} />}
+            {tab === "user" && <TabUser dataSiswa={dataSiswa} dataPengajar={dataPengajar} muatData={muatData} />}
+          </ErrorBoundary>
         </div>
 
         <ModalQr isOpen={isModalQrOpen} onClose={() => setIsModalQrOpen(false)} />
       </div>
     </div>
+  );
+}
+
+// ============================================================================
+// 3. EXPORT UTAMA (DENGAN SUSPENSE BOUNDARY)
+// ============================================================================
+export default function SuperDashboardAdmin() {
+  return (
+    <Suspense fallback={
+      <div className={styles.layarLoadingPenuh}>
+        <div className={styles.kotakLoadingBrutal}>
+          <h2 className={styles.judulLoading}>MENGHUBUNGKAN...</h2>
+          <div className={styles.pitaLoadingKecil}></div>
+        </div>
+      </div>
+    }>
+      <AdminContent />
+    </Suspense>
   );
 }
