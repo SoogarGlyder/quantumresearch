@@ -195,7 +195,7 @@ export async function absenPengajarAction(teksQR, lokasi) {
       return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
     }
 
-    // 🚀 BYPASS GPS SEMENTARA (Pengajar)
+    // BYPASS GPS SEMENTARA
     // if (!isLokasiValid(lokasi)) return responseHelper.error("📍 Lokasi tidak valid. Pastikan di area HQ.");
     
     // Validasi Barcode
@@ -204,7 +204,6 @@ export async function absenPengajarAction(teksQR, lokasi) {
     const sekarang = new Date();
     const { awal, akhir } = timeHelper.getRentangHari(sekarang);
 
-    // Cek apakah pengajar sudah absen masuk di rentang hari ini
     let absenHariIni = await AbsensiPengajar.findOne({
       pengajarId: userId,
       waktuMasuk: { $gte: awal, $lte: akhir }
@@ -215,24 +214,36 @@ export async function absenPengajarAction(teksQR, lokasi) {
          return responseHelper.success("✅ Anda sudah melakukan Clock-Out untuk hari ini.");
       }
 
-      // LOGIKA CLOCK-OUT
+      // 🚀 LOGIKA CLOCK-OUT (DIPERBAIKI)
       absenHariIni.waktuKeluar = sekarang;
-      absenHariIni.lokasiScanKeluar = lokasi; // Akan menyimpan null untuk sekarang
+      
+      // Hanya masukkan lokasi jika ada isinya (tidak null)
+      if (lokasi) {
+        absenHariIni.lokasiScanKeluar = lokasi;
+      }
+      
       await absenHariIni.save();
-      
       return responseHelper.success("✅ Clock-Out Berhasil! Terima kasih untuk hari ini.");
-    } else {
-      // LOGIKA CLOCK-IN
-      await AbsensiPengajar.create({
-        pengajarId: userId,
-        waktuMasuk: sekarang,
-        lokasiScanMasuk: lokasi // Akan menyimpan null untuk sekarang
-      });
       
+    } else {
+      // 🚀 LOGIKA CLOCK-IN (DIPERBAIKI)
+      const dataAbsenBaru = {
+        pengajarId: userId,
+        waktuMasuk: sekarang
+      };
+
+      // Hanya masukkan lokasi jika ada isinya (tidak null)
+      if (lokasi) {
+        dataAbsenBaru.lokasiScanMasuk = lokasi;
+      }
+
+      await AbsensiPengajar.create(dataAbsenBaru);
       return responseHelper.success("✅ Clock-In Berhasil! Selamat bekerja.");
     }
 
   } catch (error) {
+    // 💡 TIPS: Kalau masih gagal, coba Bos cek terminal/console VS Code, 
+    // pesan error aslinya akan muncul di sana!
     console.error("[ERROR Absen Pengajar]:", error);
     return responseHelper.error("Gagal memproses absen staf.");
   }
