@@ -16,7 +16,7 @@ import { prosesLogout } from "../../actions/authAction";
 
 import { KONFIGURASI_SISTEM } from "../../utils/constants";
 
-import styles from "./AdminPage.css"; 
+import styles from "./AdminPage.module.css"; 
 import { FaArrowRightFromBracket, FaQrcode } from "react-icons/fa6"; 
 
 import TabMonitoring from "../../components/admin/TabMonitoring";

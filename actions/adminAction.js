@@ -4,7 +4,7 @@ import connectToDatabase from "../lib/db";
 import User from "../models/User";
 import StudySession from "../models/StudySession";
 import Jadwal from "../models/Jadwal";
-import AbsensiPengajar from "../models/AbsensiPengajar"; // 👈 IMPORT BARU
+import AbsensiPengajar from "../models/AbsensiPengajar"; 
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
@@ -59,7 +59,7 @@ export async function ambilDataDashboard() {
 }
 
 // ============================================================================
-// 2. MANAJEMEN STAF (ABSENSI) - 🚀 BARU
+// 2. MANAJEMEN STAF (ABSENSI)
 // ============================================================================
 export async function ambilAbsensiPengajar() {
   try {
@@ -67,7 +67,7 @@ export async function ambilAbsensiPengajar() {
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const data = await AbsensiPengajar.find()
-      .populate("pengajarId", "nama kodePengajar") // Join ke koleksi User
+      .populate("pengajarId", "nama kodePengajar") 
       .sort({ waktuMasuk: -1 })
       .limit(100)
       .lean();
@@ -213,6 +213,45 @@ export async function hapusAkunSiswa(idSiswa) {
 // ============================================================================
 // 5. ABSENSI & JURNAL
 // ============================================================================
+
+// 🚀 DIKEMBALIKAN: Fungsi Absen Manual (Wajib ada untuk TabKelas)
+export async function inputAbsenManual(data) {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const { awal } = timeHelper.getRentangHari(data.tanggal);
+    const statusFinal = data.catatan 
+      ? `${data.keterangan} (${data.catatan})`.toLowerCase() 
+      : data.keterangan.toLowerCase();
+
+    await StudySession.findOneAndUpdate(
+      {
+        siswaId: data.siswaId,
+        jenisSesi: TIPE_SESI.KELAS,
+        namaMapel: data.mapel,
+        waktuMulai: { $gte: awal }
+      },
+      {
+        $set: { status: statusFinal, waktuSelesai: awal },
+        $setOnInsert: {
+          siswaId: data.siswaId,
+          jenisSesi: TIPE_SESI.KELAS,
+          namaMapel: data.mapel,
+          waktuMulai: awal,
+          terlambatMenit: 0
+        }
+      },
+      { upsert: true }
+    );
+
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success("Absen manual berhasil.");
+  } catch (error) {
+    return responseHelper.error("Gagal absen manual.", error);
+  }
+}
+
 export async function ambilDetailJurnal(idJadwal) {
   try {
     await connectToDatabase();
