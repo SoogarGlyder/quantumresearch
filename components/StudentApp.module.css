@@ -1,11 +1,40 @@
-/* File: components/StudentApp.module.css */
+/* ==========================================================================
+   0. the keyframes
+   ========================================================================== */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; }}
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes brutalPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+/* @keyframes brutalPop {
+  0% { transform: scale(0.9); opacity: 0; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+} */
+@keyframes brutalPop {
+   0% { transform: scale(0.5); }
+   50% { transform: scale(1.2); }
+   100% { transform: scale(1); }
+}
+@keyframes slideDownBrutal { from { opacity: 0; transform: scaleY(0.8); } to { opacity: 1; transform: scaleY(1); } }
+@keyframes slideUpBrutal { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes brutalGuncang { 
+   0%, 
+   100% { transform: translateX(0); } 
+   50% { transform: translateX(6px); } 
+}
+@keyframes brutalShimmer { 
+   0% { background-position: 0 0; }
+   100% { background-position: 40px 40px; } 
+}
+
 
 /* ==========================================================================
    1. LAYOUT UTAMA (Neo-Brutalism Base)
    ========================================================================== */
 .mainContainer {
   min-height: 100vh;
-  /* Latar belakang krem/off-white dengan pola titik-titik (polka dot) samar ala komik retro */
   background-color: #fdfbf7;
   background-image: radial-gradient(#d1d5db 2px, transparent 2px);
   background-size: 24px 24px;
@@ -113,7 +142,6 @@
 .contentTitle { font-size: 16px; font-weight: 900; color: #111827; margin: 0 0 20px 16px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
 .scheduleList { display: flex; flex-direction: column; gap: 16px; padding: 0 16px; }
 .emptySchedule { text-align: center; padding: 20px; background-color: #e5e7eb; border-radius: 12px; border: 3px dashed #111827; color: #4b5563; font-size: 14px; font-weight: 800; margin: 0; text-transform: uppercase; }
-
 .scheduleCard {cursor: pointer; background-color: #fdfbf7; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; padding: 16px; gap: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform 0.1s, box-shadow 0.1s; }
 .scheduleCard:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 #2563eb; }
 .scheduleCardRow {display: flex; justify-content: space-between; align-items: flex-start}
@@ -123,10 +151,6 @@
 .scheduleCount {font-size: 20px; font-weight: 900; color: white; background-color: #2563eb; padding: 10px 16px; border-radius: 6px; border: 2px solid #111827; text-transform: uppercase; }
 .scheduleTeacher {display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #4b5563; background-color: #f3f4f6; padding: 8px; border-radius: 8px; border: 2px dashed #9ca3af; }
 .teacherName {color: #111827; font-weight: 900; }
-
-.areaKlikJadwal { padding: 16px; display: flex; flex-direction: column; gap: 12px; justify-content: space-between; align-items: stretch; cursor: pointer; user-select: none; border-bottom: 3px solid #111827; background-color: #fef08a; /* Kuning cerah */ }
-.areaKlikJadwal:active { transform: none !important; box-shadow: none !important; background-color: #fde047; } 
-
 .presenceArea { padding-top: 12px; background-color: white; border-top: 3px solid #6b7280;}
 .badgesContainer { display: flex; flex-wrap: wrap; gap: 8px; }
 .presenceBadge { font-size: 12px; font-weight: 900; padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }
@@ -135,6 +159,36 @@
 .alphaBadge { background-color: #ef4444; color: white; }
 .lateBadge { background-color: #f97316; color: white; } 
 .extraBadge { background-color: #c084fc; color: white; } 
+.wrapperGallery {position: fixed; inset: 0; z-index: 9999; background: rgba(17, 24, 39, 0.8); 
+          display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px;
+          backdrop-filter: blur(4px); animation: fadeIn 0.2s ease-out forwards;}
+.containerGallery {background: #fdfbf7; border: 4px solid #111827; border-radius: 16px; 
+            width: 100%; max-width: 448px; max-height: 85vh; display: flex; flex-direction: column;
+            box-shadow: 8px 8px 0 #facc15; animation: slideUp 0.3s ease-out forwards;}
+.headerGallery {display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 4px solid #111827; background: #2563eb; border-radius: 12px 12px 0 0 }
+.galleryButton { background: #ef4444; color: white; border: 3px solid #111827; border-radius: 8px; 
+                  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+                  cursor: pointer; box-shadow: 3px 3px 0 #111827 }
+.wrapperTitle {padding: 0}
+.galleryTitle {margin: 0; font-weight: 900; text-transform: uppercase; color: white; font-size: 16px}
+.galleryDate {font-size: 12px; color: #fef08a; font-weight: 800 }
+.areaGallery {padding: 20px; overflow-y: auto; display: flex; flex-direction: column }
+.galleryInfo {background: #fef08a; border: 3px solid #111827; border-radius: 12px; padding: 16px; box-shadow: 4px 4px 0 #111827; margin-bottom: 4px}
+.gallerySubject {display: flex; align-items: center; gap: 10px; color: #111827;}
+.containerPhoto {display: flex; flex-direction: column; gap: 24px; margin-top: 24px }
+.wrapperPhoto {position: relative}
+.galleryPhoto {width: 100%; border-radius: 12px; border: 4px solid #111827; background: #e5e7eb; min-height: 150px; object-fit: cover }
+.countPhoto {position: absolute; top: 12px; right: 12px; background: #facc15; border: 3px solid #111827; border-radius: 8px; padding: 4px 10px; font-weight: 900; font-size: 12px; box-shadow: 2px 2px 0 #111827}
+.emptyPhoto { display: flex; 
+                  flex-direction: column; 
+                  align-items: center; 
+                  justify-content: center;
+                  padding: 60px 20px;
+                  text-align: center;
+                  border: 4px dashed #111827;
+                  border-radius: 12px;
+                  background-color: #f3f4f6;
+                  margin-top: 16px}
 
 /* ==========================================================================
    6. SCANNER & BRUTAL SKELETON 
@@ -160,14 +214,13 @@
 
 .layarHasil { aspect-ratio: 1 / 1; background-color: #dbeafe; border-radius: 16px; border: 4px solid #111827; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
 .iconHasilBesar { margin-bottom: 20px; background-color: white; padding: 24px; border-radius: 50%; border: 4px solid #111827; box-shadow: 6px 6px 0 #111827; animation: brutalPop 0.3s steps(3); }
-@keyframes brutalPop { 0% { transform: scale(0.5); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
 .teksHasilJudul { font-size: 28px; font-weight: 900; margin: 0 0 8px 0; text-transform: uppercase; color: #111827; }
 .teksHasilJudulError { color: #ef4444; }
 .teksHasilJudulSelesai { color: #4ade80; }
 .teksHasilJudulSukses { color: #2563eb; }
 .layarHasilError { background-color: #fecaca !important; animation: brutalGuncang 0.2s infinite; }
-@keyframes brutalGuncang { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+
 
 .wadahPesan { margin-top: 24px; min-height: 80px; }
 .kotakPesan { padding: 20px; border-radius: 16px; text-align: center; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
@@ -177,7 +230,6 @@
 .tombolUlangi { width: 100%; background-color: white; border: 3px solid #111827; color: #111827; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 14px; cursor: pointer; box-shadow: 4px 4px 0 #111827; text-transform: uppercase; }
 
 /* --- EFEK SKELETON: PITA KONSTRUKSI BERJALAN --- */
-@keyframes brutalShimmer { 0% { background-position: 0 0; } 100% { background-position: 40px 40px; } }
 .kotakPesanLoading { background-color: #fef08a; background-image: repeating-linear-gradient(45deg, #facc15 25%, transparent 25%, transparent 50%, #facc15 50%, #facc15 75%, transparent 75%, transparent); background-size: 40px 40px; animation: brutalShimmer 1s linear infinite; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; height: 60px; display: flex; align-items: center; justify-content: center; }
 .teksPesanMemproses { background-color: white; padding: 4px 12px; border: 2px solid #111827; border-radius: 6px; color: #111827; font-weight: 900; text-transform: uppercase; margin: 0; box-shadow: 2px 2px 0 #111827; }
 
@@ -245,7 +297,6 @@
 .kartuRiwayatClickable { cursor: pointer; }
 .detailRiwayat { margin-top: 16px; padding-top: 16px; border-top: 3px dashed #111827; display: flex; flex-direction: column; gap: 8px; animation: slideDownBrutal 0.2s ease-out forwards; transform-origin: top; }
 .barisWaktuDetail { display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; color: #111827; padding: 10px 16px; border: 3px solid #111827; border-radius: 8px; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }
-@keyframes slideDownBrutal { from { opacity: 0; transform: scaleY(0.8); } to { opacity: 1; transform: scaleY(1); } }
 
 /* ==========================================================================
    11. KLASEMEN (Leaderboard Neo-Brutalism)
@@ -272,7 +323,6 @@
 .modalKonten { background-color: #fdfbf7; border-top: 4px solid #111827; border-left: 4px solid #111827; border-right: 4px solid #111827; border-radius: 24px 24px 0 0; padding: 24px; height: 85vh; overflow-y: auto; position: relative; animation: slideUpBrutal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .tombolTutupModal { position: absolute; top: 20px; right: 20px; background-color: #ef4444; border: 3px solid #111827; color: white; width: 36px; height: 36px; border-radius: 50%; font-weight: 900; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 2px 2px 0 #111827; cursor: pointer; z-index: 10; }
 .tombolTutupModal:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111827; }
-@keyframes slideUpBrutal { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .top10Button { width: 100%; background-color: #111827; color: #facc15; border: 3px solid #111827; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; cursor: pointer; transition: transform 0.1s; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); }
 .top10Button:active { transform: scale(0.96); box-shadow: 0 0 0 rgba(0,0,0,0); }
 

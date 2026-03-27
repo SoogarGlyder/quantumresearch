@@ -127,3 +127,12 @@ body {
   50% { transform: scale(1.05); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
+
+[data-rmiz-modal-overlay="visible"] {
+  background-color: rgba(17, 24, 39, 0.95) !important;
+  backdrop-filter: blur(8px);
+}
+
+[data-rmiz-modal-portal] {
+  z-index: 10000 !important;
+}
