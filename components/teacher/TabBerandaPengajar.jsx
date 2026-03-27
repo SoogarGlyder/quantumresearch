@@ -116,40 +116,40 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
   };
 
   return (
-    <div className={styles.areaKonten}>
+    <div className={styles.contentArea}>
       
       {/* ========================================================= */}
       {/* 1. HEADER & STATISTIK PENGGUNA (Neo-Brutalism) */}
       {/* ========================================================= */}
-      <div className={styles.headerBeranda}>
-        <div className={styles.hiasanBulat1}></div>
-        <div className={styles.hiasanBulat2}></div>
-        <div className={styles.wadahLogoTengah}>
-          <div className={styles.kotakLogo}>
+      <div className={styles.appHeader}>
+        <div className={styles.shapeRed}></div>
+        <div className={styles.shapeYellow}></div>
+        <div className={styles.logoContainer}>
+          <div className={styles.logo}>
             <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
           </div>
         </div>
         
-        <div className={styles.barisSapaan}>
+        <div className={styles.identityContainer}>
           <div>
-            <p className={styles.teksSapaanKecil}>Selamat mengajar!</p>
-            <h1 className={styles.teksNamaBesar}>{dataUser?.nama || "Pengajar Quantum"}</h1>
+            <p className={styles.welcomeText}>Selamat mengajar!</p>
+            <h1 className={styles.userName}>{dataUser?.nama || "Pengajar Quantum"}</h1>
           </div>
-          <div className={styles.badgeUser}>
-             <span className={styles.teksBadge}>ID: {dataUser?.kodePengajar || dataUser?.nomorPeserta || "Staff"}</span>
+          <div className={styles.containerIdNumber}>
+             <span className={styles.IdNumber}>ID: {dataUser?.kodePengajar || dataUser?.nomorPeserta || "Staff"}</span>
           </div>
         </div>
 
-        <div className={styles.kartuInfo} style={{ marginBottom: '0', marginTop: '24px' }}>
-           <h2 className={styles.judulInfo}>Ringkasan Mengajar</h2>
-           <div className={styles.wadahGridStat}>
-              <div className={styles.kotakStat}>
-                <span className={styles.labelStat}>📚 Total Sesi</span>
-                <span className={`${styles.nilaiStat} ${styles.nilaiStatBiru}`}>{statsPengajar.totalKelas}</span>
+        <div className={styles.infoContainer} style={{ marginBottom: '0', marginTop: '24px' }}>
+           <h2 className={styles.infoHeader}>Ringkasan Mengajar</h2>
+           <div className={styles.statGridContainer}>
+              <div className={styles.statContainer}>
+                <span className={styles.statLabel}>📚 Total Sesi</span>
+                <span className={`${styles.statValue} ${styles.nilaiStatBiru}`}>{statsPengajar.totalKelas}</span>
               </div>
-              <div className={styles.kotakStat}>
-                <span className={styles.labelStat}>📝 Jurnal OK</span>
-                <span className={`${styles.nilaiStat} ${styles.nilaiStatHijau}`}>{statsPengajar.jurnalSelesai}</span>
+              <div className={styles.statContainer}>
+                <span className={styles.statLabel}>📝 Jurnal OK</span>
+                <span className={`${styles.statValue} ${styles.nilaiStatHijau}`}>{statsPengajar.jurnalSelesai}</span>
               </div>
            </div>
         </div>
@@ -163,7 +163,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
         {jadwalTerpilih ? (
           
           /* --- TAMPILAN DETAIL KELAS & FORM JURNAL --- */
-          <div className={styles.kartuInfo}>
+          <div className={styles.infoContainer}>
             
             {loadingDetail ? (
               <div className={styles.kotakPesanLoading} style={{ padding: '40px 20px', textAlign: 'center', borderRadius: '12px' }}>
@@ -204,7 +204,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
                 <form onSubmit={klikSimpanJurnal} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   
                   {/* --- BAGIAN: MATERI & FOTO --- */}
-                  <h3 className={styles.judulJadwal} style={{ margin: 0 }}>
+                  <h3 className={styles.contentTitle} style={{ margin: 0 }}>
                     <FaBookBookmark color="#2563eb" /> 1. Laporan Materi
                   </h3>
                   
@@ -234,7 +234,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
 
                   {/* --- BAGIAN: ADMIN MINI (ABSENSI & NILAI) --- */}
                   <div style={{ borderTop: '4px solid #111827', paddingTop: '20px', marginTop: '8px' }}>
-                    <h3 className={styles.judulJadwal} style={{ margin: 0 }}>
+                    <h3 className={styles.contentTitle} style={{ margin: 0 }}>
                       <FaUserGraduate color="#ef4444" /> 2. Manajemen Siswa
                     </h3>
                     <p style={{ fontSize: '12px', color: '#4b5563', marginTop: '4px', fontWeight: '800' }}>
@@ -244,7 +244,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {dataSiswa.length === 0 ? (
-                      <div className={styles.jadwalKosong}>
+                      <div className={styles.emptySchedule}>
                         TIDAK ADA DATA SISWA.
                       </div>
                     ) : (
@@ -326,13 +326,13 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
           /* --- TAMPILAN DAFTAR KELAS (AGENDA & ARSIP) --- */
           <>
             {/* AGENDA HARI INI */}
-            <h3 className={styles.judulJadwal}><FaChalkboard color="#2563eb" /> Agenda Hari Ini</h3>
+            <h3 className={styles.contentTitle}><FaChalkboard color="#2563eb" /> Agenda Hari Ini</h3>
             {jadwalHariIni.length === 0 ? (
-              <p className={styles.jadwalKosong}>TIDAK ADA KELAS. ISTIRAHAT! ☕</p>
+              <p className={styles.emptySchedule}>TIDAK ADA KELAS. ISTIRAHAT! ☕</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {jadwalHariIni.map((j) => (
-                  <div key={j._id} onClick={() => klikBukaKelas(j)} className={styles.kartuJadwalPintar} style={{ backgroundColor: j.bab ? '#dcfce3' : '#white', cursor: 'pointer' }}>
+                  <div key={j._id} onClick={() => klikBukaKelas(j)} className={styles.scheduleCard} style={{ backgroundColor: j.bab ? '#dcfce3' : '#white', cursor: 'pointer' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                        <div>
                          <h4 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#111827', textTransform: 'uppercase' }}>{j.mapel}</h4>
@@ -350,11 +350,11 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
             {/* ARSIP JADWAL MENGAJAR (30 HARI) */}
             <div style={{ marginTop: '48px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '4px solid #111827', paddingBottom: '12px', marginBottom: '20px' }}>
-                <h3 className={styles.judulJadwal} style={{ margin: 0 }}><FaCalendarCheck color="#10b981" /> Arsip 30 Hari</h3>
+                <h3 className={styles.contentTitle} style={{ margin: 0 }}><FaCalendarCheck color="#10b981" /> Arsip 30 Hari</h3>
               </div>
               
               {jadwalSemua.length === 0 ? (
-                <p className={styles.jadwalKosong}>BELUM ADA DATA.</p>
+                <p className={styles.emptySchedule}>BELUM ADA DATA.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {jadwalSemua.map((j) => {
@@ -387,7 +387,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
                     }
 
                     return (
-                      <div key={j._id} onClick={handleClick} className={styles.kartuInfo} style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: bgColor, cursor: cursorStyle, boxShadow: '4px 4px 0 #111827' }}>
+                      <div key={j._id} onClick={handleClick} className={styles.infoContainer} style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: bgColor, cursor: cursorStyle, boxShadow: '4px 4px 0 #111827' }}>
                         <div>
                            <p style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#111827', textTransform: 'uppercase' }}>{j.mapel} <span style={{fontSize: '12px', color: '#2563eb'}}>({j.kelasTarget})</span></p>
                            <p style={{ margin: '4px 0 0 0', fontSize: '12px', fontWeight: '900', color: '#4b5563' }}>

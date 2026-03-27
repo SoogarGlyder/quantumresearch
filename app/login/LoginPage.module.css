@@ -1,7 +1,7 @@
 /* ==========================================================================
    1. LAYOUT UTAMA (Neo-Brutalism Base)
    ========================================================================== */
-.wadahUtama {
+.mainContainer {
   min-height: 100vh;
   background-color: #fdfbf7;
   background-image: radial-gradient(#d1d5db 2px, transparent 2px);
@@ -16,7 +16,7 @@
   position: relative;
 }
 
-.wadahUtama ::selection {
+.mainContainer ::selection {
   background-color: #fef08a;
   color: #000;
 }
@@ -264,7 +264,7 @@
    8. MEDIA QUERIES (Mobile Responsiveness)
    ========================================================================== */
 @media (max-width: 480px) {
-  .wadahUtama {
+  .mainContainer {
     padding: 16px;
   }
 

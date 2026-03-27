@@ -61,26 +61,26 @@ export default function TeacherApp({ dataUser, jadwal, onLogout }) {
   }, [tab, dataUser, jadwal, onLogout]);
 
   return (
-    <div className={styles.wadahUtama}>
+    <div className={styles.mainContainer}>
       <main style={{ paddingBottom: "110px", minHeight: "100vh" }}>
         {kontenTab}
       </main>
 
       {/* NAVIGASI BAWAH NEO-BRUTALISM */}
-      <nav className={styles.menuBawah}>
-        <button onClick={() => setTab("home")} className={`${styles.tombolNav} ${tab === "home" ? styles.tombolNavAktif : ""}`} aria-label="Beranda">
-          <FaHouse className={styles.ikonNav} />
+      <nav className={styles.navMenu}>
+        <button onClick={() => setTab("home")} className={`${styles.navButton} ${tab === "home" ? styles.navButtonActive : ""}`} aria-label="Beranda">
+          <FaHouse className={styles.navIcon} />
           <span className={styles.teksNav}>Beranda</span>
         </button>
         
-        <div className={styles.wadahTombolTengah}>
-          <button onClick={() => setTab("scan")} className={`${styles.tombolKamera} ${tab === "scan" ? styles.tombolKameraAktif : styles.tombolKameraMati}`} aria-label="Scanner Kehadiran">
+        <div className={styles.navButtonMid}>
+          <button onClick={() => setTab("scan")} className={`${styles.scanButton} ${tab === "scan" ? styles.scanButtonActive : ""}`} aria-label="Scanner Kehadiran">
             <FaQrcode size={32} />
           </button>
         </div>
         
-        <button onClick={() => setTab("profil")} className={`${styles.tombolNav} ${tab === "profil" ? styles.tombolNavAktif : ""}`} aria-label="Profil">
-          <FaUserAstronaut className={styles.ikonNav} />
+        <button onClick={() => setTab("profil")} className={`${styles.navButton} ${tab === "profil" ? styles.navButtonActive : ""}`} aria-label="Profil">
+          <FaUserAstronaut className={styles.navIcon} />
           <span className={styles.teksNav}>Profil</span>
         </button>
       </nav>

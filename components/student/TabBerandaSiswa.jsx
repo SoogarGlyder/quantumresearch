@@ -135,69 +135,68 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
   // 3. RENDER UI
   // ============================================================================
   return (
-    <div>
-      
+    <div className={styles.contentArea}>
       {/* ------------------------------------------------------------- */}
       {/* HEADER & KARTU PENCAPAIAN SISWA */}
       {/* ------------------------------------------------------------- */}
-      <div className={styles.headerBeranda} style={{ paddingBottom: '40px' }}>
-        <div className={styles.hiasanBulat1}></div>
-        <div className={styles.hiasanBulat2}></div>
-        <div className={styles.wadahLogoTengah}>
-          <div className={styles.kotakLogo}>
-            <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} className={styles.logoScannerPudar} priority />
+      <div className={styles.appHeader}>
+        <div className={styles.shapeRed}></div>
+        <div className={styles.shapeYellow}></div>
+        <div className={styles.logoContainer}>
+          <div className={styles.logo}>
+            <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
           </div>
         </div>
         
-        <div className={styles.barisSapaan}>
+        <div className={styles.identityContainer}>
           <div>
-            <p className={styles.teksSapaanKecil}>Selamat datang!</p>
-            <h1 className={styles.teksNamaBesar}>{siswa.nama}</h1>
+            <p className={styles.welcomeText}>Selamat datang!</p>
+            <h1 className={styles.userName}>{siswa.nama}</h1>
           </div>
-          <div className={styles.badgeUser}>
-             <span className={styles.teksBadge}>@{siswa.username}</span>
+          <div className={styles.containerIdNumber}>
+             <span className={styles.IdNumber}>{siswa.username} | {siswa.nomorPeserta}</span>
           </div>
         </div>
 
-        <div className={styles.kartuInfo} style={{ marginTop: '-16px', zIndex: 20, position: 'relative' }}>
-           <h2 className={styles.judulInfo}>Pencapaian Bulan Ini</h2>
+        <div className={styles.infoContainer}>
+           <h2 className={styles.infoHeader}>Pencapaian Bulan Ini</h2>
            
-           <div className={styles.badgeGelar}>{statsBulanIni.gelar}</div>
+           <div className={styles.titleBadge}>{statsBulanIni.gelar}</div>
 
-           <div className={styles.wadahGridStat}>
-              <div className={styles.kotakStat}>
-                <span className={styles.labelStat}>⏱️ Belajar</span>
-                <span className={`${styles.nilaiStat} ${styles.nilaiStatBiru}`}>{statsBulanIni.jamKonsul}j {statsBulanIni.menitSisa}m</span>
+           <div className={styles.statGridContainer}>
+              <div className={styles.statContainer}>
+                <span className={styles.statLabel}>⏱️ Belajar</span>
+                <span className={`${styles.statValue} ${styles.nilaiStatBiru}`}>{statsBulanIni.jamKonsul}j {statsBulanIni.menitSisa}m</span>
               </div>
-              <div className={styles.kotakStat}>
-                <span className={styles.labelStat}>✅ Kehadiran</span>
-                <span className={`${styles.nilaiStat} ${styles.nilaiStatHijau}`}>
+              <div className={styles.statContainer}>
+                <span className={styles.statLabel}>✅ Kehadiran</span>
+                <span className={`${styles.statValue} ${styles.nilaiStatHijau}`}>
                   {statsBulanIni.persenHadir}% 
                   <span style={{fontSize:'11px', color:'#64748b', marginLeft: '4px'}}>
                     ({statsBulanIni.kelasHadir}/{statsBulanIni.jadwalWajibBulanIni})
                   </span>
                 </span>
               </div>
-              <div className={styles.kotakStat}>
-                <span className={styles.labelStat}>📚 Terambis</span>
-                <span className={styles.nilaiStat} style={{fontSize: '14px'}}>{statsBulanIni.mapelTerambis}</span>
+              <div className={styles.statContainer}>
+                <span className={styles.statLabel}>📚 Terambis</span>
+                <span className={styles.statValue} style={{fontSize: '14px'}}>{statsBulanIni.mapelTerambis}</span>
               </div>
-              <div className={styles.kotakStat}>
+              <div className={styles.statContainer}>
                 {(siswa.kelas?.includes("12") || siswa.kelas?.toLowerCase().includes("alumni")) ? (
                   <>
-                    <span className={styles.labelStat}>⏳ UTBK 2026</span>
-                    <span className={`${styles.nilaiStat} ${styles.nilaiStatMerah}`}>H-{statsBulanIni.selisihHariUTBK}</span>
+                    <span className={styles.statLabel}>⏳ UTBK 2026</span>
+                    <span className={`${styles.statValue} ${styles.nilaiStatMerah}`}>H-{statsBulanIni.selisihHariUTBK}</span>
                   </>
                 ) : (
                   <>
-                    <span className={styles.labelStat}>🔥 Streak Konsul</span>
-                    <span className={`${styles.nilaiStat} ${styles.nilaiStatMerah}`}>{streakKonsul} Hari</span>
+                    <span className={styles.statLabel}>🔥 Streak Konsul</span>
+                    <span className={`${styles.statValue} ${styles.nilaiStatMerah}`}>{streakKonsul} Hari</span>
                   </>
                 )}
               </div>
            </div>
 
-           <button onClick={() => setIsKlasemenOpen(true)} className={styles.tombolLihatTop10}>
+           <button onClick={() => setIsKlasemenOpen(true)} className={styles.top10Button}>
               <FaTrophy size={18} /> Lihat Top 10 Ambis
            </button>
         </div>
@@ -206,45 +205,45 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
       {/* ------------------------------------------------------------- */}
       {/* ARENA MISI (GAMIFIKASI) */}
       {/* ------------------------------------------------------------- */}
-      <div className={styles.wadahMisi}>
-        <h3 className={`${styles.judulJadwal} ${styles.judulJadwalMisi}`}>
+      <div className={styles.contentContainer}>
+        <h3 className={styles.contentTitle}>
           <FaBullseye color="#ef4444" /> Target Berikutnya
         </h3>
         
-        <div className={styles.daftarMisi}>
-          <div className={styles.kartuMisi}>
-            <div className={styles.headerKartuMisi}>
-              <span className={styles.judulKartuMisi}>
+        <div className={styles.missionList}>
+          <div className={styles.missionCard}>
+            <div className={styles.missionCardHeader}>
+              <span className={styles.missionCardTitle}>
                 <FaStar color="#facc15" /> Kejar {targetKonsul} Jam!
               </span>
               {persenMisiKonsul >= 100 ? (
                 <FaCircleCheck color="#22c55e" size={20} />
               ) : (
-                <span className={styles.teksProgressMisi}>
+                <span className={styles.missionCardProgress}>
                   {Math.min(statsBulanIni.jamKonsul, targetKonsul)}/{targetKonsul} Jam
                 </span>
               )}
             </div>
-            <div className={styles.wadahProgressTrack}>
-              <div className={styles.progressIsi} style={{ width: `${persenMisiKonsul}%`, backgroundColor: persenMisiKonsul >= 100 ? '#4ade80' : '#facc15', borderRight: persenMisiKonsul > 0 && persenMisiKonsul < 100 ? '3px solid #111827' : 'none' }}></div>
+            <div className={styles.progressTrackContainer}>
+              <div className={styles.progressTrackValue} style={{ width: `${persenMisiKonsul}%`, backgroundColor: persenMisiKonsul >= 100 ? '#4ade80' : '#facc15', borderRight: persenMisiKonsul > 0 && persenMisiKonsul < 100 ? '3px solid #111827' : 'none' }}></div>
             </div>
           </div>
 
-          <div className={styles.kartuMisi}>
-            <div className={styles.headerKartuMisi}>
-              <span className={styles.judulKartuMisi}>
+          <div className={styles.missionCard}>
+            <div className={styles.missionCardHeader}>
+              <span className={styles.missionCardTitle}>
                 <FaFire color="#ef4444" /> Streak {targetStreak} Hari!
               </span>
               {persenMisiStreak >= 100 ? (
                 <FaCircleCheck color="#22c55e" size={20} />
               ) : (
-                <span className={styles.teksProgressMisi}>
+                <span className={styles.missionCardProgress}>
                   {Math.min(streakKonsul, targetStreak)}/{targetStreak} Hari
                 </span>
               )}
             </div>
-            <div className={styles.wadahProgressTrack}>
-              <div className={styles.progressIsi} style={{ width: `${persenMisiStreak}%`, backgroundColor: persenMisiStreak >= 100 ? '#4ade80' : '#f87171', borderRight: persenMisiStreak > 0 && persenMisiStreak < 100 ? '3px solid #111827' : 'none' }}></div>
+            <div className={styles.progressTrackContainer}>
+              <div className={styles.progressTrackValue} style={{ width: `${persenMisiStreak}%`, backgroundColor: persenMisiStreak >= 100 ? '#4ade80' : '#f87171', borderRight: persenMisiStreak > 0 && persenMisiStreak < 100 ? '3px solid #111827' : 'none' }}></div>
             </div>
           </div>
         </div>
@@ -253,44 +252,51 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
       {/* ------------------------------------------------------------- */}
       {/* JADWAL KELAS HARI INI */}
       {/* ------------------------------------------------------------- */}
-      <div style={{ padding: '0 16px', paddingBottom: '32px' }}>
-        <h3 className={styles.judulJadwal}><FaCalendarDays color="#2563eb" /> Pengingat Kelas</h3>
+      <div className={styles.contentContainer}>
+        <h3 className={styles.contentTitle}>
+          <FaCalendarDays color="#2563eb" /> Pengingat Kelas
+        </h3>
         
         {jadwalAktif.length === 0 ? (
-          <p className={styles.jadwalKosong}>Yeay! Tidak ada jadwal kelas untukmu hari ini.</p>
+          <p className={styles.emptySchedule}>Yeay! Tidak ada jadwal kelas untukmu hari ini.</p>
         ) : (
-          <div className={styles.wadahDaftarJadwal} style={{ padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className={styles.scheduleList}>
             {jadwalAktif.map(({ item: j }) => (
               
-              <div key={j._id} className={styles.kartuJadwalPintar} onClick={() => { setTab("scan"); setModeScan("kelas"); resetScanner(); }} style={{ cursor: 'pointer', backgroundColor: '#fdfbf7', border: '3px solid #111827', borderRadius: '12px', padding: '16px', boxShadow: '4px 4px 0 #111827', transition: 'transform 0.1s', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '900', color: '#111827', backgroundColor: '#fef08a', padding: '4px 8px', borderRadius: '6px', border: '2px solid #111827', textTransform: 'uppercase' }}>
-                    {/* 🛡️ ZERO HARDCODE TIMEZONE */}
-                    {new Date(j.tanggal).toLocaleDateString('id-ID', { timeZone: PERIODE_BELAJAR.TIMEZONE, weekday: 'long', day: 'numeric', month: 'short' })}
+              <div key={j._id} className={styles.scheduleCard} onClick={() => { setTab("scan"); setModeScan("kelas"); resetScanner(); }}>
+                <div className={styles.scheduleCardRow}>
+                  <div className={styles.scheduleDate}>
+                    {new Date(j.tanggal).toLocaleDateString('id-ID',{
+                      timeZone: PERIODE_BELAJAR.TIMEZONE,
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'short'
+                    })}
                   </div>
-                  
-                  {j.pertemuan && (
-                    <div style={{ fontSize: '11px', fontWeight: '900', color: 'white', backgroundColor: '#2563eb', padding: '4px 8px', borderRadius: '6px', border: '2px solid #111827', textTransform: 'uppercase' }}>
-                      P-{j.pertemuan}
-                    </div>
-                  )}
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p className={styles.hariJadwal} style={{ margin: 0, fontSize: '20px', color: '#111827', letterSpacing: '-0.5px' }}>{j.mapel}</p>
-                  <div className={styles.waktuJadwal} style={{ margin: 0, backgroundColor: 'white', color: '#ef4444', border: '2px solid #111827', boxShadow: '2px 2px 0 #111827', padding: '4px 8px' }}>
+                  <div className={styles.scheduleTime}>
                     {j.jamMulai} - {j.jamSelesai}
                   </div>
                 </div>
+                
+                <div className={styles.scheduleCardRow}>
+                  {j.pertemuan && (
+                    <div className={styles.scheduleCount}>
+                      P-{j.pertemuan}
+                    </div>
+                  )}
+                  <p className={styles.scheduleSubject}>
+                    {j.mapel}
+                  </p>
+                </div>
 
-                {j.pengajar && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '8px', borderRadius: '8px', border: '2px dashed #9ca3af' }}>
+                <div className={styles.scheduleCardRow}>
+                {j.kodePengajar && (
+                  <div className={styles.scheduleTeacher}>
                     <FaUserTie color="#2563eb" size={14} /> 
-                    <span>Pengajar: <span style={{ color: '#111827', fontWeight: '900' }}>{j.pengajar}</span></span>
+                    <span>Pengajar: <span className={styles.teacherName}>{j.kodePengajar}</span></span>
                   </div>
                 )}
-
+                </div>
               </div>
 
             ))}
@@ -310,7 +316,7 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
             {loadingKlasemen ? (
               <div className={styles.wadahKlasemen}>{[1, 2, 3].map(i => <div key={i} className={styles.kotakPesanLoading} style={{ height: '80px', borderRadius: '16px' }}></div>)}</div>
             ) : dataKlasemen.length === 0 ? (
-              <p className={styles.jadwalKosong}>Belum ada data konsul bulan ini.</p>
+              <p className={styles.emptySchedule}>Belum ada data konsul bulan ini.</p>
             ) : (
               <div className={styles.wadahKlasemen}>
                 {dataKlasemen.map((sis) => (

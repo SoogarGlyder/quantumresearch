@@ -28,7 +28,7 @@ const TabScanSiswa = dynamic(() => import("./student/TabScanSiswa"), {
   ssr: false, 
   loading: () => (
     <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: '16px', color: '#2563eb' }}>
-      <div className={styles.ikonKamera} style={{ animation: 'pulse 1.5s infinite' }}>📷</div>
+      <div className={styles.scanIcon} style={{ animation: 'pulse 1.5s infinite' }}>📷</div>
       <p style={{ fontWeight: '900', textTransform: 'uppercase' }}>Menyiapkan Kamera...</p>
     </div>
   ) 
@@ -123,42 +123,42 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
   // 4. MAIN JSX RENDER
   // ============================================================================
   return (
-    <div className={styles.wadahUtama}>
+    <div className={styles.mainContainer}>
       
       {/* KONTEN TAB DINAMIS */}
       {renderIsiTab()}
 
       {/* NAVIGASI BAWAH (5 MENU) */}
-      <div className={styles.menuBawah}>
+      <div className={styles.navMenu}>
         
         {/* Menu 1: Beranda */}
-        <button onClick={() => setTab("home")} className={`${styles.tombolNav} ${tab === "home" ? styles.tombolNavAktif : ""}`} style={{width: '20%'}}>
-          <FaHouse className={styles.ikonNav} />
+        <button onClick={() => setTab("home")} className={`${styles.navButton} ${tab === "home" ? styles.navButtonActive : ""}`}>
+          <FaHouse className={styles.navIcon} />
           <span className={styles.teksNav}>Beranda</span>
         </button>
         
         {/* Menu 2: Kelas */}
-        <button onClick={() => setTab("kelas")} className={`${styles.tombolNav} ${tab === "kelas" ? styles.tombolNavAktif : ""}`} style={{width: '20%'}}>
-          <FaCalendarCheck className={styles.ikonNav} />
+        <button onClick={() => setTab("kelas")} className={`${styles.navButton} ${tab === "kelas" ? styles.navButtonActive : ""}`}>
+          <FaCalendarCheck className={styles.navIcon} />
           <span className={styles.teksNav}>Kelas</span>
         </button>
         
         {/* Menu 3: Tombol Kamera (Tengah) */}
-        <div className={styles.wadahTombolTengah} style={{width: '20%'}}>
-          <button onClick={() => setTab("scan")} className={`${styles.tombolKamera} ${tab === "scan" ? styles.tombolKameraAktif : styles.tombolKameraMati}`}>
-            <FaQrcode className={styles.ikonKamera} />
+        <div className={styles.navButtonMid}>
+          <button onClick={() => setTab("scan")} className={`${styles.scanButton} ${tab === "scan" ? styles.scanButtonActive : ""}`}>
+            <FaQrcode className={styles.scanIcon} />
           </button>
         </div>
         
         {/* Menu 4: Riwayat/Record */}
-        <button onClick={() => setTab("riwayat")} className={`${styles.tombolNav} ${tab === "riwayat" ? styles.tombolNavAktif : ""}`} style={{width: '20%'}}>
-          <FaClockRotateLeft className={styles.ikonNav} />
+        <button onClick={() => setTab("riwayat")} className={`${styles.navButton} ${tab === "riwayat" ? styles.navButtonActive : ""}`}>
+          <FaClockRotateLeft className={styles.navIcon} />
           <span className={styles.teksNav}>Record</span>
         </button>
 
         {/* Menu 5: Profil */}
-        <button onClick={() => setTab("profil")} className={`${styles.tombolNav} ${tab === "profil" ? styles.tombolNavAktif : ""}`} style={{width: '20%'}}>
-          <FaUserAstronaut className={styles.ikonNav} />
+        <button onClick={() => setTab("profil")} className={`${styles.navButton} ${tab === "profil" ? styles.navButtonActive : ""}`}>
+          <FaUserAstronaut className={styles.navIcon} />
           <span className={styles.teksNav}>Profil</span>
         </button>
 

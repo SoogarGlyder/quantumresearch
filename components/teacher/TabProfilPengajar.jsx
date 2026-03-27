@@ -54,21 +54,21 @@ export default function TabProfilPengajar({ dataUser }) {
   };
 
   return (
-    <div className={styles.areaKonten} style={{ padding: 0 }}>
+    <div className={styles.contentArea} style={{ padding: 0 }}>
       
-      <div className={styles.headerHalaman}>
-        <div className={styles.hiasanBulat1}></div>
-        <div className={styles.hiasanBulat2}></div>
-        <div className={styles.wadahLogoTengah}>
-          <div className={styles.kotakLogo}>
+      <div className={styles.appHeader}>
+        <div className={styles.shapeRed}></div>
+        <div className={styles.shapeYellow}></div>
+        <div className={styles.logoContainer}>
+          <div className={styles.logo}>
             <Image src="/logo-qr-panjang.png" alt="Logo Quantum" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
           </div>
         </div>
-        <h1 className={styles.judulHalaman}>Profil Pengajar</h1>
+        <h1 className={styles.headerTitle}>Profil Pengajar</h1>
       </div>
 
       <div style={{ padding: '24px' }}>
-        <div className={styles.kartuInfo} style={{ marginBottom: '32px' }}>
+        <div className={styles.infoContainer} style={{ marginBottom: '32px' }}>
           
           {/* HEADER PROFIL */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', borderBottom: '4px solid #111827', paddingBottom: '20px' }}>
@@ -88,7 +88,7 @@ export default function TabProfilPengajar({ dataUser }) {
 
             <button 
               onClick={() => { setIsEditing(!isEditing); setNotifikasi({ teks: "", tipe: "" }); }}
-              className={styles.tombolNav}
+              className={styles.navButton}
               style={{ padding: '8px', width: '48px', height: '48px', backgroundColor: isEditing ? '#fca5a5' : '#e5e7eb', border: '4px solid #111827', borderRadius: '12px', boxShadow: '4px 4px 0 #111827', cursor: 'pointer', transition: '0.1s' }}
             >
               {isEditing ? <FaXmark size={24} color="#111827" /> : <FaPenToSquare size={20} color="#111827" />}

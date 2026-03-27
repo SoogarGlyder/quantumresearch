@@ -1,7 +1,7 @@
 /* ==========================================================================
    1. LAYOUT UTAMA (Neo-Brutalism Base)
    ========================================================================== */
-.wadahUtama {
+.mainContainer {
   min-height: 100vh;
   background-color: #fdfbf7;
   background-image: radial-gradient(#d1d5db 2px, transparent 2px);
@@ -18,14 +18,14 @@
   overflow-x: hidden;
 }
 
-.wadahUtama ::selection { background-color: #fef08a; color: #000; }
+.mainContainer ::selection { background-color: #fef08a; color: #000; }
 
-.areaKonten { flex: 1; overflow-y: auto}
+.contentArea { flex: 1; overflow-y: auto}
 
 /* ==========================================================================
    2. HEADER & BRANDING (Quantum Blue)
    ========================================================================== */
-.headerBeranda, .headerHalaman {
+.appHeader {
   background-color: #2563eb;
   padding: 24px 24px 50px;
   border-bottom: 4px solid #111827;
@@ -36,62 +36,67 @@
   z-index: 10;
 }
 
-.headerHalaman { padding: 24px 24px 32px; display: flex; flex-direction: column; align-items: center; }
+.shapeRed { position: absolute; top: -20px; right: -20px; width: 120px; height: 120px; background-color: #ef4444; border: 4px solid #111827; border-radius: 50%; }
+.shapeYellow { position: absolute; bottom: -40px; left: -40px; width: 100px; height: 100px; background-color: #facc15; border: 4px solid #111827; transform: rotate(45deg); border-radius: 16px; }
 
-.hiasanBulat1 { position: absolute; top: -20px; right: -20px; width: 120px; height: 120px; background-color: #ef4444; border: 4px solid #111827; border-radius: 50%; }
-.hiasanBulat2 { position: absolute; bottom: -40px; left: -40px; width: 100px; height: 100px; background-color: #facc15; border: 4px solid #111827; transform: rotate(45deg); border-radius: 16px; }
 
-.judulHalaman { 
-  font-size: 26px; font-weight: 900; color: white; margin: 0; 
-  text-transform: uppercase; letter-spacing: 1px; 
-  -webkit-text-stroke: 1px #111827; text-shadow: 3px 3px 0 #111827;
+.headerTitle { 
+  font-size: 26px; 
+  font-weight: 900; 
+  color: white; 
+  margin: 0; 
+  justify-self: center; gap: 8px; 
+  text-transform: uppercase; 
+  letter-spacing: 1px; 
+  -webkit-text-stroke: 1px #111827; 
+  text-shadow: 3px 3px 0 #111827; /* Teks dibikin gaya Beranda */
   position: relative; z-index: 2;
 }
 
-.wadahLogoTengah { display: flex; justify-content: center; margin-bottom: 24px; position: relative; z-index: 10; }
-.kotakLogo { background-color: white; padding: 8px 20px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
+.logoContainer { margin-bottom: 24px; position: relative; z-index: 10; }
+.logo { background-color: white; padding: 8px 20px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
 
-.barisSapaan { display: inline-grid; position: relative; z-index: 10; }
-.teksSapaanKecil { font-size: 14px; color: whitesmoke; font-weight: 800; text-transform: uppercase; }
-.teksNamaBesar { font-size: 30px; font-weight: 900; margin: 0; color: white; -webkit-text-stroke: 1px #111827; text-shadow: 3px 3px 0 #111827; }
+.identityContainer { display: inline-grid; position: relative; z-index: 10; }
+.welcomeText { font-size: 14px; color: whitesmoke; font-weight: 800; text-transform: uppercase; }
+.userName { font-size: 30px; font-weight: 900; margin: 0; color: white; -webkit-text-stroke: 1px #111827; text-shadow: 3px 3px 0 #111827; }
 
-.badgeUser { 
+.containerIdNumber { 
   background-color: #facc15; color: #111827; padding: 6px 12px; border-radius: 8px; border: 3px solid #111827; 
   display: flex; align-items: center; gap: 8px; box-shadow: 2px 2px 0 #111827; margin-top: 10px; width: fit-content;
 }
-.teksBadge { font-family: monospace; font-size: 14px; font-weight: 900; }
+.IdNumber { font-family: monospace; font-size: 14px; font-weight: 900; }
 
 /* ==========================================================================
    3. KARTU & GRID STATISTIK
    ========================================================================== */
-.kartuInfo {
+.infoContainer {
   background-color: white; border: 3px solid #111827; box-shadow: 6px 6px 0 #111827; 
   border-radius: 16px; position: relative; z-index: 10; padding: 20px;
 }
 
-.judulInfo { 
+.infoHeader { 
   font-size: 13px; font-weight: 900; color: #2563eb; text-transform: uppercase; 
   margin-bottom: 16px; border-bottom: 3px solid #111827; padding-bottom: 8px; 
 }
 
-.wadahGridStat { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
-.kotakStat { background-color: #f8fafc; border: 3px solid #111827; border-radius: 12px; padding: 12px; box-shadow: 4px 4px 0 #111827; }
-.labelStat { font-size: 11px; font-weight: 900; color: #4b5563; text-transform: uppercase; }
-.nilaiStat { font-size: 16px; font-weight: 900; color: #111827; }
+.statGridContainer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.statContainer { background-color: #f8fafc; border: 3px solid #111827; border-radius: 12px; padding: 12px; box-shadow: 4px 4px 0 #111827; }
+.statLabel { font-size: 11px; font-weight: 900; color: #4b5563; text-transform: uppercase; }
+.statValue { font-size: 16px; font-weight: 900; color: #111827; }
 .nilaiStatBiru { color: #2563eb; }
 .nilaiStatHijau { color: #15803d; }
 
 /* ==========================================================================
    4. AGENDA / JADWAL KELAS
    ========================================================================== */
-.judulJadwal { font-size: 16px; font-weight: 900; color: #111827; margin: 20px 0 16px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
-.jadwalKosong { text-align: center; padding: 20px; background-color: #e5e7eb; border-radius: 12px; border: 3px dashed #111827; font-weight: 800; text-transform: uppercase; }
+.contentTitle { font-size: 16px; font-weight: 900; color: #111827; margin: 20px 0 16px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.emptySchedule { text-align: center; padding: 20px; background-color: #e5e7eb; border-radius: 12px; border: 3px dashed #111827; font-weight: 800; text-transform: uppercase; }
 
-.kartuJadwalPintar { 
+.scheduleCard { 
   background-color: white; border-radius: 16px; border: 3px solid #111827; 
   box-shadow: 6px 6px 0 #111827; padding: 16px; transition: transform 0.1s; 
 }
-.kartuJadwalPintar:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.scheduleCard:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
 
 /* ==========================================================================
    5. SCANNER COMPONENTS
@@ -133,25 +138,24 @@
 /* ==========================================================================
    7. NAVIGASI BAWAH
    ========================================================================== */
-.menuBawah { 
+.navMenu { 
   position: fixed; bottom: 0; left: 0; right: 0; max-width: 448px; margin: 0 auto; 
   background-color: white; border-top: 4px solid #111827; border-left: 4px solid #111827; 
   border-right: 4px solid #111827; display: flex; justify-content: space-around; align-items: center; padding: 12px 0; z-index: 50; 
 }
 
-.tombolNav { display: flex; flex-direction: column; align-items: center; width: 33%; border: none; background: transparent; color: #9ca3af; cursor: pointer; }
-.tombolNavAktif { color: #2563eb; }
-.ikonNav { font-size: 24px; margin-bottom: 4px; }
+.navButton { display: flex; flex-direction: column; align-items: center; width: 33%; border: none; background: transparent; color: #9ca3af; cursor: pointer; }
+.navButtonActive { color: #2563eb; }
+.navIcon { font-size: 24px; margin-bottom: 4px; }
 .teksNav { font-size: 11px; font-weight: 900; text-transform: uppercase; }
 
-.wadahTombolTengah { width: 33%; display: flex; justify-content: center; margin-top: -45px; position: relative; }
-.tombolKamera { 
+.navButtonMid { width: 33%; display: flex; justify-content: center; margin-top: -45px; position: relative; }
+.scanButton { 
   color: white; width: 68px; height: 68px; border-radius: 16px; border: 4px solid #111827; 
   display: flex; align-items: center; justify-content: center; box-shadow: 4px 4px 0 #111827; 
 }
-.tombolKameraMati { background-color: #2563eb; }
-.tombolKameraAktif { background-color: #ef4444; }
-.tombolKamera:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.scanButtonActive { background-color: #ef4444; }
+.scanButton:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
 
 /* ==========================================================================
    8. ANIMATIONS & SKELETON

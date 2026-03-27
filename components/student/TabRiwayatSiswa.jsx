@@ -72,15 +72,15 @@ export default function TabRiwayat({ riwayat = [] }) {
       {/* ------------------------------------------------------------- */}
       {/* HEADER HALAMAN */}
       {/* ------------------------------------------------------------- */}
-      <div className={`${styles.headerHalaman} ${styles.stickyTop}`}>
-        <div className={styles.hiasanBulat1}></div>
-        <div className={styles.hiasanBulat2}></div>
-        <div className={styles.wadahLogoTengah}>
-          <div className={styles.kotakLogo}>
-            <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} className={styles.logoScannerPudar} priority />
+      <div className={styles.appHeader}>
+        <div className={styles.shapeRed}></div>
+        <div className={styles.shapeYellow}></div>
+        <div className={styles.logoContainer}>
+          <div className={styles.logo}>
+            <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
           </div>
         </div>
-        <h1 className={styles.judulHalaman}>Record Konsul</h1>
+        <h1 className={styles.headerTitle}>Record Konsul</h1>
       </div>
       
       {/* ------------------------------------------------------------- */}

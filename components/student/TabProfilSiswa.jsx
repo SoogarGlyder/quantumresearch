@@ -81,20 +81,20 @@ export default function TabProfil({ siswa, klikLogout }) {
   // 3. RENDER UI
   // ============================================================================
   return (
-    <div className={styles.areaKonten} style={{ padding: 0 }}>
+    <div className={styles.contentArea} style={{ padding: 0 }}>
       
       {/* ------------------------------------------------------------- */}
       {/* HEADER HALAMAN */}
       {/* ------------------------------------------------------------- */}
-      <div className={styles.headerHalaman}>
-        <div className={styles.hiasanBulat1}></div>
-        <div className={styles.hiasanBulat2}></div>
-        <div className={styles.wadahLogoTengah}>
-          <div className={styles.kotakLogo}>
-            <Image src="/logo-qr-panjang.png" alt="Logo Quantum" width={1000} height={40} className={styles.logoScannerPudar} priority />
+      <div className={styles.appHeader}>
+        <div className={styles.shapeRed}></div>
+        <div className={styles.shapeYellow}></div>
+        <div className={styles.logoContainer}>
+          <div className={styles.logo}>
+            <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
           </div>
         </div>
-        <h1 className={styles.judulHalaman}>Profilku</h1>
+        <h1 className={styles.headerTitle}>Profilku</h1>
       </div>
 
       <div style={{ padding: '24px' }}>
@@ -102,7 +102,7 @@ export default function TabProfil({ siswa, klikLogout }) {
         {/* ------------------------------------------------------------- */}
         {/* KARTU PROFIL UTAMA */}
         {/* ------------------------------------------------------------- */}
-        <div className={styles.kartuInfo} style={{ transform: 'none', marginBottom: '32px' }}>
+        <div className={styles.infoContainer} style={{ transform: 'none', marginBottom: '32px' }}>
     
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '3px solid #111827', paddingBottom: '16px' }}>
             

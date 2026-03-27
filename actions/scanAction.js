@@ -4,6 +4,7 @@ import connectToDatabase from "../lib/db";
 import User from "../models/User";
 import StudySession from "../models/StudySession";
 import Jadwal from "../models/Jadwal";
+import AbsensiPengajar from "../models/AbsensiPengajar"; // 👈 IMPORT MODEL BARU
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
@@ -181,7 +182,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
 }
 
 // ============================================================================
-// 3. CORE SCAN LOGIC (STAFF/PENGAJAR)
+// 3. CORE SCAN LOGIC (STAFF/PENGAJAR) - 🚀 SUDAH DI-UPGRADE
 // ============================================================================
 
 export async function absenPengajarAction(teksQR, lokasi) {
@@ -193,20 +194,46 @@ export async function absenPengajarAction(teksQR, lokasi) {
       return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
     }
 
-    if (!isLokasiValid(lokasi)) return responseHelper.error("📍 Lokasi tidak valid.");
+    // Validasi Geofencing
+    if (!isLokasiValid(lokasi)) return responseHelper.error("📍 Lokasi tidak valid. Pastikan di ada di Quantum Research.");
+    
+    // Validasi Barcode
     if (teksQR !== PREFIX_BARCODE.ADMIN) return responseHelper.error("⚠️ Barcode Staf tidak valid.");
 
-    await StudySession.create({
-      siswaId: userId,
-      jenisSesi: TIPE_SESI.KELAS,
-      namaMapel: "Kehadiran Staf",
-      status: STATUS_SESI.SELESAI.id,
-      waktuMulai: new Date(),
-      waktuSelesai: new Date()
+    const sekarang = new Date();
+    const { awal, akhir } = timeHelper.getRentangHari(sekarang);
+
+    // Cek apakah pengajar sudah absen masuk di rentang hari ini
+    let absenHariIni = await AbsensiPengajar.findOne({
+      pengajarId: userId,
+      waktuMasuk: { $gte: awal, $lte: akhir }
     });
 
-    return responseHelper.success("✅ Absen Berhasil! Selamat mengabdi.");
+    if (absenHariIni) {
+      // Jika waktuKeluar sudah terisi, berarti dia sudah scan pulang hari ini
+      if (absenHariIni.waktuKeluar) {
+         return responseHelper.success("✅ Anda sudah melakukan Clock-Out untuk hari ini.");
+      }
+
+      // LOGIKA CLOCK-OUT
+      absenHariIni.waktuKeluar = sekarang;
+      absenHariIni.lokasiScanKeluar = lokasi;
+      await absenHariIni.save();
+      
+      return responseHelper.success("✅ Clock-Out Berhasil! Terima kasih untuk hari ini.");
+    } else {
+      // LOGIKA CLOCK-IN
+      await AbsensiPengajar.create({
+        pengajarId: userId,
+        waktuMasuk: sekarang,
+        lokasiScanMasuk: lokasi
+      });
+      
+      return responseHelper.success("✅ Clock-In Berhasil! Selamat bekerja.");
+    }
+
   } catch (error) {
+    console.error("[ERROR Absen Pengajar]:", error);
     return responseHelper.error("Gagal memproses absen staf.");
   }
 }

@@ -65,18 +65,18 @@ export default function TabScanPengajar() {
 
   return (
     <div className={styles.areaKontenScanner}>
-      <div className={styles.headerHalaman}>
-        <div className={styles.hiasanBulat1}></div>
-        <div className={styles.hiasanBulat2}></div>
-        <div className={styles.wadahLogoTengah}>
-          <div className={styles.kotakLogo}>
+      <div className={styles.appHeader}>
+        <div className={styles.shapeRed}></div>
+        <div className={styles.shapeYellow}></div>
+        <div className={styles.logoContainer}>
+          <div className={styles.logo}>
             <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
           </div>
         </div>
-        <h1 className={styles.judulHalaman}>Presensi Staf</h1>
+        <h1 className={styles.headerTitle}>Presensi Staf</h1>
       </div>
 
-      <div className={styles.areaKonten} style={{ padding: '24px' }}>
+      <div className={styles.contentArea} style={{ padding: '24px' }}>
         {!hasilScan ? (
           <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
             <div style={{ background: '#fef08a', border: '4px solid #111827', borderRadius: '16px', padding: '16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '6px 6px 0 #111827' }}>

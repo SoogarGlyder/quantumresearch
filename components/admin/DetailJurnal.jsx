@@ -174,9 +174,9 @@ export default function DetailJurnal({
       </div>
 
       <div className={styles.formContainer}>
-        <div className={styles.kartuInfo}>
-          <h2 className={styles.judulInfo}>{detailJadwal.mapel} - {detailJadwal.kelasTarget}</h2>
-          <p className={styles.teksInfo}>📅 {formatTanggal(detailJadwal.tanggal)} | ⏰ {detailJadwal.jamMulai} - {detailJadwal.jamSelesai}</p>
+        <div className={styles.kartuInfoJurnal}>
+          <h2 className={styles.judulInfoJurnal}>{detailJadwal.mapel} - {detailJadwal.kelasTarget}</h2>
+          <p className={styles.teksInfoJurnal}>📅 {formatTanggal(detailJadwal.tanggal)} | ⏰ {detailJadwal.jamMulai} - {detailJadwal.jamSelesai}</p>
         </div>
 
         {pesan && (
@@ -260,7 +260,7 @@ export default function DetailJurnal({
                             <p className={styles.teksUsernameSiswa}>ID: {siswa.nomorPeserta}</p>
                           </td>
                           <td>
-                            <span className={`${styles.badge} ${isBelumAbsen ? styles.badgeBelum : isAbsen ? styles.badgeAbsen : styles.badgeHadir}`}>
+                            <span className={`${styles.badge} ${isBelumAbsen ? styles.badgeBelum : isAbsen ? styles.badgeAbsen : styles.attendBadge}`}>
                               {siswa.statusAbsen.toUpperCase()}
                             </span>
                           </td>

@@ -148,7 +148,7 @@ function FormLoginArea() {
 // ============================================================================
 export default function LoginPage() {
   return (
-    <div className={styles.wadahUtama}>
+    <div className={styles.mainContainer}>
       
       <div className={styles.kartuLogin}>
         

@@ -10,7 +10,7 @@ import { pilahJadwalSiswa } from "../../utils/kalkulatorData";
 // 👈 Import Konstanta Lengkap
 import { PERIODE_BELAJAR, STATUS_SESI } from "../../utils/constants"; 
 
-import { FaClipboardCheck, FaUserTie } from "react-icons/fa6";
+import { FaClipboardCheck, FaUserTie, FaXmark, FaCheck, FaTriangleExclamation, FaStopwatch, FaArrowsRotate } from "react-icons/fa6";
 import styles from "../StudentApp.module.css";
 
 // ============================================================================
@@ -18,141 +18,121 @@ import styles from "../StudentApp.module.css";
 // ============================================================================
 export default function TabKelas({ jadwal = [], riwayat = [] }) {
   
-  // --- LOGIKA: AMBIL JADWAL YANG SUDAH LEWAT/SELESAI ---
   const { jadwalSelesai } = useMemo(() => {
     return pilahJadwalSiswa(jadwal, riwayat, PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR);
   }, [jadwal, riwayat]);
 
-  // --- HELPER RENDER: BADGE KEHADIRAN (🛡️ ZERO HARDCODE) ---
   const renderBadgeKehadiran = (sesiTerkait) => {
-    // Jika tidak ada sesi terkait yang tercatat, berarti Alpa
     if (!sesiTerkait) {
-      return <span className={`${styles.badgeKehadiran} ${styles.badgeAlpa}`}>❌ {STATUS_SESI.ALPA.label}</span>;
+      return <span className={`${styles.presenceBadge} ${styles.alphaBadge}`}><FaXmark />&nbsp;{STATUS_SESI.ALPA.label}</span>;
     }
 
-    // Pengecekan status tidak hadir (Alpa, Izin, Sakit, dsb)
     if (
       sesiTerkait.status === STATUS_SESI.TIDAK_HADIR.id || 
       sesiTerkait.status === STATUS_SESI.ALPA.id || 
       sesiTerkait.status === STATUS_SESI.SAKIT.id || 
       sesiTerkait.status === STATUS_SESI.IZIN.id
     ) {
-      // Mengkapitalisasi huruf pertama agar rapi di UI
       const labelTampil = sesiTerkait.status.charAt(0).toUpperCase() + sesiTerkait.status.slice(1);
-      return <span className={`${styles.badgeKehadiran} ${styles.badgeAlpa}`}>❌ {labelTampil}</span>;
+      return <span className={`${styles.presenceBadge} ${styles.alphaBadge}`}><FaXmark />&nbsp;{labelTampil}</span>;
     }
 
-    // Pengecekan status selesai / hadir
     if (sesiTerkait.status === STATUS_SESI.SELESAI.id) {
       return (
         <>
-          <span className={`${styles.badgeKehadiran} ${styles.badgeHadir}`}>✔️ Hadir</span>
+          <span className={`${styles.presenceBadge} ${styles.attendBadge}`}><FaCheck />&nbsp;Hadir</span>
           {sesiTerkait.terlambatMenit > 0 && (
-            <span className={`${styles.badgeKehadiran} ${styles.badgeTelat}`}>
-              ⚠️ Telat {sesiTerkait.terlambatMenit}m
+            <span className={`${styles.presenceBadge} ${styles.lateBadge}`}>
+              <FaTriangleExclamation />&nbsp;Telat {sesiTerkait.terlambatMenit}m
             </span>
           )}
           {sesiTerkait.konsulExtraMenit > 0 && (
-            <span className={`${styles.badgeKehadiran} ${styles.badgeExtra}`}>
-              ⏱️ +{sesiTerkait.konsulExtraMenit}m Extra
+            <span className={`${styles.presenceBadge} ${styles.extraBadge}`}>
+              <FaStopwatch />&nbsp;+{sesiTerkait.konsulExtraMenit}m Extra
             </span>
           )}
         </>
       );
     }
 
-    // Jika belum selesai, berarti status sedang berjalan
-    return <span className={`${styles.badgeKehadiran} ${styles.badgeBerjalan}`}>🔄 Sedang Kelas</span>;
+    return <span className={`${styles.presenceBadge} ${styles.ongoingBadge}`}><FaArrowsRotate />Sedang Kelas</span>;
   };
 
   // ============================================================================
   // 3. RENDER UI
   // ============================================================================
   return (
-    <div className={styles.areaKonten} style={{ padding: 0, paddingBottom: '32px' }}>
-      
+    <div className={styles.contentArea}>
       {/* ------------------------------------------------------------- */}
       {/* HEADER HALAMAN */}
       {/* ------------------------------------------------------------- */}
-      <div className={`${styles.headerHalaman} ${styles.stickyTop}`}>
-        <div className={styles.hiasanBulat1}></div>
-        <div className={styles.hiasanBulat2}></div>
-        <div className={styles.wadahLogoTengah}>
-          <div className={styles.kotakLogo}>
-            <Image src="/logo-qr-panjang.png" alt="Logo Quantum" width={1000} height={40} className={styles.logoScannerPudar} priority />
+      <div className={styles.appHeader}>
+        <div className={styles.shapeRed}></div>
+        <div className={styles.shapeYellow}></div>
+        <div className={styles.logoContainer}>
+          <div className={styles.logo}>
+            <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
           </div>
         </div>
-        <h1 className={styles.judulHalaman}>Absen Kelas</h1>
+        <h1 className={styles.headerTitle}>Absen Kelas</h1>
       </div>
-
       {/* ------------------------------------------------------------- */}
       {/* DAFTAR RIWAYAT KELAS (DIUPDATE DENGAN DATA Pengajar) */}
       {/* ------------------------------------------------------------- */}
-      <div style={{ padding: '0 24px' }}>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '32px', marginBottom: '16px' }}>
-          <h3 className={styles.judulJadwal} style={{ margin: 0 }}>
-            <FaClipboardCheck color="#15803d" /> Riwayat Kehadiran
-          </h3>
-        </div>
+      <div className={styles.contentContainer}>
+        <h3 className={styles.contentTitle}>
+          <FaClipboardCheck color="#15803d" /> Riwayat Kehadiran
+        </h3>
 
         {jadwalSelesai.length === 0 ? (
-          <p className={styles.jadwalKosong} style={{ margin: 0 }}>
+          <p className={styles.emptySchedule}>
             Belum ada riwayat kelas pada periode ini.
           </p>
         ) : (
-          <div className={styles.wadahDaftarJadwal} style={{ padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className={styles.scheduleList}>
             {jadwalSelesai.map(({ item: j, sesiTerkait }) => (
-              
-              // 👇 KARTU RIWAYAT JADWAL NEO-BRUTALISM DIPERBARUI 👇
-              <div key={j._id} className={styles.kartuJadwalPintar} style={{ opacity: 0.9, backgroundColor: '#f3f4f6', border: '3px solid #6b7280', borderRadius: '12px', padding: '0', boxShadow: '4px 4px 0 #6b7280', transition: 'transform 0.1s', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                
-                {/* Area Utama (Diklik untuk lihat foto papan - Fitur Mendatang) */}
-                <div 
-                  className={styles.areaKlikJadwal}
-                  style={{ backgroundColor: 'transparent', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', cursor: 'pointer' }}
-                  onClick={() => alert("Galeri foto papan tulis sedang dalam pengembangan! 📸\nNantikan fitur ini segera.")}
-                >
-                  
-                  {/* Baris Atas: Tanggal & Pertemuan */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ fontSize: '11px', fontWeight: '900', color: '#4b5563', backgroundColor: '#e5e7eb', padding: '4px 8px', borderRadius: '6px', border: '2px solid #9ca3af', textTransform: 'uppercase' }}>
-                      {/* 🛡️ ZERO HARDCODE TIMEZONE */}
-                      {new Date(j.tanggal).toLocaleDateString('id-ID', { timeZone: PERIODE_BELAJAR.TIMEZONE, weekday: 'long', day: 'numeric', month: 'short' })}
-                    </div>
-                    
-                    {j.pertemuan && (
-                      <div style={{ fontSize: '11px', fontWeight: '900', color: '#111827', backgroundColor: '#93c5fd', padding: '4px 8px', borderRadius: '6px', border: '2px solid #3b82f6', textTransform: 'uppercase' }}>
-                        P-{j.pertemuan}
-                      </div>
-                    )}
+              <div key={j._id} className={styles.scheduleCard}
+                onClick={() => alert("Galeri foto papan tulis sedang dalam pengembangan! 📸\nNantikan fitur ini segera.")}
+              >   
+                <div className={styles.scheduleCardRow}>
+                  <div className={styles.scheduleDate}>
+                    {new Date(j.tanggal).toLocaleDateString('id-ID', 
+                      { timeZone: PERIODE_BELAJAR.TIMEZONE,
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'short'
+                    })}
                   </div>
-                  
-                  {/* Baris Tengah: Nama Mapel Besar */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p className={styles.hariJadwal} style={{ margin: 0, fontSize: '20px', color: '#374151', letterSpacing: '-0.5px' }}>{j.mapel}</p>
-                    <div className={styles.waktuJadwal} style={{ margin: 0, backgroundColor: '#e5e7eb', color: '#4b5563', border: '2px solid #9ca3af', boxShadow: 'none', padding: '4px 8px' }}>
-                      {j.jamMulai} - {j.jamSelesai}
-                    </div>
+                  <div className={styles.scheduleTime}>
+                    {j.jamMulai} - {j.jamSelesai}
                   </div>
-
-                  {/* Baris Bawah: Nama Pengajar */}
-                  {j.pengajar && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: '#6b7280', marginTop: '-4px' }}>
-                      <FaUserTie color="#6b7280" size={14} /> 
-                      <span>Pengajar: <span style={{ color: '#4b5563', fontWeight: '900' }}>{j.pengajar}</span></span>
+                </div>
+                  
+                <div className={styles.scheduleCardRow}>
+                  {j.pertemuan && (
+                    <div className={styles.scheduleCount}>
+                      P-{j.pertemuan}
                     </div>
                   )}
-
+                  <p className={styles.scheduleSubject}>
+                    {j.mapel}
+                  </p>
                 </div>
-                
-                {/* Area Status Kehadiran (Bagian Bawah Kartu) */}
-                <div className={styles.areaStatusKehadiran} style={{ backgroundColor: 'white', borderTop: '3px solid #6b7280', padding: '12px 16px' }}>
-                  <div className={styles.wadahBadges} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+
+                <div className={styles.scheduleCardRow}>
+                {j.kodePengajar && (
+                  <div className={styles.scheduleTeacher}>
+                    <FaUserTie color="#2563eb" size={14} /> 
+                    <span>Pengajar: <span className={styles.teacherName}>{j.kodePengajar}</span></span>
+                  </div>
+                )}
+                </div>
+
+                <div className={styles.presenceArea}>
+                  <div className={styles.badgesContainer}>
                     {renderBadgeKehadiran(sesiTerkait)}
                   </div>
                 </div>
-
               </div>
 
             ))}

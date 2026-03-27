@@ -3,7 +3,7 @@
 /* ==========================================================================
    1. LAYOUT UTAMA & CANGKANG (Neo-Brutalism Base)
    ========================================================================== */
-.wadahUtama {
+.mainContainer {
   min-height: 100vh;
   background-color: #fdfbf7;
   background-image: radial-gradient(#d1d5db 2px, transparent 2px);
@@ -12,7 +12,7 @@
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-.wadahUtama ::selection { background-color: #facc15; color: #111827; }
+.mainContainer ::selection { background-color: #facc15; color: #111827; }
 
 .wadahKonten { max-width: 1280px; margin: 0 auto; }
 
@@ -218,9 +218,9 @@
 .tombolCetak:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
 .tombolCetak:disabled { background-color: #9ca3af; color: #4b5563; cursor: not-allowed; box-shadow: none; transform: none; }
 
-.kartuInfo { background-color: #fef08a; padding: 20px; border-radius: 16px; border: 4px solid #111827; box-shadow: 6px 6px 0 #111827; margin-bottom: 24px; }
-.judulInfo { margin: 0 0 12px 0; font-size: 20px; font-weight: 900; color: #111827; text-transform: uppercase; border-bottom: 3px solid #111827; padding-bottom: 8px; }
-.teksInfo { margin: 0; font-weight: 900; color: #4b5563; text-transform: uppercase; }
+.kartuInfoJurnal { background-color: #fef08a; padding: 20px; border-radius: 16px; border: 4px solid #111827; box-shadow: 6px 6px 0 #111827; margin-bottom: 24px; }
+.judulInfoJurnal { margin: 0 0 12px 0; font-size: 20px; font-weight: 900; color: #111827; text-transform: uppercase; border-bottom: 3px solid #111827; padding-bottom: 8px; }
+.teksInfoJurnal { margin: 0; font-weight: 900; color: #4b5563; text-transform: uppercase; }
 
 .formContainer { display: flex; flex-direction: column; gap: 24px; }
 .formGrid { display: flex; gap: 16px; flex-wrap: wrap; }
@@ -237,7 +237,7 @@
 .badge { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 900; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }
 .badgeBelum { background-color: #e5e7eb; color: #111827; }
 .badgeAbsen { background-color: #ef4444; color: white; }
-.badgeHadir { background-color: #4ade80; color: #111827; }
+.attendBadge { background-color: #4ade80; color: #111827; }
 
 .wadahCari { position: relative; display: flex; align-items: center; }
 .iconCari { position: absolute; left: 14px; color: #111827; font-size: 16px; }

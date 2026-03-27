@@ -110,7 +110,7 @@ export default function SuperDashboardAdmin() {
   // 3. MAIN JSX RENDER
   // ============================================================================
   return (
-    <div className={styles.wadahUtama}>
+    <div className={styles.mainContainer}>
       <div className={styles.wadahKonten}>
 
         {/* HEADER ADMIN */}
