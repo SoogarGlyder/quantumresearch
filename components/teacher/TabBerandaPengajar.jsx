@@ -208,22 +208,37 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
                     <FaBookBookmark color="#2563eb" /> 1. Laporan Materi
                   </h3>
                   
-                  <input className={styles.opsiMapel} placeholder="Bab Materi (Contoh: Aljabar)" required value={formJurnal.bab} onChange={e => setFormJurnal({...formJurnal, bab: e.target.value})} />
-                  <textarea className={styles.opsiMapel} placeholder="Detail Sub-bab (Contoh: Persamaan Linear)" rows={3} required value={formJurnal.subBab} onChange={e => setFormJurnal({...formJurnal, subBab: e.target.value})} />
+                  <input className={styles.opsiMapel} placeholder="Bab Materi (Contoh: Aljabar)" required value={formJurnal.bab} onChange={e => setFormJurnal(prev => ({...prev, bab: e.target.value}))} />
+                  <textarea className={styles.opsiMapel} placeholder="Detail Sub-bab (Contoh: Persamaan Linear)" rows={3} required value={formJurnal.subBab} onChange={e => setFormJurnal(prev => ({...prev, subBab: e.target.value}))} />
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <CldUploadWidget uploadPreset="quantum_unsigned" onSuccess={res => {
-                      const linkLama = formJurnal.galeriPapan ? formJurnal.galeriPapan + "," : "";
-                      setFormJurnal({...formJurnal, galeriPapan: linkLama + res.info.secure_url})
-                    }}>
+                    
+                    {/* 🚀 TOMBOL UPLOAD PAPAN (DIUPGRADE MULTIPLE & ANTI OVERWRITE) */}
+                    <CldUploadWidget 
+                      uploadPreset="quantum_unsigned" 
+                      options={{ multiple: true }} 
+                      onSuccess={res => {
+                        setFormJurnal(prev => {
+                          const linkLama = prev.galeriPapan ? prev.galeriPapan + "," : "";
+                          return { ...prev, galeriPapan: linkLama + res.info.secure_url };
+                        });
+                      }}
+                    >
                       {({ open }) => (
                         <button type="button" onClick={() => open()} className={styles.opsiMapel} style={{ background: formJurnal.galeriPapan ? '#dcfce3' : '#f3f4f6', cursor: 'pointer', textAlign: 'center' }}>
-                          <FaImages size={20} style={{marginBottom: '8px'}} /> <br/> {formJurnal.galeriPapan ? 'PAPAN OK' : 'FOTO PAPAN'}
+                          <FaImages size={20} style={{marginBottom: '8px'}} /> <br/> 
+                          {formJurnal.galeriPapan ? `PAPAN OK (${formJurnal.galeriPapan.split(',').length})` : 'FOTO PAPAN'}
                         </button>
                       )}
                     </CldUploadWidget>
 
-                    <CldUploadWidget uploadPreset="quantum_unsigned" onSuccess={res => setFormJurnal({...formJurnal, fotoBersama: res.info.secure_url})}>
+                    {/* 🚀 TOMBOL UPLOAD KELAS (FOTO BERSAMA, DIUPGRADE ANTI OVERWRITE) */}
+                    <CldUploadWidget 
+                      uploadPreset="quantum_unsigned" 
+                      onSuccess={res => {
+                        setFormJurnal(prev => ({ ...prev, fotoBersama: res.info.secure_url }));
+                      }}
+                    >
                       {({ open }) => (
                         <button type="button" onClick={() => open()} className={styles.opsiMapel} style={{ background: formJurnal.fotoBersama ? '#dcfce3' : '#f3f4f6', cursor: 'pointer', textAlign: 'center' }}>
                           <FaCamera size={20} style={{marginBottom: '8px'}} /> <br/> {formJurnal.fotoBersama ? 'KELAS OK' : 'FOTO KELAS'}

@@ -238,13 +238,13 @@ export async function absenPengajarAction(teksQR, lokasi) {
       }
 
       await AbsensiPengajar.create(dataAbsenBaru);
-      return responseHelper.success("✅ Clock-In Berhasil! Selamat bekerja.");
+      return responseHelper.success("✅ Clock-In Berhasil!");
     }
 
   } catch (error) {
     // 💡 TIPS: Kalau masih gagal, coba Bos cek terminal/console VS Code, 
     // pesan error aslinya akan muncul di sana!
     console.error("[ERROR Absen Pengajar]:", error);
-    return responseHelper.error("Gagal memproses absen staf.");
+    return responseHelper.error("Gagal memproses absen.");
   }
 }

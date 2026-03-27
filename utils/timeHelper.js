@@ -1,4 +1,4 @@
-import { PERIODE_BELAJAR } from "./constants"; // 👈 Import Konstanta
+import { PERIODE_BELAJAR } from "./constants"; 
 
 export const timeHelper = {
   // Mendapatkan string YYYY-MM-DD menggunakan TIMEZONE konstanta
@@ -14,8 +14,14 @@ export const timeHelper = {
     );
   },
 
-  // Membuat rentang 00:00:00 sampai 23:59:59 menggunakan ISO OFFSET konstanta (+07:00)
-  getRentangHari: (tglString) => {
+  // 🚀 DI-UPGRADE: Sekarang kebal dari error! Bisa menerima String maupun Date Object.
+  getRentangHari: (tglInput) => {
+    // 1. Cek apakah yang dikirim itu objek Date? Kalau iya, ubah jadi string YYYY-MM-DD dulu.
+    const tglString = (tglInput instanceof Date) 
+      ? timeHelper.getTglJakarta(tglInput) 
+      : tglInput;
+
+    // 2. Sekarang formatnya dijamin pasti aman (YYYY-MM-DD)
     return {
       awal: new Date(`${tglString}T00:00:00.000${PERIODE_BELAJAR.ISO_OFFSET}`),
       akhir: new Date(`${tglString}T23:59:59.999${PERIODE_BELAJAR.ISO_OFFSET}`)

@@ -27,31 +27,34 @@ export default function TabJurnal({ dataJadwal = [], muatData }) {
   const { replace } = useRouter();
 
   const page = Number(searchParams.get("page")) || 1;
+  const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
+  // --- FILTER & PENCARIAN ---
   const [filterBulan, setFilterBulan] = useState("");
   const [filterKelas, setFilterKelas] = useState("");
   const [cariTopik, setCariTopik] = useState(""); 
   
-  const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
-
+  // --- STATE JURNAL TERPILIH ---
   const [selectedJadwalId, setSelectedJadwalId] = useState(null);
   const [detailJadwal, setDetailJadwal] = useState(null);
   const [dataSiswa, setDataSiswa] = useState([]);
   const [formJurnal, setFormJurnal] = useState({ bab: "", subBab: "", galeriLink: "", fotoBersama: "" });
   
+  // --- STATE UI & NOTIFIKASI ---
   const [loadingJurnal, setLoadingJurnal] = useState(false);
   const [pesan, setPesan] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
+  // Reset pagination ke halaman 1 jika filter berubah
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [filterBulan, filterKelas, cariTopik]);
+  }, [filterBulan, filterKelas, cariTopik, pathname, replace, searchParams]);
 
-  // --- HANDLER BUKA JURNAL (SUDAH DIPERBAIKI) ---
+  // --- HANDLER BUKA JURNAL ---
   const bukaJurnal = async (idJadwal) => {
     setSelectedJadwalId(idJadwal);
     setLoadingJurnal(true);
@@ -59,7 +62,7 @@ export default function TabJurnal({ dataJadwal = [], muatData }) {
 
     const hasil = await ambilDetailJurnal(idJadwal);
     
-    // 🛡️ PERBAIKAN: Masuk ke .data dulu baru ambil jadwal & dataSiswa
+    // 🛡️ Masuk ke .data dulu baru ambil jadwal & dataSiswa
     if (hasil.sukses && hasil.data) {
       const { jadwal, dataSiswa: listSiswa } = hasil.data;
 
@@ -104,6 +107,7 @@ export default function TabJurnal({ dataJadwal = [], muatData }) {
     setLoadingJurnal(false);
   };
 
+  // --- MEMILAH DATA JADWAL UNTUK TABEL ---
   const jadwalTersedia = useMemo(() => {
     const hariIni = formatYYYYMMDD(new Date());
     let jadwal = (dataJadwal || []).filter(j => j.tanggal <= hariIni); 
@@ -139,6 +143,7 @@ export default function TabJurnal({ dataJadwal = [], muatData }) {
     </>
   );
 
+  // --- RENDER JIKA ADA JURNAL TERPILIH (DETAIL) ---
   if (selectedJadwalId) {
     if (loadingJurnal && !detailJadwal) {
       return renderDenganToast(
@@ -163,6 +168,7 @@ export default function TabJurnal({ dataJadwal = [], muatData }) {
     );
   }
 
+  // --- RENDER TABEL UTAMA ---
   return renderDenganToast(
     <div className={`${styles.isiTab} ${styles.SembunyiPrint}`}>
       <div className={styles.headerTabWrapper}>

@@ -4,19 +4,21 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation"; // 👈 Tambahan useSearchParams & usePathname
 
-// 🛡️ Bersih: Hanya import fungsi yang dibutuhkan untuk operasional
-import { ambilDataDashboard, ambilSemuaJadwal } from "../../actions/adminAction";
+import { 
+  ambilDataDashboard, 
+  ambilSemuaJadwal, 
+  ambilAbsensiPengajar 
+} from "../../actions/adminAction";
 import { ambilSemuaPengajar } from "../../actions/teacherAction";
 import { prosesLogout } from "../../actions/authAction";
 
 import { KONFIGURASI_SISTEM } from "../../utils/constants";
 
-import styles from "./AdminPage.module.css";
+import styles from "./AdminPage.css"; 
 import { FaArrowRightFromBracket, FaQrcode } from "react-icons/fa6"; 
 
-// Impor Komponen Tab & Modal
 import TabMonitoring from "../../components/admin/TabMonitoring";
 import TabUser from "../../components/admin/TabUser";
 import TabJurnal from "../../components/admin/TabJurnal"; 
@@ -29,28 +31,41 @@ import ErrorBoundary from "../../components/ui/ErrorBoundary";
 // ============================================================================
 export default function SuperDashboardAdmin() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   
   // --- STATE MANAGEMENT ---
-  const [tab, setTab] = useState("monitoring"); 
-  const [isModalQrOpen, setIsModalQrOpen] = useState(false); 
+  // 🚀 LOGIKA BARU: Ambil tab dari URL, kalau tidak ada default ke "monitoring"
+  const tab = searchParams.get("tab") || "monitoring"; 
   
+  const [isModalQrOpen, setIsModalQrOpen] = useState(false); 
   const [dataRiwayat, setDataRiwayat] = useState([]);
   const [dataSiswa, setDataSiswa] = useState([]);
   const [dataPengajar, setDataPengajar] = useState([]); 
   const [dataJadwal, setDataJadwal] = useState([]); 
+  const [dataAbsenStaf, setDataAbsenStaf] = useState([]); 
   const [loadingData, setLoadingData] = useState(true);
 
   // --- HANDLERS ---
+
+  // 🚀 FUNGSI BARU: Untuk mengubah tab sekaligus mengubah URL
+  const gantiTab = (namaTabBaru) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", namaTabBaru);
+    // Menggunakan replace agar tidak memenuhi history browser (tombol back)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const muatData = useCallback(async () => {
     setLoadingData(true);
     try {
-      const [hasilDashboard, hasilJadwal, hasilPengajar] = await Promise.all([
+      const [hasilDashboard, hasilJadwal, hasilPengajar, hasilAbsenStaf] = await Promise.all([
         ambilDataDashboard(),
         ambilSemuaJadwal(),
-        ambilSemuaPengajar()
+        ambilSemuaPengajar(),
+        ambilAbsensiPengajar()
       ]);
 
-      // 🛡️ Data Akses via .data (Standar ResponseHelper)
       if (hasilDashboard.sukses && hasilDashboard.data) { 
         setDataRiwayat(hasilDashboard.data.riwayat || []); 
         setDataSiswa(hasilDashboard.data.siswa || []); 
@@ -61,6 +76,7 @@ export default function SuperDashboardAdmin() {
 
       if (hasilJadwal.sukses) setDataJadwal(hasilJadwal.data || []);
       if (hasilPengajar.sukses) setDataPengajar(hasilPengajar.data || []);
+      if (hasilAbsenStaf.sukses) setDataAbsenStaf(hasilAbsenStaf.data || []);
 
     } catch (error) {
       console.error("[ERROR muatData Admin]:", error);
@@ -69,7 +85,6 @@ export default function SuperDashboardAdmin() {
     }
   }, [router]);
 
-  // 🛠️ VERSI BERSIH: Hanya memanggil muatData saat halaman dibuka
   useEffect(() => { 
     muatData(); 
   }, [muatData]);
@@ -79,11 +94,18 @@ export default function SuperDashboardAdmin() {
     router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
   };
 
-  // --- RENDER HELPERS (Switch Tab) ---
   const renderIsiTab = () => {
     switch (tab) {
       case "monitoring": 
-        return <TabMonitoring dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} muatData={muatData} />;
+        return (
+          <TabMonitoring 
+            dataRiwayat={dataRiwayat} 
+            dataJadwal={dataJadwal} 
+            dataSiswa={dataSiswa} 
+            dataAbsenStaf={dataAbsenStaf}
+            muatData={muatData} 
+          />
+        );
       case "jurnal": 
         return <TabJurnal dataJadwal={dataJadwal} muatData={muatData} />;
       case "jadwal": 
@@ -106,79 +128,33 @@ export default function SuperDashboardAdmin() {
     );
   }
 
-  // ============================================================================
-  // 3. MAIN JSX RENDER
-  // ============================================================================
   return (
     <div className={styles.mainContainer}>
       <div className={styles.wadahKonten}>
-
-        {/* HEADER ADMIN */}
         <div className={`${styles.headerAdmin} ${styles.SembunyiPrint}`}>
           <div>
             <h1 className={styles.judulHeader}>Super Admin</h1>
             <p className={styles.subJudulHeader}>Pusat Kendali Quantum Research</p>
           </div>
-          
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button 
-              onClick={() => setIsModalQrOpen(true)} 
-              className={styles.tombolKeluar}
-              style={{ backgroundColor: '#facc15', color: '#111827' }} 
-            >
-              <FaQrcode /> CETAK QR
-            </button>
-
-            <button onClick={klikLogout} className={styles.tombolKeluar}>
-              <FaArrowRightFromBracket /> KELUAR
-            </button>
+            <button onClick={() => setIsModalQrOpen(true)} className={styles.tombolKeluar} style={{ backgroundColor: '#facc15', color: '#111827' }}><FaQrcode /> CETAK QR</button>
+            <button onClick={klikLogout} className={styles.tombolKeluar}><FaArrowRightFromBracket /> KELUAR</button>
           </div>
         </div>
 
-        {/* NAVIGASI TAB */}
+        {/* 🚀 NAVIGASI TAB: Sekarang memanggil gantiTab() */}
         <div className={`${styles.wadahTabs} ${styles.SembunyiPrint}`} role="tablist">
-          <button 
-            onClick={() => setTab("monitoring")} 
-            className={`${styles.tombolTab} ${tab === "monitoring" ? styles.tombolTabAktif : ""}`}
-          >
-            📟 MONITORING
-          </button>
-          
-          <button 
-            onClick={() => setTab("jurnal")} 
-            className={`${styles.tombolTab} ${tab === "jurnal" ? styles.tombolTabAktif : ""}`}
-          >
-            📓 JURNAL
-          </button>
-          
-          <button 
-            onClick={() => setTab("jadwal")} 
-            className={`${styles.tombolTab} ${tab === "jadwal" ? styles.tombolTabAktif : ""}`}
-          >
-            📅 JADWAL
-          </button>
-          
-          <button 
-            onClick={() => setTab("user")} 
-            className={`${styles.tombolTab} ${tab === "user" ? styles.tombolTabAktif : ""}`}
-          >
-            👥 USER
-          </button>
+          <button onClick={() => gantiTab("monitoring")} className={`${styles.tombolTab} ${tab === "monitoring" ? styles.tombolTabAktif : ""}`}>📟 MONITORING</button>
+          <button onClick={() => gantiTab("jurnal")} className={`${styles.tombolTab} ${tab === "jurnal" ? styles.tombolTabAktif : ""}`}>📓 JURNAL</button>
+          <button onClick={() => gantiTab("jadwal")} className={`${styles.tombolTab} ${tab === "jadwal" ? styles.tombolTabAktif : ""}`}>📅 JADWAL</button>
+          <button onClick={() => gantiTab("user")} className={`${styles.tombolTab} ${tab === "user" ? styles.tombolTabAktif : ""}`}>👥 USER</button>
         </div>
 
-        {/* KONTEN AKTIF */}
         <div className={styles.areaKontenTab} role="tabpanel">
-          <ErrorBoundary>
-            {renderIsiTab()}
-          </ErrorBoundary>
+          <ErrorBoundary>{renderIsiTab()}</ErrorBoundary>
         </div>
 
-        {/* MODAL QR */}
-        <ModalQr 
-          isOpen={isModalQrOpen} 
-          onClose={() => setIsModalQrOpen(false)} 
-        />
-
+        <ModalQr isOpen={isModalQrOpen} onClose={() => setIsModalQrOpen(false)} />
       </div>
     </div>
   );

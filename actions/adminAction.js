@@ -4,6 +4,7 @@ import connectToDatabase from "../lib/db";
 import User from "../models/User";
 import StudySession from "../models/StudySession";
 import Jadwal from "../models/Jadwal";
+import AbsensiPengajar from "../models/AbsensiPengajar"; // 👈 IMPORT BARU
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
@@ -58,7 +59,27 @@ export async function ambilDataDashboard() {
 }
 
 // ============================================================================
-// 2. MANAJEMEN JADWAL (DENGAN SINKRONISASI FIELD)
+// 2. MANAJEMEN STAF (ABSENSI) - 🚀 BARU
+// ============================================================================
+export async function ambilAbsensiPengajar() {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const data = await AbsensiPengajar.find()
+      .populate("pengajarId", "nama kodePengajar") // Join ke koleksi User
+      .sort({ waktuMasuk: -1 })
+      .limit(100)
+      .lean();
+
+    return responseHelper.success("Data absen staf dimuat.", serialize(data));
+  } catch (error) {
+    return responseHelper.error("Gagal mengambil absen staf.", error.message);
+  }
+}
+
+// ============================================================================
+// 3. MANAJEMEN JADWAL
 // ============================================================================
 export async function ambilSemuaJadwal() {
   try {
@@ -93,7 +114,6 @@ export async function tambahJadwal(dataForm) {
       jamSelesai: dataForm.jamSelesai,
       pertemuan: Number(dataForm.pertemuan),
       pengajarId: pengajarObj._id,
-      // 🛡️ DOUBLE SAVING: Simpan ke 'pengajar' (UI) dan 'namaPengajar' (Legacy)
       pengajar: pengajarObj.nama, 
       namaPengajar: pengajarObj.nama,
       kodePengajar: pengajarObj.kodePengajar
@@ -147,7 +167,7 @@ export async function hapusJadwal(idJadwal) {
 }
 
 // ============================================================================
-// 3. MANAJEMEN AKUN USER
+// 4. MANAJEMEN AKUN USER
 // ============================================================================
 export async function editAkunSiswa(idSiswa, dataBaru) {
   try {
@@ -191,45 +211,8 @@ export async function hapusAkunSiswa(idSiswa) {
 }
 
 // ============================================================================
-// 4. ABSENSI & JURNAL
+// 5. ABSENSI & JURNAL
 // ============================================================================
-export async function inputAbsenManual(data) {
-  try {
-    await connectToDatabase();
-    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
-
-    const { awal } = timeHelper.getRentangHari(data.tanggal);
-    const statusFinal = data.catatan 
-      ? `${data.keterangan} (${data.catatan})`.toLowerCase() 
-      : data.keterangan.toLowerCase();
-
-    await StudySession.findOneAndUpdate(
-      {
-        siswaId: data.siswaId,
-        jenisSesi: TIPE_SESI.KELAS,
-        namaMapel: data.mapel,
-        waktuMulai: { $gte: awal }
-      },
-      {
-        $set: { status: statusFinal, waktuSelesai: awal },
-        $setOnInsert: {
-          siswaId: data.siswaId,
-          jenisSesi: TIPE_SESI.KELAS,
-          namaMapel: data.mapel,
-          waktuMulai: awal,
-          terlambatMenit: 0
-        }
-      },
-      { upsert: true }
-    );
-
-    revalidatePath(PERAN.ADMIN.home);
-    return responseHelper.success("Absen manual berhasil.");
-  } catch (error) {
-    return responseHelper.error("Gagal absen manual.", error);
-  }
-}
-
 export async function ambilDetailJurnal(idJadwal) {
   try {
     await connectToDatabase();
@@ -307,66 +290,5 @@ export async function simpanJurnal(idJadwal, dataJurnal, arrayNilaiSiswa) {
     return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
   } catch (error) {
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN, error);
-  }
-}
-
-// ============================================================================
-// 5. NORMALISASI FINAL (DENGAN REPAIR JADWAL AGAR PAK BASKORO MUNCUL)
-// ============================================================================
-export async function normalisasiDataLama() {
-  try {
-    await connectToDatabase();
-    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
-
-    console.log("--- 🚀 MEMULAI NORMALISASI DATABASE (FINAL PATCH) ---");
-
-    // 1. Perbaiki User (Standardisasi Case & Field)
-    const users = await User.find({});
-    for (let u of users) {
-      u.peran = u.peran?.toLowerCase() || PERAN.SISWA.id;
-      u.status = u.status?.toLowerCase() || STATUS_USER.AKTIF;
-      if (!u.nomorPeserta) u.nomorPeserta = u.username || "DATA-LAMA";
-      await u.save();
-    }
-
-    // 2. Perbaiki Jadwal (KASUS PAK BASKORO: namaPengajar -> pengajar)
-    const jadwals = await Jadwal.find({});
-    for (let j of jadwals) {
-      let isChanged = false;
-      
-      // Jika 'pengajar' kosong tapi 'namaPengajar' ada isinya
-      if (!j.pengajar && j.namaPengajar) {
-        j.pengajar = j.namaPengajar;
-        isChanged = true;
-      } 
-      // Jika dua-duanya kosong tapi kode ada
-      else if (!j.pengajar && j.kodePengajar) {
-        j.pengajar = j.kodePengajar;
-        isChanged = true;
-      }
-
-      if (isChanged) {
-        await j.save();
-        console.log(`[FIXED JADWAL] ${j.mapel}: Field 'pengajar' disinkronkan.`);
-      }
-    }
-
-    // 3. Perbaiki Sesi (Smart Status Cleaning)
-    const sessions = await StudySession.find({});
-    for (let s of sessions) {
-      let raw = s.status?.toLowerCase() || "";
-      if (raw.includes("sakit")) s.status = STATUS_SESI.SAKIT.id;
-      else if (raw.includes("izin")) s.status = STATUS_SESI.IZIN.id;
-      else if (raw.includes("alpa")) s.status = STATUS_SESI.ALPA.id;
-      else if (raw.includes("tidak hadir")) s.status = STATUS_SESI.TIDAK_HADIR.id;
-      else s.status = STATUS_SESI.SELESAI.id;
-      await s.save();
-    }
-
-    revalidatePath(PERAN.ADMIN.home);
-    return responseHelper.success("Sinkronisasi database (Final Patch) Berhasil!");
-  } catch (error) {
-    console.error("Gagal Sinkron:", error);
-    return responseHelper.error("Gagal Sinkron.", error.message);
   }
 }
