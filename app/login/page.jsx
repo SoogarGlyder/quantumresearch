@@ -11,10 +11,14 @@ import { prosesLogin } from "../../actions/authAction";
 import { PESAN_SISTEM } from "../../utils/constants";
 
 import styles from "./LoginPage.module.css";
-import { FaUserAstronaut, FaLock, FaArrowRightToBracket } from "react-icons/fa6";
+// 🚀 Tambahkan FaEye dan FaEyeSlash
+import { 
+  FaUserAstronaut, FaLock, FaArrowRightToBracket, 
+  FaEye, FaEyeSlash 
+} from "react-icons/fa6";
 
 // ============================================================================
-// 2. SUB-COMPONENT: FORM LOGIN (Mencegah Error Suspense Next.js)
+// 2. SUB-COMPONENT: FORM LOGIN
 // ============================================================================
 function FormLoginArea() {
   const router = useRouter();
@@ -22,11 +26,13 @@ function FormLoginArea() {
   
   // --- STATE MANAGEMENT ---
   const [form, setForm] = useState({ identifier: "", password: "" });
-  // Gunakan object agar tidak menebak dari isi teks (menghindari hardcode text check)
   const [notifikasi, setNotifikasi] = useState({ teks: "", tipe: "" }); 
   const [loading, setLoading] = useState(false);
+  
+  // 🚀 STATE BARU: Untuk kontrol intip password
+  const [showPassword, setShowPassword] = useState(false);
 
-  // --- EFEK SAMPING: Tangkap URL Param (clear=true) dari Root Switcher ---
+  // --- EFEK SAMPING ---
   useEffect(() => {
     if (searchParams.get("clear") === "true") {
       setNotifikasi({ teks: PESAN_SISTEM.SESI_HABIS, tipe: "error" });
@@ -46,10 +52,8 @@ function FormLoginArea() {
 
     try {
       const hasil = await prosesLogin(form);
-      
       if (hasil.sukses) {
         setNotifikasi({ teks: hasil.pesan, tipe: "sukses" });
-        // Root Switcher ("/") akan otomatis mengarahkan ke halaman yang sesuai perannya
         router.push("/");
       } else {
         setNotifikasi({ teks: hasil.pesan, tipe: "error" });
@@ -65,14 +69,13 @@ function FormLoginArea() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    // Bersihkan notifikasi saat user mulai mengetik ulang
     if (notifikasi.teks) setNotifikasi({ teks: "", tipe: "" }); 
   };
 
   return (
     <form onSubmit={handleLogin} noValidate>
       
-      {/* Input 1: Identifier (Username/No Peserta/WA) */}
+      {/* Input 1: Identifier */}
       <div className={styles.grupInput}>
         <label htmlFor="identifier" className={styles.labelInput}>
           ID Pengguna
@@ -101,25 +104,50 @@ function FormLoginArea() {
         <label htmlFor="password" className={styles.labelInput}>
           Kata Sandi
         </label>
-        <div className={styles.wadahInput}>
+        <div className={styles.wadahInput} style={{ position: 'relative' }}>
           <div className={styles.ikonInput}>
             <FaLock />
           </div>
           <input
             id="password"
             name="password"
-            type="password"
+            // 🚀 LOGIKA: Tipe input berubah dinamis antara 'password' dan 'text'
+            type={showPassword ? "text" : "password"}
             required
             placeholder="••••••••"
             value={form.password}
             onChange={handleChange}
             className={styles.inputField}
             disabled={loading}
+            style={{ paddingRight: '45px' }} // Kasih ruang buat ikon mata
           />
+          
+          {/* 🚀 TOMBOL INTIP (SHOW/HIDE) */}
+          <button
+            type="button"
+            className={styles.tombolIntip}
+            onClick={() => setShowPassword(!showPassword)}
+            tabIndex="-1" // Agar tidak mengganggu alur tombol Tab keyboard
+            style={{
+              position: 'absolute',
+              right: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#4b5563',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4px'
+            }}
+          >
+            {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+          </button>
         </div>
       </div>
 
-      {/* Tombol Masuk */}
       <button
         type="submit"
         disabled={loading}
@@ -130,7 +158,6 @@ function FormLoginArea() {
         )}
       </button>
 
-      {/* Area Pesan Sistem (Warna bergantung pada 'tipe' bukan teksnya) */}
       {notifikasi.teks && (
         <p className={
           notifikasi.tipe === "error" ? styles.pesanError : styles.messageSuccess
@@ -143,48 +170,26 @@ function FormLoginArea() {
   );
 }
 
-// ============================================================================
-// 3. MAIN COMPONENT (PAGE LAYOUT)
-// ============================================================================
 export default function LoginPage() {
   return (
     <div className={styles.mainContainer}>
-      
       <div className={styles.kartuLogin}>
-        
         <div className={styles.hiasan1}></div>
         <div className={styles.hiasan2}></div>
-
         <div className={styles.kontenKartu}>
-          
-          {/* HEADER LOGO */}
           <div className={styles.wadahLogo}>
-            <Image
-              src="/logo-qr-persegi.png"
-              alt="Logo Quantum Research"
-              width={240}
-              height={120}
-              style={{ objectFit: "contain" }}
-              priority
-            />
+            <Image src="/logo-qr-persegi.png" alt="Logo" width={240} height={120} style={{ objectFit: "contain" }} priority />
           </div>
-
           <div className={styles.headerTeks}>
             <h1 className={styles.judulUtama}>Selamat Datang</h1>
             <p className={styles.subJudul}>Silakan masuk ke portal Quantum Research</p>
           </div>
-
-          {/* Menggunakan Suspense karena komponen dalamnya memakai useSearchParams */}
           <Suspense fallback={<p className={styles.messageSuccess}>Memuat form...</p>}>
             <FormLoginArea />
           </Suspense>
-
         </div>
       </div>
-      
-      <p className={styles.footerText}>
-        © 2026 Bimbingan Belajar Quantum Research
-      </p>
+      <p className={styles.footerText}>© 2026 Bimbingan Belajar Quantum Research</p>
     </div>
   );
 }
