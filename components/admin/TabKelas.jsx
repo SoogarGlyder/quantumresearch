@@ -9,11 +9,15 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
+// 🚀 TAMBAHAN IMPORT: Memanggil fungsi export Excel
+import { unduhExcel } from "../../utils/exportExcel"; 
+
 import { inputAbsenManual } from "../../actions/adminAction";
 import { kalkulasiAbsensiLengkap } from "../../utils/kalkulatorData";
 import { formatTanggal, formatJam, formatYYYYMMDD, potongDataPagination, ekstrakKeteranganAbsen } from "../../utils/formatHelper";
-// 👈 Import Konstanta Sistem & Limit
-import { STATUS_SESI, OPSI_KELAS, OPSI_MAPEL_KELAS, OPSI_KETERANGAN_ABSEN, LIMIT_DATA } from "../../utils/constants";
+
+// 🚀 Tambahkan STATUS_USER ke dalam import constants
+import { STATUS_SESI, OPSI_KELAS, OPSI_MAPEL_KELAS, OPSI_KETERANGAN_ABSEN, LIMIT_DATA, STATUS_USER } from "../../utils/constants";
 
 import { FaFileExcel, FaTriangleExclamation, FaClock, FaFilter } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
@@ -52,6 +56,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterTglKelas, filterKelasAbsen, filterMapelKelas]);
 
   // --- HANDLERS ---
@@ -104,7 +109,8 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   }, [dataRiwayat, dataJadwal, dataSiswa]);
   
   const riwayatKelasDifilter = useMemo(() => {
-    let riwayat = [...riwayatKelasMurni];
+    // 🚀 FILTER UTAMA: Singkirkan siswa yang berstatus NONAKTIF
+    let riwayat = riwayatKelasMurni.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
     
     if (filterTglKelas) riwayat = riwayat.filter(s => formatYYYYMMDD(s.waktuMulai) === filterTglKelas);
     if (filterKelasAbsen) riwayat = riwayat.filter(s => s.siswaId?.kelas === filterKelasAbsen);
@@ -131,7 +137,11 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
       
       {/* FILTER BAR */}
       <div className={styles.filterBar}>
-        <FaFilter color="#111827" size={18} style={{marginRight: '8px'}} />
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <FaFilter color="#111827" size={18} style={{marginRight: '8px'}} />
+          <span className={styles.labelFilter}>Filter:</span>
+        </div>
+        
         <FilterInput type="date" value={filterTglKelas} onChange={(e) => setFilterTglKelas(e.target.value)} />
         
         <select value={filterKelasAbsen} onChange={(e) => setFilterKelasAbsen(e.target.value)} className={styles.filterSelectMurni}>
@@ -266,7 +276,11 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
         </table>
       </div>
       
-      <PaginationBar totalPages={totalPage} />
+      {/* 🚀 PAGINATION BAR DENGAN JARAK */}
+      <div style={{ marginTop: '24px' }}>
+        <PaginationBar totalPages={totalPage} />
+      </div>
+
     </div>
   );
 }

@@ -3,7 +3,7 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState, useEffect, useMemo, useRef } from "react"; 
+import { useState, useMemo, useRef } from "react"; 
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import PaginationBar from "../ui/PaginationBar";
@@ -337,7 +337,11 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
           </table>
         </div>
         
-        <PaginationBar totalPages={totalPage} />
+        {/* 🚀 PaginationBar dibungkus div agar punya jarak dengan tabel */}
+        <div style={{ marginTop: '24px' }}>
+          <PaginationBar totalPages={totalPage} />
+        </div>
+        
       </div>
     </div>
   );

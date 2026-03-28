@@ -9,10 +9,12 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
+// 🚀 IMPORT FUNGSI UNDUH EXCEL
 import { unduhExcel } from "../../utils/exportExcel";
 import { formatTanggal, formatJam, formatBulanTahun, hitungDurasiMenit, potongDataPagination } from "../../utils/formatHelper";
-// 👈 Import Konstanta Lengkap
-import { TIPE_SESI, STATUS_SESI, OPSI_MAPEL_KONSUL, LIMIT_DATA } from "../../utils/constants";
+
+// 👈 Import Konstanta Lengkap (Termasuk STATUS_USER untuk filter)
+import { TIPE_SESI, STATUS_SESI, OPSI_MAPEL_KONSUL, LIMIT_DATA, STATUS_USER } from "../../utils/constants";
 
 import { FaFileExcel, FaFilter } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
@@ -44,6 +46,7 @@ export default function TabKonsul({ dataRiwayat = [] }) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterBulan, filterMapel, filterNama]);
 
   // --- HANDLERS ---
@@ -59,10 +62,25 @@ export default function TabKonsul({ dataRiwayat = [] }) {
   }, [dataRiwayat]);
   
   const riwayatKonsulDifilter = useMemo(() => {
-    let riwayat = [...riwayatKonsulMurni];
+    // 🚀 FILTER UTAMA: Singkirkan siswa yang berstatus NONAKTIF
+    let riwayat = riwayatKonsulMurni.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
     
+    // 🚀 LOGIKA FILTER BULAN YANG SUDAH DIPERBAIKI
     if (filterBulan) {
-      riwayat = riwayat.filter(s => formatBulanTahun(s.waktuMulai) === filterBulan);
+      riwayat = riwayat.filter(s => {
+        if (!s.waktuMulai) return false;
+        
+        // Buat objek Date lalu ambil tahun dan bulan lokal
+        const dateObj = new Date(s.waktuMulai);
+        const yyyy = dateObj.getFullYear();
+        // getMonth() mulai dari 0, jadi +1. padStart memastikan "3" jadi "03"
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0'); 
+        
+        const bulanTahunItem = `${yyyy}-${mm}`;
+        
+        // Cocokkan format "YYYY-MM" dari data dengan "YYYY-MM" dari input type="month"
+        return bulanTahunItem === filterBulan;
+      });
     }
     
     if (filterMapel) {
@@ -95,8 +113,10 @@ export default function TabKonsul({ dataRiwayat = [] }) {
       
       {/* FILTER BAR */}
       <div className={styles.filterBar}>
-        <FaFilter color="#111827" size={18} style={{marginRight: '8px'}} />
-        <span className={styles.labelFilter}>Filter:</span>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <FaFilter color="#111827" size={18} style={{marginRight: '8px'}} />
+          <span className={styles.labelFilter}>Filter:</span>
+        </div>
         
         <FilterInput type="month" value={filterBulan} onChange={(e) => setFilterBulan(e.target.value)} />
         <FilterInput placeholder="Cari Nama Siswa..." value={filterNama} onChange={(e) => setFilterNama(e.target.value)} />
@@ -182,8 +202,10 @@ export default function TabKonsul({ dataRiwayat = [] }) {
         </table>
       </div>
       
-      {/* PAGINATION BAR sekarang mandiri membaca URL */}
-      <PaginationBar totalPages={totalPage} />
+      {/* 🚀 PAGINATION BAR */}
+      <div style={{ marginTop: '24px' }}>
+        <PaginationBar totalPages={totalPage} />
+      </div>
       
     </div>
   );

@@ -8,7 +8,8 @@ import PaginationBar from "../ui/PaginationBar";
 
 import { unduhExcel } from "../../utils/exportExcel";
 import { formatTanggal, formatBulanTahun, potongDataPagination } from "../../utils/formatHelper";
-import { LIMIT_DATA } from "../../utils/constants";
+// 🚀 TAMBAHAN: STATUS_USER untuk memastikan staf nonaktif bisa disaring jika diperlukan
+import { LIMIT_DATA, STATUS_USER } from "../../utils/constants";
 
 import { FaFileExcel, FaFilter, FaClock, FaRightFromBracket, FaUserTie } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
@@ -32,14 +33,31 @@ export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterBulan, filterNama]);
 
   // --- LOGIKA FILTER ---
   const dataDifilter = useMemo(() => {
+    // 🚀 OPSI: Mem-filter pengajar yang statusnya nonaktif dari tabel (Opsional)
+    // Uncomment baris di bawah ini jika Bos ingin menghilangkan riwayat staf yang sudah resign
+    // let hasil = dataAbsenStaf.filter(a => a.pengajarId?.status !== STATUS_USER.NONAKTIF);
+    
+    // Default (semua absen terekam, termasuk dari staf lama):
     let hasil = [...dataAbsenStaf];
 
+    // 🚀 LOGIKA FILTER BULAN
     if (filterBulan) {
-      hasil = hasil.filter(a => formatBulanTahun(a.waktuMasuk) === filterBulan);
+      hasil = hasil.filter(a => {
+        if (!a.waktuMasuk) return false;
+        
+        const dateObj = new Date(a.waktuMasuk);
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        
+        const bulanTahunAbsen = `${yyyy}-${mm}`;
+        
+        return bulanTahunAbsen === filterBulan;
+      });
     }
 
     if (filterNama) {
@@ -71,8 +89,10 @@ export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
 
       {/* FILTER BAR */}
       <div className={styles.filterBar}>
-        <FaFilter color="#111827" size={18} style={{marginRight: '8px'}} />
-        <span className={styles.labelFilter}>Filter:</span>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <FaFilter color="#111827" size={18} style={{marginRight: '8px'}} />
+          <span className={styles.labelFilter}>Filter:</span>
+        </div>
         
         <FilterInput type="month" value={filterBulan} onChange={(e) => setFilterBulan(e.target.value)} />
         <FilterInput placeholder="Cari Nama / Kode Pengajar..." value={filterNama} onChange={(e) => setFilterNama(e.target.value)} />
@@ -132,7 +152,11 @@ export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
         </table>
       </div>
 
-      <PaginationBar totalPages={totalPage} />
+      {/* 🚀 PAGINATION BAR DENGAN JARAK */}
+      <div style={{ marginTop: '24px' }}>
+        <PaginationBar totalPages={totalPage} />
+      </div>
+
     </div>
   );
 }
