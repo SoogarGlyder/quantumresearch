@@ -3,8 +3,8 @@
 // ============================================================================
 export const PERIODE_BELAJAR = Object.freeze({
   ID: "Semester Genap 2025/2026",
-  MULAI: "2026-03-02",
-  AKHIR: "2026-03-28",
+  MULAI: "2026-03-28",
+  AKHIR: "2026-04-28",
   TIMEZONE: "Asia/Jakarta",
   UTC_OFFSET: -7,
   ISO_OFFSET: "+07:00",
