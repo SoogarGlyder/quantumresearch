@@ -81,7 +81,7 @@ export default function TabProfil({ siswa, klikLogout }) {
   // 3. RENDER UI
   // ============================================================================
   return (
-    <div className={styles.contentArea} style={{ padding: 0 }}>
+    <div className={styles.contentArea}>
       
       {/* ------------------------------------------------------------- */}
       {/* HEADER HALAMAN */}
@@ -97,26 +97,23 @@ export default function TabProfil({ siswa, klikLogout }) {
         <h1 className={styles.headerTitle}>Profilku</h1>
       </div>
 
-      <div style={{ padding: '24px' }}>
+      <div className={styles.contentContainer}>
         
         {/* ------------------------------------------------------------- */}
         {/* KARTU PROFIL UTAMA */}
         {/* ------------------------------------------------------------- */}
-        <div className={styles.infoContainer} style={{ transform: 'none', marginBottom: '32px' }}>
+        <div className={styles.infoContainer} style={{ transform: 'none', margin: '0 16px 32px' }}>
     
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '3px solid #111827', paddingBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '3px solid #111827', paddingBottom: '16px' }}>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '60px', height: '60px', backgroundColor: '#dbeafe', border: '3px solid #111827', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '4px 4px 0 #111827' }}>
+              {/* <div style={{ width: '60px', height: '60px', backgroundColor: '#dbeafe', border: '3px solid #111827', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '4px 4px 0 #111827' }}>
                 <FaUserAstronaut size={30} color="#2563eb" />
-              </div>
+              </div> */}
               <div>
-                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#111827', textTransform: 'uppercase' }}>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#111827', textTransform: 'uppercase' , paddingRight: '15px'}}>
                   {siswa.nama}
                 </h2>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#111827', backgroundColor: '#facc15', padding: '2px 8px', borderRadius: '6px', border: '2px solid #111827', display: 'inline-block', marginTop: '4px' }}>
-                  Siswa Quantum
-                </span>
               </div>
             </div>
 
@@ -160,9 +157,9 @@ export default function TabProfil({ siswa, klikLogout }) {
             /* --- MODE LIHAT PROFIL (VIEW) --- */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <InfoRow icon={<FaIdCard />} label="Username" value={`@${siswa.username}`} highlight />
-              <InfoRow icon={<FaHashtag />} label="No. Peserta" value={siswa.nomorPeserta || "-"} />
-              <InfoRow icon={<FaWhatsapp />} label="No. WhatsApp" value={siswa.noHp || "-"} />
-              <InfoRow icon={<FaSchool />} label="Kelas Utama" value={siswa.kelas || "Belum Diatur"} />
+              <InfoRow icon={<FaHashtag />} label="ID Peserta" value={siswa.nomorPeserta || "-"} />
+              <InfoRow icon={<FaWhatsapp />} label="WhatsApp" value={siswa.noHp || "-"} />
+              <InfoRow icon={<FaSchool />} label="Kelas" value={siswa.kelas || "Belum Diatur"} />
             </div>
 
           ) : (
@@ -171,25 +168,25 @@ export default function TabProfil({ siswa, klikLogout }) {
             <form onSubmit={handleSimpan} style={{ display: 'flex', flexDirection: 'column', gap: '16px', animation: 'slideDownBrutal 0.2s ease-out' }}>
               
               <div>
-                <label className={styles.labelPilihMapel}>Username Baru</label>
+                <label className={styles.labelFilter}>Username Baru</label>
                 <input 
                   type="text" 
                   value={usernameEdit} 
                   onChange={(e) => setUsernameEdit(e.target.value)}
-                  className={styles.opsiMapel} 
+                  className={styles.scheduleOption} 
                   style={{ backgroundColor: '#f8fafc' }}
                 />
               </div>
 
               <div>
-                <label className={styles.labelPilihMapel}>Kata Sandi Baru</label>
+                <label className={styles.labelFilter}>Kata Sandi Baru</label>
                 <input 
                   type="password" 
                   value={passwordEdit} 
                   onChange={(e) => setPasswordEdit(e.target.value)}
                   // 🛡️ ZERO HARDCODE PLACEHOLDER
                   placeholder={`Min ${VALIDASI_SISTEM.MIN_PASSWORD} karakter (kosongkan jika tak diubah)`}
-                  className={styles.opsiMapel} 
+                  className={styles.scheduleOption} 
                   style={{ backgroundColor: '#f8fafc', fontSize: '14px' }}
                 />
               </div>
@@ -211,9 +208,9 @@ export default function TabProfil({ siswa, klikLogout }) {
         {/* ------------------------------------------------------------- */}
         {/* TOMBOL LOGOUT (ZONA BAHAYA) */}
         {/* ------------------------------------------------------------- */}
-        <div className={styles.bagianPengaturan} style={{ marginTop: '0', padding: '0' }}>
-          <button onClick={klikLogout} className={styles.tombolLogout}>
-            <FaArrowRightFromBracket size={20} /> Keluar dari Perangkat
+        <div style={{ margin: '0 16px', padding: '0' }}>
+          <button onClick={klikLogout} className={styles.logoutButton}>
+            <FaArrowRightFromBracket size={20} /> LOG OUT
           </button>
         </div>
 

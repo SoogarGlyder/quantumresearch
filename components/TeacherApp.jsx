@@ -22,7 +22,7 @@ const TabProfilPengajar = dynamic(() => import("./teacher/TabProfilPengajar"), {
 // 🚀 DI-UPGRADE: Loading state bergaya Neo-Brutalism
 const FallbackLoading = ({ teks }) => (
   <div style={{ padding: "80px 24px", display: "flex", justifyContent: "center", alignItems: "center" }}>
-    <div className={styles.kotakPesanLoading} style={{
+    <div className={styles.messageLoading} style={{
       padding: "24px 32px",
       backgroundColor: "#fef08a",
       border: "4px solid #111827",

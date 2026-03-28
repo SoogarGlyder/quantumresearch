@@ -102,22 +102,22 @@
    5. SCANNER COMPONENTS
    ========================================================================== */
 .areaKontenScanner { display: flex; flex-direction: column; }
-.bingkaiKamera { padding: 16px; border-radius: 20px; background-color: #facc15; border: 3px solid #111827; }
-.wadahKamera { overflow: hidden; border-radius: 12px; background-color: black; border: 3px solid #111827; aspect-ratio: 1/1; position: relative; }
-.overlayKameraGelap { position: absolute; inset: 0; border: 40px solid rgba(0,0,0,0.6); pointer-events: none; }
-.overlayKameraKotak { position: absolute; inset: 64px; border: 4px dashed #facc15; border-radius: 16px; pointer-events: none; }
+.cameraFrame { padding: 16px; border-radius: 20px; background-color: #facc15; border: 3px solid #111827; }
+.containerCamera { overflow: hidden; border-radius: 12px; background-color: black; border: 3px solid #111827; aspect-ratio: 1/1; position: relative; }
+.overlayDarkOutside { position: absolute; inset: 0; border: 40px solid rgba(0,0,0,0.6); pointer-events: none; }
+.overlayCameraInside { position: absolute; inset: 64px; border: 4px dashed #facc15; border-radius: 16px; pointer-events: none; }
 
-.layarHasil { aspect-ratio: 1/1; border-radius: 16px; border: 4px solid #111827; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
-.layarHasilError { background-color: #fecaca !important; animation: brutalGuncang 0.2s infinite; }
+.resultScreen { aspect-ratio: 1/1; border-radius: 16px; border: 4px solid #111827; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+.resultScreenError { background-color: #fecaca !important; animation: brutalGuncang 0.2s infinite; }
 
-.teksHasilJudul { font-size: 24px; font-weight: 900; text-transform: uppercase; }
-.teksHasilJudulError { color: #ef4444; }
-.teksHasilJudulSukses { color: #2563eb; }
+.resultTitle { font-size: 24px; font-weight: 900; text-transform: uppercase; }
+.resultTitleError { color: #ef4444; }
+.resultTitleSuccess { color: #2563eb; }
 
 /* ==========================================================================
    6. FORM & TOMBOL (Tactile)
    ========================================================================== */
-.opsiMapel { 
+.scheduleOption { 
   width: 100%; background-color: white; border: 3px solid #111827; border-radius: 12px; 
   padding: 14px; font-size: 15px; font-weight: 800; outline: none; box-shadow: 4px 4px 0 #111827; 
 }
@@ -129,11 +129,11 @@
 .tombolSimpanBiruBaru:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
 .tombolSimpanBiruBaru:disabled { background-color: #9ca3af; cursor: not-allowed; }
 
-.tombolLogout { 
+.logoutButton { 
   width: 100%; background-color: #ef4444; color: white; font-weight: 900; 
   padding: 16px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; cursor: pointer; 
 }
-.tombolLogout:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.logoutButton:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
 
 /* ==========================================================================
    7. NAVIGASI BAWAH
@@ -163,7 +163,7 @@
 @keyframes brutalGuncang { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
 @keyframes brutalShimmer { 0% { background-position: 0 0; } 100% { background-position: 40px 40px; } }
 
-.kotakPesanLoading { 
+.messageLoading { 
   background-color: #fef08a; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827;
   background-image: repeating-linear-gradient(45deg, #facc15 25%, transparent 25%, transparent 50%, #facc15 50%, #facc15 75%, transparent 75%, transparent);
   background-size: 40px 40px; animation: brutalShimmer 1s linear infinite; 

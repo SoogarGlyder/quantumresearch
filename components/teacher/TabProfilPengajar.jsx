@@ -115,7 +115,7 @@ export default function TabProfilPengajar({ dataUser }) {
                     placeholder={`MIN. ${VALIDASI_SISTEM.MIN_PASSWORD} KARAKTER`} 
                     value={passwordBaru}
                     onChange={(e) => setPasswordBaru(e.target.value)}
-                    className={styles.opsiMapel}
+                    className={styles.scheduleOption}
                     style={{ flex: 1, padding: '14px', borderRadius: '12px', border: '4px solid #111827', fontWeight: '900', fontSize: '15px' }}
                   />
                   <button type="submit" disabled={loading} style={{ backgroundColor: '#4ade80', color: '#111827', border: '4px solid #111827', borderRadius: '12px', padding: '0 20px', cursor: 'pointer', boxShadow: '4px 4px 0 #111827' }}>
@@ -133,7 +133,7 @@ export default function TabProfilPengajar({ dataUser }) {
         </div>
 
         {/* TOMBOL LOGOUT BRUTAL */}
-        <button onClick={handleLogout} className={styles.tombolLogout} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '20px', backgroundColor: 'white', border: '4px solid #111827', borderRadius: '16px', fontWeight: '900', fontSize: '18px', color: '#ef4444', cursor: 'pointer', boxShadow: '6px 6px 0 #ef4444', transition: '0.1s' }}>
+        <button onClick={handleLogout} className={styles.logoutButton} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '20px', backgroundColor: 'white', border: '4px solid #111827', borderRadius: '16px', fontWeight: '900', fontSize: '18px', color: '#ef4444', cursor: 'pointer', boxShadow: '6px 6px 0 #ef4444', transition: '0.1s' }}>
           <FaArrowRightFromBracket size={20} /> KELUAR APLIKASI
         </button>
       </div>

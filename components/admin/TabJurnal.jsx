@@ -148,7 +148,7 @@ export default function TabJurnal({ dataJadwal = [], muatData }) {
     if (loadingJurnal && !detailJadwal) {
       return renderDenganToast(
         <div className={styles.isiTab}>
-          <p className={styles.teksPesanMemproses}>Mengumpulkan Arsip Kelas...</p>
+          <p className={styles.messageProcess}>Mengumpulkan Arsip Kelas...</p>
         </div>
       );
     }

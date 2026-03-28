@@ -166,7 +166,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
           <div className={styles.infoContainer}>
             
             {loadingDetail ? (
-              <div className={styles.kotakPesanLoading} style={{ padding: '40px 20px', textAlign: 'center', borderRadius: '12px' }}>
+              <div className={styles.messageLoading} style={{ padding: '40px 20px', textAlign: 'center', borderRadius: '12px' }}>
                 <h3 style={{ margin: 0, fontWeight: '900', textTransform: 'uppercase' }}>Menyiapkan Kelas...</h3>
               </div>
             ) : (
@@ -208,8 +208,8 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
                     <FaBookBookmark color="#2563eb" /> 1. Laporan Materi
                   </h3>
                   
-                  <input className={styles.opsiMapel} placeholder="Bab Materi (Contoh: Aljabar)" required value={formJurnal.bab} onChange={e => setFormJurnal(prev => ({...prev, bab: e.target.value}))} />
-                  <textarea className={styles.opsiMapel} placeholder="Detail Sub-bab (Contoh: Persamaan Linear)" rows={3} required value={formJurnal.subBab} onChange={e => setFormJurnal(prev => ({...prev, subBab: e.target.value}))} />
+                  <input className={styles.scheduleOption} placeholder="Bab Materi (Contoh: Aljabar)" required value={formJurnal.bab} onChange={e => setFormJurnal(prev => ({...prev, bab: e.target.value}))} />
+                  <textarea className={styles.scheduleOption} placeholder="Detail Sub-bab (Contoh: Persamaan Linear)" rows={3} required value={formJurnal.subBab} onChange={e => setFormJurnal(prev => ({...prev, subBab: e.target.value}))} />
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     
@@ -225,7 +225,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
                       }}
                     >
                       {({ open }) => (
-                        <button type="button" onClick={() => open()} className={styles.opsiMapel} style={{ background: formJurnal.galeriPapan ? '#dcfce3' : '#f3f4f6', cursor: 'pointer', textAlign: 'center' }}>
+                        <button type="button" onClick={() => open()} className={styles.scheduleOption} style={{ background: formJurnal.galeriPapan ? '#dcfce3' : '#f3f4f6', cursor: 'pointer', textAlign: 'center' }}>
                           <FaImages size={20} style={{marginBottom: '8px'}} /> <br/> 
                           {formJurnal.galeriPapan ? `PAPAN OK (${formJurnal.galeriPapan.split(',').length})` : 'FOTO PAPAN'}
                         </button>
@@ -240,7 +240,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
                       }}
                     >
                       {({ open }) => (
-                        <button type="button" onClick={() => open()} className={styles.opsiMapel} style={{ background: formJurnal.fotoBersama ? '#dcfce3' : '#f3f4f6', cursor: 'pointer', textAlign: 'center' }}>
+                        <button type="button" onClick={() => open()} className={styles.scheduleOption} style={{ background: formJurnal.fotoBersama ? '#dcfce3' : '#f3f4f6', cursor: 'pointer', textAlign: 'center' }}>
                           <FaCamera size={20} style={{marginBottom: '8px'}} /> <br/> {formJurnal.fotoBersama ? 'KELAS OK' : 'FOTO KELAS'}
                         </button>
                       )}
@@ -279,7 +279,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
                               <select 
                                 value={siswa.statusAbsen} 
                                 onChange={(e) => ubahStatusSiswa(idx, e.target.value)} 
-                                className={styles.opsiMapel}
+                                className={styles.scheduleOption}
                                 style={{ flex: 1, padding: '10px', backgroundColor: isBelum ? '#fef08a' : '#fff', boxShadow: 'none', border: '2px solid #111827' }}
                               >
                                 <option value={LABEL_SISTEM.BELUM_ABSEN}>⚠️ BELUM ABSEN</option>
@@ -295,7 +295,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
                                 value={siswa.nilaiTest === null ? "" : siswa.nilaiTest} 
                                 onChange={(e) => ubahNilaiSiswa(idx, e.target.value)} 
                                 disabled={siswa.statusAbsen === LABEL_SISTEM.BELUM_ABSEN || siswa.statusAbsen === STATUS_SESI.ALPA.id}
-                                className={styles.opsiMapel}
+                                className={styles.scheduleOption}
                                 style={{ width: '80px', padding: '10px', textAlign: 'center', boxShadow: 'none', border: '2px solid #111827' }} 
                               />
                             </div>
@@ -307,7 +307,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
                                 placeholder="Catatan opsional (Cth: Tipes / Acara Keluarga)"
                                 value={siswa.catatan || ""}
                                 onChange={(e) => ubahCatatanSiswa(idx, e.target.value)}
-                                className={styles.opsiMapel}
+                                className={styles.scheduleOption}
                                 style={{ width: '100%', padding: '10px', marginTop: '8px', fontSize: '12px', boxShadow: 'none', border: '2px dashed #111827' }}
                               />
                             )}
@@ -319,7 +319,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
 
                   {/* PESAN & TOMBOL SUBMIT */}
                   {pesanJurnal.teks && (
-                    <div className={pesanJurnal.tipe === 'loading' ? styles.kotakPesanLoading : ''} style={{ padding: '16px', borderRadius: '12px', fontWeight: '900', fontSize: '14px', textAlign: 'center', color: '#111827', backgroundColor: pesanJurnal.tipe === 'sukses' ? '#4ade80' : pesanJurnal.tipe === 'error' ? '#fca5a5' : '#fef08a', border: '3px solid #111827', textTransform: 'uppercase' }}>
+                    <div className={pesanJurnal.tipe === 'loading' ? styles.messageLoading : ''} style={{ padding: '16px', borderRadius: '12px', fontWeight: '900', fontSize: '14px', textAlign: 'center', color: '#111827', backgroundColor: pesanJurnal.tipe === 'sukses' ? '#4ade80' : pesanJurnal.tipe === 'error' ? '#fca5a5' : '#fef08a', border: '3px solid #111827', textTransform: 'uppercase' }}>
                       {pesanJurnal.teks}
                     </div>
                   )}
@@ -331,7 +331,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [] }) {
               </>
             )}
 
-            <button onClick={() => setJadwalTerpilih(null)} className={styles.tombolLogout} style={{ marginTop: '20px', backgroundColor: 'white', color: '#111827' }}>
+            <button onClick={() => setJadwalTerpilih(null)} className={styles.logoutButton} style={{ marginTop: '20px', backgroundColor: 'white', color: '#111827' }}>
               BATAL & KEMBALI
             </button>
           </div>

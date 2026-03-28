@@ -237,7 +237,7 @@
   text-transform: uppercase;
 }
 
-.pesanSukses {
+.messageSuccess {
   font-size: 14px; text-align: center; font-weight: 900;
   margin-top: 24px; padding: 14px; border-radius: 12px;
   background-color: #4ade80; color: #111827; 

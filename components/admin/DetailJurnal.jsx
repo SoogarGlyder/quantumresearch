@@ -180,8 +180,8 @@ export default function DetailJurnal({
         </div>
 
         {pesan && (
-          <div className={`${styles.kotakPesan} ${pesan.includes("berhasil") ? styles.pesanSukses : styles.pesanGagal}`}>
-            <p className={styles.teksPesan}>{pesan}</p>
+          <div className={`${styles.messageBox} ${pesan.includes("berhasil") ? styles.messageSuccess : styles.messageFail}`}>
+            <p className={styles.message}>{pesan}</p>
           </div>
         )}
 

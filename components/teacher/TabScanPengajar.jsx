@@ -70,16 +70,16 @@ export default function TabScanPengajar() {
               </div>
             </div>
 
-            <div className={styles.bingkaiKamera} style={{ position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: '24px', boxShadow: '8px 8px 0 #111827' }}>
-              <div className={styles.wadahKamera} style={{ borderRadius: '16px', border: '4px solid #111827' }}>
+            <div className={styles.cameraFrame} style={{ position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: '24px', boxShadow: '8px 8px 0 #111827' }}>
+              <div className={styles.containerCamera} style={{ borderRadius: '16px', border: '4px solid #111827' }}>
                 <Scanner 
                   onScan={handleScan}
                   onError={() => setPesanSistem("IZIN KAMERA DITOLAK.")}
                   allowMultiple={false}
                   scanDelay={1500}
                 />
-                <div className={styles.overlayKameraGelap}></div>
-                <div className={styles.overlayKameraKotak}></div>
+                <div className={styles.overlayDarkOutside}></div>
+                <div className={styles.overlayCameraInside}></div>
               </div>
               
               <div style={{ position: 'absolute', bottom: '28px', left: '0', right: '0', textAlign: 'center', zIndex: 5 }}>
@@ -91,7 +91,7 @@ export default function TabScanPengajar() {
           </div>
         ) : (
           <div style={{ animation: 'slideUp 0.3s ease-out' }}>
-            <div className={`${styles.layarHasil} ${errorStatus ? styles.layarHasilError : ""}`} 
+            <div className={`${styles.resultScreen} ${errorStatus ? styles.resultScreenError : ""}`} 
                  style={{ 
                    background: errorStatus ? "#fca5a5" : "#4ade80", 
                    height: '300px', borderRadius: '24px', border: '4px solid #111827',
@@ -100,7 +100,7 @@ export default function TabScanPengajar() {
                  }}>
               
               {loading ? (
-                <div className={styles.kotakPesanLoading} style={{ padding: '30px', borderRadius: '16px' }}>
+                <div className={styles.messageLoading} style={{ padding: '30px', borderRadius: '16px' }}>
                   <h2 style={{ margin: 0, fontWeight: '900' }}>MEMPROSES...</h2>
                 </div>
               ) : (

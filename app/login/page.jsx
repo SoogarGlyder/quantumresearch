@@ -133,7 +133,7 @@ function FormLoginArea() {
       {/* Area Pesan Sistem (Warna bergantung pada 'tipe' bukan teksnya) */}
       {notifikasi.teks && (
         <p className={
-          notifikasi.tipe === "error" ? styles.pesanError : styles.pesanSukses
+          notifikasi.tipe === "error" ? styles.pesanError : styles.messageSuccess
         }>
           {notifikasi.teks}
         </p>
@@ -175,7 +175,7 @@ export default function LoginPage() {
           </div>
 
           {/* Menggunakan Suspense karena komponen dalamnya memakai useSearchParams */}
-          <Suspense fallback={<p className={styles.pesanSukses}>Memuat form...</p>}>
+          <Suspense fallback={<p className={styles.messageSuccess}>Memuat form...</p>}>
             <FormLoginArea />
           </Suspense>
 

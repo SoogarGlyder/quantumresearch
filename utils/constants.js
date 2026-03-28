@@ -3,8 +3,8 @@
 // ============================================================================
 export const PERIODE_BELAJAR = Object.freeze({
   ID: "Semester Genap 2025/2026",
-  MULAI: "2026-03-28",
-  AKHIR: "2026-04-28",
+  MULAI: "2026-03-30",
+  AKHIR: "2026-04-25",
   TIMEZONE: "Asia/Jakarta",
   UTC_OFFSET: -7,
   ISO_OFFSET: "+07:00",
@@ -179,4 +179,6 @@ export const OPSI_KETERANGAN_ABSEN = Object.freeze([
 export const LIMIT_DATA = Object.freeze({
   DASHBOARD_HISTORY: 50,
   PAGINATION_DEFAULT: 20,
+  PAGNATION_KELAS: 4,
+  PAGNATION_KONSUL: 10
 });

@@ -314,7 +314,7 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
             <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#111827', textTransform: 'uppercase', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}><FaTrophy color="#facc15" /> Top 10 Ambis</h2>
             
             {loadingKlasemen ? (
-              <div className={styles.wadahKlasemen}>{[1, 2, 3].map(i => <div key={i} className={styles.kotakPesanLoading} style={{ height: '80px', borderRadius: '16px' }}></div>)}</div>
+              <div className={styles.wadahKlasemen}>{[1, 2, 3].map(i => <div key={i} className={styles.messageLoading} style={{ height: '80px', borderRadius: '16px' }}></div>)}</div>
             ) : dataKlasemen.length === 0 ? (
               <p className={styles.emptySchedule}>Belum ada data konsul bulan ini.</p>
             ) : (
