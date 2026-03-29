@@ -3,7 +3,7 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -18,7 +18,7 @@ import TabRiwayatSiswa from "./student/TabRiwayatSiswa";
 import TabKelasSiswa from "./student/TabKelasSiswa";
 import TabProfilSiswa from "./student/TabProfilSiswa"; 
 
-import styles from "./StudentApp.module.css";
+import styles from "./App.module.css";
 import { FaHouse, FaQrcode, FaClockRotateLeft, FaCalendarCheck, FaUserAstronaut } from "react-icons/fa6";
 
 // ============================================================================
@@ -49,10 +49,14 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
 
   const apakahError = cekPesanErrorScanner(pesanSistem);
   
-  // 🛡️ ZERO HARDCODE: Deteksi Sesi Konsul Aktif menggunakan Konstanta
-  const adaKonsulAktif = riwayat?.some(
+  // 🛡️ ZERO HARDCODE: Deteksi Sesi Aktif
+  const adaKonsulAktif = useMemo(() => riwayat?.some(
     r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id
-  );
+  ), [riwayat]);
+
+  const adaKelasAktif = useMemo(() => riwayat?.some(
+    r => r.jenisSesi === TIPE_SESI.KELAS && r.status === STATUS_SESI.BERJALAN.id
+  ), [riwayat]);
 
   const resetScanner = () => { 
     setHasilScan(""); 
@@ -64,26 +68,36 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
     router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
   };
 
+  // 🚀 LOGIKA SCAN: Ditingkatkan untuk mendeteksi error visual secara lokal
   async function saatBarcodeTerbaca(teksDariKamera) {
     if (sedangLoading) return;
 
+    let pesanErrorLokal = "";
+
+    // 1. Cek Validasi Barcode vs Mode yang dipilih
     if (modeScan === MODE_SCAN.KELAS && !teksDariKamera.startsWith(PREFIX_BARCODE.KELAS)) { 
-      setPesanSistem("Ups! Ini bukan barcode Kelas."); 
-      return; 
+      pesanErrorLokal = "Ups! Ini bukan barcode Kelas."; 
     }
     
-    if (modeScan === MODE_SCAN.KONSUL && teksDariKamera !== PREFIX_BARCODE.KONSUL) { 
-      setPesanSistem("Ups! Arahkan ke barcode Konsul."); 
-      return; 
+    else if (modeScan === MODE_SCAN.KONSUL && teksDariKamera !== PREFIX_BARCODE.KONSUL) { 
+      pesanErrorLokal = "Ups! Arahkan ke barcode Konsul."; 
     }
     
-    if (modeScan === MODE_SCAN.KONSUL && (!mapelPilihan || mapelPilihan.trim() === "") && !adaKonsulAktif) { 
-      setPesanSistem("Oops! Silakan pilih mapel terlebih dahulu."); 
+    // 2. Cek apakah mapel sudah dipilih jika ingin masuk konsul baru
+    else if (modeScan === MODE_SCAN.KONSUL && (!mapelPilihan || mapelPilihan.trim() === "") && !adaKonsulAktif) { 
+      pesanErrorLokal = "Oops! Silakan pilih mapel terlebih dahulu."; 
+    }
+
+    // 🛡️ Jika ada error lokal: Trigger Layar "Oops!" (Shake) tanpa ke server
+    if (pesanErrorLokal) {
+      setHasilScan(teksDariKamera); // Menutup kamera & memicu TabScanSiswa menampilkan layar hasil
+      setPesanSistem(pesanErrorLokal);
       return; 
     }
 
+    // 3. Jika Barcode Prefix Benar: Kirim ke Server
     setSedangLoading(true);
-    setHasilScan(teksDariKamera);
+    setHasilScan(teksDariKamera); // Menutup kamera & menunjukkan layar loading/hasil
     setPesanSistem("Mengirim data ke pusat...");
 
     try {
@@ -107,7 +121,22 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
       case "home":
         return <TabBerandaSiswa siswa={siswa} jadwal={jadwal} riwayat={riwayat} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} />;
       case "scan":
-        return <TabScanSiswa modeScan={modeScan} setModeScan={setModeScan} hasilScan={hasilScan} pesanSistem={pesanSistem} sedangLoading={sedangLoading} mapelPilihan={mapelPilihan} setMapelPilihan={setMapelPilihan} saatBarcodeTerbaca={saatBarcodeTerbaca} resetScanner={resetScanner} apakahError={apakahError} adaKonsulAktif={adaKonsulAktif} />;
+        return (
+          <TabScanSiswa 
+            modeScan={modeScan} 
+            setModeScan={setModeScan} 
+            hasilScan={hasilScan} 
+            pesanSistem={pesanSistem} 
+            sedangLoading={sedangLoading} 
+            mapelPilihan={mapelPilihan} 
+            setMapelPilihan={setMapelPilihan} 
+            saatBarcodeTerbaca={saatBarcodeTerbaca} 
+            resetScanner={resetScanner} 
+            apakahError={apakahError} 
+            adaKonsulAktif={adaKonsulAktif}
+            adaKelasAktif={adaKelasAktif}
+          />
+        );
       case "riwayat":
         return <TabRiwayatSiswa riwayat={riwayat} />;
       case "kelas":

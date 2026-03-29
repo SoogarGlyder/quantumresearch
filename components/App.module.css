@@ -1,3 +1,4 @@
+/* File ini untuk ./StudentApp.jsx dan ./TeacherApp.jsx */
 /* ==========================================================================
    0. the keyframes
    ========================================================================== */
@@ -148,13 +149,13 @@
 .emptySchedule { text-align: center; padding: 20px; background-color: #e5e7eb; border-radius: 12px; border: 3px dashed #111827; color: #4b5563; font-size: 14px; font-weight: 800; margin: 0 16px; text-transform: uppercase; }
 .scheduleCard {cursor: pointer; background-color: #fdfbf7; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; padding: 16px; gap: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform 0.1s, box-shadow 0.1s; }
 .scheduleCard:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 #2563eb; }
-.scheduleCardRow, .recordCardRow {display: flex; justify-content: space-between; align-items: flex-start}
-.scheduleSubject {letter-spacing: -0.5px; margin: 0; font-size: 32px; font-weight: 900; color: #111827; text-transform: uppercase; }
+.scheduleCardRow, .recordCardRow {display: flex; justify-content: space-between; align-items: center;}
+.scheduleSubject { letter-spacing: -0.5px; margin: 0; font-size: 32px; font-weight: 900; color: #111827; text-transform: uppercase; }
 .scheduleDate, .recordDate {font-size: 14px; font-weight: 900; color: #111827; background-color: #fef08a; padding: 4px 8px; border-radius: 6px; border: 2px solid #111827; text-transform: uppercase; }
 .scheduleTime {margin: 0; background-color: white; color: #ef4444; padding: 4px 8px; border-radius: 8px; font-size: 14px; font-weight: 900; border: 2px solid #111827; text-align: center; }
-.scheduleCount {font-size: 20px; font-weight: 900; color: white; background-color: #2563eb; padding: 10px 16px; border-radius: 6px; border: 2px solid #111827; text-transform: uppercase; }
-.scheduleTeacher {display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #4b5563; background-color: #f3f4f6; padding: 8px; border-radius: 8px; border: 2px dashed #9ca3af; }
-.teacherName {color: #111827; font-weight: 900; }
+.scheduleCount {min-width: fit-content; font-size: 20px; font-weight: 900; color: white; background-color: #2563eb; padding: 4px 16px; border-radius: 6px; border: 2px solid #111827; text-transform: uppercase; }
+.scheduleTeacher, .scheduleInfoBox {display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #4b5563; background-color: #f3f4f6; padding: 8px; border-radius: 8px; border: 2px dashed #9ca3af; }
+.teacherName, .scheduleInfo {color: #111827; font-weight: 900; }
 .presenceArea { padding-top: 12px; background-color: white; border-top: 3px solid #6b7280;}
 .badgesContainer { display: flex; flex-wrap: wrap; gap: 8px; }
 .presenceBadge { font-size: 12px; font-weight: 900; padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }

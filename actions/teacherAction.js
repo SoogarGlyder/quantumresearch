@@ -12,24 +12,31 @@ import {
   PERAN, 
   STATUS_USER, 
   KONFIGURASI_MEDIA, 
-  KONFIGURASI_SISTEM, 
   PESAN_SISTEM,
   TIPE_SESI,       
   LABEL_SISTEM,    
-  STATUS_SESI      
+  STATUS_SESI,
+  KONFIGURASI_SISTEM
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
+import mongoose from "mongoose";
 
 // ============================================================================
 // 1. INTERNAL HELPERS
 // ============================================================================
 
+/**
+ * Memastikan user memiliki otoritas sebelum melanjutkan aksi
+ */
 async function pastikanOtoritas(roleWajib = [PERAN.PENGAJAR.id, PERAN.ADMIN.id]) {
   const { userId, peran } = await authHelper.ambilSesi();
   if (!userId || !roleWajib.includes(peran)) return null;
   return { userId, peran };
 }
 
+/**
+ * Validasi apakah URL berasal dari domain Cloudinary resmi
+ */
 function isValidCloudinary(url) {
   if (!url || typeof url !== "string") return false;
   return url.includes(KONFIGURASI_MEDIA.DOMAIN_RESMI); 
@@ -41,31 +48,35 @@ const serialize = (data) => JSON.parse(JSON.stringify(data));
 // 2. TEACHER ACTIONS (JURNAL, DOKUMENTASI, ABSENSI & NILAI)
 // ============================================================================
 
+/**
+ * Mengambil detail jurnal untuk ditampilkan di modal pengajar
+ */
 export async function ambilDetailJurnalPengajar(idJadwal) {
   try {
+    // 🛡️ Guard: Validasi format ID
+    if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID Jadwal tidak valid.");
+
     await connectToDatabase();
-    
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const jadwal = await Jadwal.findById(idJadwal).lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
+    // 🛡️ Security: Pastikan hanya pengajar kelas ini atau Admin yang bisa buka
     if (auth.peran !== PERAN.ADMIN.id && jadwal.pengajarId?.toString() !== auth.userId) {
        return responseHelper.error("Akses Ditolak: Ini bukan kelas Anda.");
     }
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
+    // Fetch Siswa & Sesi Belajar secara paralel
     const [siswaKelas, sesiHariIni] = await Promise.all([
       User.find({ 
         peran: PERAN.SISWA.id, 
         kelas: jadwal.kelasTarget, 
         status: STATUS_USER.AKTIF 
-      })
-        .select("nama nomorPeserta")
-        .sort({ nama: 1 })
-        .lean(),
+      }).select("nama nomorPeserta").sort({ nama: 1 }).lean(),
       StudySession.find({
         jenisSesi: TIPE_SESI.KELAS,
         namaMapel: jadwal.mapel,
@@ -73,14 +84,15 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
       }).lean()
     ]);
 
+    // Mapping data siswa dengan status absensinya
     const dataSiswaJurnal = siswaKelas.map(siswa => {
       const sesi = sesiHariIni.find(s => s.siswaId.toString() === siswa._id.toString());
       
-      // 🚀 LOGIKA BARU: Ekstrak "Sakit (Tipes)" menjadi Status="Sakit", Catatan="Tipes"
       let baseStatus = LABEL_SISTEM.BELUM_ABSEN;
       let ekstrakCatatan = "";
 
       if (sesi && sesi.status) {
+        // Parsing status jika ada catatan di dalam kurung: "sakit (tipes)"
         if (sesi.status.includes("(")) {
           const splitIdx = sesi.status.indexOf("(");
           baseStatus = sesi.status.substring(0, splitIdx).trim();
@@ -96,7 +108,7 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
         nomorPeserta: siswa.nomorPeserta,
         sesiId: sesi ? sesi._id.toString() : null,
         statusAbsen: baseStatus,
-        catatan: ekstrakCatatan, // Catatan dikirim ke UI
+        catatan: ekstrakCatatan,
         nilaiTest: sesi ? sesi.nilaiTest ?? "" : ""
       };
     });
@@ -106,35 +118,38 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
       dataSiswa: dataSiswaJurnal
     });
   } catch (error) {
+    console.error("[ERROR ambilDetailJurnalPengajar]:", error);
     return responseHelper.error("Gagal mengambil detail jurnal kelas.");
   }
 }
 
+/**
+ * Menyimpan data Jurnal (Materi & Foto) serta Absensi massal
+ */
 export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa = []) {
   try {
+    if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID Jadwal tidak valid.");
+
     await connectToDatabase();
-    
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const babClean = validationHelper.sanitize(dataJurnal.bab);
     if (!babClean) return responseHelper.error("Materi (Bab) wajib diisi!");
 
+    // Bersihkan link foto papan (Multiple)
     const rawLinks = Array.isArray(dataJurnal.galeriPapan) 
       ? dataJurnal.galeriPapan 
       : (dataJurnal.galeriPapan || "").split(",").filter(Boolean);
 
     const galeriBersih = [...new Set(
-      rawLinks
-        .map(link => link.trim())
-        .filter(link => isValidCloudinary(link))
+      rawLinks.map(link => link.trim()).filter(link => isValidCloudinary(link))
     )];
 
     const query = { _id: idJadwal };
-    if (auth.peran !== PERAN.ADMIN.id) {
-      query.pengajarId = auth.userId; 
-    }
+    if (auth.peran !== PERAN.ADMIN.id) query.pengajarId = auth.userId; 
 
+    // 1. Update data Jadwal (Jurnal)
     const updateJadwal = await Jadwal.findOneAndUpdate(
       query,
       {
@@ -149,17 +164,17 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
       { new: true }
     );
 
-    if (!updateJadwal) return responseHelper.error("Jadwal tidak ditemukan atau Anda tidak memiliki akses.");
+    if (!updateJadwal) return responseHelper.error("Jadwal tidak ditemukan atau akses ditolak.");
 
-    let updateSesi = Promise.resolve();
+    // 2. Proses Absensi Masal (BulkWrite)
+    let updateSesiTask = Promise.resolve();
     if (arrayNilaiSiswa.length > 0) {
       const { awal, akhir } = timeHelper.getRentangHari(updateJadwal.tanggal);
       
       const ops = arrayNilaiSiswa
         .filter(item => item.statusAbsen !== LABEL_SISTEM.BELUM_ABSEN) 
         .map(item => {
-          
-          // 🚀 LOGIKA BARU: Gabung Status + Catatan saat mau disave ke MongoDB
+          // Gabungkan status dan catatan: "sakit" + "tipes" -> "sakit (tipes)"
           const statusFinal = item.catatan?.trim() 
             ? `${item.statusAbsen} (${item.catatan.trim()})`.toLowerCase() 
             : item.statusAbsen.toLowerCase();
@@ -189,11 +204,11 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
         });
 
       if (ops.length > 0) {
-        updateSesi = StudySession.bulkWrite(ops);
+        updateSesiTask = StudySession.bulkWrite(ops);
       }
     }
 
-    await Promise.all([updateJadwal, updateSesi]);
+    await updateSesiTask;
 
     revalidatePath(PERAN.PENGAJAR.home); 
     revalidatePath(PERAN.ADMIN.home);

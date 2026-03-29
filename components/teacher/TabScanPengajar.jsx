@@ -1,131 +1,232 @@
 "use client";
 
-import { useState, useCallback } from "react";
+// ============================================================================
+// 1. IMPORTS & DEPENDENCIES
+// ============================================================================
+import { useState, useCallback, memo } from "react";
 import Image from "next/image"; 
+import { useRouter } from "next/navigation"; 
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { 
-  FaClockRotateLeft, FaCircleCheck, FaCircleXmark, 
-  FaUserClock, FaCameraRotate 
-} from "react-icons/fa6";
 
 import { absenPengajarAction } from "../../actions/scanAction"; 
-import styles from "../TeacherApp.module.css";
+import { PREFIX_BARCODE } from "../../utils/constants"; 
+import styles from "../App.module.css";
 
-export default function TabScanPengajar() {
+import { 
+  FaClockRotateLeft, FaCircleCheck, FaCircleXmark, 
+  FaUserClock 
+} from "react-icons/fa6";
+
+// ============================================================================
+// 2. SUB-KOMPONEN: HEADER
+// ============================================================================
+const HeaderScanner = memo(() => (
+  <div className={styles.appHeader}>
+    <div className={styles.shapeRed}></div>
+    <div className={styles.shapeYellow}></div>
+    <div className={styles.logoContainer}>
+      <div className={styles.logo}>
+        <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
+      </div>
+    </div>
+    <h1 className={styles.headerTitle}>Presensi Staf</h1>
+  </div>
+));
+HeaderScanner.displayName = "HeaderScanner";
+
+// ============================================================================
+// 3. SUB-KOMPONEN: INSTRUKSI AREA (Style Brutalist Dinamis)
+// ============================================================================
+const InstruksiArea = memo(({ isSudahMasuk }) => (
+  <div className={styles.tabScanContainer}>
+    <div 
+      className={styles.scheduleOption}
+      style={{
+        backgroundColor: isSudahMasuk ? '#fecaca' : '#fef08a', // Merah muda vs Kuning
+        borderColor: isSudahMasuk ? '#ef4444' : '#facc15',
+        textAlign: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '12px',
+        padding: '16px',
+        boxShadow: '4px 4px 0 #111827',
+        borderWidth: '3px'
+      }}
+    >
+      <span style={{ color: isSudahMasuk ? '#ef4444' : '#111827', fontWeight: '900', textTransform: 'uppercase' }}>
+        {isSudahMasuk ? '🛑 SCAN UNTUK CLOCK-OUT' : '🟢 SCAN UNTUK CLOCK-IN'}
+      </span>
+    </div>
+  </div>
+));
+InstruksiArea.displayName = "InstruksiArea";
+
+// ============================================================================
+// 4. SUB-KOMPONEN: AREA KAMERA & HASIL (Logic Visual & Shake)
+// ============================================================================
+const CameraArea = memo(({ hasilScan, apakahError, pesanSistem, saatBarcodeTerbaca }) => {
+  
+  const dapatkanInfoVisual = () => {
+    // Deteksi Error
+    const indikasiGagal = apakahError || 
+                          pesanSistem?.includes("⚠️") || 
+                          pesanSistem?.toLowerCase().includes("ups") ||
+                          pesanSistem?.toLowerCase().includes("gagal");
+
+    if (indikasiGagal) {
+      return {
+        icon: <FaCircleXmark size={60} color="#ef4444" />,
+        judul: "Oops!",
+        warnaClass: styles.resultTitleError,
+        isError: true
+      };
+    }
+    
+    // UI Selesai (Clock-Out)
+    if (pesanSistem?.toLowerCase().includes("out") || pesanSistem?.toLowerCase().includes("pulang") || pesanSistem?.toLowerCase().includes("terima kasih")) {
+      return {
+        icon: <FaCircleCheck size={60} color="#22c55e" />,
+        judul: "Selesai!",
+        warnaClass: styles.resultTitleDone,
+        isError: false
+      };
+    }
+    
+    // UI Berhasil (Clock-In)
+    return {
+      icon: <FaCircleCheck size={60} color="#2563eb" />,
+      judul: "Berhasil!",
+      warnaClass: styles.resultTitleSuccess,
+      isError: false
+    };
+  };
+
+  const infoVisual = dapatkanInfoVisual();
+
+  return (
+    <div className={styles.cameraFrame}>
+      {!hasilScan ? (
+        <div className={styles.containerCamera}>
+          <Scanner onScan={(hasil) => { 
+            if (hasil && hasil.length > 0) saatBarcodeTerbaca(hasil[0].rawValue); 
+          }} />
+          <div className={styles.overlayDarkOutside}></div>
+          <div className={styles.overlayCameraInside}></div>
+        </div>
+      ) : (
+         <div className={`${styles.resultScreen} ${infoVisual.isError ? styles.resultScreenError : ""}`}>
+          <div className={styles.resultIcon}>{infoVisual.icon}</div>
+          <h2 className={`${styles.resultTitle} ${infoVisual.warnaClass}`}>{infoVisual.judul}</h2>
+        </div>
+      )}
+    </div>
+  );
+});
+CameraArea.displayName = "CameraArea";
+
+// ============================================================================
+// 5. SUB-KOMPONEN: MESSAGE AREA
+// ============================================================================
+const MessageArea = memo(({ sedangLoading, pesanSistem, apakahError, resetScanner }) => {
+  const isMsgError = apakahError || pesanSistem?.includes("⚠️") || pesanSistem?.toLowerCase().includes("ups");
+
+  return (
+    <div className={styles.containerMessage}>
+      {sedangLoading ? (
+        <div className={`${styles.messageBox} ${styles.messageLoading}`}>
+          <p className={`${styles.messageText} ${styles.messageProcess}`}>Memproses data...</p>
+        </div>
+      ) : (
+        pesanSistem && (
+           <div className={`${styles.messageBox} ${isMsgError ? styles.messageFail : styles.messageSuccess}`}>
+            <p className={styles.messageText}>{pesanSistem}</p>
+            <button onClick={resetScanner} className={styles.repeatButton}>
+              <FaClockRotateLeft /> Scan Ulang
+            </button>
+          </div>
+        )
+      )}
+    </div>
+  );
+});
+MessageArea.displayName = "MessageArea";
+
+// ============================================================================
+// 6. MAIN EXPORT COMPONENT
+// ============================================================================
+export default function TabScanPengajar({ absenAktif }) {
+  const router = useRouter(); 
   const [hasilScan, setHasilScan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorStatus, setErrorStatus] = useState(false);
   const [pesanSistem, setPesanSistem] = useState("");
 
-  const resetScanner = () => {
+  // TRUE jika ada waktuMasuk tapi belum ada waktuKeluar
+  const isSudahMasuk = !!(absenAktif?.waktuMasuk && !absenAktif?.waktuKeluar);
+
+  // 🚀 LOGIKA MANUAL REFRESH: Sinkronisasi data dipicu saat tombol ditekan
+  const resetScanner = useCallback(() => {
+    router.refresh(); // Ambil data props 'absenAktif' terbaru dari server
+    
     setHasilScan(null);
     setLoading(false);
     setErrorStatus(false);
     setPesanSistem("");
-  };
+  }, [router]);
 
-  const handleScan = useCallback(async (result) => {
+  const saatBarcodeTerbaca = useCallback(async (teksQR) => {
     if (loading || hasilScan) return;
 
-    const teksQR = result?.[0]?.rawValue || result;
-    if (!teksQR) return;
+    // 🛡️ Validasi Lokal
+    if (teksQR !== PREFIX_BARCODE.ADMIN) {
+        setHasilScan(teksQR);
+        setErrorStatus(true);
+        setPesanSistem("Ups! Gunakan barcode khusus Staf.");
+        return;
+    }
 
     setLoading(true);
     setHasilScan(teksQR);
-    setPesanSistem("MEMVERIFIKASI KEHADIRAN...");
+    setPesanSistem("Memverifikasi Kehadiran...");
 
-    // 🚀 LOKASI DIMATIKAN SEMENTARA: Langsung tembak ke action tanpa tunggu GPS
-    // Mengirim "null" sebagai lokasi
-    const hasil = await absenPengajarAction(teksQR, null);
-    
-    setErrorStatus(!hasil.sukses);
-    setPesanSistem(hasil.pesan);
-    setLoading(false);
+    try {
+      const hasil = await absenPengajarAction(teksQR, null);
+      
+      setErrorStatus(!hasil.sukses);
+      setPesanSistem(hasil.pesan);
 
+      // 🛑 router.refresh() dipindahkan ke resetScanner() 
+      // agar UI instruksi tidak langsung berubah otomatis.
+      
+    } catch (err) {
+      setErrorStatus(true);
+      setPesanSistem("Gagal menghubungi server.");
+    } finally {
+      setLoading(false);
+    }
   }, [loading, hasilScan]);
 
   return (
-    <div className={styles.areaKontenScanner}>
-      <div className={styles.appHeader}>
-        <div className={styles.shapeRed}></div>
-        <div className={styles.shapeYellow}></div>
-        <div className={styles.logoContainer}>
-          <div className={styles.logo}>
-            <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
-          </div>
-        </div>
-        <h1 className={styles.headerTitle}>Presensi Staf</h1>
-      </div>
+    <div className={styles.contentArea}>
+      <HeaderScanner />
 
-      <div className={styles.contentArea} style={{ padding: '24px' }}>
-        {!hasilScan ? (
-          <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-            <div style={{ background: '#fef08a', border: '4px solid #111827', borderRadius: '16px', padding: '16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '6px 6px 0 #111827' }}>
-              <div style={{ background: 'white', padding: '12px', borderRadius: '12px', border: '3px solid #111827' }}>
-                <FaUserClock size={32} color="#111827" />
-              </div>
-              <div>
-                <p style={{ margin: 0, fontWeight: '900', fontSize: '18px', textTransform: 'uppercase', color: '#111827' }}>Clock-In / Out</p>
-                <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#4b5563' }}>Scan barcode di meja pendaftaran Admin.</p>
-              </div>
-            </div>
+      <div className={styles.contentContainer}>
+        {!hasilScan && <InstruksiArea isSudahMasuk={isSudahMasuk} />}
+        
+        <CameraArea 
+          hasilScan={hasilScan}
+          apakahError={errorStatus}
+          pesanSistem={pesanSistem}
+          saatBarcodeTerbaca={saatBarcodeTerbaca}
+        />
 
-            <div className={styles.cameraFrame} style={{ position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: '24px', boxShadow: '8px 8px 0 #111827' }}>
-              <div className={styles.containerCamera} style={{ borderRadius: '16px', border: '4px solid #111827' }}>
-                <Scanner 
-                  onScan={handleScan}
-                  onError={() => setPesanSistem("IZIN KAMERA DITOLAK.")}
-                  allowMultiple={false}
-                  scanDelay={1500}
-                />
-                <div className={styles.overlayDarkOutside}></div>
-                <div className={styles.overlayCameraInside}></div>
-              </div>
-              
-              <div style={{ position: 'absolute', bottom: '28px', left: '0', right: '0', textAlign: 'center', zIndex: 5 }}>
-                <span style={{ background: '#111827', color: 'white', padding: '8px 16px', borderRadius: '12px', border: '2px solid white', fontSize: '12px', fontWeight: '900', letterSpacing: '1px', boxShadow: '0 4px 0 rgba(0,0,0,0.5)' }}>
-                  <FaCameraRotate /> KAMERA AKTIF
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div style={{ animation: 'slideUp 0.3s ease-out' }}>
-            <div className={`${styles.resultScreen} ${errorStatus ? styles.resultScreenError : ""}`} 
-                 style={{ 
-                   background: errorStatus ? "#fca5a5" : "#4ade80", 
-                   height: '300px', borderRadius: '24px', border: '4px solid #111827',
-                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                   boxShadow: '8px 8px 0 #111827', gap: '20px'
-                 }}>
-              
-              {loading ? (
-                <div className={styles.messageLoading} style={{ padding: '30px', borderRadius: '16px' }}>
-                  <h2 style={{ margin: 0, fontWeight: '900' }}>MEMPROSES...</h2>
-                </div>
-              ) : (
-                <>
-                  {errorStatus ? <FaCircleXmark size={100} color="#111827" /> : <FaCircleCheck size={100} color="#111827" />}
-                  <h2 style={{ fontWeight: '900', textTransform: 'uppercase', margin: 0, fontSize: '32px', color: '#111827', textShadow: '2px 2px 0 white' }}>
-                    {errorStatus ? "GAGAL!" : "BERHASIL!"}
-                  </h2>
-                </>
-              )}
-            </div>
-
-            <div style={{ marginTop: '32px', textAlign: 'center' }}>
-              <div style={{ background: 'white', border: '4px solid #111827', borderRadius: '16px', padding: '24px', boxShadow: '6px 6px 0 #111827', marginBottom: '24px' }}>
-                <p style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '16px', textTransform: 'uppercase' }}>
-                  {pesanSistem}
-                </p>
-              </div>
-
-              <button onClick={resetScanner} className={styles.tombolSimpanBiruBaru} style={{ width: '100%', padding: '20px', fontSize: '18px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
-                <FaClockRotateLeft /> SCAN ULANG
-              </button>
-            </div>
-          </div>
-        )}
+        <MessageArea 
+          sedangLoading={loading}
+          pesanSistem={pesanSistem}
+          apakahError={errorStatus}
+          resetScanner={resetScanner}
+        />
       </div>
     </div>
   );

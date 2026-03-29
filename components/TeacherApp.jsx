@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { FaHouse, FaQrcode, FaUserAstronaut, FaBolt } from "react-icons/fa6";
 
-import styles from "./TeacherApp.module.css";
+import styles from "./App.module.css";
 
 // ============================================================================
 // 1. DYNAMIC IMPORTS (Lazy Loading)
@@ -19,7 +19,7 @@ const TabProfilPengajar = dynamic(() => import("./teacher/TabProfilPengajar"), {
   loading: () => <FallbackLoading teks="MEMUAT PROFIL..." />,
 });
 
-// 🚀 DI-UPGRADE: Loading state bergaya Neo-Brutalism
+// 🚀 Loading state bergaya Neo-Brutalism
 const FallbackLoading = ({ teks }) => (
   <div style={{ padding: "80px 24px", display: "flex", justifyContent: "center", alignItems: "center" }}>
     <div className={styles.messageLoading} style={{
@@ -44,42 +44,68 @@ const FallbackLoading = ({ teks }) => (
 // ============================================================================
 // 2. MAIN COMPONENT
 // ============================================================================
-export default function TeacherApp({ dataUser, jadwal, onLogout }) {
+export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) { 
   const [tab, setTab] = useState("home");
+
+  // 🚀 LOGIKA: Cari absen yang sedang aktif (Masuk ada, Keluar belum ada)
+  const absenAktif = useMemo(() => {
+    if (!absensi || !Array.isArray(absensi)) return null;
+    
+    // Mencari data absensi yang sudah Clock-In tapi belum Clock-Out
+    return absensi.find(a => a.waktuMasuk && !a.waktuKeluar);
+  }, [absensi]);
 
   const kontenTab = useMemo(() => {
     switch (tab) {
       case "home":
-        return <TabBerandaPengajar dataUser={dataUser} jadwal={jadwal} />;
+        return <TabBerandaPengajar dataUser={dataUser} jadwal={jadwal} absenAktif={absenAktif} />;
       case "scan":
-        return <TabScanPengajar />;
+        return (
+          <TabScanPengajar 
+            // 🛑 PERUBAHAN: Key dihapus agar komponen TIDAK me-reset state internalnya
+            // saat absenAktif berubah dari null menjadi data.
+            absenAktif={absenAktif} 
+          />
+        );
       case "profil":
         return <TabProfilPengajar dataUser={dataUser} onLogout={onLogout} />;
       default:
         return null;
     }
-  }, [tab, dataUser, jadwal, onLogout]);
+  }, [tab, dataUser, jadwal, onLogout, absenAktif]); 
 
   return (
     <div className={styles.mainContainer}>
-      <main style={{ paddingBottom: "110px", minHeight: "100vh" }}>
+      <main>
         {kontenTab}
       </main>
 
       {/* NAVIGASI BAWAH NEO-BRUTALISM */}
       <nav className={styles.navMenu}>
-        <button onClick={() => setTab("home")} className={`${styles.navButton} ${tab === "home" ? styles.navButtonActive : ""}`} aria-label="Beranda">
+        <button 
+          onClick={() => setTab("home")} 
+          className={`${styles.navButton} ${tab === "home" ? styles.navButtonActive : ""}`} 
+          aria-label="Beranda"
+        >
           <FaHouse className={styles.navIcon} />
           <span className={styles.teksNav}>Beranda</span>
         </button>
         
         <div className={styles.navButtonMid}>
-          <button onClick={() => setTab("scan")} className={`${styles.scanButton} ${tab === "scan" ? styles.scanButtonActive : ""}`} aria-label="Scanner Kehadiran">
-            <FaQrcode size={32} />
+          <button 
+            onClick={() => setTab("scan")} 
+            className={`${styles.scanButton} ${tab === "scan" ? styles.scanButtonActive : ""}`}
+            aria-label="Scan QR"
+          >
+            <FaQrcode className={styles.scanIcon} />
           </button>
         </div>
         
-        <button onClick={() => setTab("profil")} className={`${styles.navButton} ${tab === "profil" ? styles.navButtonActive : ""}`} aria-label="Profil">
+        <button 
+          onClick={() => setTab("profil")} 
+          className={`${styles.navButton} ${tab === "profil" ? styles.navButtonActive : ""}`} 
+          aria-label="Profil"
+        >
           <FaUserAstronaut className={styles.navIcon} />
           <span className={styles.teksNav}>Profil</span>
         </button>

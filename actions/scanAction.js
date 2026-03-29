@@ -21,13 +21,13 @@ import {
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
-// 1. GEOFENCING LOGIC (Tetap ada, tapi kita bypass di bawah)
+// 1. GEOFENCING LOGIC (Penentu Radius Lokasi)
 // ============================================================================
 function isLokasiValid(lokasi) {
   if (!lokasi?.lat || !lokasi?.lng) return false;
 
   const { LAT, LNG, RADIUS_METER } = PERIODE_BELAJAR.LOKASI_HQ;
-  const R = 6371e3; 
+  const R = 6371e3; // Radius bumi dalam meter
   const φ1 = (lokasi.lat * Math.PI) / 180;
   const φ2 = (LAT * Math.PI) / 180;
   const Δφ = ((LAT - lokasi.lat) * Math.PI) / 180;
@@ -57,11 +57,6 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
       return responseHelper.error("Akun dinonaktifkan atau tidak ditemukan.");
     }
 
-    // 🚀 BYPASS GPS SEMENTARA (Siswa)
-    // if (!isLokasiValid(lokasi)) {
-    //   return responseHelper.error("📍 Lokasi tidak valid! Anda berada di luar area Quantum.");
-    // }
-
     const sekarang = new Date();
     const tglHariIni = timeHelper.getTglJakarta(sekarang);
 
@@ -69,13 +64,14 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
     if (teksQR.startsWith(PREFIX_BARCODE.KELAS)) jenisQR = TIPE_SESI.KELAS;
     else if (teksQR === PREFIX_BARCODE.KONSUL) jenisQR = TIPE_SESI.KONSUL;
 
-    if (!jenisQR) return responseHelper.error("⚠️ Barcode tidak valid.");
+    if (!jenisQR) return responseHelper.error("⚠️ Barcode tidak valid atau tidak dikenali.");
 
     let sesiAktif = await StudySession.findOne({ 
       siswaId: userId, 
       status: STATUS_SESI.BERJALAN.id 
     });
 
+    // Validasi Sesi Menggantung (Hari Sebelumnya)
     if (sesiAktif) {
       const tglSesiLama = timeHelper.getTglJakarta(sesiAktif.waktuMulai);
       if (tglSesiLama !== tglHariIni) {
@@ -86,7 +82,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
       }
     }
 
-    // --- LOGIKA PULANG (Check-Out) ---
+    // --- LOGIKA PULANG SISWA (Check-Out) ---
     if (sesiAktif) {
       const durasiMenit = Math.floor((sekarang - sesiAktif.waktuMulai) / 60000);
 
@@ -111,7 +107,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         sesiAktif.konsulExtraMenit = Math.max(0, menitExtra);
         await sesiAktif.save();
 
-        revalidatePath(PERAN.SISWA.home);
+        revalidatePath("/", "layout"); 
         return responseHelper.success(`Check-out Berhasil! ${menitExtra > 0 ? '(+'+menitExtra+'m Konsul)' : ''}`);
       }
 
@@ -119,24 +115,29 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         const minKonsul = KONFIGURASI_SISTEM.MIN_DURASI_KONSUL_SAH;
         if (durasiMenit < minKonsul) {
           await StudySession.findByIdAndDelete(sesiAktif._id);
-          return responseHelper.success("Sesi Konsul dibatalkan (durasi kurang dari batas minimal).");
+          revalidatePath("/", "layout");
+          return responseHelper.success("Sesi Konsul dibatalkan (durasi kurang).");
         }
         sesiAktif.status = STATUS_SESI.SELESAI.id;
         sesiAktif.waktuSelesai = sekarang;
         await sesiAktif.save();
         
-        revalidatePath(PERAN.SISWA.home);
+        revalidatePath("/", "layout");
         return responseHelper.success("Sesi Konsul Selesai!");
       }
     }
 
-    // --- LOGIKA MASUK (Check-In) ---
+    // --- LOGIKA MASUK SISWA (Check-In) ---
     if (jenisQR === TIPE_SESI.KELAS) {
-      const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tglHariIni }).lean();
-      if (!jadwal) return responseHelper.error("Tidak ada jadwal kelas untukmu hari ini.");
+      const jadwalId = teksQR.replace(PREFIX_BARCODE.KELAS, "");
+      if (!jadwalId || jadwalId.length !== 24) {
+        return responseHelper.error("⚠️ Format barcode kelas tidak valid.");
+      }
 
-      const barcodeValid = `${PREFIX_BARCODE.KELAS}${jadwal.mapel.toUpperCase()}`;
-      if (teksQR !== barcodeValid) return responseHelper.error(`⚠️ Salah Barcode! Gunakan barcode ${jadwal.mapel}.`);
+      const jadwal = await Jadwal.findById(jadwalId).lean();
+      if (!jadwal) return responseHelper.error("⚠️ Sesi kelas tidak ditemukan.");
+      if (jadwal.tanggal !== tglHariIni) return responseHelper.error("⚠️ Barcode kedaluwarsa.");
+      if (jadwal.kelasTarget !== siswa.kelas) return responseHelper.error(`⚠️ Khusus kelas ${jadwal.kelasTarget}.`);
 
       const waktuMulaiJadwal = new Date(`${tglHariIni}T${jadwal.jamMulai}:00+07:00`);
       const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
@@ -144,8 +145,8 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
       const windowScan = KONFIGURASI_SISTEM.WINDOW_SCAN_MASUK_MENIT;
       const windowScanStart = new Date(waktuMulaiJadwal.getTime() - windowScan * 60000);
       
-      if (sekarang < windowScanStart) return responseHelper.error(`Scan baru dibuka ${windowScan} menit sebelum kelas.`);
-      if (sekarang > waktuSelesaiJadwal) return responseHelper.error("Gagal! Sesi kelas ini sudah berakhir.");
+      if (sekarang < windowScanStart) return responseHelper.error(`Scan dibuka ${windowScan}m sebelum kelas.`);
+      if (sekarang > waktuSelesaiJadwal) return responseHelper.error("Gagal! Sesi kelas sudah berakhir.");
 
       let telat = sekarang > waktuMulaiJadwal ? Math.floor((sekarang - waktuMulaiJadwal) / 60000) : 0;
 
@@ -158,12 +159,12 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         waktuMulai: sekarang
       });
 
-      revalidatePath(PERAN.SISWA.home);
-      return responseHelper.success(`Check-in Berhasil! ${telat > KONFIGURASI_SISTEM.BATAS_TERLAMBAT_MENIT ? '(Terlambat '+telat+'m)' : 'Tepat Waktu!'}`);
+      revalidatePath("/", "layout");
+      return responseHelper.success(`Check-in Berhasil! ${telat > 0 ? '(Terlambat '+telat+'m)' : 'Tepat Waktu!'}`);
     }
 
     if (jenisQR === TIPE_SESI.KONSUL) {
-      if (!mapelPilihan) return responseHelper.error("Pilih Mata Pelajaran konsul terlebih dahulu!");
+      if (!mapelPilihan) return responseHelper.error("Pilih Mata Pelajaran konsul dahulu!");
 
       await StudySession.create({
         siswaId: userId,
@@ -173,11 +174,12 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         waktuMulai: sekarang
       });
 
-      revalidatePath(PERAN.SISWA.home);
+      revalidatePath("/", "layout");
       return responseHelper.success(`Sesi Konsul ${mapelPilihan} dimulai.`);
     }
 
   } catch (error) {
+    console.error("[ERROR Scan QR Siswa]:", error);
     return responseHelper.error("Terjadi gangguan sistem absensi.");
   }
 }
@@ -195,11 +197,10 @@ export async function absenPengajarAction(teksQR, lokasi) {
       return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
     }
 
-    // BYPASS GPS SEMENTARA
-    // if (!isLokasiValid(lokasi)) return responseHelper.error("📍 Lokasi tidak valid. Pastikan di area HQ.");
-    
-    // Validasi Barcode
-    if (teksQR !== PREFIX_BARCODE.ADMIN) return responseHelper.error("⚠️ Barcode Staf tidak valid.");
+    // Validasi Barcode Identitas Staf
+    if (teksQR !== PREFIX_BARCODE.ADMIN) {
+      return responseHelper.error("⚠️ Barcode Staf tidak valid.");
+    }
 
     const sekarang = new Date();
     const { awal, akhir } = timeHelper.getRentangHari(sekarang);
@@ -210,40 +211,41 @@ export async function absenPengajarAction(teksQR, lokasi) {
     });
 
     if (absenHariIni) {
+      // --- LOGIKA PULANG (Clock-Out) ---
       if (absenHariIni.waktuKeluar) {
          return responseHelper.success("✅ Anda sudah melakukan Clock-Out untuk hari ini.");
       }
 
-      // 🚀 LOGIKA CLOCK-OUT (DIPERBAIKI)
       absenHariIni.waktuKeluar = sekarang;
-      
-      // Hanya masukkan lokasi jika ada isinya (tidak null)
-      if (lokasi) {
-        absenHariIni.lokasiScanKeluar = lokasi;
-      }
+      if (lokasi) { absenHariIni.lokasiScanKeluar = lokasi; }
       
       await absenHariIni.save();
-      return responseHelper.success("✅ Clock-Out Berhasil! Terima kasih untuk hari ini.");
+
+      // 🔥 REVALIDATE: Reset cache agar TeacherApp & Navigasi tahu status sudah berubah
+      revalidatePath("/", "layout");
+      revalidatePath(PERAN.PENGAJAR.home);
+
+      return responseHelper.success("✅ Clock-Out Berhasil! Terima kasih.");
       
     } else {
-      // 🚀 LOGIKA CLOCK-IN (DIPERBAIKI)
+      // --- LOGIKA MASUK (Clock-In) ---
       const dataAbsenBaru = {
         pengajarId: userId,
         waktuMasuk: sekarang
       };
 
-      // Hanya masukkan lokasi jika ada isinya (tidak null)
-      if (lokasi) {
-        dataAbsenBaru.lokasiScanMasuk = lokasi;
-      }
+      if (lokasi) { dataAbsenBaru.lokasiScanMasuk = lokasi; }
 
       await AbsensiPengajar.create(dataAbsenBaru);
+
+      // 🔥 REVALIDATE: Reset cache agar TeacherApp & Navigasi tahu status sudah berubah
+      revalidatePath("/", "layout");
+      revalidatePath(PERAN.PENGAJAR.home);
+
       return responseHelper.success("✅ Clock-In Berhasil!");
     }
 
   } catch (error) {
-    // 💡 TIPS: Kalau masih gagal, coba Bos cek terminal/console VS Code, 
-    // pesan error aslinya akan muncul di sana!
     console.error("[ERROR Absen Pengajar]:", error);
     return responseHelper.error("Gagal memproses absen.");
   }

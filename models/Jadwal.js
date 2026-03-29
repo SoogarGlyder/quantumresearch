@@ -25,7 +25,7 @@ const jadwalSchema = new mongoose.Schema({
   bab: { type: String, default: "", trim: true },         
   subBab: { type: String, default: "", trim: true },      
   galeriPapan: { type: [String], default: [] },
-  fotoBersama: { type: String, default: "", trim: true } 
+  fotoBersama: { type: String, default: "", trim: true }
 }, { timestamps: true });
 
 jadwalSchema.index({ kelasTarget: 1, tanggal: 1 });
