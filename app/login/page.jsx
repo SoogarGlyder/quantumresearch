@@ -27,17 +27,17 @@ function FormLoginArea() {
   const [form, setForm] = useState({ identifier: "", password: "" });
   const [notifikasi, setNotifikasi] = useState({ teks: "", tipe: "" }); 
   const [loading, setLoading] = useState(false);
-  
-  // 🚀 STATE BARU: Untuk kontrol intip password
   const [showPassword, setShowPassword] = useState(false);
 
-  // --- EFEK SAMPING ---
+  // --- EFEK SAMPING (CLEAR SESSION) ---
   useEffect(() => {
-    // Menangkap pesan redirect dari server (misal: sesi habis / clear)
+    // Menangkap query parameter ?clear=true dari URL
     if (searchParams.get("clear") === "true") {
       setNotifikasi({ teks: PESAN_SISTEM.SESI_HABIS, tipe: "error" });
+      // Hapus query param dari URL agar tidak memicu notif berulang saat refresh
+      router.replace('/login');
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   // --- HANDLERS ---
   const handleLogin = async (e) => {
@@ -54,7 +54,9 @@ function FormLoginArea() {
       const hasil = await prosesLogin(form);
       if (hasil.sukses) {
         setNotifikasi({ teks: hasil.pesan, tipe: "sukses" });
-        router.push("/"); // 🚀 Mengarah ke root, biar server (page.tsx) yang memilah role-nya
+        // Server (Middleware) akan mendeteksi cookie baru ini & mengarahkan user
+        // ke dashboard masing-masing secara otomatis saat push ke "/"
+        router.push("/"); 
       } else {
         setNotifikasi({ teks: hasil.pesan, tipe: "error" });
         setLoading(false);
@@ -69,7 +71,6 @@ function FormLoginArea() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    // Bersihkan notifikasi saat user mulai mengetik ulang
     if (notifikasi.teks) setNotifikasi({ teks: "", tipe: "" }); 
   };
 
@@ -112,7 +113,6 @@ function FormLoginArea() {
           <input
             id="password"
             name="password"
-            // 🚀 LOGIKA: Tipe input berubah dinamis antara 'password' dan 'text'
             type={showPassword ? "text" : "password"}
             required
             placeholder="••••••••"
@@ -120,28 +120,19 @@ function FormLoginArea() {
             onChange={handleChange}
             className={styles.inputField}
             disabled={loading}
-            style={{ paddingRight: '45px' }} // Kasih ruang buat ikon mata agar tidak tertimpa teks
+            style={{ paddingRight: '45px' }}
           />
           
-          {/* 🚀 TOMBOL INTIP (SHOW/HIDE) */}
+          {/* Tombol Intip Password */}
           <button
             type="button"
             className={styles.tombolIntip}
             onClick={() => setShowPassword(!showPassword)}
-            tabIndex="-1" // Agar tidak mengganggu alur navigasi tombol 'Tab' di keyboard
+            tabIndex="-1" 
             style={{
-              position: 'absolute',
-              right: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#4b5563',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '4px'
+              position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer', color: '#4b5563',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px'
             }}
           >
             {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
@@ -149,7 +140,6 @@ function FormLoginArea() {
         </div>
       </div>
 
-      {/* Tombol Masuk */}
       <button
         type="submit"
         disabled={loading}
@@ -160,11 +150,8 @@ function FormLoginArea() {
         )}
       </button>
 
-      {/* Area Notifikasi Error / Sukses */}
       {notifikasi.teks && (
-        <p className={
-          notifikasi.tipe === "error" ? styles.pesanError : styles.messageSuccess
-        }>
+        <p className={notifikasi.tipe === "error" ? styles.pesanError : styles.messageSuccess}>
           {notifikasi.teks}
         </p>
       )}
@@ -184,7 +171,6 @@ export default function LoginPage() {
         <div className={styles.hiasan2}></div>
         <div className={styles.kontenKartu}>
           <div className={styles.wadahLogo}>
-            {/* Pastikan gambar logo tersedia di folder public */}
             <Image src="/logo-qr-persegi.png" alt="Logo" width={240} height={120} style={{ objectFit: "contain" }} priority />
           </div>
           <div className={styles.headerTeks}>
@@ -192,14 +178,13 @@ export default function LoginPage() {
             <p className={styles.subJudul}>Silakan masuk ke portal Quantum Research</p>
           </div>
           
-          {/* Suspense wajib digunakan saat ada komponen pembungkus useSearchParams di Next.js */}
           <Suspense fallback={<p className={styles.messageSuccess}>Memuat form...</p>}>
             <FormLoginArea />
           </Suspense>
           
         </div>
       </div>
-      <p className={styles.footerText}>© 2026 Bimbingan Belajar Quantum Research</p>
+      <p className={styles.footerText}>© {new Date().getFullYear()} Bimbingan Belajar Quantum Research</p>
     </div>
   );
 }
