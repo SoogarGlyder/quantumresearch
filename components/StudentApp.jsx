@@ -3,7 +3,7 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -40,16 +40,7 @@ const TabScanSiswa = dynamic(() => import("./student/TabScanSiswa"), {
 export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
   const router = useRouter();
 
-  const [tab, setTab] = useState("home"); 
-  const [modeScan, setModeScan] = useState(MODE_SCAN.KELAS);
-  const [hasilScan, setHasilScan] = useState("");
-  const [pesanSistem, setPesanSistem] = useState("");
-  const [sedangLoading, setSedangLoading] = useState(false);
-  const [mapelPilihan, setMapelPilihan] = useState("");
-
-  const apakahError = cekPesanErrorScanner(pesanSistem);
-  
-  // 🛡️ ZERO HARDCODE: Deteksi Sesi Aktif
+  // 🛡️ ZERO HARDCODE: Deteksi Sesi Aktif dari Props Database
   const adaKonsulAktif = useMemo(() => riwayat?.some(
     r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id
   ), [riwayat]);
@@ -57,6 +48,36 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
   const adaKelasAktif = useMemo(() => riwayat?.some(
     r => r.jenisSesi === TIPE_SESI.KELAS && r.status === STATUS_SESI.BERJALAN.id
   ), [riwayat]);
+
+  // 🚀 FIX 1: State modeScan sekarang otomatis mengikuti Sesi Aktif saat inisialisasi
+  const [tab, setTab] = useState("home"); 
+  const [modeScan, setModeScan] = useState(() => {
+    if (adaKonsulAktif) return MODE_SCAN.KONSUL;
+    return MODE_SCAN.KELAS;
+  });
+
+  const [hasilScan, setHasilScan] = useState("");
+  const [pesanSistem, setPesanSistem] = useState("");
+  const [sedangLoading, setSedangLoading] = useState(false);
+  
+  // 🚀 FIX 2: Ambil mapel dari riwayat jika sedang konsul, agar tidak kosong saat login ulang
+  const [mapelPilihan, setMapelPilihan] = useState(() => {
+    if (adaKonsulAktif) {
+      const sesi = riwayat.find(r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id);
+      return sesi?.namaMapel || "";
+    }
+    return "";
+  });
+
+  const apakahError = cekPesanErrorScanner(pesanSistem);
+
+  // 🚀 FIX 3: Efek Sinkronisasi. Jika tab pindah ke Scan, pastikan mode-nya benar.
+  useEffect(() => {
+    if (tab === "scan") {
+      if (adaKonsulAktif) setModeScan(MODE_SCAN.KONSUL);
+      if (adaKelasAktif) setModeScan(MODE_SCAN.KELAS);
+    }
+  }, [tab, adaKonsulAktif, adaKelasAktif]);
 
   const resetScanner = () => { 
     setHasilScan(""); 
@@ -68,45 +89,57 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
     router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
   };
 
-  // 🚀 LOGIKA SCAN: Ditingkatkan untuk mendeteksi error visual secara lokal
+  // 🚀 LOGIKA SCAN: Smart Detection untuk mencegah salah tuduh "Bukan Barcode Kelas"
   async function saatBarcodeTerbaca(teksDariKamera) {
     if (sedangLoading) return;
 
     let pesanErrorLokal = "";
 
-    // 1. Cek Validasi Barcode vs Mode yang dipilih
-    if (modeScan === MODE_SCAN.KELAS && !teksDariKamera.startsWith(PREFIX_BARCODE.KELAS)) { 
-      pesanErrorLokal = "Ups! Ini bukan barcode Kelas."; 
+    // 🛡️ SMART LOGIC: Jika ada sesi aktif, kita prioritaskan deteksi "Selesai Sesi" 
+    // daripada pengecekan modeScan yang kaku di client.
+    const isScanKonsul = teksDariKamera === PREFIX_BARCODE.KONSUL;
+    const isScanKelas = teksDariKamera.startsWith(PREFIX_BARCODE.KELAS);
+
+    // 1. Kasus: Lagi Konsul tapi mode Scan terpilih adalah Kelas
+    if (adaKonsulAktif && isScanKonsul) {
+      setModeScan(MODE_SCAN.KONSUL); // Koreksi otomatis mode-nya
+    } 
+    // 2. Kasus: Lagi Kelas tapi mode Scan terpilih adalah Konsul
+    else if (adaKelasAktif && isScanKelas) {
+      setModeScan(MODE_SCAN.KELAS); // Koreksi otomatis mode-nya
     }
-    
-    else if (modeScan === MODE_SCAN.KONSUL && teksDariKamera !== PREFIX_BARCODE.KONSUL) { 
-      pesanErrorLokal = "Ups! Arahkan ke barcode Konsul."; 
-    }
-    
-    // 2. Cek apakah mapel sudah dipilih jika ingin masuk konsul baru
-    else if (modeScan === MODE_SCAN.KONSUL && (!mapelPilihan || mapelPilihan.trim() === "") && !adaKonsulAktif) { 
-      pesanErrorLokal = "Oops! Silakan pilih mapel terlebih dahulu."; 
+    // 3. Validasi Normal (Jika tidak ada sesi aktif)
+    else {
+      if (modeScan === MODE_SCAN.KELAS && !isScanKelas) { 
+        pesanErrorLokal = "Ups! Ini bukan barcode Kelas."; 
+      }
+      else if (modeScan === MODE_SCAN.KONSUL && !isScanKonsul) { 
+        pesanErrorLokal = "Ups! Arahkan ke barcode Konsul."; 
+      }
+      else if (modeScan === MODE_SCAN.KONSUL && (!mapelPilihan || mapelPilihan.trim() === "") && !adaKonsulAktif) { 
+        pesanErrorLokal = "Oops! Silakan pilih mapel terlebih dahulu."; 
+      }
     }
 
-    // 🛡️ Jika ada error lokal: Trigger Layar "Oops!" (Shake) tanpa ke server
     if (pesanErrorLokal) {
-      setHasilScan(teksDariKamera); // Menutup kamera & memicu TabScanSiswa menampilkan layar hasil
+      setHasilScan(teksDariKamera);
       setPesanSistem(pesanErrorLokal);
       return; 
     }
 
-    // 3. Jika Barcode Prefix Benar: Kirim ke Server
+    // Eksekusi Server
     setSedangLoading(true);
-    setHasilScan(teksDariKamera); // Menutup kamera & menunjukkan layar loading/hasil
+    setHasilScan(teksDariKamera);
     setPesanSistem("Mengirim data ke pusat...");
 
     try {
+      // Pastikan kirim mapelPilihan yang benar (terutama jika baru pindah mode otomatis)
       const laporan = await prosesHasilScan(teksDariKamera, mapelPilihan);
       setPesanSistem(laporan.pesan);
       
       if (laporan.sukses) { 
         router.refresh();
-        setMapelPilihan("");
+        if (!adaKelasAktif && !adaKonsulAktif) setMapelPilihan(""); 
       }
     } catch (error) {
       console.error("[ERROR Scanner]:", error);
@@ -148,50 +181,39 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
     }
   };
 
-  // ============================================================================
-  // 4. MAIN JSX RENDER
-  // ============================================================================
   return (
     <div className={styles.mainContainer}>
-      
-      {/* KONTEN TAB DINAMIS */}
-      {renderIsiTab()}
+      <main style={{ paddingBottom: '100px' }}>
+         {renderIsiTab()}
+      </main>
 
-      {/* NAVIGASI BAWAH (5 MENU) */}
-      <div className={styles.navMenu}>
-        
-        {/* Menu 1: Beranda */}
+      <nav className={styles.navMenu}>
         <button onClick={() => setTab("home")} className={`${styles.navButton} ${tab === "home" ? styles.navButtonActive : ""}`}>
           <FaHouse className={styles.navIcon} />
           <span className={styles.teksNav}>Beranda</span>
         </button>
         
-        {/* Menu 2: Kelas */}
         <button onClick={() => setTab("kelas")} className={`${styles.navButton} ${tab === "kelas" ? styles.navButtonActive : ""}`}>
           <FaCalendarCheck className={styles.navIcon} />
           <span className={styles.teksNav}>Kelas</span>
         </button>
         
-        {/* Menu 3: Tombol Kamera (Tengah) */}
         <div className={styles.navButtonMid}>
           <button onClick={() => setTab("scan")} className={`${styles.scanButton} ${tab === "scan" ? styles.scanButtonActive : ""}`}>
             <FaQrcode className={styles.scanIcon} />
           </button>
         </div>
         
-        {/* Menu 4: Riwayat/Record */}
         <button onClick={() => setTab("riwayat")} className={`${styles.navButton} ${tab === "riwayat" ? styles.navButtonActive : ""}`}>
           <FaClockRotateLeft className={styles.navIcon} />
           <span className={styles.teksNav}>Record</span>
         </button>
 
-        {/* Menu 5: Profil */}
         <button onClick={() => setTab("profil")} className={`${styles.navButton} ${tab === "profil" ? styles.navButtonActive : ""}`}>
           <FaUserAstronaut className={styles.navIcon} />
           <span className={styles.teksNav}>Profil</span>
         </button>
-
-      </div>
+      </nav>
     </div>
   );
 }

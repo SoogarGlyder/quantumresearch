@@ -3,13 +3,13 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import Image from "next/image"; 
 import { Scanner } from "@yudiel/react-qr-scanner";
 
 // 👈 Import Konstanta 
 import { MODE_SCAN, OPSI_MAPEL_KONSUL } from "../../utils/constants";
-import { FaBookOpen, FaLightbulb, FaCircleCheck, FaCircleXmark, FaTriangleExclamation } from "react-icons/fa6";
+import { FaBookOpen, FaLightbulb, FaCircleCheck, FaCircleXmark } from "react-icons/fa6";
 
 import styles from "../App.module.css";
 
@@ -31,13 +31,23 @@ const HeaderScanner = memo(() => (
 HeaderScanner.displayName = "HeaderScanner";
 
 // ============================================================================
-// 3. SUB-KOMPONEN: PEMILIH MODE & MAPEL (Logic: Mutual Exclusion)
+// 3. SUB-KOMPONEN: PEMILIH MODE & MAPEL (Logic: Mutual Exclusion & Auto-Sync)
 // ============================================================================
 const ModeSelector = memo(({ 
   modeScan, setModeScan, resetScanner, mapelPilihan, 
   setMapelPilihan, adaKonsulAktif, adaKelasAktif 
 }) => {
   
+  // 🚀 FIX: Auto-Sync Mode. Jika komponen ini di-render dan ada sesi aktif dari server,
+  // paksa modeScan untuk mengikuti sesi tersebut (mengatasi amnesia setelah login).
+  useEffect(() => {
+    if (adaKonsulAktif && modeScan !== MODE_SCAN.KONSUL) {
+      setModeScan(MODE_SCAN.KONSUL);
+    } else if (adaKelasAktif && modeScan !== MODE_SCAN.KELAS) {
+      setModeScan(MODE_SCAN.KELAS);
+    }
+  }, [adaKonsulAktif, adaKelasAktif, modeScan, setModeScan]);
+
   return (
     <div className={styles.tabScanContainer}>
       {/* 🚀 WRAPPER TOMBOL SWITCH: Menghilang salah satu jika ada sesi aktif */}
@@ -66,39 +76,47 @@ const ModeSelector = memo(({
         )}
       </div>
 
-      {/* 🚀 PESAN PERINGATAN: Cuma muncul jika ada Kelas Aktif (Style Merah Brutalist) */}
-      {adaKelasAktif && (
+      {/* 🚀 PESAN PERINGATAN: Muncul jika ada sesi yang sedang berjalan (Style Brutalist) */}
+      {(adaKelasAktif || adaKonsulAktif) && (
         <div className={styles.scheduleOption}
           style={{
               backgroundColor: '#fecaca',
               borderColor: '#ef4444',
-              textAlign: 'center'
+              textAlign: 'center',
+              marginTop: '12px'
           }}>
           <span style={{ color: '#ef4444' , fontWeight: '900' , textAlign: 'center' }}>
-            🛑 SCAN UNTUK SELESAI KELAS
+            {adaKelasAktif ? "🛑 SCAN UNTUK SELESAI KELAS" : "🛑 SCAN UNTUK SELESAI KONSUL"}
           </span>
         </div>
       )}
 
       {/* DROPDOWN MAPEL KONSUL */}
       {modeScan === MODE_SCAN.KONSUL && !adaKelasAktif && (
-        <div className={styles.wrapperRow}>
+        <div className={styles.wrapperRow} style={{ marginTop: '12px' }}>
           <select 
             value={mapelPilihan} 
             onChange={(e) => setMapelPilihan(e.target.value)} 
             className={styles.scheduleOption}
             disabled={adaKonsulAktif}
             style={{
-              backgroundColor: adaKonsulAktif ? '#fecaca' : '',
-              borderColor: adaKonsulAktif ? '#ef4444' : ''
+              backgroundColor: adaKonsulAktif ? '#f3f4f6' : '',
+              borderColor: adaKonsulAktif ? '#d1d5db' : '',
+              opacity: adaKonsulAktif ? 0.7 : 1
             }}
           >
-            <option value="" style={{ color: adaKonsulAktif ? '#ef4444' : 'inherit', fontWeight: '900' , textAlign: 'center'}}>
-              {adaKonsulAktif ? "🛑 SCAN UNTUK SELESAI KONSUL" : "-- Pilih Mapel --"}
-            </option>
-            {OPSI_MAPEL_KONSUL.map(opsi => (
-              <option key={opsi} value={opsi}>{opsi}</option>
-            ))}
+            {adaKonsulAktif ? (
+              <option value="" style={{ fontWeight: '900', textAlign: 'center', color: '#4b5563' }}>
+                Mapel: {mapelPilihan || "Konsul Aktif"}
+              </option>
+            ) : (
+              <>
+                <option value="">-- Pilih Mapel --</option>
+                {OPSI_MAPEL_KONSUL.map(opsi => (
+                  <option key={opsi} value={opsi}>{opsi}</option>
+                ))}
+              </>
+            )}
           </select>
         </div>
       )}
@@ -130,7 +148,7 @@ const CameraArea = memo(({ hasilScan, apakahError, pesanSistem, saatBarcodeTerba
       };
     }
     
-    if (pesanSistem?.includes("Selesai") || pesanSistem?.includes("Pulang") || pesanSistem?.includes("Check-out")) {
+    if (pesanSistem?.includes("Selesai") || pesanSistem?.includes("Pulang") || pesanSistem?.includes("Check-out") || pesanSistem?.includes("dibatalkan")) {
       return {
         icon: <FaCircleCheck size={60} color="#22c55e" />,
         judul: "Sesi Selesai!",
@@ -141,7 +159,7 @@ const CameraArea = memo(({ hasilScan, apakahError, pesanSistem, saatBarcodeTerba
     
     return {
       icon: <FaCircleCheck size={60} color="#2563eb" />,
-      judul: "Selamat Belajar!",
+      judul: "Berhasil!",
       warnaClass: styles.resultTitleSuccess,
       isError: false
     };

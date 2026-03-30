@@ -11,7 +11,6 @@ import { prosesLogin } from "../../actions/authAction";
 import { PESAN_SISTEM } from "../../utils/constants";
 
 import styles from "./LoginPage.module.css";
-// 🚀 Tambahkan FaEye dan FaEyeSlash
 import { 
   FaUserAstronaut, FaLock, FaArrowRightToBracket, 
   FaEye, FaEyeSlash 
@@ -34,6 +33,7 @@ function FormLoginArea() {
 
   // --- EFEK SAMPING ---
   useEffect(() => {
+    // Menangkap pesan redirect dari server (misal: sesi habis / clear)
     if (searchParams.get("clear") === "true") {
       setNotifikasi({ teks: PESAN_SISTEM.SESI_HABIS, tipe: "error" });
     }
@@ -54,7 +54,7 @@ function FormLoginArea() {
       const hasil = await prosesLogin(form);
       if (hasil.sukses) {
         setNotifikasi({ teks: hasil.pesan, tipe: "sukses" });
-        router.push("/");
+        router.push("/"); // 🚀 Mengarah ke root, biar server (page.tsx) yang memilah role-nya
       } else {
         setNotifikasi({ teks: hasil.pesan, tipe: "error" });
         setLoading(false);
@@ -69,6 +69,7 @@ function FormLoginArea() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    // Bersihkan notifikasi saat user mulai mengetik ulang
     if (notifikasi.teks) setNotifikasi({ teks: "", tipe: "" }); 
   };
 
@@ -119,7 +120,7 @@ function FormLoginArea() {
             onChange={handleChange}
             className={styles.inputField}
             disabled={loading}
-            style={{ paddingRight: '45px' }} // Kasih ruang buat ikon mata
+            style={{ paddingRight: '45px' }} // Kasih ruang buat ikon mata agar tidak tertimpa teks
           />
           
           {/* 🚀 TOMBOL INTIP (SHOW/HIDE) */}
@@ -127,7 +128,7 @@ function FormLoginArea() {
             type="button"
             className={styles.tombolIntip}
             onClick={() => setShowPassword(!showPassword)}
-            tabIndex="-1" // Agar tidak mengganggu alur tombol Tab keyboard
+            tabIndex="-1" // Agar tidak mengganggu alur navigasi tombol 'Tab' di keyboard
             style={{
               position: 'absolute',
               right: '12px',
@@ -148,6 +149,7 @@ function FormLoginArea() {
         </div>
       </div>
 
+      {/* Tombol Masuk */}
       <button
         type="submit"
         disabled={loading}
@@ -158,6 +160,7 @@ function FormLoginArea() {
         )}
       </button>
 
+      {/* Area Notifikasi Error / Sukses */}
       {notifikasi.teks && (
         <p className={
           notifikasi.tipe === "error" ? styles.pesanError : styles.messageSuccess
@@ -170,6 +173,9 @@ function FormLoginArea() {
   );
 }
 
+// ============================================================================
+// 3. MAIN EXPORT COMPONENT
+// ============================================================================
 export default function LoginPage() {
   return (
     <div className={styles.mainContainer}>
@@ -178,15 +184,19 @@ export default function LoginPage() {
         <div className={styles.hiasan2}></div>
         <div className={styles.kontenKartu}>
           <div className={styles.wadahLogo}>
+            {/* Pastikan gambar logo tersedia di folder public */}
             <Image src="/logo-qr-persegi.png" alt="Logo" width={240} height={120} style={{ objectFit: "contain" }} priority />
           </div>
           <div className={styles.headerTeks}>
             <h1 className={styles.judulUtama}>Selamat Datang</h1>
             <p className={styles.subJudul}>Silakan masuk ke portal Quantum Research</p>
           </div>
+          
+          {/* Suspense wajib digunakan saat ada komponen pembungkus useSearchParams di Next.js */}
           <Suspense fallback={<p className={styles.messageSuccess}>Memuat form...</p>}>
             <FormLoginArea />
           </Suspense>
+          
         </div>
       </div>
       <p className={styles.footerText}>© 2026 Bimbingan Belajar Quantum Research</p>
