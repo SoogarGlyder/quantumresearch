@@ -13,19 +13,8 @@ import {
 } from "../utils/constants";
 
 // ============================================================================
-// 1. INTERNAL HELPERS (Privacy & Gamification)
+// 1. INTERNAL HELPERS (Gamification)
 // ============================================================================
-
-/**
- * Menyembunyikan sebagian nama untuk privasi di papan klasemen publik
- */
-function samarkanNama(namaLengkap) {
-  if (!namaLengkap) return "Siswa Quantum";
-  const bagian = namaLengkap.trim().split(" ");
-  let hasil = bagian[0];
-  if (bagian.length > 1) hasil += ` ${bagian[1].charAt(0)}***`;
-  return hasil;
-}
 
 /**
  * Memberikan gelar berdasarkan total jam belajar yang dikumpulkan
@@ -46,14 +35,13 @@ export async function dapatkanKlasemenBulanIni() {
   try {
     await connectToDatabase();
 
-    // 1. Proteksi Sesi: Pastikan hanya user login yang bisa lihat
+    // 1. Proteksi Sesi
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
     // 2. Definisi Rentang Waktu (Bulan Berjalan)
     const awalBulan = timeHelper.getAwalBulan();
     const kini = new Date();
-    // Batas atas adalah awal bulan depan
     const awalBulanDepan = new Date(Date.UTC(kini.getFullYear(), kini.getMonth() + 1, 1, -7, 0, 0, 0));
 
     // 3. MONGODB AGGREGATION PIPELINE
@@ -62,14 +50,13 @@ export async function dapatkanKlasemenBulanIni() {
       {
         $match: {
           waktuMulai: { $gte: awalBulan, $lt: awalBulanDepan },
-          status: STATUS_SESI.SELESAI.id // 👈 Sinkron dengan metadata ID
+          status: STATUS_SESI.SELESAI.id 
         }
       },
       // TAHAP B: Proyeksi durasi menit
       {
         $project: {
           siswaId: 1,
-          // Hitung durasi murni untuk Konsul
           menitMurni: {
             $cond: [
               { $eq: ["$jenisSesi", TIPE_SESI.KONSUL] },
@@ -77,7 +64,6 @@ export async function dapatkanKlasemenBulanIni() {
               0
             ]
           },
-          // Ambil bonus menit dari Sesi Kelas
           menitBonus: { $ifNull: ["$konsulExtraMenit", 0] }
         }
       },
@@ -95,7 +81,7 @@ export async function dapatkanKlasemenBulanIni() {
           akumulasiMenit: { $sum: "$totalSesi" }
         }
       },
-      // TAHAP E: Filter yang punya record waktu positif
+      // TAHAP E: Filter record positif
       { $match: { akumulasiMenit: { $gt: 0 } } },
       // TAHAP F: Sorting Top Ranking
       { $sort: { akumulasiMenit: -1 } },
@@ -111,10 +97,11 @@ export async function dapatkanKlasemenBulanIni() {
         }
       },
       { $unwind: "$siswa" },
-      // TAHAP I: Bersihkan data akhir
+      // TAHAP I: Bersihkan data akhir (MENAMBAHKAN KELAS DI SINI 🚀)
       {
         $project: {
           nama: "$siswa.nama",
+          kelas: "$siswa.kelas", // 👈 Sekarang kelas ikut dikirim ke frontend
           akumulasiMenit: 1
         }
       }
@@ -128,7 +115,9 @@ export async function dapatkanKlasemenBulanIni() {
 
       return {
         peringkat: index + 1,
-        nama: samarkanNama(item.nama),
+        idSiswa: item._id,
+        nama: item.nama || "Siswa Quantum", // 👈 Nama lengkap tanpa sensor
+        kelas: item.kelas || "N/A",        // 👈 Kelas asli muncul
         jam,
         menit,
         totalMenit: total,

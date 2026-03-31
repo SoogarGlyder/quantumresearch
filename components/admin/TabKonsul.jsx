@@ -13,7 +13,7 @@ import PaginationBar from "../ui/PaginationBar";
 import { unduhExcel } from "../../utils/exportExcel";
 import { formatTanggal, formatJam, formatBulanTahun, hitungDurasiMenit, potongDataPagination } from "../../utils/formatHelper";
 
-// 👈 Import Konstanta Lengkap (Termasuk STATUS_USER untuk filter)
+// 👈 Import Konstanta Lengkap
 import { TIPE_SESI, STATUS_SESI, OPSI_MAPEL_KONSUL, LIMIT_DATA, STATUS_USER } from "../../utils/constants";
 
 import { FaFileExcel, FaFilter } from "react-icons/fa6";
@@ -28,7 +28,6 @@ export default function TabKonsul({ dataRiwayat = [] }) {
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  // Ambil halaman aktif langsung dari URL (Default ke 1)
   const page = Number(searchParams.get("page")) || 1;
   
   // --- STATE: FILTER ---
@@ -36,55 +35,71 @@ export default function TabKonsul({ dataRiwayat = [] }) {
   const [filterMapel, setFilterMapel] = useState("");
   const [filterNama, setFilterNama] = useState("");
 
-  // 🛡️ ZERO HARDCODE LIMIT
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // SINKRONISASI FILTER: Jika kriteria filter berubah, reset halaman ke 1 di URL
+  // SINKRONISASI FILTER: Reset ke hal 1 jika kriteria filter berubah
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterBulan, filterMapel, filterNama]);
 
-  // --- HANDLERS ---
   const resetFilter = () => {
     setFilterBulan("");
     setFilterMapel("");
     setFilterNama("");
   };
 
-  // --- LOGIKA FILTER (Dioptimasi dengan useMemo) ---
-  const riwayatKonsulMurni = useMemo(() => {
-    return dataRiwayat.filter(sesi => sesi.jenisSesi === TIPE_SESI.KONSUL);
+  // ============================================================================
+  // 🚀 LOGIKA INTI: PENGGABUNGAN KONSUL MURNI & EXTRA KELAS
+  // ============================================================================
+  const riwayatKonsulGabungan = useMemo(() => {
+    // 1. Ambil Konsul Murni
+    const konsulMurni = dataRiwayat.filter(r => r.jenisSesi === TIPE_SESI.KONSUL);
+
+    // 2. Ciptakan Konsul "Ilusi" dari Kelas yang punya Extra Konsul
+    const konsulExtra = dataRiwayat
+      .filter(r => r.jenisSesi === TIPE_SESI.KELAS && r.konsulExtraMenit > 0 && r.waktuSelesai)
+      .map(r => {
+        // Hitung mundur waktuMulai = waktuSelesai - konsulExtraMenit
+        const waktuSelesaiObj = new Date(r.waktuSelesai);
+        const waktuMulaiObj = new Date(waktuSelesaiObj.getTime() - r.konsulExtraMenit * 60000);
+
+        return {
+          ...r,
+          _id: `${r._id}_extra`, 
+          jenisSesi: TIPE_SESI.KONSUL, 
+          namaMapel: `${r.namaMapel || "Umum"} (Extra)`, 
+          waktuMulai: waktuMulaiObj.toISOString(),
+          waktuSelesai: r.waktuSelesai
+        };
+      });
+
+    // 3. Gabungkan dan Urutkan Terbaru di Atas
+    const gabungan = [...konsulMurni, ...konsulExtra];
+    return gabungan.sort((a, b) => new Date(b.waktuMulai) - new Date(a.waktuMulai));
   }, [dataRiwayat]);
   
+  // ============================================================================
+  // 🚀 LOGIKA FILTERING
+  // ============================================================================
   const riwayatKonsulDifilter = useMemo(() => {
-    // 🚀 FILTER UTAMA: Singkirkan siswa yang berstatus NONAKTIF
-    let riwayat = riwayatKonsulMurni.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
+    let riwayat = riwayatKonsulGabungan.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
     
-    // 🚀 LOGIKA FILTER BULAN YANG SUDAH DIPERBAIKI
     if (filterBulan) {
       riwayat = riwayat.filter(s => {
         if (!s.waktuMulai) return false;
-        
-        // Buat objek Date lalu ambil tahun dan bulan lokal
         const dateObj = new Date(s.waktuMulai);
         const yyyy = dateObj.getFullYear();
-        // getMonth() mulai dari 0, jadi +1. padStart memastikan "3" jadi "03"
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0'); 
-        
-        const bulanTahunItem = `${yyyy}-${mm}`;
-        
-        // Cocokkan format "YYYY-MM" dari data dengan "YYYY-MM" dari input type="month"
-        return bulanTahunItem === filterBulan;
+        return `${yyyy}-${mm}` === filterBulan;
       });
     }
     
     if (filterMapel) {
-      riwayat = riwayat.filter(s => s.namaMapel === filterMapel);
+      riwayat = riwayat.filter(s => (s.namaMapel || "").includes(filterMapel));
     }
     
     if (filterNama) {
@@ -93,19 +108,17 @@ export default function TabKonsul({ dataRiwayat = [] }) {
     }
     
     return riwayat;
-  }, [riwayatKonsulMurni, filterBulan, filterMapel, filterNama]);
+  }, [riwayatKonsulGabungan, filterBulan, filterMapel, filterNama]);
 
+  // 🚀 PAGINATION
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(riwayatKonsulDifilter, page, ITEMS_PER_PAGE);
 
-  // ============================================================================
-  // 3. RENDER UI
-  // ============================================================================
   return (
     <div className={`${styles.isiTab} ${styles.SembunyiPrint} ${styles.wadahMonitoring}`}>
       
       {/* HEADER & TOMBOL EXCEL */}
       <div className={styles.headerTabWrapper}>
-        <h2 className={styles.judulIsiTab} style={{margin: 0}}>Record Konsul Siswa</h2>
+        <h2 className={styles.judulIsiTab} style={{margin: 0}}>Monitoring Konsul & Extra</h2>
         <button onClick={() => unduhExcel(riwayatKonsulDifilter, "konsul")} className={styles.btnExcel}>
           <FaFileExcel /> Unduh Excel ({riwayatKonsulDifilter.length})
         </button>
@@ -150,24 +163,23 @@ export default function TabKonsul({ dataRiwayat = [] }) {
               <tr><td colSpan="5" className={styles.selKosong}>Tidak ada data konsul yang cocok.</td></tr>
             ) : (
               dataHalIni.map(sesi => {
-                // 🛡️ ZERO HARDCODE: Hitung apakah status konsul sedang aktif
                 const isAktif = sesi.status !== STATUS_SESI.SELESAI.id;
+                const isExtra = sesi._id.toString().includes("_extra");
 
                 return (
                   <tr key={sesi._id}>
-                    
-                    {/* Kolom 1: Siswa & Kelas */}
                     <td>
                       <p className={styles.teksNama}>{sesi.siswaId ? sesi.siswaId.nama : <span className={styles.teksErrorItalic}>Siswa Dihapus</span>}</p>
                       <p className={styles.teksKelas}>{sesi.siswaId ? sesi.siswaId.kelas : "-"}</p>
                     </td>
                     
-                    {/* Kolom 2: Mapel */}
                     <td>
-                      <span className={styles.badgeMapelAbu}>{sesi.namaMapel || "Bebas"}</span>
+                      {/* ✅ Style Mapel dibuat sama (abu-abu) untuk Normal maupun Extra */}
+                      <span className={styles.badgeMapelAbu}>
+                        {sesi.namaMapel || "Bebas"}
+                      </span>
                     </td>
                     
-                    {/* Kolom 3: Tanggal & Jam */}
                     <td>
                       <p className={styles.teksTanggal}>{formatTanggal(sesi.waktuMulai)}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -177,23 +189,20 @@ export default function TabKonsul({ dataRiwayat = [] }) {
                       </div>
                     </td>
                     
-                    {/* Kolom 4: Durasi */}
                     <td style={{textAlign: 'center'}}>
                       <span className={styles.teksJam}>
                         {sesi.waktuSelesai ? `${hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)}m` : "-"}
                       </span>
                     </td>
                     
-                    {/* Kolom 5: Status */}
                     <td style={{textAlign: 'center'}}>
                       <span 
                         className={`${styles.badgeStatus} ${sesi.status === STATUS_SESI.SELESAI.id ? styles.statusSelesai : styles.statusBerjalan}`}
                         style={isAktif ? { animation: 'brutalPulse 2s infinite' } : {}}
                       >
-                        {sesi.status === STATUS_SESI.SELESAI.id ? STATUS_SESI.SELESAI.label : STATUS_SESI.BERJALAN.label}
+                        {isExtra ? "EXTRA" : (sesi.status === STATUS_SESI.SELESAI.id ? STATUS_SESI.SELESAI.label : STATUS_SESI.BERJALAN.label)}
                       </span>
                     </td>
-                    
                   </tr>
                 );
               })
@@ -202,11 +211,9 @@ export default function TabKonsul({ dataRiwayat = [] }) {
         </table>
       </div>
       
-      {/* 🚀 PAGINATION BAR */}
       <div style={{ marginTop: '24px' }}>
         <PaginationBar totalPages={totalPage} />
       </div>
-      
     </div>
   );
 }

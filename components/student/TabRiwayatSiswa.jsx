@@ -54,7 +54,6 @@ FilterRiwayat.displayName = "FilterRiwayat";
 
 // ============================================================================
 // 4. SUB-KOMPONEN: RECORD CARD (Item Tunggal - Pure & Memoized)
-// Memisahkan per item agar saat di-expand, hanya item itu yang render ulang
 // ============================================================================
 const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
   const isSelesai = sesi.status === STATUS_SESI.SELESAI.id;
@@ -122,7 +121,7 @@ export default function TabRiwayat({ riwayat = [] }) {
   const [filterMapel, setFilterMapel] = useState("");
   const [idTerbuka, setIdTerbuka] = useState(null);
 
-  // 🚀 SINKRONISASI FILTER: Reset page ke 1 kalau filter diganti
+  // 🚀 SINKRONISASI FILTER
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
@@ -143,8 +142,36 @@ export default function TabRiwayat({ riwayat = [] }) {
 
   const toggleDetail = (id) => setIdTerbuka(prevId => prevId === id ? null : id);
 
-  // --- PEMILAHAN DATA (MEMOIZED) ---
-  const riwayatKonsul = useMemo(() => riwayat.filter(r => r.jenisSesi === TIPE_SESI.KONSUL), [riwayat]);
+  // --- PEMILAHAN DATA: PENCIPTAAN "ILUSI" EXTRA KONSUL ---
+  const riwayatKonsul = useMemo(() => {
+    // 1. Ambil Konsul Murni
+    const konsulMurni = riwayat.filter(r => r.jenisSesi === TIPE_SESI.KONSUL);
+
+    // 2. Ciptakan Konsul Ilusi dari Kelas yang punya Extra Konsul
+    const konsulExtra = riwayat
+      .filter(r => r.jenisSesi === TIPE_SESI.KELAS && r.konsulExtraMenit > 0 && r.waktuSelesai)
+      .map(r => {
+        // Hitung mundur waktuMulai = waktuSelesai - konsulExtraMenit
+        const waktuSelesaiObj = new Date(r.waktuSelesai);
+        const waktuMulaiObj = new Date(waktuSelesaiObj.getTime() - r.konsulExtraMenit * 60000);
+
+        return {
+          ...r,
+          _id: `${r._id}_extra`, // ID dibedakan agar React tidak bentrok
+          jenisSesi: TIPE_SESI.KONSUL, // Disamarkan jadi Konsul
+          namaMapel: `${r.namaMapel || "Umum"} (Extra)`, // Mapel ditandai khusus
+          waktuMulai: waktuMulaiObj.toISOString(),
+          waktuSelesai: r.waktuSelesai
+        };
+      });
+
+    // 3. Gabungkan Keduanya lalu Urutkan berdasarkan Waktu Terbaru
+    const gabungan = [...konsulMurni, ...konsulExtra];
+    gabungan.sort((a, b) => new Date(b.waktuMulai) - new Date(a.waktuMulai));
+
+    return gabungan;
+  }, [riwayat]);
+
   const opsiBulan = useMemo(() => [...new Set(riwayatKonsul.map(r => dapatkanLabelBulan(r.waktuMulai)))], [riwayatKonsul]);
   const opsiMapel = useMemo(() => [...new Set(riwayatKonsul.map(r => r.namaMapel || "Umum"))], [riwayatKonsul]);
 
@@ -156,7 +183,7 @@ export default function TabRiwayat({ riwayat = [] }) {
     });
   }, [riwayatKonsul, filterBulan, filterMapel]);
 
-  // 🚀 LOGIKA PAGINATION: Potong data untuk halaman ini
+  // 🚀 LOGIKA PAGINATION
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(konsulDitampilkan, page, ITEMS_PER_PAGE);
 
   // ============================================================================

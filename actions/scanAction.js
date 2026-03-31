@@ -96,9 +96,18 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tglHariIni }).lean();
         if (jadwal) {
           const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
+          
           if (sekarang > waktuSelesaiJadwal) {
             const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
-            menitExtra = Math.min(hitungExtra, KONFIGURASI_SISTEM.MAX_EXTRA_MENIT_KONSUL);
+            
+            // 🚀 LOGIKA BARU: GRACE PERIOD 15 MENIT
+            // Jika lewat dari batas kelas tapi <= 15 menit, anggap pulang normal (0 Extra).
+            // Jika lebih dari 15 menit, hitung utuh dengan batas maksimal 60 menit.
+            if (hitungExtra > 15) {
+               menitExtra = Math.min(hitungExtra, KONFIGURASI_SISTEM.MAX_EXTRA_MENIT_KONSUL || 60);
+            } else {
+               menitExtra = 0;
+            }
           }
         }
 

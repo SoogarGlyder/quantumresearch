@@ -164,6 +164,25 @@ function FormLoginArea() {
 // 3. MAIN EXPORT COMPONENT
 // ============================================================================
 export default function LoginPage() {
+
+  // 🚀 PENANGKAL SAFARI BFCACHE (Back-Forward Cache)
+  useEffect(() => {
+    const basmiCacheSafari = (event) => {
+      // Jika event.persisted = true, artinya halaman dimuat dari ingatan masa lalu (Cache).
+      // Kita paksa reload agar Middleware bangun dan memeriksa ulang sesi user.
+      if (event.persisted) {
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener("pageshow", basmiCacheSafari);
+    
+    // Bersihkan event listener saat komponen hancur
+    return () => {
+      window.removeEventListener("pageshow", basmiCacheSafari);
+    };
+  }, []);
+
   return (
     <div className={styles.mainContainer}>
       <div className={styles.kartuLogin}>

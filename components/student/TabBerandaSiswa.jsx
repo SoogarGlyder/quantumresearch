@@ -134,10 +134,9 @@ const ArenaMisi = memo(({ targetKonsul, persenMisiKonsul, statsBulanIni, targetS
 ArenaMisi.displayName = "ArenaMisi";
 
 // ============================================================================
-// 4. SUB-KOMPONEN: JADWAL KELAS HARI INI (MODIFIKASI STYLE & KLIK)
+// 4. SUB-KOMPONEN: JADWAL KELAS HARI INI
 // ============================================================================
 const JadwalHariIni = memo(({ jadwalAktif, setTab, setModeScan, resetScanner }) => {
-  // Identifikasi tanggal hari ini untuk perbandingan
   const tglHariIni = formatYYYYMMDD(new Date());
 
   return (
@@ -151,14 +150,12 @@ const JadwalHariIni = memo(({ jadwalAktif, setTab, setModeScan, resetScanner }) 
       ) : (
         <div className={styles.scheduleList}>
           {jadwalAktif.map(({ item: j }) => {
-            // Periksa apakah item jadwal ini adalah untuk hari ini
             const isHariIni = j.tanggal === tglHariIni;
 
             return (
               <div 
                 key={j._id} 
                 className={styles.scheduleCard} 
-                // HANYA BISA DIKLIK JIKA HARI INI
                 onClick={isHariIni ? () => { setTab("scan"); setModeScan("kelas"); resetScanner(); } : undefined}
                 style={isHariIni ? {
                   backgroundColor: '#ffebcd',
@@ -184,9 +181,7 @@ const JadwalHariIni = memo(({ jadwalAktif, setTab, setModeScan, resetScanner }) 
                 </div>
                 
                 <div className={styles.scheduleCardRow}>
-                  <p className={styles.scheduleSubject}>
-                    {j.mapel}
-                  </p>
+                  <p className={styles.scheduleSubject}>{j.mapel}</p>
                 </div>
 
                 <div className={styles.scheduleCardRow}>
@@ -211,7 +206,7 @@ const JadwalHariIni = memo(({ jadwalAktif, setTab, setModeScan, resetScanner }) 
 JadwalHariIni.displayName = "JadwalHariIni";
 
 // ============================================================================
-// 5. SUB-KOMPONEN: MODAL KLASEMEN (Terisolasi)
+// 5. SUB-KOMPONEN: MODAL KLASEMEN (FIX NAMA & KELAS)
 // ============================================================================
 function ModalKlasemen({ onClose }) {
   const [dataKlasemen, setDataKlasemen] = useState([]);
@@ -235,7 +230,9 @@ function ModalKlasemen({ onClose }) {
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalKonten} onClick={(e) => e.stopPropagation()}>
         <button className={styles.tombolTutupModal} onClick={onClose}>X</button>
-        <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#111827', textTransform: 'uppercase', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}><FaTrophy color="#facc15" /> Top 10 Ambis</h2>
+        <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#111827', textTransform: 'uppercase', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FaTrophy color="#facc15" /> Top 10 Ambis
+        </h2>
         
         {loadingKlasemen ? (
           <div className={styles.wadahKlasemen}>{[1, 2, 3].map(i => <div key={i} className={styles.messageLoading} style={{ height: '80px', borderRadius: '16px' }}></div>)}</div>
@@ -247,11 +244,26 @@ function ModalKlasemen({ onClose }) {
               <div key={sis.idSiswa} className={`${styles.kartuPeringkat} ${sis.peringkat === 1 ? styles.juara1 : sis.peringkat === 2 ? styles.juara2 : sis.peringkat === 3 ? styles.juara3 : ""}`}>
                 <div className={styles.kiriPeringkat}>
                   <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
-                    {sis.peringkat === 1 ? <FaCrown color="white" size={28} /> : sis.peringkat === 2 ? <FaMedal color="#64748b" size={24} /> : sis.peringkat === 3 ? <FaMedal color="#b45309" size={24} /> : <span className={styles.angkaPeringkat}>{sis.peringkat}</span>}
+                    {sis.peringkat === 1 ? <FaCrown color="white" size={28} /> : 
+                     sis.peringkat === 2 ? <FaMedal color="#64748b" size={24} /> : 
+                     sis.peringkat === 3 ? <FaMedal color="#b45309" size={24} /> : 
+                     <span className={styles.angkaPeringkat}>{sis.peringkat}</span>}
                   </div>
-                  <div className={styles.infoPeringkat}><p className={styles.namaPeringkat}>{sis.namaTampil}</p><span className={styles.gelarPeringkat}>{sis.gelar}</span></div>
+                  <div className={styles.infoPeringkat}>
+                    <p className={styles.namaPeringkat}>{sis.nama || "Siswa Quantum"}</p>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                       <span className={styles.gelarPeringkat} style={{ backgroundColor: '#111827', color: 'white', border: 'none' }}>
+                         {sis.kelas || "N/A"}
+                       </span>
+                       {/* <div className={styles.gelarPeringkat}>{sis.gelar}</div> */}
+                    </div>
+                  </div>
                 </div>
-                <div className={styles.kananPeringkat}><div className={styles.waktuPeringkat}>{sis.jam}j {sis.menit}m</div></div>
+                <div className={styles.kananPeringkat}>
+                  <div className={styles.waktuPeringkat} style={{maxWidth: 'min-content', minWidth: '65px'}}>
+                    {sis.jam}j {sis.menit}m
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -272,6 +284,7 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
     return pilahJadwalSiswa(jadwal, riwayat, PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR);
   }, [jadwal, riwayat]);
 
+  // 🚀 STREAK: SUNDAY FREE PASS
   const streakKonsul = useMemo(() => {
     if (!riwayat || riwayat.length === 0) return 0;
     
@@ -282,19 +295,28 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
     );
     
     const hariIni = new Date();
-    const tglHariIniStr = formatYYYYMMDD(hariIni);
-    
     let tanggalCek = new Date(hariIni);
     let totalStreak = 0;
 
+    const tglHariIniStr = formatYYYYMMDD(hariIni);
     if (!tanggalUnikKonsul.has(tglHariIniStr)) {
       tanggalCek.setDate(tanggalCek.getDate() - 1);
+      
+      if (tanggalCek.getDay() === 0 && !tanggalUnikKonsul.has(formatYYYYMMDD(tanggalCek))) {
+        tanggalCek.setDate(tanggalCek.getDate() - 1);
+      }
+
       if (!tanggalUnikKonsul.has(formatYYYYMMDD(tanggalCek))) return 0; 
     }
     
     while (true) {
-      if (tanggalUnikKonsul.has(formatYYYYMMDD(tanggalCek))) {
+      const tglStr = formatYYYYMMDD(tanggalCek);
+      const isMinggu = tanggalCek.getDay() === 0;
+
+      if (tanggalUnikKonsul.has(tglStr)) {
         totalStreak++;
+        tanggalCek.setDate(tanggalCek.getDate() - 1);
+      } else if (isMinggu) {
         tanggalCek.setDate(tanggalCek.getDate() - 1);
       } else {
         break; 
