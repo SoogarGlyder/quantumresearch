@@ -10,8 +10,7 @@ export function middleware(request) {
   const isPublicPath = path === "/login";
   const isLoggedIn = !!karcisId;
 
-  // 🛡️ PENAWAR INFINITE LOOP & PEMBERSIHAN SESI PAKSA
-  // Jika user masuk ke /login?clear=true, hapus cookie dan biarkan dia tetap di halaman /login
+  // 🛡️ PENAWAR INFINITE LOOP (Gunakan Redirect agar Safari benar-benar bersih)
   if (isPublicPath && request.nextUrl.searchParams.get("clear") === "true") {
     const response = NextResponse.next();
     response.cookies.delete("karcis_quantum");
@@ -27,44 +26,33 @@ export function middleware(request) {
   }
 
   // ============================================================================
-  // 2. PROTEKSI PENGUNJUNG YANG SUDAH LOGIN (ROLE-BASED REDIRECT)
+  // 2. PROTEKSI PENGUNJUNG YANG SUDAH LOGIN
   // ============================================================================
   if (isLoggedIn) {
     
-    // A. Mencegah akses ke halaman /login jika sudah punya karcis
+    // A. Jika di halaman login, arahkan ke dashboard masing-masing
     if (isPublicPath) {
-      if (karcisPeran === "admin") {
-        return NextResponse.redirect(new URL("/admin", request.url));
-      }
-      return NextResponse.redirect(new URL("/", request.url)); // Siswa & Pengajar
+      const destination = karcisPeran === "admin" ? "/admin" : "/";
+      return NextResponse.redirect(new URL(destination, request.url));
     }
 
-    // B. Mencegah selain Admin masuk ke jalur /admin/*
+    // B. Proteksi Area Admin: Hanya Admin yang boleh di /admin/*
     if (path.startsWith("/admin") && karcisPeran !== "admin") {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    // C. Mencegah Admin nyasar ke Beranda ("/") Siswa/Pengajar
+    // C. Proteksi Halaman Utama: Admin tidak boleh di "/" (Dashboard Siswa/Umum)
+    // Ini mencegah Admin terjebak di beranda yang bukan areanya
     if (path === "/" && karcisPeran === "admin") {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
   }
 
-  // Lolos semua pemeriksaan, silakan lanjut ke halaman tujuan
   return NextResponse.next();
 }
 
-// ============================================================================
-// TARGET PENJAGAAN (MATCHER STANDAR INDUSTRI)
-// ============================================================================
 export const config = {
   matcher: [
-    /*
-     * Mengecualikan jalur yang tidak perlu diperiksa oleh Middleware:
-     * - api (Jalur internal API)
-     * - _next/static & _next/image (File statis dan optimasi gambar Next.js)
-     * - favicon.ico dan semua file berekstensi (seperti .png, .css)
-     */
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ]
 };

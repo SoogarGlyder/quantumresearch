@@ -1,8 +1,5 @@
 "use client";
 
-// ============================================================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================================================
 import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,30 +13,22 @@ import {
   FaEye, FaEyeSlash 
 } from "react-icons/fa6";
 
-// ============================================================================
-// 2. SUB-COMPONENT: FORM LOGIN
-// ============================================================================
 function FormLoginArea() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // --- STATE MANAGEMENT ---
   const [form, setForm] = useState({ identifier: "", password: "" });
   const [notifikasi, setNotifikasi] = useState({ teks: "", tipe: "" }); 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // --- EFEK SAMPING (CLEAR SESSION) ---
   useEffect(() => {
-    // Menangkap query parameter ?clear=true dari URL
     if (searchParams.get("clear") === "true") {
       setNotifikasi({ teks: PESAN_SISTEM.SESI_HABIS, tipe: "error" });
-      // Hapus query param dari URL agar tidak memicu notif berulang saat refresh
       router.replace('/login');
     }
   }, [searchParams, router]);
 
-  // --- HANDLERS ---
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!form.identifier.trim() || !form.password.trim()) {
@@ -54,16 +43,19 @@ function FormLoginArea() {
       const hasil = await prosesLogin(form);
       if (hasil.sukses) {
         setNotifikasi({ teks: hasil.pesan, tipe: "sukses" });
-        // Server (Middleware) akan mendeteksi cookie baru ini & mengarahkan user
-        // ke dashboard masing-masing secara otomatis saat push ke "/"
-        router.push("/"); 
+        
+        // 🔥 FIX KHUSUS SAFARI:
+        // Menggunakan window.location.href memaksa browser melakukan 
+        // request penuh ke server. Ini memastikan Middleware membaca 
+        // cookie terbaru dan mengarahkan user ke area yang benar (Admin atau Beranda).
+        window.location.href = "/"; 
       } else {
         setNotifikasi({ teks: hasil.pesan, tipe: "error" });
         setLoading(false);
       }
     } catch (error) {
       console.error("[ERROR handleLogin]:", error);
-      setNotifikasi({ teks: "Gagal terhubung ke server. Periksa koneksi Anda.", tipe: "error" });
+      setNotifikasi({ teks: "Gagal terhubung ke server.", tipe: "error" });
       setLoading(false);
     }
   };
@@ -76,57 +68,32 @@ function FormLoginArea() {
 
   return (
     <form onSubmit={handleLogin} noValidate>
-      
-      {/* Input 1: Identifier */}
       <div className={styles.grupInput}>
-        <label htmlFor="identifier" className={styles.labelInput}>
-          ID Pengguna
-        </label>
+        <label htmlFor="identifier" className={styles.labelInput}>ID Pengguna</label>
         <div className={styles.wadahInput}>
-          <div className={styles.ikonInput}>
-            <FaUserAstronaut />
-          </div>
+          <div className={styles.ikonInput}><FaUserAstronaut /></div>
           <input
-            id="identifier"
-            name="identifier"
-            type="text"
-            required
-            autoFocus
+            id="identifier" name="identifier" type="text" required autoFocus
             placeholder="Username / No. Peserta / No. WA"
-            value={form.identifier}
-            onChange={handleChange}
-            className={styles.inputField}
-            disabled={loading}
+            value={form.identifier} onChange={handleChange}
+            className={styles.inputField} disabled={loading}
           />
         </div>
       </div>
 
-      {/* Input 2: Password */}
       <div className={styles.grupInput}>
-        <label htmlFor="password" className={styles.labelInput}>
-          Kata Sandi
-        </label>
+        <label htmlFor="password" className={styles.labelInput}>Kata Sandi</label>
         <div className={styles.wadahInput} style={{ position: 'relative' }}>
-          <div className={styles.ikonInput}>
-            <FaLock />
-          </div>
+          <div className={styles.ikonInput}><FaLock /></div>
           <input
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            required
-            placeholder="••••••••"
-            value={form.password}
-            onChange={handleChange}
-            className={styles.inputField}
-            disabled={loading}
+            id="password" name="password" type={showPassword ? "text" : "password"}
+            required placeholder="••••••••"
+            value={form.password} onChange={handleChange}
+            className={styles.inputField} disabled={loading}
             style={{ paddingRight: '45px' }}
           />
-          
-          {/* Tombol Intip Password */}
           <button
-            type="button"
-            className={styles.tombolIntip}
+            type="button" className={styles.tombolIntip}
             onClick={() => setShowPassword(!showPassword)}
             tabIndex="-1" 
             style={{
@@ -141,8 +108,7 @@ function FormLoginArea() {
       </div>
 
       <button
-        type="submit"
-        disabled={loading}
+        type="submit" disabled={loading}
         className={`${styles.tombolMasuk} ${loading ? styles.tombolLoading : ""}`}
       >
         {loading ? "Membuka Gerbang..." : (
@@ -155,32 +121,20 @@ function FormLoginArea() {
           {notifikasi.teks}
         </p>
       )}
-
     </form>
   );
 }
 
-// ============================================================================
-// 3. MAIN EXPORT COMPONENT
-// ============================================================================
 export default function LoginPage() {
-
-  // 🚀 PENANGKAL SAFARI BFCACHE (Back-Forward Cache)
+  // Tetap pertahankan fungsi pencegah bfcache Safari yang sudah kamu buat
   useEffect(() => {
     const basmiCacheSafari = (event) => {
-      // Jika event.persisted = true, artinya halaman dimuat dari ingatan masa lalu (Cache).
-      // Kita paksa reload agar Middleware bangun dan memeriksa ulang sesi user.
       if (event.persisted) {
         window.location.reload();
       }
     };
-
     window.addEventListener("pageshow", basmiCacheSafari);
-    
-    // Bersihkan event listener saat komponen hancur
-    return () => {
-      window.removeEventListener("pageshow", basmiCacheSafari);
-    };
+    return () => window.removeEventListener("pageshow", basmiCacheSafari);
   }, []);
 
   return (
@@ -196,11 +150,9 @@ export default function LoginPage() {
             <h1 className={styles.judulUtama}>Selamat Datang</h1>
             <p className={styles.subJudul}>Silakan masuk ke portal Quantum Research</p>
           </div>
-          
           <Suspense fallback={<p className={styles.messageSuccess}>Memuat form...</p>}>
             <FormLoginArea />
           </Suspense>
-          
         </div>
       </div>
       <p className={styles.footerText}>© {new Date().getFullYear()} Bimbingan Belajar Quantum Research</p>
