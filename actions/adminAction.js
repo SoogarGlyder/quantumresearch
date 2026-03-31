@@ -40,7 +40,7 @@ export async function ambilDataDashboard() {
 
     const [riwayat, siswa] = await Promise.all([
       StudySession.find()
-        .populate("siswaId", "nama username nomorPeserta kelas")
+        .populate("siswaId", "nama username nomorPeserta kelas status")
         .sort({ waktuMulai: -1 })
         .limit(LIMIT_DATA.DASHBOARD_HISTORY)
         .lean(),
@@ -214,7 +214,6 @@ export async function hapusAkunSiswa(idSiswa) {
 // 5. ABSENSI & JURNAL
 // ============================================================================
 
-// 🚀 DIKEMBALIKAN: Fungsi Absen Manual (Wajib ada untuk TabKelas)
 export async function inputAbsenManual(data) {
   try {
     await connectToDatabase();
@@ -252,6 +251,7 @@ export async function inputAbsenManual(data) {
   }
 }
 
+// 🚀 FIX: Mengambil Waktu & Kedisiplinan untuk Detail Jurnal
 export async function ambilDetailJurnal(idJadwal) {
   try {
     await connectToDatabase();
@@ -262,6 +262,7 @@ export async function ambilDetailJurnal(idJadwal) {
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
+    // Ambil siswa aktif di kelas tersebut DAN sesi hari itu
     const [siswaKelas, sesiHariIni] = await Promise.all([
       User.find({ 
         peran: PERAN.SISWA.id, 
@@ -279,14 +280,22 @@ export async function ambilDetailJurnal(idJadwal) {
     ]);
 
     const dataSiswaJurnal = siswaKelas.map(siswa => {
+      // Cari apakah siswa ini punya sesi untuk mapel & hari ini
       const sesi = sesiHariIni.find(s => s.siswaId.toString() === siswa._id.toString());
+      
       return {
         siswaId: siswa._id.toString(),
         nama: siswa.nama,
         nomorPeserta: siswa.nomorPeserta,
         sesiId: sesi ? sesi._id.toString() : null,
         statusAbsen: sesi ? sesi.status : LABEL_SISTEM.BELUM_ABSEN,
-        nilaiTest: sesi ? sesi.nilaiTest ?? "" : ""
+        // 🚀 TAMBAHAN: Ambil data waktu dan kedisiplinan agar tidak kosong di UI
+        waktuMulai: sesi ? sesi.waktuMulai : null,
+        waktuSelesai: sesi ? sesi.waktuSelesai : null,
+        terlambatMenit: sesi ? sesi.terlambatMenit || 0 : 0,
+        konsulExtraMenit: sesi ? sesi.konsulExtraMenit || 0 : 0,
+        // (Nilai test tetap diambil kalau-kalau dibutuhkan, meski tidak ditampilkan di jurnal ini)
+        nilaiTest: sesi ? sesi.nilaiTest ?? "" : "" 
       };
     });
 
@@ -299,11 +308,13 @@ export async function ambilDetailJurnal(idJadwal) {
   }
 }
 
-export async function simpanJurnal(idJadwal, dataJurnal, arrayNilaiSiswa) {
+// 🚀 FIX: Menyimpan Extra Konsul (bukan nilaiTest lagi) jika Admin mengubahnya di Jurnal
+export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
+    // 1. Simpan detail materi ke dokumen Jadwal
     const updateJadwal = Jadwal.findByIdAndUpdate(idJadwal, {
       bab: dataJurnal.bab,
       subBab: dataJurnal.subBab,
@@ -311,20 +322,27 @@ export async function simpanJurnal(idJadwal, dataJurnal, arrayNilaiSiswa) {
       fotoBersama: dataJurnal.fotoBersama
     });
 
-    let updateNilai = Promise.resolve();
-    if (arrayNilaiSiswa?.length > 0) {
-      const ops = arrayNilaiSiswa
-        .filter(item => item.sesiId)
+    // 2. Simpan Extra Konsul & Nilai ke masing-masing dokumen Sesi Siswa
+    let updateSesi = Promise.resolve();
+    if (arraySiswa?.length > 0) {
+      const ops = arraySiswa
+        .filter(item => item.sesiId) // Hanya proses yang sudah absen/punya sesi
         .map(item => ({
           updateOne: {
             filter: { _id: item.sesiId },
-            update: { $set: { nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest) } }
+            update: { 
+              $set: { 
+                konsulExtraMenit: item.konsulExtraMenit === "" ? 0 : Number(item.konsulExtraMenit),
+                nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest)
+              } 
+            }
           }
         }));
-      if (ops.length > 0) updateNilai = StudySession.bulkWrite(ops);
+        
+      if (ops.length > 0) updateSesi = StudySession.bulkWrite(ops);
     }
 
-    await Promise.all([updateJadwal, updateNilai]);
+    await Promise.all([updateJadwal, updateSesi]);
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
   } catch (error) {

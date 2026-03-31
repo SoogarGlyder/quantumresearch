@@ -53,7 +53,6 @@ const serialize = (data) => JSON.parse(JSON.stringify(data));
  */
 export async function ambilDetailJurnalPengajar(idJadwal) {
   try {
-    // 🛡️ Guard: Validasi format ID
     if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID Jadwal tidak valid.");
 
     await connectToDatabase();
@@ -63,14 +62,12 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
     const jadwal = await Jadwal.findById(idJadwal).lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
-    // 🛡️ Security: Pastikan hanya pengajar kelas ini atau Admin yang bisa buka
     if (auth.peran !== PERAN.ADMIN.id && jadwal.pengajarId?.toString() !== auth.userId) {
        return responseHelper.error("Akses Ditolak: Ini bukan kelas Anda.");
     }
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
-    // Fetch Siswa & Sesi Belajar secara paralel
     const [siswaKelas, sesiHariIni] = await Promise.all([
       User.find({ 
         peran: PERAN.SISWA.id, 
@@ -84,7 +81,6 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
       }).lean()
     ]);
 
-    // Mapping data siswa dengan status absensinya
     const dataSiswaJurnal = siswaKelas.map(siswa => {
       const sesi = sesiHariIni.find(s => s.siswaId.toString() === siswa._id.toString());
       
@@ -92,7 +88,6 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
       let ekstrakCatatan = "";
 
       if (sesi && sesi.status) {
-        // Parsing status jika ada catatan di dalam kurung: "sakit (tipes)"
         if (sesi.status.includes("(")) {
           const splitIdx = sesi.status.indexOf("(");
           baseStatus = sesi.status.substring(0, splitIdx).trim();
@@ -137,7 +132,6 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
     const babClean = validationHelper.sanitize(dataJurnal.bab);
     if (!babClean) return responseHelper.error("Materi (Bab) wajib diisi!");
 
-    // Bersihkan link foto papan (Multiple)
     const rawLinks = Array.isArray(dataJurnal.galeriPapan) 
       ? dataJurnal.galeriPapan 
       : (dataJurnal.galeriPapan || "").split(",").filter(Boolean);
@@ -167,14 +161,13 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
     if (!updateJadwal) return responseHelper.error("Jadwal tidak ditemukan atau akses ditolak.");
 
     // 2. Proses Absensi Masal (BulkWrite)
-    let updateSesiTask = Promise.resolve();
+    // 🚀 LOGIKA BARU: Jangan pernah menimpa waktuSelesai yang sudah dicatat oleh Scanner!
     if (arrayNilaiSiswa.length > 0) {
       const { awal, akhir } = timeHelper.getRentangHari(updateJadwal.tanggal);
       
       const ops = arrayNilaiSiswa
         .filter(item => item.statusAbsen !== LABEL_SISTEM.BELUM_ABSEN) 
         .map(item => {
-          // Gabungkan status dan catatan: "sakit" + "tipes" -> "sakit (tipes)"
           const statusFinal = item.catatan?.trim() 
             ? `${item.statusAbsen} (${item.catatan.trim()})`.toLowerCase() 
             : item.statusAbsen.toLowerCase();
@@ -188,27 +181,28 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
                 waktuMulai: { $gte: awal, $lte: akhir }
               },
               update: {
+                // $set digunakan untuk mengubah status dan nilai saja (Tanpa menyentuh waktuSelesai/Mulai)
                 $set: {
                   status: statusFinal,
-                  nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest),
-                  waktuSelesai: new Date()
+                  nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest)
                 },
+                // $setOnInsert HANYA dieksekusi jika data sesi ini belum pernah ada di database
+                // (Kasus di mana siswa tidak pernah scan, tapi diabsen manual oleh pengajar)
                 $setOnInsert: {
                   waktuMulai: awal,
+                  waktuSelesai: awal, // Kasih waktu default agar tidak error di laporan admin
                   terlambatMenit: 0
                 }
               },
-              upsert: true
+              upsert: true // Izinkan upsert untuk mengakomodasi anak yang lupa absen tapi diabsen manual guru
             }
           };
         });
 
       if (ops.length > 0) {
-        updateSesiTask = StudySession.bulkWrite(ops);
+        await StudySession.bulkWrite(ops);
       }
     }
-
-    await updateSesiTask;
 
     revalidatePath(PERAN.PENGAJAR.home); 
     revalidatePath(PERAN.ADMIN.home);
