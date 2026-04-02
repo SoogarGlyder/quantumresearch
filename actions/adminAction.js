@@ -16,7 +16,8 @@ import {
   STATUS_USER, 
   LABEL_SISTEM,
   PESAN_SISTEM,
-  STATUS_SESI
+  STATUS_SESI,
+  PERIODE_BELAJAR
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 
@@ -31,20 +32,30 @@ async function pastikanAdmin() {
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 1. DASHBOARD & DATA FETCHING
+// 1. DASHBOARD & DATA FETCHING (DIET DATA + PAGAR 1 TAHUN)
 // ============================================================================
 export async function ambilDataDashboard() {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
+    // 🚀 PAGAR WAKTU 1 TAHUN
+    const mulai = new Date(`${PERIODE_BELAJAR.MULAI}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`);
+    const akhir = new Date(`${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`);
+
     const [riwayat, siswa] = await Promise.all([
-      StudySession.find()
-        .populate("siswaId", "nama username nomorPeserta kelas status")
+      StudySession.find({
+        waktuMulai: { $gte: mulai, $lte: akhir }
+      })
+        // 🚀 DIET DATA: Hanya tarik field yang dipakai oleh UI TabKelas & TabKonsul (Hemat 60% Bandwidth Vercel)
+        .select("_id siswaId jenisSesi namaMapel waktuMulai waktuSelesai status terlambatMenit konsulExtraMenit jadwalId tanggalAsli")
+        .populate("siswaId", "nama username nomorPeserta kelas status") 
         .sort({ waktuMulai: -1 })
-        .limit(LIMIT_DATA.DASHBOARD_HISTORY)
         .lean(),
+        
       User.find({ peran: PERAN.SISWA.id })
+        // 🚀 DIET DATA: Hindari menarik password atau data rahasia/berat lainnya
+        .select("_id nama username nomorPeserta kelas status createdAt")
         .sort({ nama: 1 })
         .lean()
     ]);
@@ -54,6 +65,7 @@ export async function ambilDataDashboard() {
       siswa: serialize(siswa)
     });
   } catch (error) {
+    console.error("[ERROR ambilDataDashboard]:", error);
     return responseHelper.error("Gagal mengambil data dashboard.", error);
   }
 }
@@ -66,10 +78,17 @@ export async function ambilAbsensiPengajar() {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const data = await AbsensiPengajar.find()
+    // 🚀 PAGAR WAKTU 1 TAHUN (Sama seperti siswa)
+    const mulai = new Date(`${PERIODE_BELAJAR.MULAI}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`);
+    const akhir = new Date(`${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`);
+
+    const data = await AbsensiPengajar.find({
+      waktuMasuk: { $gte: mulai, $lte: akhir }
+    })
+      // 🚀 DIET DATA: Ambil field yang perlu saja untuk tabel
+      .select("_id pengajarId waktuMasuk waktuKeluar status")
       .populate("pengajarId", "nama kodePengajar") 
       .sort({ waktuMasuk: -1 })
-      .limit(100)
       .lean();
 
     return responseHelper.success("Data absen staf dimuat.", serialize(data));
@@ -79,14 +98,21 @@ export async function ambilAbsensiPengajar() {
 }
 
 // ============================================================================
-// 3. MANAJEMEN JADWAL
+// 3. MANAJEMEN JADWAL (DIET DATA + PAGAR 1 TAHUN)
 // ============================================================================
 export async function ambilSemuaJadwal() {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const jadwal = await Jadwal.find({}).sort({ tanggal: 1 }).lean();
+    // 🚀 PAGAR WAKTU 1 TAHUN
+    const jadwal = await Jadwal.find({
+      tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR }
+    })
+    .select("_id tanggal mapel kelasTarget jamMulai jamSelesai pengajarId pengajar namaPengajar kodePengajar pertemuan bab subBab galeriPapan fotoBersama")
+    .sort({ tanggal: 1 })
+    .lean();
+
     return responseHelper.success("Data jadwal dimuat.", serialize(jadwal));
   } catch (error) {
     return responseHelper.error("Gagal mengambil jadwal.", error);
@@ -251,7 +277,6 @@ export async function inputAbsenManual(data) {
   }
 }
 
-// 🚀 FIX: Mengambil Waktu & Kedisiplinan untuk Detail Jurnal
 export async function ambilDetailJurnal(idJadwal) {
   try {
     await connectToDatabase();
@@ -289,12 +314,10 @@ export async function ambilDetailJurnal(idJadwal) {
         nomorPeserta: siswa.nomorPeserta,
         sesiId: sesi ? sesi._id.toString() : null,
         statusAbsen: sesi ? sesi.status : LABEL_SISTEM.BELUM_ABSEN,
-        // 🚀 TAMBAHAN: Ambil data waktu dan kedisiplinan agar tidak kosong di UI
         waktuMulai: sesi ? sesi.waktuMulai : null,
         waktuSelesai: sesi ? sesi.waktuSelesai : null,
         terlambatMenit: sesi ? sesi.terlambatMenit || 0 : 0,
         konsulExtraMenit: sesi ? sesi.konsulExtraMenit || 0 : 0,
-        // (Nilai test tetap diambil kalau-kalau dibutuhkan, meski tidak ditampilkan di jurnal ini)
         nilaiTest: sesi ? sesi.nilaiTest ?? "" : "" 
       };
     });
@@ -308,7 +331,6 @@ export async function ambilDetailJurnal(idJadwal) {
   }
 }
 
-// 🚀 FIX: Menyimpan Extra Konsul (bukan nilaiTest lagi) jika Admin mengubahnya di Jurnal
 export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
   try {
     await connectToDatabase();

@@ -2,14 +2,13 @@ import connectToDatabase from "../lib/db";
 import User from "../models/User";
 import StudySession from "../models/StudySession";
 import Jadwal from "../models/Jadwal";
-import AbsensiPengajar from "../models/AbsensiPengajar"; // 👈 1. WAJIB DIIMPORT
+import AbsensiPengajar from "../models/AbsensiPengajar"; 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import StudentApp from "../components/StudentApp";
 import TeacherApp from "../components/TeacherApp";
 
-// Import Konstitusi Quantum
 import { 
   PERAN, 
   STATUS_SESI, 
@@ -18,11 +17,18 @@ import {
   LABEL_SISTEM 
 } from "../utils/constants";
 
-// 🚀 2. PAKSA DYNAMIC: Agar router.refresh() bisa menarik data terbaru dari DB
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const serialize = (data: any) => JSON.parse(JSON.stringify(data));
+
+// 🚀 HELPER: Format YYYY-MM-DD aman tanpa terpengaruh Zona Waktu UTC
+const formatYMD = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export default async function Home() {
   await connectToDatabase();
@@ -43,17 +49,42 @@ export default async function Home() {
   }
 
   // ==========================================================================
-  // CABANG 2: PENGAJAR (FIXED: Data Absensi Ditambahkan)
+  // 🚀 LOGIKA WAKTU "DIET DATA" BERDASARKAN BULAN BERJALAN
+  // ==========================================================================
+  const sekarang = new Date();
+  const y = sekarang.getFullYear();
+  const m = sekarang.getMonth();
+
+  // 1. Pagar Staf (29 bulan lalu - 28 bulan ini)
+  const minDateStafObj = new Date(y, m - 1, 29);
+  const maxDateStafObj = new Date(y, m, 28, 23, 59, 59);
+  const strMinStaf = formatYMD(minDateStafObj);
+  const strMaxStaf = formatYMD(maxDateStafObj);
+
+  // 2. Pagar Siswa (Tanggal 1 - Akhir bulan ini)
+  const minDateSiswaObj = new Date(y, m, 1);
+  const maxDateSiswaObj = new Date(y, m + 1, 0, 23, 59, 59);
+  const strMinSiswa = formatYMD(minDateSiswaObj);
+  const strMaxSiswa = formatYMD(maxDateSiswaObj);
+
+  // ==========================================================================
+  // CABANG 2: PENGAJAR 
   // ==========================================================================
   if (userLogin.peran === PERAN.PENGAJAR.id) {
-    // 🚀 3. AMBIL DATA ABSENSI: Cari riwayat absen staf ini
+    
+    // 🚀 FILTER HANYA BULAN BERJALAN AGAR HP GURU TETAP RINGAN
     const [jadwalPengajar, riwayatAbsensi] = await Promise.all([
-      Jadwal.find({ kodePengajar: userLogin.kodePengajar })
+      Jadwal.find({ 
+        kodePengajar: userLogin.kodePengajar,
+        tanggal: { $gte: strMinStaf, $lte: strMaxStaf }
+      })
         .sort({ tanggal: 1 })
         .lean(),
-      AbsensiPengajar.find({ pengajarId: userLogin._id }) // Ambil riwayat absen
+      AbsensiPengajar.find({ 
+        pengajarId: userLogin._id,
+        waktuMasuk: { $gte: minDateStafObj, $lte: maxDateStafObj }
+      }) 
         .sort({ waktuMasuk: -1 })
-        .limit(10)
         .lean()
     ]);
 
@@ -61,16 +92,17 @@ export default async function Home() {
       <TeacherApp 
         dataUser={serialize(userLogin)} 
         jadwal={serialize(jadwalPengajar)} 
-        absensi={serialize(riwayatAbsensi)} // 👈 4. KIRIM KE TEACHER APP
+        absensi={serialize(riwayatAbsensi)} 
         onLogout={null}
       />
     );
   }
 
   // ==========================================================================
-  // CABANG 3: SISWA (Ditambahkan prop 'absensi' jika TeacherApp butuh di layout yang sama)
+  // CABANG 3: SISWA 
   // ==========================================================================
   
+  // 🛡️ STATISTIK ALL-TIME: Tidak dipotong agar EXP & Level Gamifikasi tidak reset
   const statsSiswaPromise = StudySession.aggregate([
     { 
       $match: { 
@@ -94,12 +126,18 @@ export default async function Home() {
     }
   ]).exec();
 
+  // 🚀 FILTER HANYA BULAN BERJALAN AGAR HP MURID TETAP RINGAN
   const [riwayatRaw, jadwalRaw, statsRaw] = await Promise.all([
-    StudySession.find({ siswaId: userLogin._id })
+    StudySession.find({ 
+      siswaId: userLogin._id,
+      waktuMulai: { $gte: minDateSiswaObj, $lte: maxDateSiswaObj }
+    })
       .sort({ waktuMulai: -1 })
-      .limit(LIMIT_DATA.DASHBOARD_HISTORY)
       .lean(),
-    Jadwal.find({ kelasTarget: userLogin.kelas })
+    Jadwal.find({ 
+      kelasTarget: userLogin.kelas,
+      tanggal: { $gte: strMinSiswa, $lte: strMaxSiswa }
+    })
       .sort({ tanggal: 1 })
       .lean(),
     statsSiswaPromise

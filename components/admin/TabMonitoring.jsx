@@ -9,18 +9,17 @@ import { TIPE_SESI } from "../../utils/constants";
 import styles from "../../app/admin/AdminPage.module.css";
 import { FaChalkboardUser, FaLightbulb, FaUserShield } from "react-icons/fa6";
 
-export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, dataAbsenStaf, muatData }) {
+// 🚀 FIX: Terima props bulanAktif dari page.jsx
+export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, dataAbsenStaf, muatData, bulanAktif }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  // 🚀 LOGIKA STICKY: Ambil sub-tab dari URL, default ke KELAS
   const subView = searchParams.get("sub") || TIPE_SESI.KELAS;
 
   const gantiSubView = (idBaru) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("sub", idBaru);
-    // 💡 Penting: Hapus parameter 'page' saat pindah sub-tab agar tidak nyangkut di halaman besar
     params.delete("page"); 
     replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
@@ -109,16 +108,17 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
 
       {/* 📦 AREA TAMPILAN (Animasi Fade In) */}
       <div key={subView} style={{ animation: 'fadeIn 0.3s ease-out' }}>
+        {/* 🚀 FIX: Oper bulanAktif ke masing-masing Tab */}
         {subView === TIPE_SESI.KELAS && (
-          <TabKelas dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} muatData={muatData} />
+          <TabKelas dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} muatData={muatData} bulanAktif={bulanAktif} />
         )}
         
         {subView === TIPE_SESI.KONSUL && (
-          <TabKonsul dataRiwayat={dataRiwayat} />
+          <TabKonsul dataRiwayat={dataRiwayat} bulanAktif={bulanAktif} />
         )}
 
         {subView === "staf" && (
-          <TabAbsenStaf dataAbsenStaf={dataAbsenStaf} muatData={muatData} />
+          <TabAbsenStaf dataAbsenStaf={dataAbsenStaf} muatData={muatData} bulanAktif={bulanAktif} />
         )}
       </div>
 

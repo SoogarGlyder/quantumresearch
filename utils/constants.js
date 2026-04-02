@@ -2,9 +2,9 @@
 // 1. PENGATURAN PERIODE & LOKASI
 // ============================================================================
 export const PERIODE_BELAJAR = Object.freeze({
-  ID: "Semester Genap 2025/2026",
-  MULAI: "2026-03-28",
-  AKHIR: "2026-04-25",
+  ID: "Tahun Ajaran 2025/2026", // 👈 Diubah agar sesuai dengan 1 tahun
+  MULAI: "2025-06-29",          // 👈 Pagar Awal (29 Juni 2025)
+  AKHIR: "2026-06-28",          // 👈 Pagar Akhir (28 Juni 2026)
   TIMEZONE: "Asia/Jakarta",
   UTC_OFFSET: -7,
   ISO_OFFSET: "+07:00",
@@ -16,7 +16,7 @@ export const PERIODE_BELAJAR = Object.freeze({
 });
 
 export const EVENT_PENTING = Object.freeze({
-  TANGGAL_UTBK: "2026-05-05T00:00:00+07:00",
+  TANGGAL_UTBK: "2026-04-21T00:00:00+07:00",
 });
 
 // ============================================================================
@@ -171,7 +171,7 @@ export const OPSI_KETERANGAN_ABSEN = Object.freeze([
 ]);
 
 export const LIMIT_DATA = Object.freeze({
-  DASHBOARD_HISTORY: 1000,
+  DASHBOARD_HISTORY: 1000, // Nanti Di Hapus
   PAGINATION_DEFAULT: 20,
   PAGNATION_KELAS: 4,
   PAGNATION_KONSUL: 10

@@ -11,7 +11,7 @@ import PaginationBar from "../ui/PaginationBar";
 import { DAFTAR_KELAS_BIMBEL, generateDuaMingguKerja, KAMUS_JAM_SESI } from "../../utils/jadwalHelper";
 
 // 👈 Import Konstanta Lengkap
-import { OPSI_MAPEL_KELAS, OPSI_KELAS, PERIODE_BELAJAR, LIMIT_DATA } from "../../utils/constants";
+import { OPSI_MAPEL_KELAS, OPSI_KELAS, LIMIT_DATA } from "../../utils/constants";
 import { tambahJadwal, hapusJadwal, editJadwal } from "../../actions/adminAction";
 import { formatTanggal, potongDataPagination } from "../../utils/formatHelper";
 import styles from "../../app/admin/AdminPage.module.css";
@@ -78,20 +78,48 @@ DroppableSel.displayName = "DroppableSel";
 // ============================================================================
 // KOMPONEN UTAMA
 // ============================================================================
-export default function TabJadwal({ dataJadwal = [], muatData }) {
+// 🚀 FIX: Terima bulanAktif dari page.jsx
+export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
   // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  // Ambil halaman aktif langsung dari URL (Default ke 1)
   const page = Number(searchParams.get("page")) || 1;
   
+  // 🚀 LOGIKA PINTAR: Hitung Batas Tanggal Berdasarkan Bulan di Header
+  const { minDate, maxDate } = useMemo(() => {
+    if (!bulanAktif) return { minDate: "", maxDate: "" };
+    
+    const [tahunStr, bulanStr] = bulanAktif.split("-");
+    const y = Number(tahunStr);
+    const m = Number(bulanStr) - 1; 
+    
+    const endDay = new Date(y, m + 1, 0).getDate();
+    
+    const min = `${tahunStr}-${bulanStr}-01`;
+    const max = `${tahunStr}-${bulanStr}-${String(endDay).padStart(2, '0')}`;
+    
+    return { minDate: min, maxDate: max };
+  }, [bulanAktif]);
+
   // --- STATE PAPAN CATUR ---
-  // 🛡️ ZERO HARDCODE TANGGAL: Mengambil dari konstanta
-  const [tanggalMulai, setTanggalMulai] = useState(PERIODE_BELAJAR.MULAI);
+  // 🚀 FIX: Tanggal awal papan catur tidak lagi hardcode, melainkan menggunakan tanggal 1 di bulanAktif
+  const [tanggalMulai, setTanggalMulai] = useState(minDate || "");
   const [jadwalLokal, setJadwalLokal] = useState([]); 
   
+  // Sinkronisasi: Jika bulanAktif berubah, reset papan catur ke tanggal 1 bulan tersebut
+  useEffect(() => {
+    if (minDate && minDate !== tanggalMulai) {
+      setTanggalMulai(minDate);
+      if (jadwalLokal.length > 0) {
+        // Otomatis buang draft lokal jika bulan berganti (mencegah salah simpan)
+        setJadwalLokal([]);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minDate]);
+
   // Modal Tambah
   const [modalTerbuka, setModalTerbuka] = useState(false);
   const [dataDraft, setDataDraft] = useState(null); 
@@ -113,7 +141,6 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
   const [filterTglAkhir, setFilterTglAkhir] = useState("");
   const [filterKelas, setFilterKelas] = useState("");
   
-  // 🛡️ ZERO HARDCODE LIMIT
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   // SINKRONISASI FILTER: Jika filter berubah, reset halaman ke 1 di URL
@@ -124,6 +151,13 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
   }, [filterTglMulai, filterTglAkhir, filterKelas]);
+
+  // 🚀 FIX UX: Reset filter lokal jika ganti bulan
+  useEffect(() => {
+    setFilterTglMulai("");
+    setFilterTglAkhir("");
+    setFilterKelas("");
+  }, [bulanAktif]);
 
   // --- LOGIKA DND CATUR ---
   const sensors = useSensors(
@@ -272,7 +306,6 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
     }
   };
 
-  // --- LOGIKA TABEL BAWAH ---
   const klikHapusJadwalBawah = async (id, mapel, kelas) => { 
     if (window.confirm(`Yakin ingin menghapus jadwal ${mapel} untuk kelas ${kelas}? (Jika dihapus, jadwal akan hilang dari papan catur juga)`)) { 
       try {
@@ -288,13 +321,18 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
     } 
   };
 
+  // 🚀 DIET DATA: Potong data 1 tahun jadi 1 bulan SEBELUM difilter di tabel bawah
+  const jadwalBulanIni = useMemo(() => {
+    return dataJadwal.filter(j => j.tanggal >= minDate && j.tanggal <= maxDate);
+  }, [dataJadwal, minDate, maxDate]);
+
   const jadwalDitampilkan = useMemo(() => {
-    let jadwal = [...dataJadwal];
+    let jadwal = [...jadwalBulanIni];
     if (filterTglMulai) jadwal = jadwal.filter(j => j.tanggal >= filterTglMulai);
     if (filterTglAkhir) jadwal = jadwal.filter(j => j.tanggal <= filterTglAkhir);
     if (filterKelas) jadwal = jadwal.filter(j => j.kelasTarget === filterKelas);
     return jadwal.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-  }, [dataJadwal, filterTglMulai, filterTglAkhir, filterKelas]);
+  }, [jadwalBulanIni, filterTglMulai, filterTglAkhir, filterKelas]);
 
   const { totalPage, dataTerpotong: dataJadwalHalIni } = potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
 
@@ -321,7 +359,20 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
           <div className={styles.wadahKontrolKanan}>
             <div className={styles.wadahInputTanggal}>
               <label className={styles.labelTanggal}>Tanggal Mulai:</label>
-              <input type="date" value={tanggalMulai} onChange={(e) => { setTanggalMulai(e.target.value); if (jadwalLokal.length > 0) { if(confirm("Ganti tanggal mereset draft. Lanjut?")) setJadwalLokal([]); } }} className={styles.inputTanggalNeo} />
+              {/* 🚀 FIX: Kunci input tanggal agar tidak bisa keluar jalur bulan yang aktif */}
+              <input 
+                type="date" 
+                value={tanggalMulai} 
+                min={minDate}
+                max={maxDate}
+                onChange={(e) => { 
+                  setTanggalMulai(e.target.value); 
+                  if (jadwalLokal.length > 0) { 
+                    if(confirm("Ganti tanggal mereset draft. Lanjut?")) setJadwalLokal([]); 
+                  } 
+                }} 
+                className={styles.inputTanggalNeo} 
+              />
             </div>
             <button onClick={simpanSemuaKeDatabase} disabled={isMenyimpan || jadwalLokal.length === 0} className={`${styles.tombolSimpanServer} ${(isMenyimpan || jadwalLokal.length === 0) ? styles.nonaktif : styles.aktif}`}>
               {isMenyimpan ? <span>⏳ Menyimpan...</span> : <><FaCloudArrowUp size={18} /> Simpan {jadwalLokal.length > 0 ? `(${jadwalLokal.length})` : ''} Ke Server</>}
@@ -394,13 +445,15 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
         <div className={styles.headerTabelBawah}>
           <div>
             <h3 className={styles.judulTabelBawah}>🗄️ Database Jadwal Permanen</h3>
-            <p className={styles.subJudulTabelBawah}>Total: {jadwalDitampilkan.length} Jadwal Tersimpan</p>
+            <p className={styles.subJudulTabelBawah}>Total: {jadwalBulanIni.length} Jadwal di Bulan Ini</p>
           </div>
           <div className={styles.wadahFilterBawah}>
             <span style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}>Filter:</span>
-            <input type="date" value={filterTglMulai} onChange={(e) => setFilterTglMulai(e.target.value)} className={styles.inputTanggalNeo} />
+            {/* 🚀 FIX: Kunci input filter bawah agar tidak memuat tanggal dari bulan/tahun lain */}
+            <input type="date" value={filterTglMulai} min={minDate} max={maxDate} onChange={(e) => setFilterTglMulai(e.target.value)} className={styles.inputTanggalNeo} />
             <span style={{ fontWeight: '900' }}>-</span>
-            <input type="date" value={filterTglAkhir} onChange={(e) => setFilterTglAkhir(e.target.value)} className={styles.inputTanggalNeo} />
+            <input type="date" value={filterTglAkhir} min={minDate} max={maxDate} onChange={(e) => setFilterTglAkhir(e.target.value)} className={styles.inputTanggalNeo} />
+            
             <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className={styles.inputTanggalNeo} style={{ backgroundColor: 'white' }}>
               <option value="">Semua Kelas</option>
               {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
@@ -422,7 +475,7 @@ export default function TabJadwal({ dataJadwal = [], muatData }) {
             </thead>
             <tbody>
               {dataJadwalHalIni.length === 0 ? (
-                <tr><td colSpan="5" className={styles.selKosong}>Tidak ada jadwal.</td></tr>
+                <tr><td colSpan="5" className={styles.selKosong}>Tidak ada jadwal tersimpan.</td></tr>
               ) : (
                 dataJadwalHalIni.map(j => (
                   <tr key={j._id} className={styles.trDataTabel}>

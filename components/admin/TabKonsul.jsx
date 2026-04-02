@@ -9,20 +9,20 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
-// 🚀 IMPORT FUNGSI UNDUH EXCEL
+// 🚀 IMPORT FUNGSI UNDUH EXCEL & FORMAT
 import { unduhExcel } from "../../utils/exportExcel";
-import { formatTanggal, formatJam, formatBulanTahun, hitungDurasiMenit, potongDataPagination } from "../../utils/formatHelper";
+import { formatTanggal, formatJam, hitungDurasiMenit, potongDataPagination, formatYYYYMMDD } from "../../utils/formatHelper"; 
 
-// 👈 Import Konstanta Lengkap
-import { TIPE_SESI, STATUS_SESI, OPSI_MAPEL_KONSUL, LIMIT_DATA, STATUS_USER } from "../../utils/constants";
+// 🚀 FIX: Import OPSI_KELAS ditambahkan
+import { TIPE_SESI, STATUS_SESI, OPSI_MAPEL_KONSUL, LIMIT_DATA, STATUS_USER, OPSI_KELAS } from "../../utils/constants";
 
-import { FaFileExcel, FaFilter } from "react-icons/fa6";
+import { FaFileExcel, FaFilter, FaMagnifyingGlass } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
 
 // ============================================================================
 // 2. MAIN COMPONENT (TAB KONSUL)
 // ============================================================================
-export default function TabKonsul({ dataRiwayat = [] }) {
+export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
   // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -31,11 +31,35 @@ export default function TabKonsul({ dataRiwayat = [] }) {
   const page = Number(searchParams.get("page")) || 1;
   
   // --- STATE: FILTER ---
-  const [filterBulan, setFilterBulan] = useState("");
+  const [filterTglKonsul, setFilterTglKonsul] = useState(""); 
   const [filterMapel, setFilterMapel] = useState("");
   const [filterNama, setFilterNama] = useState("");
+  const [filterKelasKonsul, setFilterKelasKonsul] = useState(""); // 🚀 STATE BARU: Filter Kelas
+
+  useEffect(() => {
+    setFilterTglKonsul("");
+    setFilterNama("");
+    setFilterKelasKonsul("");
+    setFilterMapel("");
+  }, [bulanAktif]);
 
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
+
+  // LOGIKA PINTAR: Hitung Batas Tanggal (Siswa 1 - 30/31)
+  const { minDate, maxDate } = useMemo(() => {
+    if (!bulanAktif) return { minDate: "", maxDate: "" };
+    
+    const [tahunStr, bulanStr] = bulanAktif.split("-");
+    const y = Number(tahunStr);
+    const m = Number(bulanStr) - 1; 
+    
+    const endDay = new Date(y, m + 1, 0).getDate();
+    
+    const min = `${tahunStr}-${bulanStr}-01`;
+    const max = `${tahunStr}-${bulanStr}-${String(endDay).padStart(2, '0')}`;
+    
+    return { minDate: min, maxDate: max };
+  }, [bulanAktif]);
 
   // SINKRONISASI FILTER: Reset ke hal 1 jika kriteria filter berubah
   useEffect(() => {
@@ -44,26 +68,34 @@ export default function TabKonsul({ dataRiwayat = [] }) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [filterBulan, filterMapel, filterNama]);
+  }, [filterTglKonsul, filterMapel, filterNama, filterKelasKonsul]); // 🚀 Masukkan filterKelasKonsul ke dependency
 
   const resetFilter = () => {
-    setFilterBulan("");
+    setFilterTglKonsul("");
     setFilterMapel("");
     setFilterNama("");
+    setFilterKelasKonsul(""); // 🚀 Reset filter kelas
   };
+
+  // DIET MEMORI: Potong data 1 Tahun jadi 1 Bulan SEBELUM diproses logic Extra Konsul
+  const riwayatBulanIni = useMemo(() => {
+    return dataRiwayat.filter(r => {
+      const tglStr = formatYYYYMMDD(r.waktuMulai);
+      return tglStr >= minDate && tglStr <= maxDate;
+    });
+  }, [dataRiwayat, minDate, maxDate]);
 
   // ============================================================================
   // 🚀 LOGIKA INTI: PENGGABUNGAN KONSUL MURNI & EXTRA KELAS
   // ============================================================================
   const riwayatKonsulGabungan = useMemo(() => {
-    // 1. Ambil Konsul Murni
-    const konsulMurni = dataRiwayat.filter(r => r.jenisSesi === TIPE_SESI.KONSUL);
+    // 1. Ambil Konsul Murni dari bulan ini
+    const konsulMurni = riwayatBulanIni.filter(r => r.jenisSesi === TIPE_SESI.KONSUL);
 
     // 2. Ciptakan Konsul "Ilusi" dari Kelas yang punya Extra Konsul
-    const konsulExtra = dataRiwayat
+    const konsulExtra = riwayatBulanIni
       .filter(r => r.jenisSesi === TIPE_SESI.KELAS && r.konsulExtraMenit > 0 && r.waktuSelesai)
       .map(r => {
-        // Hitung mundur waktuMulai = waktuSelesai - konsulExtraMenit
         const waktuSelesaiObj = new Date(r.waktuSelesai);
         const waktuMulaiObj = new Date(waktuSelesaiObj.getTime() - r.konsulExtraMenit * 60000);
 
@@ -80,24 +112,23 @@ export default function TabKonsul({ dataRiwayat = [] }) {
     // 3. Gabungkan dan Urutkan Terbaru di Atas
     const gabungan = [...konsulMurni, ...konsulExtra];
     return gabungan.sort((a, b) => new Date(b.waktuMulai) - new Date(a.waktuMulai));
-  }, [dataRiwayat]);
+  }, [riwayatBulanIni]);
   
   // ============================================================================
-  // 🚀 LOGIKA FILTERING
+  // 🚀 LOGIKA FILTERING (Lokal)
   // ============================================================================
   const riwayatKonsulDifilter = useMemo(() => {
     let riwayat = riwayatKonsulGabungan.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
     
-    if (filterBulan) {
-      riwayat = riwayat.filter(s => {
-        if (!s.waktuMulai) return false;
-        const dateObj = new Date(s.waktuMulai);
-        const yyyy = dateObj.getFullYear();
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0'); 
-        return `${yyyy}-${mm}` === filterBulan;
-      });
+    if (filterTglKonsul) {
+      riwayat = riwayat.filter(s => formatYYYYMMDD(s.waktuMulai) === filterTglKonsul);
     }
     
+    // 🚀 FILTER BARU: Kelas
+    if (filterKelasKonsul) {
+      riwayat = riwayat.filter(s => s.siswaId?.kelas === filterKelasKonsul);
+    }
+
     if (filterMapel) {
       riwayat = riwayat.filter(s => (s.namaMapel || "").includes(filterMapel));
     }
@@ -108,9 +139,9 @@ export default function TabKonsul({ dataRiwayat = [] }) {
     }
     
     return riwayat;
-  }, [riwayatKonsulGabungan, filterBulan, filterMapel, filterNama]);
+  }, [riwayatKonsulGabungan, filterTglKonsul, filterMapel, filterNama, filterKelasKonsul]);
 
-  // 🚀 PAGINATION
+  // PAGINATION
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(riwayatKonsulDifilter, page, ITEMS_PER_PAGE);
 
   return (
@@ -131,9 +162,35 @@ export default function TabKonsul({ dataRiwayat = [] }) {
           <span className={styles.labelFilter}>Filter:</span>
         </div>
         
-        <FilterInput type="month" value={filterBulan} onChange={(e) => setFilterBulan(e.target.value)} />
-        <FilterInput placeholder="Cari Nama Siswa..." value={filterNama} onChange={(e) => setFilterNama(e.target.value)} />
+        {/* Kolom Pencarian Nama */}
+        <div className={styles.wadahCari} style={{ minWidth: '180px' }}>
+          <div className={styles.iconCari}><FaMagnifyingGlass color="#6b7280" /></div>
+          <input 
+            type="text" 
+            placeholder="Cari Nama Siswa..." 
+            value={filterNama} 
+            onChange={(e) => setFilterNama(e.target.value)} 
+            className={styles.inputCari}
+          />
+        </div>
         
+        {/* Kalender "Terkunci" berdasarkan bulan aktif */}
+        <FilterInput 
+          type="date" 
+          value={filterTglKonsul} 
+          onChange={(e) => setFilterTglKonsul(e.target.value)} 
+          min={minDate}
+          max={maxDate}
+        />
+        
+        {/* 🚀 UI BARU: Dropdown Filter Kelas */}
+        <select value={filterKelasKonsul} onChange={(e) => setFilterKelasKonsul(e.target.value)} className={styles.filterSelectMurni}>
+          <option value="">Semua Kelas</option>
+          {OPSI_KELAS.map(opsi => (
+            <option key={opsi} value={opsi}>{opsi}</option>
+          ))}
+        </select>
+
         <select value={filterMapel} onChange={(e) => setFilterMapel(e.target.value)} className={styles.filterSelectMurni}>
           <option value="">Semua Mapel</option>
           {OPSI_MAPEL_KONSUL.map(opsi => (
@@ -160,7 +217,7 @@ export default function TabKonsul({ dataRiwayat = [] }) {
           </thead>
           <tbody>
             {dataHalIni.length === 0 ? (
-              <tr><td colSpan="5" className={styles.selKosong}>Tidak ada data konsul yang cocok.</td></tr>
+              <tr><td colSpan="5" className={styles.selKosong}>Tidak ada data konsul di bulan ini.</td></tr>
             ) : (
               dataHalIni.map(sesi => {
                 const isAktif = sesi.status !== STATUS_SESI.SELESAI.id;
@@ -174,7 +231,6 @@ export default function TabKonsul({ dataRiwayat = [] }) {
                     </td>
                     
                     <td>
-                      {/* ✅ Style Mapel dibuat sama (abu-abu) untuk Normal maupun Extra */}
                       <span className={styles.badgeMapelAbu}>
                         {sesi.namaMapel || "Bebas"}
                       </span>

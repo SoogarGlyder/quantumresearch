@@ -16,13 +16,14 @@ import { formatTanggal, formatJam, formatYYYYMMDD, potongDataPagination, ekstrak
 
 import { STATUS_SESI, OPSI_KELAS, OPSI_MAPEL_KELAS, OPSI_KETERANGAN_ABSEN, LIMIT_DATA, STATUS_USER } from "../../utils/constants";
 
-import { FaFileExcel, FaTriangleExclamation, FaClock, FaFilter } from "react-icons/fa6";
+// 🚀 FIX: Tambah icon MagnifyingGlass untuk pencarian nama
+import { FaFileExcel, FaTriangleExclamation, FaClock, FaFilter, FaMagnifyingGlass } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
 
 // ============================================================================
 // 2. MAIN COMPONENT (TAB KELAS / ABSENSI)
 // ============================================================================
-export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa = [], muatData }) {
+export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa = [], muatData, bulanAktif }) {
   
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -30,9 +31,18 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
 
   const page = Number(searchParams.get("page")) || 1;
 
+  // State Filter
   const [filterTglKelas, setFilterTglKelas] = useState("");
   const [filterKelasAbsen, setFilterKelasAbsen] = useState("");
   const [filterMapelKelas, setFilterMapelKelas] = useState("");
+  const [filterNama, setFilterNama] = useState(""); // 🚀 STATE BARU: Pencarian Nama
+
+  useEffect(() => {
+    setFilterTglKelas("");
+    setFilterNama("");
+    setFilterKelasAbsen("");
+    setFilterMapelKelas("");
+  }, [bulanAktif]);
   
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
@@ -41,28 +51,78 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   const [inlineCatatan, setInlineCatatan] = useState("");
   const [loadingInline, setLoadingInline] = useState(false);
 
+  // LOGIKA PINTAR: Hitung Batas Tanggal (Siswa 1 - 30/31)
+  const { minDate, maxDate } = useMemo(() => {
+    if (!bulanAktif) return { minDate: "", maxDate: "" };
+    
+    const [tahunStr, bulanStr] = bulanAktif.split("-");
+    const y = Number(tahunStr);
+    const m = Number(bulanStr) - 1; 
+    
+    const endDay = new Date(y, m + 1, 0).getDate();
+    
+    const min = `${tahunStr}-${bulanStr}-01`;
+    const max = `${tahunStr}-${bulanStr}-${String(endDay).padStart(2, '0')}`;
+    
+    return { minDate: min, maxDate: max };
+  }, [bulanAktif]);
+
+  // Hapus filter "page" jika filter lokal berubah (termasuk filter nama)
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [filterTglKelas, filterKelasAbsen, filterMapelKelas]);
+  }, [filterTglKelas, filterKelasAbsen, filterMapelKelas, filterNama]);
 
+  // DIET MEMORI: Potong "Paket 1 Tahun" menjadi "Paket 1 Bulan" SEBELUM dikalkulasi
+  const riwayatBulanIni = useMemo(() => {
+    return dataRiwayat.filter(r => {
+      const tglStr = formatYYYYMMDD(r.waktuMulai);
+      return tglStr >= minDate && tglStr <= maxDate;
+    });
+  }, [dataRiwayat, minDate, maxDate]);
+
+  const jadwalBulanIni = useMemo(() => {
+    return dataJadwal.filter(j => j.tanggal >= minDate && j.tanggal <= maxDate);
+  }, [dataJadwal, minDate, maxDate]);
+
+
+  // Kalkulasi Alpa / Hadir HANYA untuk bulan ini (Lebih Cepat!)
+  const riwayatKelasMurni = useMemo(() => {
+    return kalkulasiAbsensiLengkap(riwayatBulanIni, jadwalBulanIni, dataSiswa);
+  }, [riwayatBulanIni, jadwalBulanIni, dataSiswa]);
+  
+  // Terapkan Filter Lokal (Hari/Kelas/Mapel/Nama)
+  const riwayatKelasDifilter = useMemo(() => {
+    let riwayat = riwayatKelasMurni.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
+    
+    if (filterTglKelas) riwayat = riwayat.filter(s => formatYYYYMMDD(s.waktuMulai) === filterTglKelas);
+    if (filterKelasAbsen) riwayat = riwayat.filter(s => s.siswaId?.kelas === filterKelasAbsen);
+    if (filterMapelKelas) riwayat = riwayat.filter(s => s.namaMapel === filterMapelKelas);
+    // 🚀 FILTER BARU: Pencarian Nama (Case Insensitive)
+    if (filterNama) {
+      const keyword = filterNama.toLowerCase();
+      riwayat = riwayat.filter(s => s.siswaId?.nama?.toLowerCase().includes(keyword));
+    }
+    
+    return riwayat;
+  }, [riwayatKelasMurni, filterTglKelas, filterKelasAbsen, filterMapelKelas, filterNama]);
+  
+  const { totalPage, dataTerpotong: dataKelasHalIni } = potongDataPagination(riwayatKelasDifilter, page, ITEMS_PER_PAGE);
+
+  // --- HANDLER INLINE EDIT ---
   const mulaiEditAbsen = (sesi) => {
     setEditingAbsenId(sesi._id); 
-    
     const catatanExtracted = ekstrakKeteranganAbsen(sesi.status);
-    // 🚀 FIX: Pastikan toLowerCase agar cocok dengan dropdown value
     const ketExtracted = sesi.status ? sesi.status.split('(')[0].trim().toLowerCase() : STATUS_SESI.ALPA.id;
-    
     setInlineKet(ketExtracted); 
     setInlineCatatan(catatanExtracted || "");
   };
 
   const simpanAbsenInline = async (sesi) => {
     setLoadingInline(true);
-    
     const tgl = sesi.tanggalAsli || formatYYYYMMDD(sesi.waktuMulai); 
     const payload = { 
       siswaId: sesi.siswaId._id, 
@@ -92,22 +152,6 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     if(!loadingInline) setEditingAbsenId(null);
   };
 
-  const riwayatKelasMurni = useMemo(() => {
-    return kalkulasiAbsensiLengkap(dataRiwayat, dataJadwal, dataSiswa);
-  }, [dataRiwayat, dataJadwal, dataSiswa]);
-  
-  const riwayatKelasDifilter = useMemo(() => {
-    let riwayat = riwayatKelasMurni.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
-    
-    if (filterTglKelas) riwayat = riwayat.filter(s => formatYYYYMMDD(s.waktuMulai) === filterTglKelas);
-    if (filterKelasAbsen) riwayat = riwayat.filter(s => s.siswaId?.kelas === filterKelasAbsen);
-    if (filterMapelKelas) riwayat = riwayat.filter(s => s.namaMapel === filterMapelKelas);
-    
-    return riwayat;
-  }, [riwayatKelasMurni, filterTglKelas, filterKelasAbsen, filterMapelKelas]);
-  
-  const { totalPage, dataTerpotong: dataKelasHalIni } = potongDataPagination(riwayatKelasDifilter, page, ITEMS_PER_PAGE);
-
   return (
     <div className={`${styles.isiTab} ${styles.SembunyiPrint} ${styles.wadahMonitoring}`}>
       
@@ -124,7 +168,26 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
           <span className={styles.labelFilter}>Filter:</span>
         </div>
         
-        <FilterInput type="date" value={filterTglKelas} onChange={(e) => setFilterTglKelas(e.target.value)} />
+        {/* 🚀 UI BARU: Kolom Pencarian Nama (Sejajar dengan Filter) */}
+        <div className={styles.wadahCari} style={{ minWidth: '180px' }}>
+          <div className={styles.iconCari}><FaMagnifyingGlass color="#6b7280" /></div>
+          <input 
+            type="text" 
+            placeholder="Cari Nama Siswa..." 
+            value={filterNama} 
+            onChange={(e) => setFilterNama(e.target.value)} 
+            className={styles.inputCari}
+          />
+        </div>
+
+        {/* Kalender "Terkunci" berdasarkan bulan yang dipilih di atas */}
+        <FilterInput 
+          type="date" 
+          value={filterTglKelas} 
+          onChange={(e) => setFilterTglKelas(e.target.value)} 
+          min={minDate} 
+          max={maxDate} 
+        />
         
         <select value={filterKelasAbsen} onChange={(e) => setFilterKelasAbsen(e.target.value)} className={styles.filterSelectMurni}>
           <option value="">Semua Kelas</option>
@@ -136,11 +199,12 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
           {OPSI_MAPEL_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
         </select>
 
-        <button onClick={() => { setFilterTglKelas(""); setFilterKelasAbsen(""); setFilterMapelKelas(""); }} className={styles.btnReset}>
+        <button onClick={() => { setFilterTglKelas(""); setFilterKelasAbsen(""); setFilterMapelKelas(""); setFilterNama(""); }} className={styles.btnReset}>
           Reset
         </button>
       </div>
 
+      {/* --- TABEL DATA --- (Tetap Sama) */}
       <div className={styles.wadahTabel}>
         <table className={styles.tabelStyle}>
           <thead>
@@ -156,22 +220,19 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
           </thead>
           <tbody>
             {dataKelasHalIni.length === 0 ? (
-              <tr><td colSpan="7" className={styles.selKosong}>Tidak ada data yang cocok dengan filter.</td></tr>
+              <tr><td colSpan="7" className={styles.selKosong}>Tidak ada absensi di bulan ini.</td></tr>
             ) : (
               dataKelasHalIni.map(sesi => {
                 const isEditing = editingAbsenId === sesi._id;
-                
                 const isTidakHadir = 
                   sesi.status?.includes(STATUS_SESI.TIDAK_HADIR.id) || 
                   sesi.status?.includes(STATUS_SESI.ALPA.id) || 
                   sesi.status?.includes(STATUS_SESI.SAKIT.id) || 
                   sesi.status?.includes(STATUS_SESI.IZIN.id);
-                  
                 const isAktif = sesi.status !== STATUS_SESI.SELESAI.id && !isTidakHadir;
                 
                 return (
                   <tr key={sesi._id}>
-                    
                     <td className={styles.tdLebar}>
                       <p className={styles.teksTanggal}>{formatTanggal(sesi.waktuMulai)}</p>
                       <p className={styles.teksMapel}>{sesi.namaMapel || "-"}</p>
@@ -205,7 +266,6 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
                     <td style={{textAlign: 'center'}}>
                       {isEditing ? (
                         <div className={styles.wadahAksiInline}>
-                          {/* 🚀 FIX: Menambahkan opsi Hadir (Selesai) agar Admin bisa memperbaiki Alpa */}
                           <select value={inlineKet} onChange={e => setInlineKet(e.target.value)} className={styles.inlineSelect}>
                             <option value={STATUS_SESI.SELESAI.id}>✅ Hadir (Selesai)</option>
                             {OPSI_KETERANGAN_ABSEN.map(opsi => (
@@ -241,11 +301,9 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
                           <button disabled={loadingInline} onClick={batalEditAbsen} className={styles.btnBatalInline} title="Batalkan">✖</button>
                         </div>
                       ) : (
-                        // 🚀 FIX: Tombol Edit sekarang DIBUKA untuk SEMUA SISWA, agar bisa diperbaiki
                         <button onClick={() => mulaiEditAbsen(sesi)} className={styles.btnEditKet}>✏️ Edit</button>
                       )}
                     </td>
-
                   </tr>
                 )
               })

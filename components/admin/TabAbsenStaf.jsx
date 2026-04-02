@@ -1,5 +1,8 @@
 "use client";
 
+// ============================================================================
+// 1. IMPORTS & DEPENDENCIES
+// ============================================================================
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
@@ -7,14 +10,18 @@ import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
 import { unduhExcel } from "../../utils/exportExcel";
-import { formatTanggal, formatBulanTahun, potongDataPagination } from "../../utils/formatHelper";
-// 🚀 TAMBAHAN: STATUS_USER untuk memastikan staf nonaktif bisa disaring jika diperlukan
+import { formatTanggal, potongDataPagination, formatYYYYMMDD } from "../../utils/formatHelper"; // 🚀 FIX: Tambah formatYYYYMMDD
 import { LIMIT_DATA, STATUS_USER } from "../../utils/constants";
 
-import { FaFileExcel, FaFilter, FaClock, FaRightFromBracket, FaUserTie } from "react-icons/fa6";
+// 🚀 FIX: Tambah FaMagnifyingGlass
+import { FaFileExcel, FaFilter, FaClock, FaRightFromBracket, FaUserTie, FaMagnifyingGlass } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
 
-export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
+// ============================================================================
+// 2. MAIN COMPONENT (TAB ABSEN STAF)
+// ============================================================================
+// 🚀 FIX: Terima props bulanAktif
+export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
@@ -23,8 +30,35 @@ export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   // --- STATE: FILTER ---
-  const [filterBulan, setFilterBulan] = useState("");
+  const [filterTglAbsen, setFilterTglAbsen] = useState(""); // 🚀 Ganti filterBulan jadi filter Hari
   const [filterNama, setFilterNama] = useState("");
+  
+  useEffect(() => {
+    setFilterTglAbsen("");
+    setFilterNama("");
+  }, [bulanAktif]);
+
+  // ============================================================================
+  // 🚀 BOSS LEVEL LOGIC: Hitung Batas Tanggal (Staf 29 bln lalu - 28 bln ini)
+  // ============================================================================
+  const { minDate, maxDate } = useMemo(() => {
+    if (!bulanAktif) return { minDate: "", maxDate: "" };
+
+    const [tahunStr, bulanStr] = bulanAktif.split("-");
+    const y = Number(tahunStr);
+    const m = Number(bulanStr) - 1; // Bulan di JS mulai dari 0
+
+    // Tanggal Awal: 29 Bulan SEBELUMNYA
+    const minObj = new Date(y, m - 1, 29);
+    const minYYYY = minObj.getFullYear();
+    const minMM = String(minObj.getMonth() + 1).padStart(2, '0');
+    const min = `${minYYYY}-${minMM}-29`;
+
+    // Tanggal Akhir: 28 Bulan INI
+    const max = `${tahunStr}-${bulanStr}-28`;
+
+    return { minDate: min, maxDate: max };
+  }, [bulanAktif]);
 
   // Sinkronisasi Filter ke Page 1
   useEffect(() => {
@@ -34,30 +68,24 @@ export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterBulan, filterNama]);
+  }, [filterTglAbsen, filterNama]);
 
-  // --- LOGIKA FILTER ---
+  // 🚀 DIET MEMORI: Potong data 1 Tahun jadi 1 Bulan (Siklus 29-28) SEBELUM difilter lokal
+  const absenBulanIni = useMemo(() => {
+    return dataAbsenStaf.filter(a => {
+      if (!a.waktuMasuk) return false;
+      const tglStr = formatYYYYMMDD(a.waktuMasuk);
+      return tglStr >= minDate && tglStr <= maxDate;
+    });
+  }, [dataAbsenStaf, minDate, maxDate]);
+
+  // --- LOGIKA FILTER LOKAL ---
   const dataDifilter = useMemo(() => {
-    // 🚀 OPSI: Mem-filter pengajar yang statusnya nonaktif dari tabel (Opsional)
-    // Uncomment baris di bawah ini jika Bos ingin menghilangkan riwayat staf yang sudah resign
-    // let hasil = dataAbsenStaf.filter(a => a.pengajarId?.status !== STATUS_USER.NONAKTIF);
-    
-    // Default (semua absen terekam, termasuk dari staf lama):
-    let hasil = [...dataAbsenStaf];
+    let hasil = [...absenBulanIni];
 
-    // 🚀 LOGIKA FILTER BULAN
-    if (filterBulan) {
-      hasil = hasil.filter(a => {
-        if (!a.waktuMasuk) return false;
-        
-        const dateObj = new Date(a.waktuMasuk);
-        const yyyy = dateObj.getFullYear();
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-        
-        const bulanTahunAbsen = `${yyyy}-${mm}`;
-        
-        return bulanTahunAbsen === filterBulan;
-      });
+    // 🚀 Filter Hari Spesifik
+    if (filterTglAbsen) {
+      hasil = hasil.filter(a => formatYYYYMMDD(a.waktuMasuk) === filterTglAbsen);
     }
 
     if (filterNama) {
@@ -69,7 +97,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
     }
 
     return hasil;
-  }, [dataAbsenStaf, filterBulan, filterNama]);
+  }, [absenBulanIni, filterTglAbsen, filterNama]);
 
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(dataDifilter, page, ITEMS_PER_PAGE);
 
@@ -94,10 +122,28 @@ export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
           <span className={styles.labelFilter}>Filter:</span>
         </div>
         
-        <FilterInput type="month" value={filterBulan} onChange={(e) => setFilterBulan(e.target.value)} />
-        <FilterInput placeholder="Cari Nama / Kode Pengajar..." value={filterNama} onChange={(e) => setFilterNama(e.target.value)} />
+        {/* 🚀 UI BARU: Kolom Pencarian Nama Sejajar */}
+        <div className={styles.wadahCari} style={{ minWidth: '180px' }}>
+          <div className={styles.iconCari}><FaMagnifyingGlass color="#6b7280" /></div>
+          <input 
+            type="text" 
+            placeholder="Cari Nama / Kode..." 
+            value={filterNama} 
+            onChange={(e) => setFilterNama(e.target.value)} 
+            className={styles.inputCari}
+          />
+        </div>
 
-        <button onClick={() => { setFilterBulan(""); setFilterNama(""); }} className={styles.btnReset}>
+        {/* 🚀 Kalender "Terkunci" berdasarkan siklus 29-28 */}
+        <FilterInput 
+          type="date" 
+          value={filterTglAbsen} 
+          onChange={(e) => setFilterTglAbsen(e.target.value)} 
+          min={minDate}
+          max={maxDate}
+        />
+
+        <button onClick={() => { setFilterTglAbsen(""); setFilterNama(""); }} className={styles.btnReset}>
           Reset
         </button>
       </div>
@@ -116,7 +162,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
           </thead>
           <tbody>
             {dataHalIni.length === 0 ? (
-              <tr><td colSpan="5" className={styles.selKosong}>Tidak ada data absen staf yang cocok.</td></tr>
+              <tr><td colSpan="5" className={styles.selKosong}>Tidak ada data absen staf di periode ini.</td></tr>
             ) : (
               dataHalIni.map((absen) => (
                 <tr key={absen._id}>
@@ -152,7 +198,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [] }) {
         </table>
       </div>
 
-      {/* 🚀 PAGINATION BAR DENGAN JARAK */}
+      {/* PAGINATION BAR */}
       <div style={{ marginTop: '24px' }}>
         <PaginationBar totalPages={totalPage} />
       </div>
