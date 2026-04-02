@@ -8,7 +8,8 @@ import { timeHelper } from "../utils/timeHelper";
 import { 
   STATUS_SESI, 
   TIPE_SESI, 
-  PESAN_SISTEM 
+  PESAN_SISTEM,
+  GAMIFIKASI 
 } from "../utils/constants";
 
 // ============================================================================
@@ -17,43 +18,35 @@ import {
 
 /**
  * Memberikan gelar berdasarkan total jam belajar yang dikumpulkan
+ * 🚀 SEKARANG MEMBACA OTOMATIS DARI CONSTANTS
  */
 function tentukanGelar(jamTotal) {
-  if (jamTotal >= 30) return "👑 Yang Punya Quantum";
-  if (jamTotal >= 20) return "🔥 Sepuh Quantum";
-  if (jamTotal >= 10) return "⚔️ Pejuang Ambis";
-  if (jamTotal >= 5)  return "🚀 Mulai Panas";
-  return "🐢 Masih Pemanasan";
+  const gelarMatch = GAMIFIKASI.GELAR_KLASEMEN.find(g => jamTotal >= g.minJam);
+  return gelarMatch ? gelarMatch.gelar : "🐢 Masih Pemanasan";
 }
 
 // ============================================================================
 // 2. MAIN ACTION (HIGH PERFORMANCE AGGREGATION)
 // ============================================================================
 
-// ✨ PERUBAHAN: Menambahkan parameter filterKelas (Default: "Semua Kelas")
 export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
   try {
     await connectToDatabase();
 
-    // 1. Proteksi Sesi
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    // 2. Definisi Rentang Waktu (Bulan Berjalan)
     const awalBulan = timeHelper.getAwalBulan();
     const kini = new Date();
     const awalBulanDepan = new Date(Date.UTC(kini.getFullYear(), kini.getMonth() + 1, 1, -7, 0, 0, 0));
 
-    // 3. MONGODB AGGREGATION PIPELINE (Dibuat Dinamis)
     const pipeline = [
-      // TAHAP A: Filter sesi bulan ini yang statusnya sudah 'selesai'
       {
         $match: {
           waktuMulai: { $gte: awalBulan, $lt: awalBulanDepan },
           status: STATUS_SESI.SELESAI.id 
         }
       },
-      // TAHAP B: Proyeksi durasi menit
       {
         $project: {
           siswaId: 1,
@@ -67,24 +60,19 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
           menitBonus: { $ifNull: ["$konsulExtraMenit", 0] }
         }
       },
-      // TAHAP C: Akumulasi total per dokumen
       {
         $project: {
           siswaId: 1,
           totalSesi: { $add: ["$menitMurni", "$menitBonus"] }
         }
       },
-      // TAHAP D: Grouping berdasarkan Siswa
       {
         $group: {
           _id: "$siswaId",
           akumulasiMenit: { $sum: "$totalSesi" }
         }
       },
-      // TAHAP E: Filter record positif
       { $match: { akumulasiMenit: { $gt: 0 } } },
-      
-      // TAHAP F: Join ke Collection User (Dipindah ke atas untuk keperluan filter kelas)
       {
         $lookup: {
           from: "users",
@@ -96,21 +84,15 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
       { $unwind: "$siswa" }
     ];
 
-    // ✨ LOGIKA FILTER KELAS:
-    // Jika dropdown tidak bernilai "Semua Kelas", maka saring berdasarkan kelas siswa
     if (filterKelas && filterKelas !== "Semua Kelas") {
       pipeline.push({
         $match: { "siswa.kelas": filterKelas }
       });
     }
 
-    // LANJUTAN PIPELINE (Sorting, Limit, dan Project Akhir)
     pipeline.push(
-      // TAHAP G: Sorting Top Ranking
       { $sort: { akumulasiMenit: -1 } },
-      // TAHAP H: Ambil Top 10
       { $limit: 10 },
-      // TAHAP I: Bersihkan data akhir 
       {
         $project: {
           nama: "$siswa.nama",
@@ -122,7 +104,6 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
 
     const klasemenMentah = await StudySession.aggregate(pipeline);
 
-    // 4. Final Mapping untuk UI
     const dataFinal = klasemenMentah.map((item, index) => {
       const total = Math.floor(item.akumulasiMenit);
       const jam = Math.floor(total / 60);
@@ -130,7 +111,8 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
 
       return {
         peringkat: index + 1,
-        idSiswa: item._id,
+        // ✅ FIX: Mengubah ObjectId menjadi String murni agar Next.js tidak error
+        idSiswa: item._id.toString(), 
         nama: item.nama || "Siswa Quantum", 
         kelas: item.kelas || "N/A",        
         jam,

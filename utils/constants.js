@@ -178,17 +178,49 @@ export const LIMIT_DATA = Object.freeze({
 });
 
 // ============================================================================
-// 12. ✨ PENGATURAN GAMIFIKASI (BARU)
+// 12. ✨ PENGATURAN GAMIFIKASI (CONTROL PANEL)
 // ============================================================================
 export const GAMIFIKASI = Object.freeze({
+  
+  // 1. PENGATURAN EXP REGULER
   EXP: {
-    HADIR_KELAS: 50,           // Hadir kelas reguler
-    KONSUL_DASAR: 10,          // Berhasil check-in konsul min 5 menit
-    KONSUL_PER_30_MENIT: 20,   // Tambahan setiap 30 menit konsul aktif
+    HADIR_KELAS: 50,           
+    KONSUL_DASAR: 10,          
+    KONSUL_PER_30_MENIT: 20,   
   },
+  
+  // 2. KODE LENCANA (Untuk backend membedakan jenis lencana)
   LENCANA: {
     FIRST_BLOOD: "first_blood",
     BURUNG_HANTU: "burung_hantu",
     KONSISTEN_30: "konsisten_30",
-  }
+  },
+  
+  // 3. KAMUS VISUAL LENCANA (Untuk frontend menampilkan ikon & warna)
+  KAMUS_LENCANA: {
+    "first_blood": { ikon: "🩸", nama: "First Blood", warna: "#ef4444" },
+    "burung_hantu": { ikon: "🦉", nama: "Burung Hantu", warna: "#8b5cf6" },
+    "konsisten_30": { ikon: "🔥", nama: "Konsisten 30 Hari", warna: "#f97316" }
+  },
+
+  // 4. POOL MISI HARIAN (Sistem akan mengacak 2 dari daftar ini tiap hari)
+  POOL_MISI: [
+    { kodeMisi: "HADIR_KELAS", judul: "Hadir kelas hari ini", target: 1, expBonus: 50 },
+    { kodeMisi: "KONSUL_30", judul: "Konsul minimal 30 menit", target: 30, expBonus: 40 },
+    { kodeMisi: "KONSUL_60", judul: "Konsul minimal 1 Jam", target: 60, expBonus: 100 },
+    { kodeMisi: "DATANG_AWAL", judul: "Absen sebelum jam 15:00", target: 1, expBonus: 60 },
+    { kodeMisi: "KONSUL_MALAM", judul: "Selesai konsul di atas jam 18:00", target: 1, expBonus: 75 }
+  ],
+
+  // 5. GELAR KLASEMEN BULANAN (Ditentukan dari total jam belajar bulan berjalan)
+  GELAR_KLASEMEN: [
+    { minJam: 60, gelar: "🌌 Legenda Hidup" },
+    { minJam: 50, gelar: "⚡ Dewa Ambis" },
+    { minJam: 40, gelar: "👻 Penunggu Quantum" },
+    { minJam: 30, gelar: "👑 Yang Punya Quantum" },
+    { minJam: 20, gelar: "🔥 Sepuh Quantum" },
+    { minJam: 10, gelar: "⚔️ Pejuang Ambis" },
+    { minJam: 5,  gelar: "🚀 Mulai Panas" },
+    { minJam: 0,  gelar: "🐢 Masih Pemanasan" }
+  ]
 });

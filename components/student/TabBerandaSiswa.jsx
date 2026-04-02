@@ -8,7 +8,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation"; 
 
 import { pilahJadwalSiswa } from "../../utils/kalkulatorData";
-import { PERIODE_BELAJAR, TIPE_SESI, STATUS_SESI, EVENT_PENTING } from "../../utils/constants";
+// 👇 FIX: Menambahkan import GAMIFIKASI
+import { PERIODE_BELAJAR, TIPE_SESI, STATUS_SESI, EVENT_PENTING, GAMIFIKASI } from "../../utils/constants";
 import { dapatkanKlasemenBulanIni } from "../../actions/klasemenAction";
 import { cekDanGenerateMisiHarian, klaimHadiahMisi } from "../../actions/misiAction"; 
 import { formatYYYYMMDD, formatBulanTahun } from "../../utils/formatHelper";
@@ -17,7 +18,7 @@ import { FaCalendarDays, FaBullseye, FaStar, FaFire, FaCircleCheck, FaTrophy, Fa
 import styles from "../App.module.css";
 
 // ============================================================================
-// 2. SUB-KOMPONEN: HEADER & PENCAPAIAN (Pure & Memoized)
+// 2. SUB-KOMPONEN: HEADER & PENCAPAIAN 
 // ============================================================================
 const HeaderSiswa = memo(({ siswa, statsBulanIni, streakKonsul, onBukaKlasemen }) => {
   
@@ -28,11 +29,7 @@ const HeaderSiswa = memo(({ siswa, statsBulanIni, streakKonsul, onBukaKlasemen }
   const expSisaUntukNaik = expSaatIni % expPerLevel;
   const persenLevel = Math.round((expSisaUntukNaik / expPerLevel) * 100);
 
-  const kamusLencana = {
-    "first_blood": { ikon: "🩸", nama: "First Blood", warna: "#ef4444" },
-    "burung_hantu": { ikon: "🦉", nama: "Burung Hantu", warna: "#8b5cf6" },
-    "konsisten_30": { ikon: "🔥", nama: "Konsisten 30 Hari", warna: "#f97316" }
-  };
+  // 🚀 FIX: Kamus Lencana manual dihapus, langsung ambil dari GAMIFIKASI.KAMUS_LENCANA
   const lencanaSiswa = siswa.koleksiLencana || [];
 
   return (
@@ -71,7 +68,7 @@ const HeaderSiswa = memo(({ siswa, statsBulanIni, streakKonsul, onBukaKlasemen }
           {lencanaSiswa.length > 0 && (
             <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {lencanaSiswa.map((lencana, index) => {
-                const info = kamusLencana[lencana.idLencana];
+                const info = GAMIFIKASI.KAMUS_LENCANA[lencana.idLencana]; // 👈 Ambil dari Constants
                 if (!info) return null; 
                 return (
                   <div key={index} style={{ 
@@ -313,14 +310,12 @@ function ModalKlasemen({ onClose, kelasSiswa }) {
   const [dataKlasemen, setDataKlasemen] = useState([]);
   const [loadingKlasemen, setLoadingKlasemen] = useState(true);
   
-  // State untuk Tab Aktif: "Semua Kelas" ATAU kelas spesifik siswa
   const [filterAktif, setFilterAktif] = useState("Semua Kelas");
 
   useEffect(() => {
     let isMounted = true; 
     setLoadingKlasemen(true);
     
-    // Server akan memfilter data berdasarkan string yang dikirim
     dapatkanKlasemenBulanIni(filterAktif).then(hasil => {
       if (isMounted) {
         if (hasil.sukses) setDataKlasemen(hasil.data);
@@ -340,7 +335,6 @@ function ModalKlasemen({ onClose, kelasSiswa }) {
           <FaTrophy color="#facc15" /> Top 10 Ambis
         </h2>
 
-        {/* ✨ UI TAB SWITCHER */}
         <div style={{ display: 'flex', backgroundColor: '#e2e8f0', borderRadius: '8px', padding: '4px', marginBottom: '16px' }}>
           <button 
             onClick={() => setFilterAktif("Semua Kelas")}
@@ -370,7 +364,6 @@ function ModalKlasemen({ onClose, kelasSiswa }) {
             🎓 Kelas Saya
           </button>
         </div>
-        {/* ------------------------------------- */}
 
         {loadingKlasemen ? (
           <div className={styles.wadahKlasemen}>{[1, 2, 3].map(i => <div key={i} className={styles.messageLoading} style={{ height: '80px', borderRadius: '16px' }}></div>)}</div>
@@ -521,11 +514,9 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
       ? Object.keys(mapelCount).reduce((a, b) => mapelCount[a] > mapelCount[b] ? a : b) 
       : "-";
 
-    let gelar = jamKonsul >= 30 ? "👑 Yang Punya Quantum" 
-              : jamKonsul >= 20 ? "🔥 Sepuh Quantum" 
-              : jamKonsul >= 10 ? "⚔️ Pejuang Ambis" 
-              : jamKonsul >= 5 ? "🚀 Mulai Panas" 
-              : "🐢 Masih Pemanasan";
+    // 🚀 FIX: Penentuan gelar juga otomatis membaca array GAMIFIKASI dari constants
+    const gelarMatch = GAMIFIKASI.GELAR_KLASEMEN.find(g => jamKonsul >= g.minJam);
+    const gelar = gelarMatch ? gelarMatch.gelar : "🐢 Masih Pemanasan";
     
     const tanggalUTBK = new Date(EVENT_PENTING.TANGGAL_UTBK);
     const selisihHariUTBK = Math.max(0, Math.ceil((tanggalUTBK - sekarang) / (1000 * 60 * 60 * 24)));
@@ -549,7 +540,6 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
       
       <JadwalHariIni jadwalAktif={jadwalAktif} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} />
       
-      {/* 👇 FIX: Menambahkan props kelasSiswa agar ModalKlasemen tahu kelas berapa siswa ini */}
       {isKlasemenOpen && <ModalKlasemen onClose={() => setIsKlasemenOpen(false)} kelasSiswa={siswa.kelas} />}
     </div>
   );
