@@ -99,7 +99,8 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
           if (sekarang > waktuSelesaiJadwal) {
             const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
             if (hitungExtra > 15) {
-               menitExtra = Math.min(hitungExtra, KONFIGURASI_SISTEM.MAX_EXTRA_MENIT_KONSUL || 60);
+               // 🚀 FIX: Dibuat benar-benar UNLIMITED (tanpa Math.min dan batas 60)
+               menitExtra = hitungExtra;
             }
           }
         }
@@ -137,7 +138,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         await siswa.save();
 
         let pesanAkhir = `Check-out Berhasil! ✨ +${expDapat} EXP`;
-        if (menitExtra > 0) pesanAkhir += ` (Termasuk Ekstra Konsul)`;
+        if (menitExtra > 0) pesanAkhir += ` (Termasuk Ekstra Konsul ${menitExtra}m)`;
         if (lencanaBaru.length > 0) pesanAkhir += ` 🏅 Mendapat ${lencanaBaru.length} Lencana Baru!`;
         if (misiUpdates > 0) pesanAkhir += ` 🎯 Ada Misi Harian yang selesai!`;
 
@@ -228,7 +229,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         waktuMulai: sekarang
       });
 
-      // 🎯 CEK MISI: DATANG AWAL (Absen masuk kelas sebelum jam 15:00)
+      // 🎯 CEK MISI: DATANG AWAL
       let pesanTambahan = "";
       if (sekarang.getHours() < 15) {
         const up = updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" });
@@ -253,7 +254,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         waktuMulai: sekarang
       });
 
-      // 🎯 CEK MISI: DATANG AWAL (Absen mulai konsul sebelum jam 15:00)
+      // 🎯 CEK MISI: DATANG AWAL
       let pesanTambahan = "";
       if (sekarang.getHours() < 15) {
         const up = updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" });
