@@ -44,14 +44,14 @@ export const KONFIGURASI_SISTEM = Object.freeze({
   MIN_DURASI_BELAJAR_SAH: 15,
   MIN_DURASI_KONSUL_SAH: 5,
   WINDOW_SCAN_MASUK_MENIT: 30,
-  TOAST_DELAY_MS: 3000,       // 👈 Durasi Toast notifikasi
-  DEBOUNCE_DELAY_MS: 500,     // 👈 Durasi jeda ngetik di pencarian
+  TOAST_DELAY_MS: 3000,
+  DEBOUNCE_DELAY_MS: 500,
   DEFAULT_PASSWORD: "password123",
-  COOKIE_NAME: "karcis_quantum", // 👈 Nama Cookie Resmi
-  COOKIE_ROLE: "peran_quantum",     // 👈 Pengganti const ROLE_KEY
-  SESSION_MAX_AGE_DAYS: 7,          // 👈 Umur sesi (7 hari)
-  SALT_ROUNDS: 10,                  // 👈 Kekuatan enkripsi password
-  PATH_LOGIN: "/login",          // 👈 Path Login Resmi
+  COOKIE_NAME: "karcis_quantum",
+  COOKIE_ROLE: "peran_quantum",
+  SESSION_MAX_AGE_DAYS: 7,
+  SALT_ROUNDS: 10,
+  PATH_LOGIN: "/login",
 });
 
 // ============================================================================
@@ -84,7 +84,7 @@ export const LABEL_SISTEM = Object.freeze({
 export const KONFIGURASI_MEDIA = Object.freeze({
   MAX_UPLOAD_SIZE_MB: 5,
   ALLOWED_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp"],
-  DOMAIN_RESMI: "res.cloudinary.com", // 👈 Pindahkan ke sini
+  DOMAIN_RESMI: "res.cloudinary.com",
   STORAGE_FOLDERS: {
     JURNAL: "jurnal-pembelajaran",
     ABSENSI: "bukti-absen",
@@ -97,8 +97,8 @@ export const KONFIGURASI_MEDIA = Object.freeze({
 // ============================================================================
 export const VALIDASI_SISTEM = Object.freeze({
   MIN_PASSWORD: 6,
-  REGEX_USERNAME: /^[a-z0-9_.-]+$/,       // 👈 Sinkron dengan helper (ada penambahan minus '-')
-  REGEX_PHONE: /^(08|628)\d{8,13}$/,      // 👈 Memindahkan regex WA ke sini
+  REGEX_USERNAME: /^[a-z0-9_.-]+$/,
+  REGEX_PHONE: /^(08|628)\d{8,13}$/,
 });
 
 // ============================================================================
@@ -129,7 +129,6 @@ export const PREFIX_BARCODE = Object.freeze({
   ADMIN: "QR-ADMIN-STAFF"
 });
 
-// 👇 TAMBAHKAN INI UNTUK MENGHILANGKAN ERROR
 export const MODE_SCAN = Object.freeze({
   KELAS: "kelas",
   KONSUL: "konsul",
@@ -145,7 +144,6 @@ export const OPSI_KELAS = Object.freeze([
   "Alumni / Gap Year",
 ]);
 
-// Untuk Tab Jadwal (Admin) & Absen Kelas (Siswa)
 export const OPSI_MAPEL_KELAS = Object.freeze([
   "Matematika", "IPA", "Fisika", "Kimia", "Biologi",
   "IPS", "Ekonomi", "Geografi", "Sosiologi", "Sejarah",
@@ -156,7 +154,6 @@ export const OPSI_MAPEL_KELAS = Object.freeze([
   "Penalaran Matematika (PM)"
 ]);
 
-// Untuk Tab Scanner Mode Konsul (Siswa)
 export const OPSI_MAPEL_KONSUL = Object.freeze([
   "Matematika", "IPA", "Fisika", "Kimia", "Biologi",
   "IPS", "Ekonomi", "Geografi", "Sosiologi", "Sejarah",
@@ -173,12 +170,25 @@ export const OPSI_KETERANGAN_ABSEN = Object.freeze([
   { label: STATUS_SESI.IZIN.label, value: STATUS_SESI.IZIN.id }
 ]);
 
-// ============================================================================
-// 11. DATA LIMITS
-// ============================================================================
 export const LIMIT_DATA = Object.freeze({
   DASHBOARD_HISTORY: 50,
   PAGINATION_DEFAULT: 20,
   PAGNATION_KELAS: 4,
   PAGNATION_KONSUL: 10
+});
+
+// ============================================================================
+// 12. ✨ PENGATURAN GAMIFIKASI (BARU)
+// ============================================================================
+export const GAMIFIKASI = Object.freeze({
+  EXP: {
+    HADIR_KELAS: 50,           // Hadir kelas reguler
+    KONSUL_DASAR: 10,          // Berhasil check-in konsul min 5 menit
+    KONSUL_PER_30_MENIT: 20,   // Tambahan setiap 30 menit konsul aktif
+  },
+  LENCANA: {
+    FIRST_BLOOD: "first_blood",
+    BURUNG_HANTU: "burung_hantu",
+    KONSISTEN_30: "konsisten_30",
+  }
 });

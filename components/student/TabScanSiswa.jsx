@@ -7,7 +7,6 @@ import { memo, useEffect } from "react";
 import Image from "next/image"; 
 import { Scanner } from "@yudiel/react-qr-scanner";
 
-// 👈 Import Konstanta 
 import { MODE_SCAN, OPSI_MAPEL_KONSUL } from "../../utils/constants";
 import { FaBookOpen, FaLightbulb, FaCircleCheck, FaCircleXmark } from "react-icons/fa6";
 
@@ -31,15 +30,13 @@ const HeaderScanner = memo(() => (
 HeaderScanner.displayName = "HeaderScanner";
 
 // ============================================================================
-// 3. SUB-KOMPONEN: PEMILIH MODE & MAPEL (Logic: Mutual Exclusion & Auto-Sync)
+// 3. SUB-KOMPONEN: PEMILIH MODE & MAPEL
 // ============================================================================
 const ModeSelector = memo(({ 
   modeScan, setModeScan, resetScanner, mapelPilihan, 
   setMapelPilihan, adaKonsulAktif, adaKelasAktif 
 }) => {
   
-  // 🚀 FIX: Auto-Sync Mode. Jika komponen ini di-render dan ada sesi aktif dari server,
-  // paksa modeScan untuk mengikuti sesi tersebut (mengatasi amnesia setelah login).
   useEffect(() => {
     if (adaKonsulAktif && modeScan !== MODE_SCAN.KONSUL) {
       setModeScan(MODE_SCAN.KONSUL);
@@ -50,10 +47,8 @@ const ModeSelector = memo(({
 
   return (
     <div className={styles.tabScanContainer}>
-      {/* 🚀 WRAPPER TOMBOL SWITCH: Menghilang salah satu jika ada sesi aktif */}
       <div className={styles.wrapperRow}>
         
-        {/* Tombol KELAS: Hilang jika sedang KONSUL aktif */}
         {(!adaKonsulAktif) && (
           <button 
             onClick={() => { setModeScan(MODE_SCAN.KELAS); resetScanner(); }} 
@@ -64,7 +59,6 @@ const ModeSelector = memo(({
           </button>
         )}
         
-        {/* Tombol KONSUL: Hilang jika sedang KELAS aktif */}
         {(!adaKelasAktif) && (
           <button 
             onClick={() => { setModeScan(MODE_SCAN.KONSUL); resetScanner(); }} 
@@ -76,7 +70,6 @@ const ModeSelector = memo(({
         )}
       </div>
 
-      {/* 🚀 PESAN PERINGATAN: Muncul jika ada sesi yang sedang berjalan (Style Brutalist) */}
       {(adaKelasAktif || adaKonsulAktif) && (
         <div className={styles.scheduleOption}
           style={{
@@ -91,32 +84,18 @@ const ModeSelector = memo(({
         </div>
       )}
 
-      {/* DROPDOWN MAPEL KONSUL */}
-      {modeScan === MODE_SCAN.KONSUL && !adaKelasAktif && (
+      {/* 👇 FIX: Dropdown HANYA di-render jika mode konsul DAN tidak ada sesi aktif sama sekali */}
+      {modeScan === MODE_SCAN.KONSUL && !adaKelasAktif && !adaKonsulAktif && (
         <div className={styles.wrapperRow} style={{ marginTop: '12px' }}>
           <select 
             value={mapelPilihan} 
             onChange={(e) => setMapelPilihan(e.target.value)} 
             className={styles.scheduleOption}
-            disabled={adaKonsulAktif}
-            style={{
-              backgroundColor: adaKonsulAktif ? '#f3f4f6' : '',
-              borderColor: adaKonsulAktif ? '#d1d5db' : '',
-              opacity: adaKonsulAktif ? 0.7 : 1
-            }}
           >
-            {adaKonsulAktif ? (
-              <option value="" style={{ fontWeight: '900', textAlign: 'center', color: '#4b5563' }}>
-                Mapel: {mapelPilihan || "Konsul Aktif"}
-              </option>
-            ) : (
-              <>
-                <option value="">-- Pilih Mapel --</option>
-                {OPSI_MAPEL_KONSUL.map(opsi => (
-                  <option key={opsi} value={opsi}>{opsi}</option>
-                ))}
-              </>
-            )}
+            <option value="">-- Pilih Mapel --</option>
+            {OPSI_MAPEL_KONSUL.map(opsi => (
+              <option key={opsi} value={opsi}>{opsi}</option>
+            ))}
           </select>
         </div>
       )}
@@ -126,12 +105,11 @@ const ModeSelector = memo(({
 ModeSelector.displayName = "ModeSelector";
 
 // ============================================================================
-// 4. SUB-KOMPONEN: AREA KAMERA & HASIL VISUAL (With Shake Effect on Error)
+// 4. SUB-KOMPONEN: AREA KAMERA & HASIL VISUAL
 // ============================================================================
 const CameraArea = memo(({ hasilScan, apakahError, pesanSistem, saatBarcodeTerbaca }) => {
   
   const dapatkanInfoVisual = () => {
-    // 🛡️ Logika Penentuan Error (Termasuk Salah Barcode)
     const indikasiGagal = apakahError || 
                           pesanSistem?.includes("⚠️") || 
                           pesanSistem?.toLowerCase().includes("gagal") || 
@@ -144,7 +122,7 @@ const CameraArea = memo(({ hasilScan, apakahError, pesanSistem, saatBarcodeTerba
         icon: <FaCircleXmark size={60} color="#ef4444" />,
         judul: "Oops!",
         warnaClass: styles.resultTitleError,
-        isError: true // Flag untuk memicu shake
+        isError: true 
       };
     }
     
@@ -178,7 +156,6 @@ const CameraArea = memo(({ hasilScan, apakahError, pesanSistem, saatBarcodeTerba
           <div className={styles.overlayCameraInside}></div>
         </div>
       ) : (
-         /* 🚀 SHAKE EFFECT: styles.resultScreenError akan memicu animasi bergoyang */
          <div className={`${styles.resultScreen} ${infoVisual.isError ? styles.resultScreenError : ""}`}>
           <div className={styles.resultIcon}>
             {infoVisual.icon}

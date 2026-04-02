@@ -16,18 +16,19 @@ import {
   KONFIGURASI_SISTEM,
   STATUS_USER,
   PERIODE_BELAJAR,
-  PESAN_SISTEM 
+  PESAN_SISTEM,
+  GAMIFIKASI
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
-// 1. GEOFENCING LOGIC (Penentu Radius Lokasi)
+// 1. GEOFENCING LOGIC
 // ============================================================================
 function isLokasiValid(lokasi) {
   if (!lokasi?.lat || !lokasi?.lng) return false;
 
   const { LAT, LNG, RADIUS_METER } = PERIODE_BELAJAR.LOKASI_HQ;
-  const R = 6371e3; // Radius bumi dalam meter
+  const R = 6371e3; 
   const φ1 = (lokasi.lat * Math.PI) / 180;
   const φ2 = (LAT * Math.PI) / 180;
   const Δφ = ((LAT - lokasi.lat) * Math.PI) / 180;
@@ -52,7 +53,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    const siswa = await User.findById(userId).lean();
+    const siswa = await User.findById(userId);
     if (!siswa || siswa.status !== STATUS_USER.AKTIF) {
       return responseHelper.error("Akun dinonaktifkan atau tidak ditemukan.");
     }
@@ -71,7 +72,6 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
       status: STATUS_SESI.BERJALAN.id 
     });
 
-    // Validasi Sesi Menggantung (Hari Sebelumnya)
     if (sesiAktif) {
       const tglSesiLama = timeHelper.getTglJakarta(sesiAktif.waktuMulai);
       if (tglSesiLama !== tglHariIni) {
@@ -96,28 +96,53 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tglHariIni }).lean();
         if (jadwal) {
           const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
-          
           if (sekarang > waktuSelesaiJadwal) {
             const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
-            
-            // 🚀 LOGIKA BARU: GRACE PERIOD 15 MENIT
-            // Jika lewat dari batas kelas tapi <= 15 menit, anggap pulang normal (0 Extra).
-            // Jika lebih dari 15 menit, hitung utuh dengan batas maksimal 60 menit.
             if (hitungExtra > 15) {
                menitExtra = Math.min(hitungExtra, KONFIGURASI_SISTEM.MAX_EXTRA_MENIT_KONSUL || 60);
-            } else {
-               menitExtra = 0;
             }
           }
         }
 
         sesiAktif.status = STATUS_SESI.SELESAI.id;
         sesiAktif.waktuSelesai = sekarang;
-        sesiAktif.konsulExtraMenit = Math.max(0, menitExtra);
+        sesiAktif.konsulExtraMenit = menitExtra;
         await sesiAktif.save();
 
+        let expDapat = GAMIFIKASI.EXP.HADIR_KELAS;
+        if (menitExtra >= 30) {
+          expDapat += Math.floor(menitExtra / 30) * GAMIFIKASI.EXP.KONSUL_PER_30_MENIT;
+        } else if (menitExtra >= KONFIGURASI_SISTEM.MIN_DURASI_KONSUL_SAH) {
+          expDapat += GAMIFIKASI.EXP.KONSUL_DASAR;
+        }
+
+        let lencanaBaru = [];
+        const lencanaDimiliki = siswa.koleksiLencana?.map(l => l.idLencana) || [];
+        const jamSelesai = sekarang.getHours();
+
+        if (!lencanaDimiliki.includes(GAMIFIKASI.LENCANA.FIRST_BLOOD)) {
+          lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.FIRST_BLOOD, tanggalDidapat: sekarang });
+        }
+        if (jamSelesai >= 18 && !lencanaDimiliki.includes(GAMIFIKASI.LENCANA.BURUNG_HANTU)) {
+          lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.BURUNG_HANTU, tanggalDidapat: sekarang });
+        }
+
+        siswa.totalExp += expDapat;
+        if (lencanaBaru.length > 0) {
+          siswa.koleksiLencana.push(...lencanaBaru);
+        }
+        
+        // 🎯 CEK MISI: HADIR_KELAS
+        const misiUpdates = updateMisiSiswa(siswa, tglHariIni, { jenis: "HADIR_KELAS" });
+        await siswa.save();
+
+        let pesanAkhir = `Check-out Berhasil! ✨ +${expDapat} EXP`;
+        if (menitExtra > 0) pesanAkhir += ` (Termasuk Ekstra Konsul)`;
+        if (lencanaBaru.length > 0) pesanAkhir += ` 🏅 Mendapat ${lencanaBaru.length} Lencana Baru!`;
+        if (misiUpdates > 0) pesanAkhir += ` 🎯 Ada Misi Harian yang selesai!`;
+
         revalidatePath("/", "layout"); 
-        return responseHelper.success(`Check-out Berhasil! ${menitExtra > 0 ? '(+'+menitExtra+'m Konsul)' : ''}`);
+        return responseHelper.success(pesanAkhir);
       }
 
       if (sesiAktif.jenisSesi === TIPE_SESI.KONSUL) {
@@ -125,14 +150,49 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         if (durasiMenit < minKonsul) {
           await StudySession.findByIdAndDelete(sesiAktif._id);
           revalidatePath("/", "layout");
-          return responseHelper.success("Sesi Konsul dibatalkan (durasi kurang).");
+          return responseHelper.success("Sesi Konsul dibatalkan (durasi kurang dari 5 menit).");
         }
+
         sesiAktif.status = STATUS_SESI.SELESAI.id;
         sesiAktif.waktuSelesai = sekarang;
         await sesiAktif.save();
         
+        let expDapat = GAMIFIKASI.EXP.KONSUL_DASAR;
+        if (durasiMenit >= 30) {
+          expDapat += Math.floor(durasiMenit / 30) * GAMIFIKASI.EXP.KONSUL_PER_30_MENIT;
+        }
+
+        let lencanaBaru = [];
+        const lencanaDimiliki = siswa.koleksiLencana?.map(l => l.idLencana) || [];
+        const jamSelesai = sekarang.getHours();
+
+        if (!lencanaDimiliki.includes(GAMIFIKASI.LENCANA.FIRST_BLOOD)) {
+          lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.FIRST_BLOOD, tanggalDidapat: sekarang });
+        }
+
+        if (jamSelesai >= 18 && !lencanaDimiliki.includes(GAMIFIKASI.LENCANA.BURUNG_HANTU)) {
+          lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.BURUNG_HANTU, tanggalDidapat: sekarang });
+        }
+
+        siswa.totalExp += expDapat;
+        if (lencanaBaru.length > 0) {
+          siswa.koleksiLencana.push(...lencanaBaru);
+        }
+
+        // 🎯 CEK MISI: KONSUL DURASI & MALAM HARI
+        const misiUpdates = updateMisiSiswa(siswa, tglHariIni, { 
+          jenis: "KONSUL", 
+          durasi: durasiMenit, 
+          jam: jamSelesai 
+        });
+        await siswa.save();
+
+        let pesanAkhir = `Sesi Konsul Selesai! ✨ +${expDapat} EXP`;
+        if (lencanaBaru.length > 0) pesanAkhir += ` 🏅 Mendapat ${lencanaBaru.length} Lencana Baru!`;
+        if (misiUpdates > 0) pesanAkhir += ` 🎯 Ada Misi Harian yang selesai!`;
+
         revalidatePath("/", "layout");
-        return responseHelper.success("Sesi Konsul Selesai!");
+        return responseHelper.success(pesanAkhir);
       }
     }
 
@@ -168,8 +228,18 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         waktuMulai: sekarang
       });
 
+      // 🎯 CEK MISI: DATANG AWAL (Absen masuk kelas sebelum jam 15:00)
+      let pesanTambahan = "";
+      if (sekarang.getHours() < 15) {
+        const up = updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" });
+        if (up > 0) {
+          await siswa.save();
+          pesanTambahan = " 🎯 Misi Datang Awal selesai!";
+        }
+      }
+
       revalidatePath("/", "layout");
-      return responseHelper.success(`Check-in Berhasil! ${telat > 0 ? '(Terlambat '+telat+'m)' : 'Tepat Waktu!'}`);
+      return responseHelper.success(`Check-in Berhasil! ${telat > 0 ? '(Terlambat '+telat+'m)' : 'Tepat Waktu!'}${pesanTambahan}`);
     }
 
     if (jenisQR === TIPE_SESI.KONSUL) {
@@ -183,8 +253,18 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         waktuMulai: sekarang
       });
 
+      // 🎯 CEK MISI: DATANG AWAL (Absen mulai konsul sebelum jam 15:00)
+      let pesanTambahan = "";
+      if (sekarang.getHours() < 15) {
+        const up = updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" });
+        if (up > 0) {
+          await siswa.save();
+          pesanTambahan = " 🎯 Misi Datang Awal selesai!";
+        }
+      }
+
       revalidatePath("/", "layout");
-      return responseHelper.success(`Sesi Konsul ${mapelPilihan} dimulai.`);
+      return responseHelper.success(`Sesi Konsul ${mapelPilihan} dimulai.${pesanTambahan}`);
     }
 
   } catch (error) {
@@ -206,7 +286,6 @@ export async function absenPengajarAction(teksQR, lokasi) {
       return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
     }
 
-    // Validasi Barcode Identitas Staf
     if (teksQR !== PREFIX_BARCODE.ADMIN) {
       return responseHelper.error("⚠️ Barcode Staf tidak valid.");
     }
@@ -220,7 +299,6 @@ export async function absenPengajarAction(teksQR, lokasi) {
     });
 
     if (absenHariIni) {
-      // --- LOGIKA PULANG (Clock-Out) ---
       if (absenHariIni.waktuKeluar) {
          return responseHelper.success("✅ Anda sudah melakukan Clock-Out untuk hari ini.");
       }
@@ -230,14 +308,12 @@ export async function absenPengajarAction(teksQR, lokasi) {
       
       await absenHariIni.save();
 
-      // 🔥 REVALIDATE: Reset cache agar TeacherApp & Navigasi tahu status sudah berubah
       revalidatePath("/", "layout");
       revalidatePath(PERAN.PENGAJAR.home);
 
       return responseHelper.success("✅ Clock-Out Berhasil! Terima kasih.");
       
     } else {
-      // --- LOGIKA MASUK (Clock-In) ---
       const dataAbsenBaru = {
         pengajarId: userId,
         waktuMasuk: sekarang
@@ -247,7 +323,6 @@ export async function absenPengajarAction(teksQR, lokasi) {
 
       await AbsensiPengajar.create(dataAbsenBaru);
 
-      // 🔥 REVALIDATE: Reset cache agar TeacherApp & Navigasi tahu status sudah berubah
       revalidatePath("/", "layout");
       revalidatePath(PERAN.PENGAJAR.home);
 
@@ -258,4 +333,44 @@ export async function absenPengajarAction(teksQR, lokasi) {
     console.error("[ERROR Absen Pengajar]:", error);
     return responseHelper.error("Gagal memproses absen.");
   }
+}
+
+// ============================================================================
+// 4. HELPER FUNCTION: DETEKTIF MISI
+// ============================================================================
+function updateMisiSiswa(siswa, tanggalSekarang, aksi) {
+  let adaUpdate = 0;
+  
+  if (!siswa.misiHarian || siswa.misiHarian.tanggal !== tanggalSekarang) {
+    return adaUpdate; // Bukan misi hari ini, abaikan
+  }
+
+  siswa.misiHarian.daftar.forEach(misi => {
+    if (misi.selesai) return; // Sudah selesai, abaikan
+
+    let tercapai = false;
+
+    if (aksi.jenis === "HADIR_KELAS" && misi.kodeMisi === "HADIR_KELAS") {
+      misi.progress = 1;
+      tercapai = true;
+    } 
+    else if (aksi.jenis === "KONSUL" && misi.kodeMisi.startsWith("KONSUL_")) {
+      if (misi.kodeMisi === "KONSUL_30" && aksi.durasi >= 30) tercapai = true;
+      if (misi.kodeMisi === "KONSUL_60" && aksi.durasi >= 60) tercapai = true;
+      if (misi.kodeMisi === "KONSUL_MALAM" && aksi.jam >= 18) tercapai = true;
+
+      if (tercapai) misi.progress = misi.target;
+    }
+    else if (aksi.jenis === "DATANG_AWAL" && misi.kodeMisi === "DATANG_AWAL") {
+      misi.progress = 1;
+      tercapai = true;
+    }
+
+    if (tercapai) {
+      misi.selesai = true;
+      adaUpdate++;
+    }
+  });
+
+  return adaUpdate;
 }

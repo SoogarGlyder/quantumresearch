@@ -8,7 +8,6 @@ import { timeHelper } from "../utils/timeHelper";
 import { 
   STATUS_SESI, 
   TIPE_SESI, 
-  PERIODE_BELAJAR,
   PESAN_SISTEM 
 } from "../utils/constants";
 
@@ -31,7 +30,8 @@ function tentukanGelar(jamTotal) {
 // 2. MAIN ACTION (HIGH PERFORMANCE AGGREGATION)
 // ============================================================================
 
-export async function dapatkanKlasemenBulanIni() {
+// ✨ PERUBAHAN: Menambahkan parameter filterKelas (Default: "Semua Kelas")
+export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
   try {
     await connectToDatabase();
 
@@ -44,8 +44,8 @@ export async function dapatkanKlasemenBulanIni() {
     const kini = new Date();
     const awalBulanDepan = new Date(Date.UTC(kini.getFullYear(), kini.getMonth() + 1, 1, -7, 0, 0, 0));
 
-    // 3. MONGODB AGGREGATION PIPELINE
-    const klasemenMentah = await StudySession.aggregate([
+    // 3. MONGODB AGGREGATION PIPELINE (Dibuat Dinamis)
+    const pipeline = [
       // TAHAP A: Filter sesi bulan ini yang statusnya sudah 'selesai'
       {
         $match: {
@@ -83,11 +83,8 @@ export async function dapatkanKlasemenBulanIni() {
       },
       // TAHAP E: Filter record positif
       { $match: { akumulasiMenit: { $gt: 0 } } },
-      // TAHAP F: Sorting Top Ranking
-      { $sort: { akumulasiMenit: -1 } },
-      // TAHAP G: Ambil Top 10
-      { $limit: 10 },
-      // TAHAP H: Join ke Collection User
+      
+      // TAHAP F: Join ke Collection User (Dipindah ke atas untuk keperluan filter kelas)
       {
         $lookup: {
           from: "users",
@@ -96,16 +93,34 @@ export async function dapatkanKlasemenBulanIni() {
           as: "siswa"
         }
       },
-      { $unwind: "$siswa" },
-      // TAHAP I: Bersihkan data akhir (MENAMBAHKAN KELAS DI SINI 🚀)
+      { $unwind: "$siswa" }
+    ];
+
+    // ✨ LOGIKA FILTER KELAS:
+    // Jika dropdown tidak bernilai "Semua Kelas", maka saring berdasarkan kelas siswa
+    if (filterKelas && filterKelas !== "Semua Kelas") {
+      pipeline.push({
+        $match: { "siswa.kelas": filterKelas }
+      });
+    }
+
+    // LANJUTAN PIPELINE (Sorting, Limit, dan Project Akhir)
+    pipeline.push(
+      // TAHAP G: Sorting Top Ranking
+      { $sort: { akumulasiMenit: -1 } },
+      // TAHAP H: Ambil Top 10
+      { $limit: 10 },
+      // TAHAP I: Bersihkan data akhir 
       {
         $project: {
           nama: "$siswa.nama",
-          kelas: "$siswa.kelas", // 👈 Sekarang kelas ikut dikirim ke frontend
+          kelas: "$siswa.kelas", 
           akumulasiMenit: 1
         }
       }
-    ]);
+    );
+
+    const klasemenMentah = await StudySession.aggregate(pipeline);
 
     // 4. Final Mapping untuk UI
     const dataFinal = klasemenMentah.map((item, index) => {
@@ -116,8 +131,8 @@ export async function dapatkanKlasemenBulanIni() {
       return {
         peringkat: index + 1,
         idSiswa: item._id,
-        nama: item.nama || "Siswa Quantum", // 👈 Nama lengkap tanpa sensor
-        kelas: item.kelas || "N/A",        // 👈 Kelas asli muncul
+        nama: item.nama || "Siswa Quantum", 
+        kelas: item.kelas || "N/A",        
         jam,
         menit,
         totalMenit: total,

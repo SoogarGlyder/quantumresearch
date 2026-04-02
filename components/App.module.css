@@ -97,7 +97,7 @@
 .logoContainer { margin-bottom: 24px; position: relative; z-index: 10; }
 .logo { background-color: white; padding: 8px 20px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
 
-.identityContainer { display: inline-grid; align-items: flex-end; position: relative; z-index: 10; }
+.identityContainer { width: -webkit-fill-available; display: inline-grid; align-items: flex-end; position: relative; z-index: 10; }
 .welcomeText { font-size: 14px; color: whitesmoke; margin-left: 2px; font-weight: 800; text-transform: uppercase; }
 .userName { font-size: 34px; font-weight: 900; margin: 0; color: white; -webkit-text-stroke: 1px #111827; text-shadow: 3px 3px 0 #111827; }
 
@@ -201,7 +201,7 @@
 .logoScannerWrapper { margin-bottom: 12px; }
 .logoScannerPudar { object-fit: contain; }
 
-.tabScanContainer { display: grid; gap: 10px; background-color: #e5e7eb; padding: 6px; border-radius: 16px; margin: 0 16px 24px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
+.tabScanContainer { display: grid; background-color: #e5e7eb; padding: 6px; border-radius: 16px; margin: 0 16px 24px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
 .tabScanButton { flex: 1; padding: 12px; font-size: 14px; font-weight: 900; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 3px solid transparent; background: transparent; color: #4b5563; cursor: pointer; text-transform: uppercase; }
 .tabScanButtonActive { background-color: white; color: #111827; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; }
 
