@@ -99,7 +99,6 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
           if (sekarang > waktuSelesaiJadwal) {
             const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
             if (hitungExtra > 15) {
-               // 🚀 FIX: Dibuat benar-benar UNLIMITED (tanpa Math.min dan batas 60)
                menitExtra = hitungExtra;
             }
           }
@@ -224,6 +223,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         siswaId: userId,
         jenisSesi: TIPE_SESI.KELAS,
         namaMapel: jadwal.mapel,
+        jadwalId: jadwal._id, // 🚀 FIX: JADWAL ID SEKARANG IKUT TERSIMPAN!
         terlambatMenit: telat,
         status: STATUS_SESI.BERJALAN.id,
         waktuMulai: sekarang

@@ -9,14 +9,11 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
-// 🚀 TAMBAHAN IMPORT: Memanggil fungsi export Excel
 import { unduhExcel } from "../../utils/exportExcel"; 
-
 import { inputAbsenManual } from "../../actions/adminAction";
 import { kalkulasiAbsensiLengkap } from "../../utils/kalkulatorData";
 import { formatTanggal, formatJam, formatYYYYMMDD, potongDataPagination, ekstrakKeteranganAbsen } from "../../utils/formatHelper";
 
-// 🚀 Tambahkan STATUS_USER ke dalam import constants
 import { STATUS_SESI, OPSI_KELAS, OPSI_MAPEL_KELAS, OPSI_KETERANGAN_ABSEN, LIMIT_DATA, STATUS_USER } from "../../utils/constants";
 
 import { FaFileExcel, FaTriangleExclamation, FaClock, FaFilter } from "react-icons/fa6";
@@ -27,47 +24,39 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa = [], muatData }) {
   
-  // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  // Ambil halaman aktif langsung dari URL (Default ke 1)
   const page = Number(searchParams.get("page")) || 1;
 
-  // --- STATE: FILTER ---
   const [filterTglKelas, setFilterTglKelas] = useState("");
   const [filterKelasAbsen, setFilterKelasAbsen] = useState("");
   const [filterMapelKelas, setFilterMapelKelas] = useState("");
   
-  // 🛡️ ZERO HARDCODE: Ambil limit dari konstanta
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // --- STATE: INLINE EDITING (Edit Langsung di Tabel) ---
   const [editingAbsenId, setEditingAbsenId] = useState(null);
   const [inlineKet, setInlineKet] = useState("");
   const [inlineCatatan, setInlineCatatan] = useState("");
   const [loadingInline, setLoadingInline] = useState(false);
 
-  // SINKRONISASI FILTER: Jika kriteria pencarian berubah, reset URL page ke 1
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterTglKelas, filterKelasAbsen, filterMapelKelas]);
 
-  // --- HANDLERS ---
   const mulaiEditAbsen = (sesi) => {
     setEditingAbsenId(sesi._id); 
     
-    // 🛡️ PERBAIKAN BUG: Pisahkan Keterangan dan Catatan dengan aman
     const catatanExtracted = ekstrakKeteranganAbsen(sesi.status);
-    const ketExtracted = sesi.status ? sesi.status.split('(')[0].trim() : STATUS_SESI.ALPA.id;
+    // 🚀 FIX: Pastikan toLowerCase agar cocok dengan dropdown value
+    const ketExtracted = sesi.status ? sesi.status.split('(')[0].trim().toLowerCase() : STATUS_SESI.ALPA.id;
     
-    setInlineKet(ketExtracted || OPSI_KETERANGAN_ABSEN[0]?.value || STATUS_SESI.ALPA.id); 
+    setInlineKet(ketExtracted); 
     setInlineCatatan(catatanExtracted || "");
   };
 
@@ -103,13 +92,11 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     if(!loadingInline) setEditingAbsenId(null);
   };
 
-  // --- LOGIKA FILTER ---
   const riwayatKelasMurni = useMemo(() => {
     return kalkulasiAbsensiLengkap(dataRiwayat, dataJadwal, dataSiswa);
   }, [dataRiwayat, dataJadwal, dataSiswa]);
   
   const riwayatKelasDifilter = useMemo(() => {
-    // 🚀 FILTER UTAMA: Singkirkan siswa yang berstatus NONAKTIF
     let riwayat = riwayatKelasMurni.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
     
     if (filterTglKelas) riwayat = riwayat.filter(s => formatYYYYMMDD(s.waktuMulai) === filterTglKelas);
@@ -121,13 +108,9 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   
   const { totalPage, dataTerpotong: dataKelasHalIni } = potongDataPagination(riwayatKelasDifilter, page, ITEMS_PER_PAGE);
 
-  // ============================================================================
-  // 3. RENDER UI
-  // ============================================================================
   return (
     <div className={`${styles.isiTab} ${styles.SembunyiPrint} ${styles.wadahMonitoring}`}>
       
-      {/* HEADER & TOMBOL EXCEL */}
       <div className={styles.headerTabWrapper}>
         <h2 className={styles.judulIsiTab} style={{margin: 0}}>Data Kehadiran Kelas</h2>
         <button onClick={() => unduhExcel(riwayatKelasDifilter, "kelas")} className={styles.btnExcel}>
@@ -135,7 +118,6 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
         </button>
       </div>
       
-      {/* FILTER BAR */}
       <div className={styles.filterBar}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <FaFilter color="#111827" size={18} style={{marginRight: '8px'}} />
@@ -159,7 +141,6 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
         </button>
       </div>
 
-      {/* TABEL DATA */}
       <div className={styles.wadahTabel}>
         <table className={styles.tabelStyle}>
           <thead>
@@ -180,7 +161,6 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
               dataKelasHalIni.map(sesi => {
                 const isEditing = editingAbsenId === sesi._id;
                 
-                // 🛡️ ZERO HARDCODE: Cek Status
                 const isTidakHadir = 
                   sesi.status?.includes(STATUS_SESI.TIDAK_HADIR.id) || 
                   sesi.status?.includes(STATUS_SESI.ALPA.id) || 
@@ -225,8 +205,9 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
                     <td style={{textAlign: 'center'}}>
                       {isEditing ? (
                         <div className={styles.wadahAksiInline}>
-                          {/* 🛡️ PERBAIKAN BUG: Map object {label, value} dengan benar */}
+                          {/* 🚀 FIX: Menambahkan opsi Hadir (Selesai) agar Admin bisa memperbaiki Alpa */}
                           <select value={inlineKet} onChange={e => setInlineKet(e.target.value)} className={styles.inlineSelect}>
+                            <option value={STATUS_SESI.SELESAI.id}>✅ Hadir (Selesai)</option>
                             {OPSI_KETERANGAN_ABSEN.map(opsi => (
                               <option key={opsi.value} value={opsi.value}>{opsi.label}</option>
                             ))}
@@ -260,11 +241,8 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
                           <button disabled={loadingInline} onClick={batalEditAbsen} className={styles.btnBatalInline} title="Batalkan">✖</button>
                         </div>
                       ) : (
-                        (isTidakHadir || sesi.isVirtual) ? (
-                          <button onClick={() => mulaiEditAbsen(sesi)} className={styles.btnEditKet}>✏️ Edit</button>
-                        ) : (
-                          <span className={styles.teksPudar}>-</span>
-                        )
+                        // 🚀 FIX: Tombol Edit sekarang DIBUKA untuk SEMUA SISWA, agar bisa diperbaiki
+                        <button onClick={() => mulaiEditAbsen(sesi)} className={styles.btnEditKet}>✏️ Edit</button>
                       )}
                     </td>
 
@@ -276,7 +254,6 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
         </table>
       </div>
       
-      {/* 🚀 PAGINATION BAR DENGAN JARAK */}
       <div style={{ marginTop: '24px' }}>
         <PaginationBar totalPages={totalPage} />
       </div>
