@@ -6,11 +6,10 @@ import { TIPE_SESI, STATUS_SESI, PERIODE_BELAJAR } from "./constants";
 
 function dapatkanTanggalJakartaStr(tanggalObj) {
   if (!tanggalObj) return "";
-  // Bypass jika format sudah YYYY-MM-DD
   if (typeof tanggalObj === 'string' && tanggalObj.length === 10) return tanggalObj;
   
   const d = new Date(tanggalObj);
-  return isNaN(d) ? "" : d.toLocaleDateString('en-CA', { timeZone: PERIODE_BELAJAR.TIMEZONE });
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString('en-CA', { timeZone: PERIODE_BELAJAR.TIMEZONE });
 }
 
 function cekApakahJadwalLewat(tanggalJadwal, jamSelesai) {
@@ -21,40 +20,40 @@ function cekApakahJadwalLewat(tanggalJadwal, jamSelesai) {
   if (tglJadwalStr < tglSekarangStr) return true;
   
   if (tglJadwalStr === tglSekarangStr) {
-    const [jamS, menitS] = jamSelesai.split(":").map(Number);
-    const waktuBatasSelesai = new Date();
-    waktuBatasSelesai.setHours(jamS, menitS, 0, 0);
-    
+    // 🚀 FIX: Gunakan offset agar pembanding "sekarang" akurat 
+    const waktuBatasSelesai = new Date(`${tglJadwalStr}T${jamSelesai}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
     return sekarang > waktuBatasSelesai;
   }
   return false;
 }
 
 // ============================================================================
-// 2. FUNGSI UTAMA (SUPER LOGIC DUAL-MATCHING)
+// 2. FUNGSI UTAMA
 // ============================================================================
 
 export function kalkulasiAbsensiLengkap(dataRiwayat = [], dataJadwal = [], dataSiswa = []) {
-  // Jangan manipulasi data asli, gunakan spread operator
   const gabunganRiwayat = [...dataRiwayat.filter(sesi => sesi.jenisSesi === TIPE_SESI.KELAS)];
 
-  // 🚀 PENYELAMAT BUG: Kita gunakan 2 Peta Pencarian
   const mapJadwalId = new Set();
   const mapFallback = new Set();
 
   gabunganRiwayat.forEach(r => {
     const idSiswa = r.siswaId?._id ? r.siswaId._id.toString() : String(r.siswaId);
-    
-    // Peta 1: Jodohkan pakai ID Jadwal (Tingkat Akurasi 100%)
     if (r.jadwalId) {
       mapJadwalId.add(`${idSiswa}|${r.jadwalId.toString()}`);
     }
-    
-    // Peta 2: Jodohkan pakai Tanggal + Mapel (Untuk fallback data lama)
     const tgl = dapatkanTanggalJakartaStr(r.waktuMulai);
     const mapelLower = r.namaMapel ? r.namaMapel.toLowerCase().trim() : "";
     mapFallback.add(`${idSiswa}|${mapelLower}|${tgl}`);
   });
+
+  // 🚀 OPTIMASI PERFORMA: Kelompokkan siswa berdasarkan kelas terlebih dahulu (O(N))
+  // Agar tidak perlu .filter() di dalam loop jadwal (mencegah lag di browser)
+  const siswaPerKelas = dataSiswa.reduce((acc, s) => {
+    if (!acc[s.kelas]) acc[s.kelas] = [];
+    acc[s.kelas].push(s);
+    return acc;
+  }, {});
 
   dataJadwal.forEach(jadwal => {
     if (!cekApakahJadwalLewat(jadwal.tanggal, jadwal.jamSelesai)) return;
@@ -63,16 +62,15 @@ export function kalkulasiAbsensiLengkap(dataRiwayat = [], dataJadwal = [], dataS
     const mapelLower = jadwal.mapel ? jadwal.mapel.toLowerCase().trim() : "";
     const idJadwalStr = jadwal._id.toString();
 
-    const siswaTarget = dataSiswa.filter(s => s.kelas === jadwal.kelasTarget);
+    // Ambil list siswa dari grup kelas yang sudah dibuat di atas
+    const siswaTarget = siswaPerKelas[jadwal.kelasTarget] || [];
 
     siswaTarget.forEach(siswa => {
       const idSiswaStr = siswa._id.toString();
       
-      // CEK JODOH PRIORITAS 1 & 2
       const jodohByJadwal = mapJadwalId.has(`${idSiswaStr}|${idJadwalStr}`);
       const jodohByFallback = mapFallback.has(`${idSiswaStr}|${mapelLower}|${tglJadwalStr}`);
       
-      // Jika TIDAK ADA di kedua pencarian, baru buatkan ALPA
       if (!jodohByJadwal && !jodohByFallback) {
         gabunganRiwayat.push({
           _id: `virtual_${jadwal._id}_${idSiswaStr}`,
@@ -81,7 +79,8 @@ export function kalkulasiAbsensiLengkap(dataRiwayat = [], dataJadwal = [], dataS
           namaMapel: jadwal.mapel,
           siswaId: siswa,
           jadwalId: jadwal._id,
-          waktuMulai: new Date(`${jadwal.tanggal}T${jadwal.jamMulai}:00`),
+          // 🚀 FIX: Tambahkan ISO_OFFSET agar jam tidak bergeser di server Vercel
+          waktuMulai: new Date(`${jadwal.tanggal}T${jadwal.jamMulai}:00${PERIODE_BELAJAR.ISO_OFFSET}`),
           status: STATUS_SESI.ALPA.id, 
           terlambatMenit: 0,
           konsulExtraMenit: 0,
@@ -103,7 +102,6 @@ export function pilahJadwalSiswa(jadwal = [], riwayat = [], periodeMulai, period
 
   riwayat.forEach(r => {
     if (r.jenisSesi === TIPE_SESI.KELAS) {
-      // Sama, kita buat 2 jenis pencocokan untuk UI Siswa
       if (r.jadwalId) {
         mapRiwayatByJadwal.set(r.jadwalId.toString(), r);
       }
@@ -120,7 +118,6 @@ export function pilahJadwalSiswa(jadwal = [], riwayat = [], periodeMulai, period
     const tglJadwalStr = dapatkanTanggalJakartaStr(j.tanggal);
     const mapelLower = j.mapel ? j.mapel.toLowerCase().trim() : "";
     
-    // Cari pakai jadwalId dulu, kalau nggak ada baru coba pakai string mapel
     let sesiTerkait = mapRiwayatByJadwal.get(j._id.toString());
     if (!sesiTerkait) {
       sesiTerkait = mapRiwayatByFallback.get(`${mapelLower}|${tglJadwalStr}`) || null;
