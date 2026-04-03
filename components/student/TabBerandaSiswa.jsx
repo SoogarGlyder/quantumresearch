@@ -8,13 +8,21 @@ import Image from "next/image";
 import { useRouter } from "next/navigation"; 
 
 import { pilahJadwalSiswa } from "../../utils/kalkulatorData";
-// 👇 FIX: Menambahkan import GAMIFIKASI
-import { PERIODE_BELAJAR, TIPE_SESI, STATUS_SESI, EVENT_PENTING, GAMIFIKASI } from "../../utils/constants";
+import { 
+  PERIODE_BELAJAR, 
+  TIPE_SESI, 
+  STATUS_SESI, 
+  EVENT_PENTING, 
+  GAMIFIKASI 
+} from "../../utils/constants";
 import { dapatkanKlasemenBulanIni } from "../../actions/klasemenAction";
 import { cekDanGenerateMisiHarian, klaimHadiahMisi } from "../../actions/misiAction"; 
 import { formatYYYYMMDD, formatBulanTahun } from "../../utils/formatHelper";
 
-import { FaCalendarDays, FaBullseye, FaStar, FaFire, FaCircleCheck, FaTrophy, FaCrown, FaMedal, FaUserTie, FaListCheck, FaGift } from "react-icons/fa6";
+import { 
+  FaCalendarDays, FaBullseye, FaStar, FaFire, FaCircleCheck, 
+  FaTrophy, FaCrown, FaMedal, FaUserTie, FaListCheck, FaGift 
+} from "react-icons/fa6";
 import styles from "../App.module.css";
 
 // ============================================================================
@@ -29,7 +37,6 @@ const HeaderSiswa = memo(({ siswa, statsBulanIni, streakKonsul, onBukaKlasemen }
   const expSisaUntukNaik = expSaatIni % expPerLevel;
   const persenLevel = Math.round((expSisaUntukNaik / expPerLevel) * 100);
 
-  // 🚀 FIX: Kamus Lencana manual dihapus, langsung ambil dari GAMIFIKASI.KAMUS_LENCANA
   const lencanaSiswa = siswa.koleksiLencana || [];
 
   return (
@@ -68,7 +75,7 @@ const HeaderSiswa = memo(({ siswa, statsBulanIni, streakKonsul, onBukaKlasemen }
           {lencanaSiswa.length > 0 && (
             <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {lencanaSiswa.map((lencana, index) => {
-                const info = GAMIFIKASI.KAMUS_LENCANA[lencana.idLencana]; // 👈 Ambil dari Constants
+                const info = GAMIFIKASI.KAMUS_LENCANA[lencana.idLencana];
                 if (!info) return null; 
                 return (
                   <div key={index} style={{ 
@@ -304,7 +311,7 @@ const JadwalHariIni = memo(({ jadwalAktif, setTab, setModeScan, resetScanner }) 
 JadwalHariIni.displayName = "JadwalHariIni";
 
 // ============================================================================
-// 6. SUB-KOMPONEN: MODAL KLASEMEN (TAB SWITCHER UI)
+// 6. SUB-KOMPONEN: MODAL KLASEMEN 
 // ============================================================================
 function ModalKlasemen({ onClose, kelasSiswa }) {
   const [dataKlasemen, setDataKlasemen] = useState([]);
@@ -439,8 +446,12 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
     return pilahJadwalSiswa(jadwal, riwayat, PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR);
   }, [jadwal, riwayat]);
 
+  // 🚀 LOGIKA STREAK DENGAN TOLERANSI LIBUR (MANUSIAWI)
   const streakKonsul = useMemo(() => {
     if (!riwayat || riwayat.length === 0) return 0;
+    
+    // Ambil daftar libur dari constants
+    const daftarLibur = EVENT_PENTING.TANGGAL_LIBUR || [];
     
     const tanggalUnikKonsul = new Set(
       riwayat.filter(r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.SELESAI.id && r.waktuMulai)
@@ -451,25 +462,45 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
     let tanggalCek = new Date(hariIni);
     let totalStreak = 0;
 
-    const tglHariIniStr = formatYYYYMMDD(hariIni);
-    if (!tanggalUnikKonsul.has(tglHariIniStr)) {
-      tanggalCek.setDate(tanggalCek.getDate() - 1);
-      if (tanggalCek.getDay() === 0 && !tanggalUnikKonsul.has(formatYYYYMMDD(tanggalCek))) {
-        tanggalCek.setDate(tanggalCek.getDate() - 1);
-      }
-      if (!tanggalUnikKonsul.has(formatYYYYMMDD(tanggalCek))) return 0; 
-    }
-    
+    // --- TAHAP 1: CEK STATUS AKTIF ---
+    // Jika hari ini libur/minggu dan tak konsul, kita mundur ke hari kerja terakhir.
     while (true) {
       const tglStr = formatYYYYMMDD(tanggalCek);
       const isMinggu = tanggalCek.getDay() === 0;
+      const isLibur = daftarLibur.includes(tglStr);
+
+      if (tanggalUnikKonsul.has(tglStr)) break; // Sudah konsul hari ini
+
+      if (isMinggu || isLibur) {
+        tanggalCek.setDate(tanggalCek.getDate() - 1);
+        continue;
+      }
+
+      // Jika hari kerja tapi tak konsul, cek kemarin
+      tanggalCek.setDate(tanggalCek.getDate() - 1);
+      const tglKemarinStr = formatYYYYMMDD(tanggalCek);
+      
+      // Jika kemarin juga tak konsul (dan bukan hari libur), streak putus
+      if (!tanggalUnikKonsul.has(tglKemarinStr) && tanggalCek.getDay() !== 0 && !daftarLibur.includes(tglKemarinStr)) {
+        return 0;
+      }
+      break;
+    }
+    
+    // --- TAHAP 2: PENGHITUNGAN MUNDUR ---
+    while (true) {
+      const tglStr = formatYYYYMMDD(tanggalCek);
+      const isMinggu = tanggalCek.getDay() === 0;
+      const isLibur = daftarLibur.includes(tglStr);
 
       if (tanggalUnikKonsul.has(tglStr)) {
         totalStreak++;
         tanggalCek.setDate(tanggalCek.getDate() - 1);
-      } else if (isMinggu) {
+      } else if (isMinggu || isLibur) {
+        // Lewati hari libur tanpa putus rantai
         tanggalCek.setDate(tanggalCek.getDate() - 1);
       } else {
+        // Bertemu hari kerja tanpa konsul = selesai loop
         break; 
       }
     }
@@ -514,7 +545,6 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
       ? Object.keys(mapelCount).reduce((a, b) => mapelCount[a] > mapelCount[b] ? a : b) 
       : "-";
 
-    // 🚀 FIX: Penentuan gelar juga otomatis membaca array GAMIFIKASI dari constants
     const gelarMatch = GAMIFIKASI.GELAR_KLASEMEN.find(g => jamKonsul >= g.minJam);
     const gelar = gelarMatch ? gelarMatch.gelar : "🐢 Masih Pemanasan";
     

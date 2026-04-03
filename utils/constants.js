@@ -17,6 +17,26 @@ export const PERIODE_BELAJAR = Object.freeze({
 
 export const EVENT_PENTING = Object.freeze({
   TANGGAL_UTBK: "2026-04-21T00:00:00+07:00",
+  TANGGAL_LIBUR: [
+    // --- 2025 ---
+    "2025-08-17", // Hari Kemerdekaan RI
+    "2025-09-05", // Maulid Nabi Muhammad SAW
+    "2025-12-25", // Hari Raya Natal
+
+    // --- 2026 ---
+    "2026-01-01", // Tahun Baru 2026 Masehi
+    "2026-01-27", // Isra Mi'raj Nabi Muhammad SAW
+    "2026-02-17", // Tahun Baru Imlek 2577 Kongzili
+    "2026-03-20", // Hari Suci Nyepi (Tahun Baru Saka 1948)
+    "2026-03-31", // Hari Raya Idul Fitri 1447 H (Hari 1)
+    "2026-04-01", // Hari Raya Idul Fitri 1447 H (Hari 2)
+    "2026-04-03", // Wafat Yesus Kristus (Jumat Agung)
+    "2026-05-01", // Hari Buruh Internasional
+    "2026-05-14", // Kenaikan Yesus Kristus
+    "2026-05-22", // Hari Raya Waisak 2570 BE
+    "2026-06-01", // Hari Lahir Pancasila
+    "2026-06-27", // Hari Raya Idul Adha 1447 H
+  ]
 });
 
 // ============================================================================
