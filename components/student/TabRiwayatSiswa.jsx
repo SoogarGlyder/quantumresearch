@@ -12,7 +12,8 @@ import { potongDataPagination } from "../../utils/formatHelper";
 import { TIPE_SESI, STATUS_SESI, PERIODE_BELAJAR, LIMIT_DATA } from "../../utils/constants";
 import { hitungDurasiMenit, formatJam } from "../../utils/formatHelper";
 
-import { FaFilter, FaBoxOpen, FaChevronDown, FaChevronUp } from "react-icons/fa6";
+// 🚀 FIX: Menambahkan FaSkullCrossbones untuk icon Pinalti
+import { FaFilter, FaBoxOpen, FaChevronDown, FaChevronUp, FaSkullCrossbones } from "react-icons/fa6";
 import styles from "../App.module.css";
 
 // ============================================================================
@@ -56,7 +57,10 @@ FilterRiwayat.displayName = "FilterRiwayat";
 // 4. SUB-KOMPONEN: RECORD CARD (Item Tunggal - Pure & Memoized)
 // ============================================================================
 const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
+  // 🚀 LOGIKA STATUS UNTUK SISWA
   const isSelesai = sesi.status === STATUS_SESI.SELESAI.id;
+  const isPinalti = sesi.status === STATUS_SESI.PINALTI?.id;
+  const isBerjalan = sesi.status === STATUS_SESI.BERJALAN.id;
 
   const formatTanggalTanpaTahun = (tanggalStr) => {
     if (!tanggalStr) return "-";
@@ -72,12 +76,21 @@ const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
     <div className={`${styles.recordCard} ${styles.recordCardClickable}`} onClick={() => onToggle(sesi._id)}>
       <div className={styles.recordCardRow}>
         <p className={styles.recordDate}>{formatTanggalTanpaTahun(sesi.waktuMulai)}</p>
-        <span 
-          className={styles.recordDuration} 
-          style={{ backgroundColor: isSelesai ? '#4ade80' : '#facc15', display: isSelesai ? 'none' : 'flex', border: '2px solid #111827', color: '#111827' }}
-        >
-          {sesi.status.charAt(0).toUpperCase() + sesi.status.slice(1)}
-        </span>
+        
+        {/* 🚀 BADGE STATUS BRUTALISM */}
+        {isPinalti ? (
+          <span className={styles.recordDuration} style={{ backgroundColor: '#111827', color: '#ef4444', border: '2px solid #ef4444', display: 'flex', gap: '4px', alignItems: 'center' }}>
+            <FaSkullCrossbones /> PINALTI
+          </span>
+        ) : (
+          <span 
+            className={styles.recordDuration} 
+            style={{ backgroundColor: isSelesai ? '#4ade80' : '#facc15', display: isSelesai ? 'none' : 'flex', border: '2px solid #111827', color: '#111827' }}
+          >
+            {isBerjalan ? "Sedang Berjalan" : sesi.status.charAt(0).toUpperCase() + sesi.status.slice(1)}
+          </span>
+        )}
+
         {isSelesai && <span className={styles.recordDuration}>{hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)} menit</span>}
       </div>
 
@@ -94,10 +107,19 @@ const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
               <span>Mulai</span>
               <span>{formatJam(sesi.waktuMulai)} WIB</span>
             </div>
-            <div className={styles.recordDetailRow} style={{ backgroundColor: isSelesai ? '#dcfce3' : '#fef08a' }}>
+            
+            {/* 🚀 WARNA BERBEDA JIKA PINALTI */}
+            <div className={styles.recordDetailRow} style={{ backgroundColor: isSelesai ? '#dcfce3' : isPinalti ? '#fecaca' : '#fef08a' }}>
               <span>Selesai</span>
-              <span>{isSelesai ? `${formatJam(sesi.waktuSelesai)} WIB` : 'Sedang Berjalan...'}</span>
+              <span>{isSelesai || isPinalti ? `${formatJam(sesi.waktuSelesai)} WIB` : 'Sedang Berjalan...'}</span>
             </div>
+            
+            {/* 🚀 PESAN HUKUMAN PINALTI */}
+            {isPinalti && (
+              <div style={{ backgroundColor: '#111827', color: 'white', padding: '8px', fontSize: '11px', textAlign: 'center', borderBottomLeftRadius: '6px', borderBottomRightRadius: '6px', fontWeight: 'bold' }}>
+                Sesi dihentikan karena kamu lupa Scan Out! (0 Menit)
+              </div>
+            )}
         </div>
       )}
     </div>
@@ -121,9 +143,9 @@ export default function TabRiwayat({ riwayat = [] }) {
   const [filterMapel, setFilterMapel] = useState("");
   const [idTerbuka, setIdTerbuka] = useState(null);
 
-  // 🚀 SINKRONISASI FILTER
+  // 🚀 SINKRONISASI FILTER (SUDAH FIX BUG PAGINATION)
   useEffect(() => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -144,28 +166,24 @@ export default function TabRiwayat({ riwayat = [] }) {
 
   // --- PEMILAHAN DATA: PENCIPTAAN "ILUSI" EXTRA KONSUL ---
   const riwayatKonsul = useMemo(() => {
-    // 1. Ambil Konsul Murni
     const konsulMurni = riwayat.filter(r => r.jenisSesi === TIPE_SESI.KONSUL);
 
-    // 2. Ciptakan Konsul Ilusi dari Kelas yang punya Extra Konsul
     const konsulExtra = riwayat
       .filter(r => r.jenisSesi === TIPE_SESI.KELAS && r.konsulExtraMenit > 0 && r.waktuSelesai)
       .map(r => {
-        // Hitung mundur waktuMulai = waktuSelesai - konsulExtraMenit
         const waktuSelesaiObj = new Date(r.waktuSelesai);
         const waktuMulaiObj = new Date(waktuSelesaiObj.getTime() - r.konsulExtraMenit * 60000);
 
         return {
           ...r,
-          _id: `${r._id}_extra`, // ID dibedakan agar React tidak bentrok
-          jenisSesi: TIPE_SESI.KONSUL, // Disamarkan jadi Konsul
-          namaMapel: `${r.namaMapel || "Umum"} (Extra)`, // Mapel ditandai khusus
+          _id: `${r._id}_extra`, 
+          jenisSesi: TIPE_SESI.KONSUL, 
+          namaMapel: `${r.namaMapel || "Umum"} (Extra)`, 
           waktuMulai: waktuMulaiObj.toISOString(),
           waktuSelesai: r.waktuSelesai
         };
       });
 
-    // 3. Gabungkan Keduanya lalu Urutkan berdasarkan Waktu Terbaru
     const gabungan = [...konsulMurni, ...konsulExtra];
     gabungan.sort((a, b) => new Date(b.waktuMulai) - new Date(a.waktuMulai));
 

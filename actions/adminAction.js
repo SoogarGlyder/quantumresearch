@@ -39,7 +39,6 @@ export async function ambilDataDashboard() {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 PAGAR WAKTU 1 TAHUN
     const mulai = new Date(`${PERIODE_BELAJAR.MULAI}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`);
     const akhir = new Date(`${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`);
 
@@ -47,15 +46,13 @@ export async function ambilDataDashboard() {
       StudySession.find({
         waktuMulai: { $gte: mulai, $lte: akhir }
       })
-        // 🚀 DIET DATA: Hanya tarik field yang dipakai oleh UI TabKelas & TabKonsul (Hemat 60% Bandwidth Vercel)
         .select("_id siswaId jenisSesi namaMapel waktuMulai waktuSelesai status terlambatMenit konsulExtraMenit jadwalId tanggalAsli")
         .populate("siswaId", "nama username nomorPeserta kelas status") 
         .sort({ waktuMulai: -1 })
         .lean(),
         
       User.find({ peran: PERAN.SISWA.id })
-        // 🚀 DIET DATA: Hindari menarik password atau data rahasia/berat lainnya
-        .select("_id nama username nomorPeserta kelas status createdAt")
+        .select("_id nama username nomorPeserta noHp kelas status createdAt")
         .sort({ nama: 1 })
         .lean()
     ]);
@@ -78,14 +75,12 @@ export async function ambilAbsensiPengajar() {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 PAGAR WAKTU 1 TAHUN (Sama seperti siswa)
     const mulai = new Date(`${PERIODE_BELAJAR.MULAI}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`);
     const akhir = new Date(`${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`);
 
     const data = await AbsensiPengajar.find({
       waktuMasuk: { $gte: mulai, $lte: akhir }
     })
-      // 🚀 DIET DATA: Ambil field yang perlu saja untuk tabel
       .select("_id pengajarId waktuMasuk waktuKeluar status")
       .populate("pengajarId", "nama kodePengajar") 
       .sort({ waktuMasuk: -1 })
@@ -105,7 +100,6 @@ export async function ambilSemuaJadwal() {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 PAGAR WAKTU 1 TAHUN
     const jadwal = await Jadwal.find({
       tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR }
     })
@@ -287,7 +281,6 @@ export async function ambilDetailJurnal(idJadwal) {
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
-    // Ambil siswa aktif di kelas tersebut DAN sesi hari itu
     const [siswaKelas, sesiHariIni] = await Promise.all([
       User.find({ 
         peran: PERAN.SISWA.id, 
@@ -305,7 +298,6 @@ export async function ambilDetailJurnal(idJadwal) {
     ]);
 
     const dataSiswaJurnal = siswaKelas.map(siswa => {
-      // Cari apakah siswa ini punya sesi untuk mapel & hari ini
       const sesi = sesiHariIni.find(s => s.siswaId.toString() === siswa._id.toString());
       
       return {
@@ -336,7 +328,6 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 1. Simpan detail materi ke dokumen Jadwal
     const updateJadwal = Jadwal.findByIdAndUpdate(idJadwal, {
       bab: dataJurnal.bab,
       subBab: dataJurnal.subBab,
@@ -344,11 +335,10 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
       fotoBersama: dataJurnal.fotoBersama
     });
 
-    // 2. Simpan Extra Konsul & Nilai ke masing-masing dokumen Sesi Siswa
     let updateSesi = Promise.resolve();
     if (arraySiswa?.length > 0) {
       const ops = arraySiswa
-        .filter(item => item.sesiId) // Hanya proses yang sudah absen/punya sesi
+        .filter(item => item.sesiId) 
         .map(item => ({
           updateOne: {
             filter: { _id: item.sesiId },
@@ -369,5 +359,38 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
     return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
   } catch (error) {
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN, error);
+  }
+}
+
+// 🚀 FITUR BARU: PAKSA HENTIKAN SESI (Dengan Logika PINALTI)
+export async function paksaHentikanSesi(idSesi, durasiPilihan) {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const sesi = await StudySession.findById(idSesi);
+    if (!sesi) return responseHelper.error("Sesi tidak ditemukan.");
+
+    const waktuMulaiObj = new Date(sesi.waktuMulai);
+    const waktuSelesaiBaru = new Date(waktuMulaiObj.getTime() + durasiPilihan * 60000);
+
+    // 🚀 LOGIKA PINALTI: Jika Admin pilih 0 menit, status jadi PINALTI
+    if (durasiPilihan === 0) {
+      sesi.status = STATUS_SESI.PINALTI.id;
+      sesi.catatanInternal = "Dihentikan manual (PINALTI - Lupa Scan)";
+    } else {
+      sesi.status = STATUS_SESI.SELESAI.id;
+      sesi.catatanInternal = `Dihentikan manual oleh Admin (${durasiPilihan}m)`;
+    }
+    
+    sesi.waktuSelesai = waktuSelesaiBaru;
+    
+    await sesi.save();
+    
+    revalidatePath(PERAN.ADMIN.home);
+    const labelHukuman = durasiPilihan === 0 ? "PINALTI" : `${durasiPilihan} Menit`;
+    return responseHelper.success(`Sesi berhasil dihentikan (${labelHukuman}).`);
+  } catch (error) {
+    return responseHelper.error("Gagal menghentikan sesi.", error.message);
   }
 }

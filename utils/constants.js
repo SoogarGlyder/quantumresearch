@@ -89,6 +89,7 @@ export const STATUS_SESI = Object.freeze({
   ALPA: { id: "alpa", label: "Alpa", color: "#ef4444", bg: "#fee2e2" },
   SAKIT: { id: "sakit", label: "Sakit", color: "#f97316", bg: "#ffedd5" },
   IZIN: { id: "izin", label: "Izin", color: "#3b82f6", bg: "#dbeafe" },
+  PINALTI: { id: "pinalti", label: "Pinalti Lupa Scan", color: "#ef4444", bg: "#111827" },
 });
 
 export const LABEL_SISTEM = Object.freeze({
@@ -207,32 +208,67 @@ export const GAMIFIKASI = Object.freeze({
     HADIR_KELAS: 50,           
     KONSUL_DASAR: 10,          
     KONSUL_PER_30_MENIT: 20,   
+    
+    // Konfigurasi Default Happy Hour (Nantinya bisa di-override via Database Admin)
+    HAPPY_HOUR_AKTIF: false,      // 👈 belum diterapkan
+    HAPPY_HOUR_MULAI: "13:00",    // 👈 belum diterapkan
+    HAPPY_HOUR_SELESAI: "15:00",  // 👈 belum diterapkan
+    MULTIPLIER_HAPPY_HOUR: 2,     // 👈 belum diterapkan
   },
   
-  // 2. KODE LENCANA (Untuk backend membedakan jenis lencana)
+  // 2. KODE LENCANA 
   LENCANA: {
+    // Basic Achievements
     FIRST_BLOOD: "first_blood",
     BURUNG_HANTU: "burung_hantu",
     KONSISTEN_30: "konsisten_30",
+    WEEKEND_WARRIOR: "weekend_warrior", // 👈 belum diterapkan
+    
+    // Subject Mastery (Spesialisasi Mapel) - 👈 belum diterapkan
+    MASTER_MTK: "master_mtk",
+    MASTER_FISIKA: "master_fisika",
+    MASTER_KIMIA: "master_kimia",
+    MASTER_BIOLOGI: "master_biologi",
+    MASTER_INGGRIS: "master_inggris",
+    
+    // Hidden Achievements (Misi Rahasia) - 👈 belum diterapkan
+    KUTU_BUKU: "kutu_buku",             // Konsul 3 mapel berbeda dalam 1 hari
+    PENJAGA_PINTU: "penjaga_pintu",     // Datang sebelum jam 14:00 selama 3 hari berturut
+    PENUNGGANG_BADAI: "penunggang_badai", // Hadir saat admin mengaktifkan mode cuaca ekstrem
   },
   
-  // 3. KAMUS VISUAL LENCANA (Untuk frontend menampilkan ikon & warna)
+  // 3. KAMUS VISUAL LENCANA 
   KAMUS_LENCANA: {
+    // Basic
     "first_blood": { ikon: "🩸", nama: "First Blood", warna: "#ef4444" },
     "burung_hantu": { ikon: "🦉", nama: "Burung Hantu", warna: "#8b5cf6" },
-    "konsisten_30": { ikon: "🔥", nama: "Konsisten 30 Hari", warna: "#f97316" }
+    "konsisten_30": { ikon: "🔥", nama: "Konsisten 30 Hari", warna: "#f97316" },
+    "weekend_warrior": { ikon: "⚔️", nama: "Pejuang Weekend", warna: "#2563eb" },
+    
+    // Subject Mastery
+    "master_mtk": { ikon: "📐", nama: "Einstein MTK", warna: "#059669" },
+    "master_fisika": { ikon: "🍎", nama: "Newton Fisika", warna: "#2563eb" },
+    "master_kimia": { ikon: "🧪", nama: "Curie Kimia", warna: "#0891b2" },
+    "master_biologi": { ikon: "🧬", nama: "Mendel Biologi", warna: "#16a34a" },
+    "master_inggris": { ikon: "🇬🇧", nama: "Shakespeare English", warna: "#dc2626" },
+    
+    // Hidden Achievements
+    "kutu_buku": { ikon: "📚", nama: "Kutu Buku", warna: "#ca8a04" },
+    "penjaga_pintu": { ikon: "🚪", nama: "Penjaga Pintu", warna: "#475569" },
+    "penunggang_badai": { ikon: "⛈️", nama: "Penunggang Badai", warna: "#334155" }
   },
 
-  // 4. POOL MISI HARIAN (Sistem akan mengacak 2 dari daftar ini tiap hari)
+  // 4. POOL MISI HARIAN 
   POOL_MISI: [
     { kodeMisi: "HADIR_KELAS", judul: "Hadir kelas hari ini", target: 1, expBonus: 50 },
     { kodeMisi: "KONSUL_30", judul: "Konsul minimal 30 menit", target: 30, expBonus: 40 },
     { kodeMisi: "KONSUL_60", judul: "Konsul minimal 1 Jam", target: 60, expBonus: 100 },
     { kodeMisi: "DATANG_AWAL", judul: "Absen sebelum jam 15:00", target: 1, expBonus: 60 },
-    { kodeMisi: "KONSUL_MALAM", judul: "Selesai konsul di atas jam 18:00", target: 1, expBonus: 75 }
+    { kodeMisi: "KONSUL_MALAM", judul: "Selesai konsul di atas jam 18:00", target: 1, expBonus: 75 },
+    { kodeMisi: "MARATON_MAPEL", judul: "Konsul 2 Mapel berbeda hari ini", target: 2, expBonus: 120 } // 👈 belum diterapkan
   ],
 
-  // 5. GELAR KLASEMEN BULANAN (Ditentukan dari total jam belajar bulan berjalan)
+  // 5. GELAR KLASEMEN BULANAN 
   GELAR_KLASEMEN: [
     { minJam: 60, gelar: "🌌 Legenda Hidup" },
     { minJam: 50, gelar: "⚡ Dewa Ambis" },
@@ -242,5 +278,14 @@ export const GAMIFIKASI = Object.freeze({
     { minJam: 10, gelar: "⚔️ Pejuang Ambis" },
     { minJam: 5,  gelar: "🚀 Mulai Panas" },
     { minJam: 0,  gelar: "🐢 Masih Pemanasan" }
+  ],
+
+  // 6. 🎁 HADIAH LEVELING (Toko Hadiah Fisik)
+  HADIAH_LEVEL: [
+    { level: 10, hadiah: "Snack & Minuman Gratis" },            // 👈 belum diterapkan
+    { level: 20, hadiah: "Merchandise Quantum (Pulpen/Note)" }, // 👈 belum diterapkan
+    { level: 30, hadiah: "Voucher Diskon SPP / TryOut VIP" },   // 👈 belum diterapkan
+    { level: 40, hadiah: "Kaos Eksklusif Quantum" },            // 👈 belum diterapkan
+    { level: 50, hadiah: "Tiket Nonton Bioskop Bareng Mentor" } // 👈 belum diterapkan
   ]
 });
