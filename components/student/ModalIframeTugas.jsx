@@ -12,7 +12,7 @@ export default function ModalIframeTugas({ urlMitra, onClose }) {
       backgroundColor: '#fff', zIndex: 99999,
       display: 'flex', flexDirection: 'column', padding: '15px'
     }}>
-      <div className={styles.containerGallery} style={{ display: 'flex', flexDirection: 'column', maxHeight: '100vh', height: '100vh', padding: 0 }}>
+      <div className={styles.containerGallery} style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', height: '100vh', padding: 0 }}>
         
         {/* HEADER MODAL JURNAL STYLE */}
         <div className={styles.headerGallery}>
