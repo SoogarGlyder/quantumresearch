@@ -13,7 +13,7 @@ import ModalJurnal from "./ModalJurnal";
 import styles from "../App.module.css";
 
 // ============================================================================
-// 1. SUB-KOMPONEN: HEADER PENGAJAR (Update: 3 Stats)
+// 1. SUB-KOMPONEN: HEADER PENGAJAR
 // ============================================================================
 const HeaderPengajar = memo(({ dataUser, statsPengajar }) => (
   <div className={styles.appHeader}>
@@ -42,7 +42,6 @@ const HeaderPengajar = memo(({ dataUser, statsPengajar }) => (
             <span className={styles.statLabel} style={{fontSize: '11px'}}>Jurnal OK</span>
             <span className={`${styles.statValue} ${styles.nilaiStatHijau}`}>{statsPengajar.jurnalSelesai}</span>
           </div>
-          {/* 🚀 STATISTIK BARU: JUMLAH ABSENSI */}
           <div className={styles.statContainer}>        
             <span className={styles.statLabel} style={{fontSize: '11px'}}>Absensi</span>
             <span className={`${styles.statValue} ${styles.nilaiStatMerah}`}>{statsPengajar.totalAbsensi}</span>
@@ -54,26 +53,65 @@ const HeaderPengajar = memo(({ dataUser, statsPengajar }) => (
 HeaderPengajar.displayName = "HeaderPengajar";
 
 // ============================================================================
-// 2. SUB-KOMPONEN: ABSENCE CARD (Update: Lebih Minimalis)
+// 2. SUB-KOMPONEN: AGENDA HARI INI
+// ============================================================================
+const AgendaHariIni = memo(({ jadwalHariIni, onPilihJadwal }) => (
+  <div className={styles.contentContainer}>
+    <h3 className={styles.contentTitle}><FaChalkboard color="#2563eb" /> Agenda Hari Ini</h3>
+    
+    {jadwalHariIni.length === 0 ? (
+      <p className={styles.emptySchedule}>Tidak ada jadwal kelas untukmu hari ini. Ayo ajak adek-adeknya konsul!</p>
+    ) : (
+      <div className={styles.scheduleList}>
+        {jadwalHariIni.map((j) => (
+          <div 
+            key={j._id} 
+            onClick={() => onPilihJadwal(j)} 
+            className={styles.scheduleCard} 
+            style={{ backgroundColor: '#ffffff', border: '3px solid #111827', cursor: 'pointer', boxShadow: '4px 4px 0 #111827' }}
+          >
+            <div className={styles.scheduleCardRow}>
+              <div className={styles.scheduleDate} style={{ color: '#2563eb', fontWeight: '900' }}>
+                <FaCalendarDay /> HARI INI
+              </div>
+              <div className={styles.scheduleTime} style={{ fontWeight: '900' }}>{j.jamMulai} - {j.jamSelesai}</div>
+            </div>
+            <div className={styles.scheduleCardRow}>
+              <p className={styles.scheduleSubject} style={{ fontSize: '18px' }}>{j.mapel}</p>
+            </div>
+            <div className={styles.scheduleCardRow}>
+              <div style={{ backgroundColor: '#fef08a', color: '#111827', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', border: '2px solid #111827', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FaCirclePlay /> MULAI KELAS
+              </div>
+              <div className={styles.scheduleCount} style={{ fontWeight: '900' }}>{j.kelasTarget}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+));
+AgendaHariIni.displayName = "AgendaHariIni";
+
+// ============================================================================
+// 3. SUB-KOMPONEN: ABSENCE CARD
 // ============================================================================
 const AbsenceCard = memo(({ abs, isOpen, onToggle }) => {
   const isSelesai = !!abs.waktuKeluar;
   const formatWaktu = (date) => new Date(date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  const formatTanggal = (date) => new Date(date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
+  const formatTanggal = (date) => new Date(date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className={`${styles.recordCard} ${styles.recordCardClickable}`} onClick={() => onToggle(abs._id)} style={{ border: '3px solid #111827' }}>
+    <div className={`${styles.recordCard} ${styles.recordCardClickable}`} onClick={() => onToggle(abs._id)} style={{ border: '3px solid #111827', margin: '0 0 20px'}}>
       <div className={styles.recordCardRow}>
         <p className={styles.recordDate}>{formatTanggal(abs.waktuMasuk)}</p>
         
-        {/* 🚀 HANYA TAMPILKAN BADGE JIKA BELUM CLOCK-OUT */}
         {!isSelesai && (
           <span className={styles.recordDuration} style={{ backgroundColor: '#fef08a', color: '#111827', border: '2px solid #111827', display: 'flex', gap: '4px', alignItems: 'center' }}>
             <FaHourglassHalf className={styles.spin} /> Bertugas
           </span>
         )}
         
-        {/* 🚀 CHEVRON PINDAH KE ATAS KARENA JUDUL DIHAPUS */}
         <div style={{ color: '#111827' }}>
           {isOpen ? <FaChevronUp size={16} /> : <FaChevronDown size={16} />}
         </div>
@@ -97,7 +135,32 @@ const AbsenceCard = memo(({ abs, isOpen, onToggle }) => {
 AbsenceCard.displayName = "AbsenceCard";
 
 // ============================================================================
-// 3. MAIN COMPONENT
+// 4. SUB-KOMPONEN: DAFTAR ABSENSI BULAN INI
+// ============================================================================
+const DaftarAbsensiBulanIni = memo(({ riwayatAbsenBulanIni, idAbsenTerbuka, toggleAbsen }) => (
+  <div className={styles.contentContainer}>
+    <h3 className={styles.contentTitle}><FaClock color="#facc15" /> Absensi Bulan Ini</h3>
+    
+    <div style={{ display: 'flex', flexDirection: 'column', padding: '0 16px'}}>
+      {riwayatAbsenBulanIni.length === 0 ? (
+        <p className={styles.emptySchedule}>Belum ada riwayat absensi bulan ini.</p>
+      ) : (
+        riwayatAbsenBulanIni.map(abs => (
+          <AbsenceCard 
+            key={abs._id} 
+            abs={abs} 
+            isOpen={idAbsenTerbuka === abs._id} 
+            onToggle={toggleAbsen} 
+          />
+        ))
+      )}
+    </div>
+  </div>
+));
+DaftarAbsensiBulanIni.displayName = "DaftarAbsensiBulanIni";
+
+// ============================================================================
+// 5. MAIN COMPONENT (Kini Sangat Bersih!)
 // ============================================================================
 export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = [], absenAktif }) {
   const hariIni = timeHelper.getTglJakarta();
@@ -111,81 +174,32 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = []
     .sort((a, b) => a.jamMulai.localeCompare(b.jamMulai)), 
   [jadwal, hariIni]);
 
-  // 🚀 TAMPILKAN SELURUHNYA (Hapus .slice(0, 3))
   const riwayatAbsenBulanIni = useMemo(() => absensi || [], [absensi]);
 
   const statsPengajar = useMemo(() => ({ 
     totalKelas: (jadwal || []).length, 
     jurnalSelesai: (jadwal || []).filter(j => j?.bab).length,
-    totalAbsensi: (absensi || []).length // 🚀 HITUNG TOTAL ABSEN
+    totalAbsensi: (absensi || []).length 
   }), [jadwal, absensi]);
 
   return (
     <div className={styles.contentArea}>
-      <HeaderPengajar dataUser={dataUser} statsPengajar={statsPengajar} />
+      <HeaderPengajar 
+        dataUser={dataUser} 
+        statsPengajar={statsPengajar} 
+      />
       
-      {/* 🚀 BAGIAN 1: AGENDA MENGAJAR (NAIK KE ATAS) */}
-      <div className={styles.contentContainer} style={{ marginTop: '24px' }}>
-        <h3 className={styles.contentTitle}><FaChalkboard color="#2563eb" /> Agenda Hari Ini</h3>
-        
-        {jadwalHariIni.length === 0 ? (
-          <div className={styles.emptySchedule} style={{ padding: '30px', backgroundColor: '#f8fafc', border: '3px solid #e2e8f0' }}>
-            <p style={{ fontSize: '24px', margin: 0 }}>☕</p>
-            <p style={{ fontWeight: '800', marginTop: '8px', color: '#64748b' }}>TIDAK ADA JADWAL LAGI.</p>
-          </div>
-        ) : (
-          <div className={styles.scheduleList}>
-            {jadwalHariIni.map((j) => (
-              <div 
-                key={j._id} 
-                onClick={() => setJadwalTerpilih(j)} 
-                className={styles.scheduleCard} 
-                style={{ backgroundColor: '#ffffff', border: '3px solid #111827', cursor: 'pointer', boxShadow: '4px 4px 0 #111827' }}
-              >
-                <div className={styles.scheduleCardRow}>
-                  <div className={styles.scheduleDate} style={{ color: '#2563eb', fontWeight: '900' }}>
-                    <FaCalendarDay /> HARI INI
-                  </div>
-                  <div className={styles.scheduleTime} style={{ fontWeight: '900' }}>{j.jamMulai} - {j.jamSelesai}</div>
-                </div>
-                <div className={styles.scheduleCardRow}>
-                  <p className={styles.scheduleSubject} style={{ fontSize: '18px' }}>{j.mapel}</p>
-                </div>
-                <div className={styles.scheduleCardRow}>
-                  <div style={{ backgroundColor: '#fef08a', color: '#111827', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', border: '2px solid #111827', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <FaCirclePlay /> MULAI KELAS
-                  </div>
-                  <div className={styles.scheduleCount} style={{ fontWeight: '900' }}>{j.kelasTarget}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <AgendaHariIni 
+        jadwalHariIni={jadwalHariIni} 
+        onPilihJadwal={setJadwalTerpilih} 
+      />
 
-      {/* 🚀 BAGIAN 2: ABSENSI BULAN INI (PINDAH KE BAWAH & FULL LIST) */}
-      <div className={styles.contentContainer} style={{ marginTop: '24px', paddingBottom: '20px' }}>
-        <h3 className={styles.contentTitle}><FaClock color="#facc15" /> Absensi Bulan Ini</h3>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {riwayatAbsenBulanIni.length === 0 ? (
-            <div className={styles.emptySchedule} style={{ border: '3px dashed #cbd5e1' }}>
-               Belum ada riwayat absensi bulan ini.
-            </div>
-          ) : (
-            riwayatAbsenBulanIni.map(abs => (
-              <AbsenceCard 
-                key={abs._id} 
-                abs={abs} 
-                isOpen={idAbsenTerbuka === abs._id} 
-                onToggle={toggleAbsen} 
-              />
-            ))
-          )}
-        </div>
-      </div>
+      <DaftarAbsensiBulanIni 
+        riwayatAbsenBulanIni={riwayatAbsenBulanIni} 
+        idAbsenTerbuka={idAbsenTerbuka} 
+        toggleAbsen={toggleAbsen} 
+      />
 
-      {/* MODAL JURNAL */}
       {jadwalTerpilih && (
         <ModalJurnal 
           jadwalTerpilih={jadwalTerpilih} 

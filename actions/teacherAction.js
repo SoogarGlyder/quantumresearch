@@ -223,8 +223,18 @@ export async function ambilSemuaPengajar() {
     await connectToDatabase();
     if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const pengajar = await User.find({ peran: PERAN.PENGAJAR.id }).sort({ nama: 1 }).lean();
-    return responseHelper.success("Data pengajar dimuat.", serialize(pengajar));
+    const pengajar = await User.find({ peran: PERAN.PENGAJAR.id })
+      .select("_id nama kodePengajar username noHp")
+      .sort({ nama: 1 })
+      .lean();
+      
+    const dataBersih = pengajar.map(p => ({
+      ...p,
+      _id: p._id.toString(),
+      kodePengajar: p.kodePengajar || "-"
+    }));
+
+    return responseHelper.success("Data pengajar dimuat.", serialize(dataBersih));
   } catch (error) {
     return responseHelper.error("Gagal memuat data pengajar.");
   }

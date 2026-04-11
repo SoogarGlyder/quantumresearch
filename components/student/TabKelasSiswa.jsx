@@ -6,21 +6,20 @@
 import { useMemo, useState, memo } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation"; 
-import dynamic from 'next/dynamic';
-import 'react-medium-image-zoom/dist/styles.css';
 
 import PaginationBar from "../ui/PaginationBar"; 
 import { potongDataPagination } from "../../utils/formatHelper"; 
 import { pilahJadwalSiswa } from "../../utils/kalkulatorData";
 import { PERIODE_BELAJAR, STATUS_SESI, LIMIT_DATA } from "../../utils/constants"; 
 
+// 🚀 IMPORT MODAL GALERI YANG SUDAH DIPISAH
+import ModalGaleri from "./ModalGaleri";
+
 import { 
   FaUserTie, FaXmark, FaCheck, 
-  FaTriangleExclamation, FaStopwatch, FaArrowsRotate, FaBookBookmark
+  FaTriangleExclamation, FaStopwatch, FaArrowsRotate
 } from "react-icons/fa6";
 import styles from "../App.module.css";
-
-const Zoom = dynamic(() => import('react-medium-image-zoom'), { ssr: false });
 
 // ============================================================================
 // 2. SUB-KOMPONEN: HEADER KELAS (Pure & Memoized)
@@ -118,62 +117,7 @@ const DaftarRiwayatKelas = memo(({ dataHalIni, onBukaCatatan }) => (
 DaftarRiwayatKelas.displayName = "DaftarRiwayatKelas";
 
 // ============================================================================
-// 5. SUB-KOMPONEN: MODAL GALERI FOTO (Pure & Memoized)
-// ============================================================================
-const ModalGaleri = memo(({ galeriAktif, onClose }) => {
-  if (!galeriAktif) return null;
-
-  return (
-    <div className={styles.wrapperGallery}>
-      <div className={styles.containerGallery}> 
-        <div className={styles.headerGallery}>
-          <div className={styles.wrapperTitle}>
-            <h3 className={styles.galleryTitle}>CATATAN {galeriAktif.mapel}</h3>
-            <span className={styles.galleryDate}>
-              {new Date(galeriAktif.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
-          </div>
-          <button className={styles.galleryButton} onClick={onClose}><FaXmark size={20} /></button>
-        </div>
-        
-        <div className={styles.areaGallery}>
-          <div className={styles.galleryInfo}>
-            <div className={styles.gallerySubject}>
-              <div style={{ marginTop: '3px'}}><FaBookBookmark size={35} /></div>
-              <div>
-                <h4 style={{ marginBottom: '1px', fontSize: '16px', fontWeight: '900', color: '#111827', textTransform: 'uppercase' }}>{galeriAktif.bab || 'Materi Kelas'}</h4>
-                <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#4b5563', lineHeight: '1.4' }}>{galeriAktif.subBab || '-'}</p>
-              </div>
-            </div>
-          </div>
-
-          {galeriAktif.foto.length === 0 ? (
-            <div className={styles.emptyPhoto}>
-              <FaTriangleExclamation size={50} color="#facc15" style={{ marginBottom: '16px' }} />
-              <h4 style={{ fontWeight: '900', color: '#111827', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Foto Tidak Tersedia</h4>
-              <p style={{ fontSize: '13px', fontWeight: '700', color: '#4b5563', margin: 0 }}>Pengajar belum mengunggah catatan untuk sesi ini.</p>
-            </div>
-          ) : (
-            <div className={styles.containerPhoto}>
-              {galeriAktif.foto.map((urlFoto, idx) => (
-                <div className={styles.wrapperPhoto} key={idx}>
-                  <Zoom>
-                    <img className={styles.galleryPhoto} src={urlFoto} alt={`Catatan Papan ${idx + 1}`} style={{ cursor: 'zoom-in', width: '100%', display: 'block' }} />
-                  </Zoom>
-                  <div className={styles.countPhoto}>{idx + 1} / {galeriAktif.foto.length}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-});
-ModalGaleri.displayName = "ModalGaleri";
-
-// ============================================================================
-// 6. MAIN EXPORT COMPONENT
+// 5. MAIN EXPORT COMPONENT
 // ============================================================================
 export default function TabKelas({ jadwal = [], riwayat = [] }) {
   const [galeriAktif, setGaleriAktif] = useState(null);
@@ -212,12 +156,12 @@ export default function TabKelas({ jadwal = [], riwayat = [] }) {
         onBukaCatatan={klikBukaCatatan} 
       />
 
-      {/* 🚀 PAGINATION BAR (Muncul di bawah list jika data > 1 halaman) */}
+      {/* 🚀 PAGINATION BAR */}
       <div style={{ margin: '24px 16px 0 16px' }}>
         <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly'}} />
       </div>
 
-      {/* MODAL GALERI */}
+      {/* 🚀 MODAL GALERI DIPANGGIL DI SINI */}
       <ModalGaleri 
         galeriAktif={galeriAktif} 
         onClose={() => setGaleriAktif(null)} 

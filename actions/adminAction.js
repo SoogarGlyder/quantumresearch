@@ -394,3 +394,44 @@ export async function paksaHentikanSesi(idSesi, durasiPilihan) {
     return responseHelper.error("Gagal menghentikan sesi.", error.message);
   }
 }
+
+// 🚀 FUNGSI BARU: SUNTIK ABSEN STAF MANUAL
+export async function prosesSimpanAbsenManual(data) {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    // Gabungkan tanggal dan jam menjadi objek Date (WIB)
+    const waktuMasuk = new Date(`${data.tanggal}T${data.jamMasuk}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
+    const waktuKeluar = data.jamKeluar 
+      ? new Date(`${data.tanggal}T${data.jamKeluar}:00${PERIODE_BELAJAR.ISO_OFFSET}`) 
+      : null;
+
+    const absenBaru = await AbsensiPengajar.create({
+      pengajarId: data.pengajarId,
+      waktuMasuk: waktuMasuk,
+      waktuKeluar: waktuKeluar,
+      status: "HADIR", // Manual input dianggap hadir
+      keterangan: data.keterangan || "Input Manual Admin (Hari Libur/Lupa Scan)"
+    });
+
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success("Absensi staf berhasil disimpan!");
+  } catch (error) {
+    return responseHelper.error("Gagal simpan absen manual.", error.message);
+  }
+}
+
+// 🚀 FUNGSI BARU: HAPUS ABSEN STAF (Jika Admin salah input)
+export async function prosesHapusAbsenStaf(idAbsen) {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    await AbsensiPengajar.findByIdAndDelete(idAbsen);
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success("Data absensi staf dihapus.");
+  } catch (error) {
+    return responseHelper.error("Gagal menghapus absensi.", error.message);
+  }
+}

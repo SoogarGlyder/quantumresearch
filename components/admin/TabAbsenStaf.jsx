@@ -3,25 +3,141 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
 import { unduhExcel } from "../../utils/exportExcel";
-import { formatTanggal, potongDataPagination, formatYYYYMMDD } from "../../utils/formatHelper"; // 🚀 FIX: Tambah formatYYYYMMDD
-import { LIMIT_DATA, STATUS_USER } from "../../utils/constants";
+import { formatTanggal, potongDataPagination, formatYYYYMMDD } from "../../utils/formatHelper";
+import { LIMIT_DATA } from "../../utils/constants";
 
-// 🚀 FIX: Tambah FaMagnifyingGlass
-import { FaFileExcel, FaFilter, FaClock, FaRightFromBracket, FaUserTie, FaMagnifyingGlass } from "react-icons/fa6";
+import { 
+  FaFileExcel, FaFilter, FaClock, FaRightFromBracket, FaUserTie, 
+  FaMagnifyingGlass, FaPlus, FaTrash, FaXmark, FaFloppyDisk 
+} from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
 
+import { prosesSimpanAbsenManual, prosesHapusAbsenStaf } from "../../actions/adminAction";
+
 // ============================================================================
-// 2. MAIN COMPONENT (TAB ABSEN STAF)
+// 2. SUB-KOMPONEN: MODAL SUNTIK ABSEN (Terintegrasi)
 // ============================================================================
-// 🚀 FIX: Terima props bulanAktif
-export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
+const ModalAbsenStaf = memo(({ isOpen, onClose, dataPengajar = [], muatData }) => {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    pengajarId: "",
+    tanggal: formatYYYYMMDD(new Date()),
+    keterangan: "Input Manual Admin (Otomatis 12:00-20:00)"
+  });
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.pengajarId) return alert("Pilih Pengajar!");
+    
+    setLoading(true);
+    
+    // 🚀 FIX: Suntikkan jamMasuk dan jamKeluar ke payload sebelum dikirim
+    const payloadAbsen = {
+      ...form,
+      jamMasuk: "12:00",
+      jamKeluar: "20:00"
+    };
+
+    const res = await prosesSimpanAbsenManual(payloadAbsen);
+    if (res.sukses) {
+      alert(res.pesan);
+      if (muatData) muatData(); 
+      onClose();
+    } else {
+      alert(res.pesan);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ backgroundColor: 'white', border: '4px solid #111827', boxShadow: '12px 12px 0 #111827', width: '100%', maxWidth: '400px', borderRadius: '16px', overflow: 'hidden' }}>
+        
+        {/* Header Modal */}
+        <div style={{ padding: '16px', background: '#2563eb', borderBottom: '4px solid #111827', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
+          <h3 style={{ margin: 0, fontWeight: '900', textTransform: 'uppercase', fontSize: '16px' }}>➕ Suntik Absen Manual</h3>
+          <FaXmark onClick={onClose} cursor="pointer" size={24} />
+        </div>
+
+        {/* Body Modal */}
+        <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#6b7280', marginBottom: '4px' }}>KODE PENGAJAR</label>
+            <select 
+              required 
+              className={styles.inputCari} 
+              value={form.pengajarId}
+              onChange={e => setForm({...form, pengajarId: e.target.value})}
+              style={{ width: '100%', border: '3px solid #111827', padding: '10px', textTransform: 'uppercase', fontWeight: 'bold' }}
+            >
+              <option value="">-- Pilih Kode Pengajar --</option>
+              {/* 🚀 Fallback aman untuk render daftar pengajar */}
+              {(dataPengajar || []).length > 0 ? (
+                dataPengajar.map(p => (
+                  <option key={p._id} value={p._id}>{p.kodePengajar} - {p.nama}</option>
+                ))
+              ) : (
+                <option value="" disabled>Data pengajar kosong...</option>
+              )}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#6b7280', marginBottom: '4px' }}>TANGGAL KERJA</label>
+            <input 
+              type="date" required 
+              className={styles.inputCari}
+              value={form.tanggal}
+              onChange={e => setForm({...form, tanggal: e.target.value})}
+              style={{ width: '100%', border: '3px solid #111827', padding: '10px' }}
+            />
+          </div>
+
+          <div style={{ backgroundColor: '#fef9c3', padding: '10px', borderRadius: '8px', border: '2px solid #111827', fontSize: '12px', fontWeight: 'bold' }}>
+            💡 Jam akan otomatis diisi:<br/>
+            <span style={{ color: '#2563eb' }}>12:00 WIB s/d 20:00 WIB</span>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#6b7280', marginBottom: '4px' }}>KETERANGAN (Opsional)</label>
+            <input 
+              type="text" placeholder="Cth: Masuk saat Libur Nasional"
+              className={styles.inputCari}
+              value={form.keterangan}
+              onChange={e => setForm({...form, keterangan: e.target.value})}
+              style={{ width: '100%', border: '3px solid #111827', padding: '10px' }}
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={loading}
+            className={styles.tombolSimpanBiruBaru} 
+            style={{ width: '100%', padding: '14px', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            {loading ? "MEMPROSES..." : <><FaFloppyDisk /> SIMPAN PRESENSI</>}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+});
+ModalAbsenStaf.displayName = "ModalAbsenStaf";
+
+// ============================================================================
+// 3. MAIN COMPONENT (TAB ABSEN STAF)
+// ============================================================================
+export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bulanAktif, muatData }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
@@ -29,8 +145,9 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
   const page = Number(searchParams.get("page")) || 1;
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // --- STATE: FILTER ---
-  const [filterTglAbsen, setFilterTglAbsen] = useState(""); // 🚀 Ganti filterBulan jadi filter Hari
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [filterTglAbsen, setFilterTglAbsen] = useState("");
   const [filterNama, setFilterNama] = useState("");
   
   useEffect(() => {
@@ -38,39 +155,33 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
     setFilterNama("");
   }, [bulanAktif]);
 
-  // ============================================================================
-  // 🚀 BOSS LEVEL LOGIC: Hitung Batas Tanggal (Staf 29 bln lalu - 28 bln ini)
-  // ============================================================================
   const { minDate, maxDate } = useMemo(() => {
     if (!bulanAktif) return { minDate: "", maxDate: "" };
 
     const [tahunStr, bulanStr] = bulanAktif.split("-");
     const y = Number(tahunStr);
-    const m = Number(bulanStr) - 1; // Bulan di JS mulai dari 0
+    const m = Number(bulanStr) - 1; 
 
-    // Tanggal Awal: 29 Bulan SEBELUMNYA
     const minObj = new Date(y, m - 1, 29);
     const minYYYY = minObj.getFullYear();
     const minMM = String(minObj.getMonth() + 1).padStart(2, '0');
     const min = `${minYYYY}-${minMM}-29`;
 
-    // Tanggal Akhir: 28 Bulan INI
     const max = `${tahunStr}-${bulanStr}-28`;
 
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // Sinkronisasi Filter ke Page 1
+  // 🚀 FIX PAGINATION: Hapus `searchParams` dari dependency array!
   useEffect(() => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterTglAbsen, filterNama]);
+  }, [filterTglAbsen, filterNama]); 
 
-  // 🚀 DIET MEMORI: Potong data 1 Tahun jadi 1 Bulan (Siklus 29-28) SEBELUM difilter lokal
   const absenBulanIni = useMemo(() => {
     return dataAbsenStaf.filter(a => {
       if (!a.waktuMasuk) return false;
@@ -79,11 +190,9 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
     });
   }, [dataAbsenStaf, minDate, maxDate]);
 
-  // --- LOGIKA FILTER LOKAL ---
   const dataDifilter = useMemo(() => {
     let hasil = [...absenBulanIni];
 
-    // 🚀 Filter Hari Spesifik
     if (filterTglAbsen) {
       hasil = hasil.filter(a => formatYYYYMMDD(a.waktuMasuk) === filterTglAbsen);
     }
@@ -101,18 +210,40 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
 
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(dataDifilter, page, ITEMS_PER_PAGE);
 
+  const handleHapus = async (id) => {
+    if (confirm("Hapus data presensi staf ini?")) {
+      const res = await prosesHapusAbsenStaf(id);
+      if (res.sukses) {
+        if (muatData) muatData();
+      } else {
+        alert(res.pesan);
+      }
+    }
+  };
+
   return (
     <div className={`${styles.isiTab} ${styles.SembunyiPrint} ${styles.wadahMonitoring}`}>
       
       {/* HEADER & EXCEL */}
       <div className={styles.headerTabWrapper}>
         <h2 className={styles.judulIsiTab} style={{margin: 0}}>Presensi Staff / Pengajar</h2>
-        <button 
-          onClick={() => unduhExcel(dataDifilter, "absen-staf")} 
-          className={styles.btnExcel}
-        >
-          <FaFileExcel /> Unduh Excel ({dataDifilter.length})
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {/* 🚀 TOMBOL SUNTIK ABSEN */}
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className={styles.tombolSimpanBiruBaru}
+            style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', border: '3px solid #111827' }}
+          >
+            <FaPlus /> Suntik Absen
+          </button>
+
+          <button 
+            onClick={() => unduhExcel(dataDifilter, "absen-staf")} 
+            className={styles.btnExcel}
+          >
+            <FaFileExcel /> Unduh Excel ({dataDifilter.length})
+          </button>
+        </div>
       </div>
 
       {/* FILTER BAR */}
@@ -122,7 +253,6 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
           <span className={styles.labelFilter}>Filter:</span>
         </div>
         
-        {/* 🚀 UI BARU: Kolom Pencarian Nama Sejajar */}
         <div className={styles.wadahCari} style={{ minWidth: '180px' }}>
           <div className={styles.iconCari}><FaMagnifyingGlass color="#6b7280" /></div>
           <input 
@@ -134,7 +264,6 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
           />
         </div>
 
-        {/* 🚀 Kalender "Terkunci" berdasarkan siklus 29-28 */}
         <FilterInput 
           type="date" 
           value={filterTglAbsen} 
@@ -158,11 +287,12 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
               <th>Clock-In</th>
               <th>Clock-Out</th>
               <th style={{textAlign: 'center'}}>Status</th>
+              <th style={{textAlign: 'center'}}>Aksi</th>
             </tr>
           </thead>
           <tbody>
             {dataHalIni.length === 0 ? (
-              <tr><td colSpan="5" className={styles.selKosong}>Tidak ada data absen staf di periode ini.</td></tr>
+              <tr><td colSpan="6" className={styles.selKosong}>Tidak ada data absen staf di periode ini.</td></tr>
             ) : (
               dataHalIni.map((absen) => (
                 <tr key={absen._id}>
@@ -173,7 +303,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
                       </div>
                       <div>
                         <p className={styles.teksNama} style={{textTransform: 'uppercase'}}>{absen.pengajarId?.nama || "Staff"}</p>
-                        <p className={styles.teksKelas} style={{color: '#2563eb'}}>KODE: {absen.pengajarId?.kodePengajar || "-"}</p>
+                        <p className={styles.teksKelas} style={{color: '#2563eb'}}>{absen.keterangan || `KODE: ${absen.pengajarId?.kodePengajar || "-"}`}</p>
                       </div>
                     </div>
                   </td>
@@ -191,6 +321,15 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
                       {absen.waktuKeluar ? "SELESAI" : "AKTIF"}
                     </span>
                   </td>
+                  <td style={{ textAlign: "center" }}>
+                    <button 
+                      onClick={() => handleHapus(absen._id)} 
+                      style={{ padding: '6px', background: '#fee2e2', border: '2px solid #ef4444', borderRadius: '6px', color: '#ef4444', cursor: 'pointer' }}
+                      title="Hapus Data Presensi"
+                    >
+                      <FaTrash size={14} />
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -198,10 +337,17 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], bulanAktif }) {
         </table>
       </div>
 
-      {/* PAGINATION BAR */}
       <div style={{ marginTop: '24px' }}>
         <PaginationBar totalPages={totalPage} />
       </div>
+
+      {/* 🚀 MODAL ABSEN DITAMPILKAN DI SINI */}
+      <ModalAbsenStaf 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        dataPengajar={dataPengajar} 
+        muatData={muatData}
+      />
 
     </div>
   );

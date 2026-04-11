@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import Image from "next/image";
 import { 
   ambilSemuaLatihanSoal, 
@@ -10,13 +10,14 @@ import {
 } from "../../actions/soalAction";
 import { OPSI_KELAS } from "../../utils/constants";
 import styles from "../App.module.css";
-import { 
-  FaBookOpen, FaLink, FaTrash, FaPenToSquare, 
-  FaPlus, FaUserTie, FaXmark, FaFloppyDisk, FaBullseye 
-} from "react-icons/fa6";
+import { FaPlus } from "react-icons/fa6";
+
+// 🚀 IMPORT MODUL-MODUL KITA
+import ModalFormTugas from "./ModalFormTugas";
+import DaftarTugas from "./DaftarTugas";
 
 // ============================================================================
-// 1. SUB-KOMPONEN: HEADER TUGAS (Neo-Brutalism Style)
+// 1. SUB-KOMPONEN: HEADER TUGAS
 // ============================================================================
 const HeaderTugas = memo(({ totalTugas }) => (
   <div className={styles.appHeader}>
@@ -39,7 +40,7 @@ const HeaderTugas = memo(({ totalTugas }) => (
 HeaderTugas.displayName = "HeaderTugas";
 
 // ============================================================================
-// 2. MAIN COMPONENT
+// 2. MAIN COMPONENT (State Management)
 // ============================================================================
 export default function TabTugasPengajar() {
   const [dataSoal, setDataSoal] = useState([]);
@@ -65,7 +66,7 @@ export default function TabTugasPengajar() {
   const muatData = async () => {
     setLoading(true);
     const res = await ambilSemuaLatihanSoal();
-    if (res.sukses) setDataSoal(res.data);
+    if (res.sukses) setDataSoal(res.data || []); // 🛡️ Fallback undefined
     setLoading(false);
   };
 
@@ -88,7 +89,9 @@ export default function TabTugasPengajar() {
     if (res.sukses) {
       batalEdit();
       muatData();
-    } else alert(res.pesan);
+    } else {
+      alert(res.pesan);
+    }
     setLoadingForm(false);
   };
 
@@ -96,7 +99,6 @@ export default function TabTugasPengajar() {
     setIdEdit(item._id);
     setForm({ judul: item.judul, url: item.url, tipeTarget: item.tipeTarget, target: item.target, isAktif: item.isAktif });
     setIsFormOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const batalEdit = () => {
@@ -112,152 +114,40 @@ export default function TabTugasPengajar() {
 
   return (
     <div className={styles.contentArea}>
-      <HeaderTugas totalTugas={dataSoal.length} />
+      
+      <HeaderTugas totalTugas={dataSoal?.length || 0} />
 
-      {/* 🚀 TOMBOL BUAT BARU - NEO BRUTALISM */}
-      {!isFormOpen && (
-        <div style={{ padding: '0 16px', marginTop: '24px' }}>
-          <button 
-            onClick={() => setIsFormOpen(true)} 
-            className={styles.tombolSimpanBiruBaru}
-            style={{ width: '100%', boxShadow: '8px 8px 0 #111827' }}
-          >
-            <FaPlus /> BUAT TUGAS BARU
-          </button>
-        </div>
-      )}
-
-      {/* 🚀 FORM INPUT - MENIRU STYLE MODAL JURNAL */}
-      {isFormOpen && (
-        <div className={styles.contentContainer} style={{ border: '4px solid #111827', boxShadow: '8px 8px 0 #2563eb', marginTop: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 className={styles.contentTitle} style={{ margin: 0 }}>
-              {idEdit ? "✏️ EDIT TUGAS" : "➕ TUGAS BARU"}
-            </h3>
-            <button onClick={batalEdit} style={{ background: '#ef4444', color: 'white', border: '2px solid #111827', borderRadius: '8px', padding: '4px' }}>
-              <FaXmark size={18} />
-            </button>
-          </div>
-
-          <form onSubmit={handleSimpan} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <input 
-              type="text" required value={form.judul} 
-              onChange={e => setForm({...form, judul: e.target.value})} 
-              placeholder="Judul Materi (Cth: Latihan Logaritma)" 
-              className={styles.scheduleOption} 
-              style={{ border: '3px solid #111827' }}
-            />
-            
-            <input 
-              type="url" required value={form.url} 
-              onChange={e => setForm({...form, url: e.target.value})} 
-              placeholder="Link Google Drive / Web" 
-              className={styles.scheduleOption} 
-              style={{ border: '3px solid #111827' }}
-            />
-            
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <select 
-                value={form.tipeTarget} 
-                onChange={e => setForm({...form, tipeTarget: e.target.value, target: ""})} 
-                className={styles.scheduleOption} 
-                style={{ flex: 1, border: '3px solid #111827', backgroundColor: '#fef08a' }}
-              >
-                <option value="KELAS">SEKELAS</option>
-                <option value="SISWA">PER SISWA</option>
-              </select>
-              
-              {form.tipeTarget === "KELAS" ? (
-                <select 
-                  required value={form.target} 
-                  onChange={e => setForm({...form, target: e.target.value})} 
-                  className={styles.scheduleOption} 
-                  style={{ flex: 1, border: '3px solid #111827' }}
-                >
-                  <option value="" disabled>-- PILIH --</option>
-                  {OPSI_KELAS.map(k => <option key={k} value={k}>{k}</option>)}
-                </select>
-              ) : (
-                <select 
-                  required value={form.target} 
-                  onChange={e => setForm({...form, target: e.target.value})} 
-                  className={styles.scheduleOption} 
-                  style={{ flex: 1, border: '3px solid #111827' }}
-                >
-                  <option value="" disabled>-- PILIH --</option>
-                  {dataSiswa.map(s => <option key={s._id} value={s.username}>{s.nama}</option>)}
-                </select>
-              )}
-            </div>
-
-            <select 
-              value={form.isAktif ? "aktif" : "mati"} 
-              onChange={e => setForm({...form, isAktif: e.target.value === "aktif"})} 
-              className={styles.scheduleOption} 
-              style={{ border: '3px solid #111827', background: form.isAktif ? '#dcfce3' : '#fca5a5' }}
-            >
-              <option value="aktif">🟢 AKTIF (MUNCUL DI HP SISWA)</option>
-              <option value="mati">🔴 NON-AKTIF (SEMBUNYIKAN)</option>
-            </select>
-
-            <button type="submit" disabled={loadingForm} className={styles.tombolSimpanBiruBaru} style={{ padding: '16px' }}>
-              <FaFloppyDisk /> {loadingForm ? "MENYIMPAN..." : "SIMPAN MATERI"}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* 🚀 DAFTAR TUGAS - MENIRU STYLE SCHEDULE CARD */}
-      <div className={styles.contentContainer} style={{ marginTop: '24px' }}>
-        <h3 className={styles.contentTitle}><FaBookOpen color="#2563eb" /> Daftar Materi Buatanku</h3>
-        
-        {loading ? (
-          <div className={styles.messageLoading} style={{ borderRadius: '12px' }}>MEMUAT DATA...</div>
-        ) : dataSoal.length === 0 ? (
-          <p className={styles.emptySchedule}>BELUM ADA MATERI YANG DIBUAT.</p>
-        ) : (
-          <div className={styles.scheduleList}>
-            {dataSoal.map(item => (
-              <div 
-                key={item._id} 
-                className={styles.scheduleCard} 
-                style={{ 
-                  backgroundColor: item.isAktif ? '#ffffff' : '#f3f4f6', 
-                  border: '3px solid #111827',
-                  opacity: item.isAktif ? 1 : 0.7
-                }}
-              >
-                <div className={styles.scheduleCardRow}>
-                  <div className={styles.scheduleDate} style={{ color: '#2563eb' }}>
-                    <FaBullseye /> {item.tipeTarget}
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => klikEdit(item)} style={{ color: '#2563eb', background: 'none', border: 'none' }}><FaPenToSquare size={20}/></button>
-                    <button onClick={() => klikHapus(item._id, item.judul)} style={{ color: '#ef4444', background: 'none', border: 'none' }}><FaTrash size={20}/></button>
-                  </div>
-                </div>
-
-                <div className={styles.scheduleCardRow}>
-                  <p className={styles.scheduleSubject} style={{ fontSize: '18px' }}>{item.judul}</p>
-                </div>
-
-                <div className={styles.scheduleCardRow}>
-                  <div className={styles.scheduleInfoBox} style={{ background: '#111827', border: '2px solid #111827' }}>
-                    <span className={styles.scheduleInfo} style={{ color: 'white' }}>{item.target}</span>
-                  </div>
-                  <a 
-                    href={item.url} target="_blank" rel="noreferrer" 
-                    className={styles.scheduleCount} 
-                    style={{ background: '#fef08a', color: '#111827', border: '2px solid #111827', textDecoration: 'none', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    <FaLink size={12}/> CEK LINK
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* 🚀 TOMBOL UTAMA UNTUK BUKA MODAL */}
+      <div style={{ padding: '0 16px', marginTop: '24px' }}>
+        <button 
+          onClick={() => setIsFormOpen(true)} 
+          className={styles.tombolSimpanBiruBaru}
+          style={{ width: '100%', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+        >
+          <FaPlus size={18} /> BUAT TUGAS BARU
+        </button>
       </div>
+
+      <DaftarTugas 
+        dataSoal={dataSoal} 
+        loading={loading} 
+        onEdit={klikEdit} 
+        onHapus={klikHapus} 
+      />
+
+      {/* 🚀 RENDER MODAL FORM JIKA AKTIF */}
+      {isFormOpen && (
+        <ModalFormTugas 
+          form={form} 
+          setForm={setForm} 
+          idEdit={idEdit} 
+          dataSiswa={dataSiswa} 
+          onSimpan={handleSimpan} 
+          onBatal={batalEdit} 
+          loadingForm={loadingForm} 
+        />
+      )}
+
     </div>
   );
 }

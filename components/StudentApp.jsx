@@ -182,7 +182,7 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
 
   return (
     <div className={styles.mainContainer}>
-      <main style={{ paddingBottom: '100px' }}>
+      <main>
          {renderIsiTab()}
       </main>
 

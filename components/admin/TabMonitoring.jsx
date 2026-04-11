@@ -9,8 +9,8 @@ import { TIPE_SESI } from "../../utils/constants";
 import styles from "../../app/admin/AdminPage.module.css";
 import { FaChalkboardUser, FaLightbulb, FaUserShield } from "react-icons/fa6";
 
-// 🚀 FIX: Terima props bulanAktif dari page.jsx
-export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, dataAbsenStaf, muatData, bulanAktif }) {
+// 🚀 FIX: Tambahkan dataPengajar di dalam props ini 👇
+export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, dataAbsenStaf, dataPengajar, muatData, bulanAktif }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
@@ -118,7 +118,7 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
         )}
 
         {subView === "staf" && (
-          <TabAbsenStaf dataAbsenStaf={dataAbsenStaf} muatData={muatData} bulanAktif={bulanAktif} />
+          <TabAbsenStaf dataAbsenStaf={dataAbsenStaf} dataPengajar={dataPengajar} muatData={muatData} bulanAktif={bulanAktif} />
         )}
       </div>
 
