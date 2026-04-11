@@ -14,11 +14,11 @@ import {
 import { ambilSemuaPengajar } from "../../actions/teacherAction";
 import { prosesLogout } from "../../actions/authAction";
 
-import { KONFIGURASI_SISTEM, PERIODE_BELAJAR } from "../../utils/constants"; // 🚀 Tambah PERIODE_BELAJAR
+import { KONFIGURASI_SISTEM, PERIODE_BELAJAR } from "../../utils/constants";
 
 import styles from "./AdminPage.module.css"; 
 
-import { FaArrowRightFromBracket, FaQrcode, FaCalendarDays } from "react-icons/fa6"; // 🚀 Tambah Icon Kalender
+import { FaArrowRightFromBracket, FaQrcode, FaCalendarDays } from "react-icons/fa6";
 
 import TabMonitoring from "../../components/admin/TabMonitoring";
 import TabUser from "../../components/admin/TabUser";
@@ -26,6 +26,9 @@ import TabJurnal from "../../components/admin/TabJurnal";
 import TabJadwal from "../../components/admin/TabJadwal";
 import ModalQr from "../../components/admin/ModalQr"; 
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
+
+// 🚀 1. IMPORT TAB SOAL YANG BARU DIBUAT
+import TabSoal from "../../components/admin/TabSoal"; 
 
 // ============================================================================
 // 1.5 HELPER: GENERATOR BULAN
@@ -35,7 +38,6 @@ function generateBulanOpsi(mulaiStr, akhirStr) {
   const dMulai = new Date(mulaiStr);
   const dAkhir = new Date(akhirStr);
   
-  // Set ke tanggal 1 agar looping bulannya tidak lompat
   let current = new Date(dMulai.getFullYear(), dMulai.getMonth(), 1);
   const end = new Date(dAkhir.getFullYear(), dAkhir.getMonth(), 1);
   
@@ -58,10 +60,8 @@ function AdminContent() {
   
   const tab = searchParams.get("tab") || "monitoring"; 
   
-  // 🚀 LOGIKA BULAN GLOBAL
   const opsiBulan = useMemo(() => generateBulanOpsi(PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR), []);
   const currentMonthValue = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-  // Default ke bulan ini (jika ada di opsi), atau bulan terakhir di periode belajar (jika sudah lewat)
   const defaultBulan = opsiBulan.find(o => o.value === currentMonthValue) ? currentMonthValue : opsiBulan[opsiBulan.length - 1]?.value;
   const bulanAktif = searchParams.get("bulan") || defaultBulan;
   
@@ -73,23 +73,20 @@ function AdminContent() {
   const [dataAbsenStaf, setDataAbsenStaf] = useState([]); 
   const [loadingData, setLoadingData] = useState(true);
 
-  // 🚀 PERBAIKAN: Fungsi Ganti Tab
   const gantiTab = (namaTabBaru) => {
     const params = new URLSearchParams();
     params.set("tab", namaTabBaru);
-    // 💡 Jangan lupakan bulan yang sedang aktif saat ganti tab!
     if (searchParams.has("bulan")) {
       params.set("bulan", searchParams.get("bulan"));
     }
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  // 🚀 HANDLER: Ganti Bulan Global
   const handleGantiBulan = (e) => {
     const val = e.target.value;
     const params = new URLSearchParams(searchParams.toString());
     params.set("bulan", val);
-    params.delete("page"); // Reset pagination karena data berubah
+    params.delete("page"); 
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
@@ -154,7 +151,6 @@ function AdminContent() {
           </div>
           
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* 🚀 GLOBAL MONTH SWITCHER (NEO BRUTALISM) */}
             <div style={{ 
               display: 'flex', alignItems: 'center', backgroundColor: 'white', 
               padding: '8px 16px', borderRadius: '12px', border: '3px solid #111827', 
@@ -190,15 +186,21 @@ function AdminContent() {
           <button onClick={() => gantiTab("jurnal")} className={`${styles.tombolTab} ${tab === "jurnal" ? styles.tombolTabAktif : ""}`}>📓 JURNAL</button>
           <button onClick={() => gantiTab("jadwal")} className={`${styles.tombolTab} ${tab === "jadwal" ? styles.tombolTabAktif : ""}`}>📅 JADWAL</button>
           <button onClick={() => gantiTab("user")} className={`${styles.tombolTab} ${tab === "user" ? styles.tombolTabAktif : ""}`}>👥 USER</button>
+          
+          {/* 🚀 2. TAMBAHKAN TOMBOL MENU SOAL DI SINI */}
+          <button onClick={() => gantiTab("soal")} className={`${styles.tombolTab} ${tab === "soal" ? styles.tombolTabAktif : ""}`}>📚 SOAL</button>
         </div>
 
-        {/* AREA KONTEN AKTIF (OPER VARIABEL bulanAktif) */}
+        {/* AREA KONTEN AKTIF */}
         <div className={styles.areaKontenTab} role="tabpanel">
           <ErrorBoundary>
             {tab === "monitoring" && <TabMonitoring dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} dataAbsenStaf={dataAbsenStaf} muatData={muatData} bulanAktif={bulanAktif} />}
             {tab === "jurnal" && <TabJurnal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} />}
             {tab === "jadwal" && <TabJadwal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} />}
             {tab === "user" && <TabUser dataSiswa={dataSiswa} dataPengajar={dataPengajar} muatData={muatData} />}
+            
+            {/* 🚀 3. RENDER TAB SOAL JIKA DIKLIK */}
+            {tab === "soal" && <TabSoal dataSiswa={dataSiswa} />}
           </ErrorBoundary>
         </div>
 

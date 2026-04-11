@@ -37,10 +37,10 @@ const TabScanSiswa = dynamic(() => import("./student/TabScanSiswa"), {
 // ============================================================================
 // 3. MAIN COMPONENT
 // ============================================================================
-export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
+// 🚀 FIX 1: Terima `latihanHariIni` dari app/page.tsx
+export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanHariIni }) {
   const router = useRouter();
 
-  // 🛡️ ZERO HARDCODE: Deteksi Sesi Aktif dari Props Database
   const adaKonsulAktif = useMemo(() => riwayat?.some(
     r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id
   ), [riwayat]);
@@ -49,7 +49,6 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
     r => r.jenisSesi === TIPE_SESI.KELAS && r.status === STATUS_SESI.BERJALAN.id
   ), [riwayat]);
 
-  // 🚀 FIX 1: State modeScan sekarang otomatis mengikuti Sesi Aktif saat inisialisasi
   const [tab, setTab] = useState("home"); 
   const [modeScan, setModeScan] = useState(() => {
     if (adaKonsulAktif) return MODE_SCAN.KONSUL;
@@ -60,7 +59,6 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
   const [pesanSistem, setPesanSistem] = useState("");
   const [sedangLoading, setSedangLoading] = useState(false);
   
-  // 🚀 FIX 2: Ambil mapel dari riwayat jika sedang konsul, agar tidak kosong saat login ulang
   const [mapelPilihan, setMapelPilihan] = useState(() => {
     if (adaKonsulAktif) {
       const sesi = riwayat.find(r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id);
@@ -71,7 +69,6 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
 
   const apakahError = cekPesanErrorScanner(pesanSistem);
 
-  // 🚀 FIX 3: Efek Sinkronisasi. Jika tab pindah ke Scan, pastikan mode-nya benar.
   useEffect(() => {
     if (tab === "scan") {
       if (adaKonsulAktif) setModeScan(MODE_SCAN.KONSUL);
@@ -89,26 +86,20 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
     router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
   };
 
-  // 🚀 LOGIKA SCAN: Smart Detection untuk mencegah salah tuduh "Bukan Barcode Kelas"
   async function saatBarcodeTerbaca(teksDariKamera) {
     if (sedangLoading) return;
 
     let pesanErrorLokal = "";
 
-    // 🛡️ SMART LOGIC: Jika ada sesi aktif, kita prioritaskan deteksi "Selesai Sesi" 
-    // daripada pengecekan modeScan yang kaku di client.
     const isScanKonsul = teksDariKamera === PREFIX_BARCODE.KONSUL;
     const isScanKelas = teksDariKamera.startsWith(PREFIX_BARCODE.KELAS);
 
-    // 1. Kasus: Lagi Konsul tapi mode Scan terpilih adalah Kelas
     if (adaKonsulAktif && isScanKonsul) {
-      setModeScan(MODE_SCAN.KONSUL); // Koreksi otomatis mode-nya
+      setModeScan(MODE_SCAN.KONSUL); 
     } 
-    // 2. Kasus: Lagi Kelas tapi mode Scan terpilih adalah Konsul
     else if (adaKelasAktif && isScanKelas) {
-      setModeScan(MODE_SCAN.KELAS); // Koreksi otomatis mode-nya
+      setModeScan(MODE_SCAN.KELAS); 
     }
-    // 3. Validasi Normal (Jika tidak ada sesi aktif)
     else {
       if (modeScan === MODE_SCAN.KELAS && !isScanKelas) { 
         pesanErrorLokal = "Ups! Ini bukan barcode Kelas."; 
@@ -127,13 +118,11 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
       return; 
     }
 
-    // Eksekusi Server
     setSedangLoading(true);
     setHasilScan(teksDariKamera);
     setPesanSistem("Mengirim data ke pusat...");
 
     try {
-      // Pastikan kirim mapelPilihan yang benar (terutama jika baru pindah mode otomatis)
       const laporan = await prosesHasilScan(teksDariKamera, mapelPilihan);
       setPesanSistem(laporan.pesan);
       
@@ -152,7 +141,17 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik }) {
   const renderIsiTab = () => {
     switch (tab) {
       case "home":
-        return <TabBerandaSiswa siswa={siswa} jadwal={jadwal} riwayat={riwayat} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} />;
+        return (
+          <TabBerandaSiswa 
+            siswa={siswa} 
+            jadwal={jadwal} 
+            riwayat={riwayat} 
+            setTab={setTab} 
+            setModeScan={setModeScan} 
+            resetScanner={resetScanner} 
+            latihanHariIni={latihanHariIni} // 🚀 FIX 2: TERUSKAN KE BERANDA!
+          />
+        );
       case "scan":
         return (
           <TabScanSiswa 

@@ -21,7 +21,8 @@ import { formatYYYYMMDD, formatBulanTahun } from "../../utils/formatHelper";
 
 import { 
   FaCalendarDays, FaBullseye, FaStar, FaFire, FaCircleCheck, 
-  FaTrophy, FaCrown, FaMedal, FaUserTie, FaListCheck, FaGift 
+  FaTrophy, FaCrown, FaMedal, FaUserTie, FaListCheck, FaGift,
+  FaBookOpen, FaLink, FaXmark, FaPen
 } from "react-icons/fa6";
 import styles from "../App.module.css";
 
@@ -412,12 +413,14 @@ function ModalKlasemen({ onClose, kelasSiswa }) {
 // ============================================================================
 // 7. MAIN EXPORT COMPONENT
 // ============================================================================
-export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setModeScan, resetScanner }) {
+export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setModeScan, resetScanner, latihanHariIni }) {
   const router = useRouter();
   
   const [isKlasemenOpen, setIsKlasemenOpen] = useState(false);
   const [misiHarian, setMisiHarian] = useState([]);
   const [loadingMisi, setLoadingMisi] = useState(true);
+
+  const [urlMitra, setUrlMitra] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -446,11 +449,9 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
     return pilahJadwalSiswa(jadwal, riwayat, PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR);
   }, [jadwal, riwayat]);
 
-  // 🚀 LOGIKA STREAK DENGAN TOLERANSI LIBUR (MANUSIAWI)
   const streakKonsul = useMemo(() => {
     if (!riwayat || riwayat.length === 0) return 0;
     
-    // Ambil daftar libur dari constants
     const daftarLibur = EVENT_PENTING.TANGGAL_LIBUR || [];
     
     const tanggalUnikKonsul = new Set(
@@ -462,32 +463,27 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
     let tanggalCek = new Date(hariIni);
     let totalStreak = 0;
 
-    // --- TAHAP 1: CEK STATUS AKTIF ---
-    // Jika hari ini libur/minggu dan tak konsul, kita mundur ke hari kerja terakhir.
     while (true) {
       const tglStr = formatYYYYMMDD(tanggalCek);
       const isMinggu = tanggalCek.getDay() === 0;
       const isLibur = daftarLibur.includes(tglStr);
 
-      if (tanggalUnikKonsul.has(tglStr)) break; // Sudah konsul hari ini
+      if (tanggalUnikKonsul.has(tglStr)) break; 
 
       if (isMinggu || isLibur) {
         tanggalCek.setDate(tanggalCek.getDate() - 1);
         continue;
       }
 
-      // Jika hari kerja tapi tak konsul, cek kemarin
       tanggalCek.setDate(tanggalCek.getDate() - 1);
       const tglKemarinStr = formatYYYYMMDD(tanggalCek);
       
-      // Jika kemarin juga tak konsul (dan bukan hari libur), streak putus
       if (!tanggalUnikKonsul.has(tglKemarinStr) && tanggalCek.getDay() !== 0 && !daftarLibur.includes(tglKemarinStr)) {
         return 0;
       }
       break;
     }
     
-    // --- TAHAP 2: PENGHITUNGAN MUNDUR ---
     while (true) {
       const tglStr = formatYYYYMMDD(tanggalCek);
       const isMinggu = tanggalCek.getDay() === 0;
@@ -497,10 +493,8 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
         totalStreak++;
         tanggalCek.setDate(tanggalCek.getDate() - 1);
       } else if (isMinggu || isLibur) {
-        // Lewati hari libur tanpa putus rantai
         tanggalCek.setDate(tanggalCek.getDate() - 1);
       } else {
-        // Bertemu hari kerja tanpa konsul = selesai loop
         break; 
       }
     }
@@ -570,7 +564,109 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
       
       <JadwalHariIni jadwalAktif={jadwalAktif} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} />
       
+      {/* 🚀 ARENA LATIHAN SOAL DINAMIS */}
+      <div className={styles.contentContainer}>
+        <h3 className={styles.contentTitle}>
+          <FaBookOpen color="#2563eb" /> Latihan Soal Hari Ini
+        </h3>
+        
+        {latihanHariIni ? (
+          // 🚀 UPDATE STYLE: Menyamakan dengan style kartu Misi / Jadwal
+          <div className={styles.missionCard} style={{ cursor: 'pointer', padding: '0', overflow: 'hidden' }} onClick={() => setUrlMitra(latihanHariIni.url)}>
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ backgroundColor: '#eff6ff', padding: '10px', borderRadius: '8px', color: '#2563eb' }}>
+                    <FaPen size={18} />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 'bold', color: '#111827' }}>
+                      {latihanHariIni.judul}
+                    </h4>
+                    <span style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <FaUserTie size={10} /> {latihanHariIni.namaPembuat || "Admin Quantum"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                style={{ 
+                  backgroundColor: '#2563eb', color: 'white', padding: '10px', 
+                  borderRadius: '8px', border: 'none', fontWeight: 'bold', 
+                  cursor: 'pointer', display: 'flex', justifyContent: 'center', 
+                  alignItems: 'center', gap: '8px', width: '100%',
+                  boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                Kerjakan Sekarang <FaLink size={12} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ 
+            backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', 
+            borderRadius: '12px', padding: '24px', textAlign: 'center' 
+          }}>
+            <span style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}>☕</span>
+            <p style={{ margin: '0', fontSize: '14px', color: '#64748b', fontWeight: '500' }}>
+              Santai dulu! Tidak ada latihan soal untuk hari ini.
+            </p>
+          </div>
+        )}
+      </div>
+
       {isKlasemenOpen && <ModalKlasemen onClose={() => setIsKlasemenOpen(false)} kelasSiswa={siswa.kelas} />}
+
+      {/* 🚀 MODAL IFRAME FULLSCREEN */}
+      {urlMitra && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: '#fff', zIndex: 99999,
+          display: 'flex', flexDirection: 'column'
+        }}>
+          
+          <div style={{
+            padding: '12px 16px', backgroundColor: '#111827', color: 'white',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            borderBottom: '4px solid #ef4444'
+          }}>
+            {/* 🚀 LOGO QUANTUM DI HEADER MODAL */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/logo-qr.png" alt="Quantum" width={100} height={24} style={{ height: '24px', width: 'auto', objectFit: 'contain' }} priority />
+              <div style={{ borderLeft: '2px solid #374151', paddingLeft: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '12px', fontWeight: '900' }}>Tugas & Latihan</h3>
+                <p style={{ margin: 0, fontSize: '9px', color: '#9ca3af' }}>External Resource</p>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => setUrlMitra(null)} 
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: '#ef4444', color: 'white', border: '2px solid white', 
+                padding: '6px 12px', borderRadius: '6px', fontWeight: '900', cursor: 'pointer'
+              }}
+            >
+              <FaXmark size={16} /> TUTUP
+            </button>
+          </div>
+
+          <div style={{ flex: 1, width: '100%', WebkitOverflowScrolling: 'touch', backgroundColor: '#f1f5f9' }}>
+            <iframe 
+              src={urlMitra} 
+              width="100%" 
+              height="100%" 
+              style={{ border: "none", display: "block" }}
+              title="Bank Soal"
+              allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+          </div>
+
+        </div>
+      )}
+
     </div>
   );
 }

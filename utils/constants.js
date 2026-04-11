@@ -163,6 +163,7 @@ export const OPSI_KELAS = Object.freeze([
   "10 SMA", "11 IPA SMA", "11 IPS SMA",
   "12 IPA SMA", "12 IPS SMA",
   "Alumni / Gap Year",
+  "OSN MAT", "OSN IPA", "OSN IPS" // 👈 Tiga kelas baru ditambahkan di sini
 ]);
 
 export const OPSI_MAPEL_KELAS = Object.freeze([

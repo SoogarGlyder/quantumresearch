@@ -9,6 +9,9 @@ import { redirect } from "next/navigation";
 import StudentApp from "../components/StudentApp";
 import TeacherApp from "../components/TeacherApp";
 
+// 🚀 IMPORT FUNGSI PENGAMBIL DATA LATIHAN SOAL
+import { dapatkanLatihanSiswa } from "../actions/soalAction";
+
 import { 
   PERAN, 
   STATUS_SESI, 
@@ -127,7 +130,8 @@ export default async function Home() {
   ]).exec();
 
   // 🚀 FILTER HANYA BULAN BERJALAN AGAR HP MURID TETAP RINGAN
-  const [riwayatRaw, jadwalRaw, statsRaw] = await Promise.all([
+  // 👉 SUNTIKAN: Tambahkan pengambilan data Latihan Soal di dalam Promise.all
+  const [riwayatRaw, jadwalRaw, statsRaw, latihanHariIniRaw] = await Promise.all([
     StudySession.find({ 
       siswaId: userLogin._id,
       waktuMulai: { $gte: minDateSiswaObj, $lte: maxDateSiswaObj }
@@ -140,7 +144,9 @@ export default async function Home() {
     })
       .sort({ tanggal: 1 })
       .lean(),
-    statsSiswaPromise
+    statsSiswaPromise,
+    // Eksekusi penarikan Latihan Soal dari actions
+    dapatkanLatihanSiswa(userLogin.username, userLogin.kelas)
   ]);
 
   const statistik = statsRaw.length > 0 ? statsRaw[0] : { totalMenit: 0, totalSesi: 0 };
@@ -151,6 +157,8 @@ export default async function Home() {
       riwayat={serialize(riwayatRaw)} 
       jadwal={serialize(jadwalRaw)}
       statistik={serialize(statistik)}
+      // 🚀 LEMPAR DATA LATIHAN KE KOMPONEN
+      latihanHariIni={serialize(latihanHariIniRaw)} 
     />
   );
 }

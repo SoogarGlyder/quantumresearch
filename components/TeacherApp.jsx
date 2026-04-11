@@ -2,7 +2,11 @@
 
 import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { FaHouse, FaQrcode, FaUserAstronaut, FaBolt } from "react-icons/fa6";
+// 🚀 FIX 1: Tambahkan FaBookBookmark untuk Tab Jurnal
+import { 
+  FaHouse, FaQrcode, FaUserAstronaut, 
+  FaBolt, FaBookOpen, FaBookBookmark 
+} from "react-icons/fa6";
 
 import styles from "./App.module.css";
 
@@ -17,6 +21,13 @@ const TabScanPengajar = dynamic(() => import("./teacher/TabScanPengajar"), {
 });
 const TabProfilPengajar = dynamic(() => import("./teacher/TabProfilPengajar"), {
   loading: () => <FallbackLoading teks="MEMUAT PROFIL..." />,
+});
+const TabTugasPengajar = dynamic(() => import("./teacher/TabTugasPengajar"), {
+  loading: () => <FallbackLoading teks="MEMUAT TUGAS..." />,
+});
+// 🚀 FIX 2: Import Tab Jurnal Kelas secara dinamis
+const TabJurnalKelas = dynamic(() => import("./teacher/TabJurnalKelas"), {
+  loading: () => <FallbackLoading teks="MEMUAT JURNAL..." />,
 });
 
 // 🚀 Loading state bergaya Neo-Brutalism
@@ -47,32 +58,28 @@ const FallbackLoading = ({ teks }) => (
 export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) { 
   const [tab, setTab] = useState("home");
 
-  // 🚀 LOGIKA: Cari absen yang sedang aktif (Masuk ada, Keluar belum ada)
   const absenAktif = useMemo(() => {
     if (!absensi || !Array.isArray(absensi)) return null;
-    
-    // Mencari data absensi yang sudah Clock-In tapi belum Clock-Out
     return absensi.find(a => a.waktuMasuk && !a.waktuKeluar);
   }, [absensi]);
 
   const kontenTab = useMemo(() => {
     switch (tab) {
       case "home":
-        return <TabBerandaPengajar dataUser={dataUser} jadwal={jadwal} absenAktif={absenAktif} />;
+        return <TabBerandaPengajar dataUser={dataUser} jadwal={jadwal} absensi={absensi} absenAktif={absenAktif} />;
+      case "jurnal":
+        // 🚀 FIX 3: Masukkan Tab Jurnal ke logika render
+        return <TabJurnalKelas dataUser={dataUser} jadwal={jadwal} />;
       case "scan":
-        return (
-          <TabScanPengajar 
-            // 🛑 PERUBAHAN: Key dihapus agar komponen TIDAK me-reset state internalnya
-            // saat absenAktif berubah dari null menjadi data.
-            absenAktif={absenAktif} 
-          />
-        );
+        return <TabScanPengajar absenAktif={absenAktif} />;
+      case "tugas":
+        return <TabTugasPengajar />;
       case "profil":
         return <TabProfilPengajar dataUser={dataUser} onLogout={onLogout} />;
       default:
         return null;
     }
-  }, [tab, dataUser, jadwal, onLogout, absenAktif]); 
+  }, [tab, dataUser, jadwal, absensi, onLogout, absenAktif]); 
 
   return (
     <div className={styles.mainContainer}>
@@ -80,17 +87,28 @@ export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) {
         {kontenTab}
       </main>
 
-      {/* NAVIGASI BAWAH NEO-BRUTALISM */}
+      {/* 🚀 NAVIGASI BAWAH: URUTAN BARU (Beranda | Jurnal | Scan | Tugas | Profil) */}
       <nav className={styles.navMenu}>
+        
+        {/* 1. BERANDA */}
         <button 
           onClick={() => setTab("home")} 
           className={`${styles.navButton} ${tab === "home" ? styles.navButtonActive : ""}`} 
-          aria-label="Beranda"
         >
           <FaHouse className={styles.navIcon} />
           <span className={styles.teksNav}>Beranda</span>
         </button>
+
+        {/* 2. JURNAL */}
+        <button 
+          onClick={() => setTab("jurnal")} 
+          className={`${styles.navButton} ${tab === "jurnal" ? styles.navButtonActive : ""}`} 
+        >
+          <FaBookBookmark className={styles.navIcon} />
+          <span className={styles.teksNav}>Jurnal</span>
+        </button>
         
+        {/* 3. SCAN (CENTER) */}
         <div className={styles.navButtonMid}>
           <button 
             onClick={() => setTab("scan")} 
@@ -100,11 +118,20 @@ export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) {
             <FaQrcode className={styles.scanIcon} />
           </button>
         </div>
+
+        {/* 4. TUGAS */}
+        <button 
+          onClick={() => setTab("tugas")} 
+          className={`${styles.navButton} ${tab === "tugas" ? styles.navButtonActive : ""}`} 
+        >
+          <FaBookOpen className={styles.navIcon} />
+          <span className={styles.teksNav}>Tugas</span>
+        </button>
         
+        {/* 5. PROFIL */}
         <button 
           onClick={() => setTab("profil")} 
           className={`${styles.navButton} ${tab === "profil" ? styles.navButtonActive : ""}`} 
-          aria-label="Profil"
         >
           <FaUserAstronaut className={styles.navIcon} />
           <span className={styles.teksNav}>Profil</span>
