@@ -33,7 +33,7 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
               type="text" required value={form.judul} 
               onChange={e => setForm({...form, judul: e.target.value})} 
               placeholder="Cth: Latihan Logaritma Dasar" 
-              className={styles.scheduleOption} 
+              className={styles.fill} 
               onTouchStart={(e) => e.stopPropagation()}
               style={{ userSelect: 'auto', WebkitUserSelect: 'auto', WebkitTouchCallout: 'default', pointerEvents: 'auto' }}
             />
@@ -45,7 +45,7 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
               type="url" required value={form.url} 
               onChange={e => setForm({...form, url: e.target.value})} 
               placeholder="https://..." 
-              className={styles.scheduleOption} 
+              className={styles.fill} 
               onTouchStart={(e) => e.stopPropagation()}
               style={{ userSelect: 'auto', WebkitUserSelect: 'auto', WebkitTouchCallout: 'default', pointerEvents: 'auto' }}
             />
@@ -57,7 +57,7 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
               <select 
                 value={form.tipeTarget} 
                 onChange={e => setForm({...form, tipeTarget: e.target.value, target: ""})} 
-                className={styles.scheduleOption} 
+                className={styles.fill} 
                 style={{ flex: 1, backgroundColor: '#fef08a' }}
               >
                 <option value="KELAS">SEKELAS</option>
@@ -68,7 +68,7 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
                 <select 
                   required value={form.target} 
                   onChange={e => setForm({...form, target: e.target.value})} 
-                  className={styles.scheduleOption} 
+                  className={styles.fill} 
                   style={{ flex: 1 }}
                 >
                   <option value="" disabled>-- PILIH --</option>
@@ -78,7 +78,7 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
                 <select 
                   required value={form.target} 
                   onChange={e => setForm({...form, target: e.target.value})} 
-                  className={styles.scheduleOption} 
+                  className={styles.fill} 
                   style={{ flex: 1 }}
                 >
                   <option value="" disabled>-- PILIH --</option>
@@ -93,7 +93,7 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
             <select 
               value={form.isAktif ? "aktif" : "mati"} 
               onChange={e => setForm({...form, isAktif: e.target.value === "aktif"})} 
-              className={styles.scheduleOption} 
+              className={styles.fill} 
               style={{ background: form.isAktif ? '#dcfce3' : '#fca5a5' }}
             >
               <option value="aktif">🟢 AKTIF (TAMPIL DI SISWA)</option>

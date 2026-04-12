@@ -208,7 +208,7 @@
 .wadahPilihMapel { margin-bottom: 24px; padding: 20px; }
 .scheduleOption { width: 100%; background-color: #dbeafe; border: 3px solid #111827; border-radius: 12px; padding: 16px; margin-bottom: 4px; font-size: 16px; font-weight: 900; color: #111827; outline: none; appearance: none; box-shadow: 4px 4px 0 #111827; }
 .scheduleOption:focus { background-color: #bfdbfe; }
-/* .scheduleOption:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; } */
+.scheduleOption:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
 
 .cameraFrame { padding: 16px; margin: 0 16px; border-radius: 20px; background-color: #facc15; }
 .containerCamera { overflow: hidden; border-radius: 12px; background-color: black; border: 3px solid #111827; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; position: relative; }
@@ -332,3 +332,9 @@
 .missionCardProgress { font-size: 12px; font-weight: 900; color: #4b5563; }
 .progressTrackContainer { border: 3px solid #111827; border-radius: 8px; height: 16px; background-color: #e5e7eb; overflow: hidden; }
 .progressTrackValue { height: 100%; transition: width 0.5s ease-out; }
+
+/* ==========================================================================
+   14. TAMBAHAN
+   ========================================================================== */
+.fill { width: 100%; background-color: #dbeafe; border: 3px solid #111827; border-radius: 12px; padding: 16px; margin-bottom: 4px; font-size: 16px; font-weight: 900; color: #111827; outline: none; appearance: none; box-shadow: 4px 4px 0 #111827; }
+.fill:focus { background-color: #bfdbfe; }
