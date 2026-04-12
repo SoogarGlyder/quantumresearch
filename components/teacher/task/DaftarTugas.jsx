@@ -1,8 +1,11 @@
+// File: components/teacher/task/DaftarTugas.jsx
 "use client";
 
 import { memo } from "react";
 import { FaBookOpen, FaBullseye, FaPenToSquare, FaTrash, FaLink } from "react-icons/fa6";
-import styles from "../App.module.css";
+
+// 🚀 FIX: Path Absolute
+import styles from "@/components/App.module.css";
 
 const DaftarTugas = memo(({ dataSoal, loading, onEdit, onHapus }) => (
   <div className={styles.contentContainer}>

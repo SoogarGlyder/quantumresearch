@@ -8,11 +8,10 @@ import {
   FaUserGraduate, FaXmark 
 } from "react-icons/fa6";
 
-import { simpanJurnalPengajar, ambilDetailJurnalPengajar } from "../../actions/teacherAction";
-import { PREFIX_BARCODE, STATUS_SESI, LABEL_SISTEM } from "../../utils/constants"; 
-import { formatTanggal } from "../../utils/formatHelper";
-
-import styles from "../App.module.css";
+import { simpanJurnalPengajar, ambilDetailJurnalPengajar } from "@/actions/teacherAction";
+import { PREFIX_BARCODE, STATUS_SESI, LABEL_SISTEM } from "@/utils/constants"; 
+import { formatTanggal } from "@/utils/formatHelper";
+import styles from "@/components/App.module.css";
 
 export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   const [loadingDetail, setLoadingDetail] = useState(true);
@@ -84,7 +83,6 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   };
 
   return (
-    // 🚀 FIX: Inline Style Anti-Badai untuk Full Screen (Menutupi Navbar Bawah)
     <div className={styles.wrapperGallery} style={{
       position: 'fixed',
       top: 0,

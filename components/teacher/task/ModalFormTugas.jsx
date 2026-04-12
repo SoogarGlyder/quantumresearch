@@ -1,12 +1,13 @@
 "use client";
 
 import { memo } from "react";
-import { OPSI_KELAS } from "../../utils/constants";
 import { FaXmark, FaFloppyDisk } from "react-icons/fa6";
-import styles from "../App.module.css";
+
+// 🚀 FIX PATH
+import { OPSI_KELAS } from "@/utils/constants";
+import styles from "@/components/App.module.css";
 
 const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBatal, loadingForm }) => (
-  // 🚀 BUNGKUS DENGAN WRAPPER MODAL
   <div className={styles.wrapperGallery} style={{
     position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
     zIndex: 99999, backgroundColor: 'rgba(17, 24, 39, 0.8)',
@@ -14,7 +15,6 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
   }}>
     <div className={styles.containerGallery} style={{ width: '90%', maxWidth: '448px', padding: 0, overflow: 'hidden' }}>
       
-      {/* HEADER MODAL */}
       <div className={styles.headerGallery}>
         <div className={styles.wrapperTitle}>
           <h3 className={styles.galleryTitle}>{idEdit ? "EDIT TUGAS" : "TUGAS BARU"}</h3>
@@ -25,7 +25,6 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
         </button>
       </div>
 
-      {/* AREA FORM */}
       <div className={styles.areaGallery} style={{ padding: '24px', backgroundColor: '#f8fafc' }}>
         <form onSubmit={onSimpan} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
@@ -36,6 +35,7 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
               onChange={e => setForm({...form, judul: e.target.value})} 
               placeholder="Cth: Latihan Logaritma Dasar" 
               className={styles.scheduleOption} 
+              style={{ WebkitUserSelect: 'text', userSelect: 'text' }}
             />
           </div>
           
@@ -46,6 +46,7 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
               onChange={e => setForm({...form, url: e.target.value})} 
               placeholder="https://..." 
               className={styles.scheduleOption} 
+              style={{ WebkitUserSelect: 'text', userSelect: 'text' }}
             />
           </div>
           
@@ -104,7 +105,6 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
           </button>
         </form>
       </div>
-
     </div>
   </div>
 ));

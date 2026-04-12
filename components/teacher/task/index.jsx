@@ -1,47 +1,23 @@
 "use client";
 
-import { useState, useEffect, memo } from "react";
-import Image from "next/image";
+import { useState, useEffect } from "react";
+import { FaPlus } from "react-icons/fa6";
+
+// 🚀 FIX PATH ABSOLUTE
 import { 
   ambilSemuaLatihanSoal, 
   prosesSimpanLatihanSoal, 
   prosesHapusLatihanSoal,
   ambilDaftarSiswaDropdown 
-} from "../../actions/soalAction";
-import { OPSI_KELAS } from "../../utils/constants";
-import styles from "../App.module.css";
-import { FaPlus } from "react-icons/fa6";
+} from "@/actions/soalAction";
+import { OPSI_KELAS } from "@/utils/constants";
+import styles from "@/components/App.module.css";
 
-// 🚀 IMPORT MODUL-MODUL KITA
+// 🚀 IMPORT TETANGGA
+import HeaderTugas from "./HeaderTugas";
 import ModalFormTugas from "./ModalFormTugas";
 import DaftarTugas from "./DaftarTugas";
 
-// ============================================================================
-// 1. SUB-KOMPONEN: HEADER TUGAS
-// ============================================================================
-const HeaderTugas = memo(({ totalTugas }) => (
-  <div className={styles.appHeader}>
-    <div className={styles.shapeRed}></div>
-    <div className={styles.shapeYellow}></div>
-    <div className={styles.logoContainer}>
-      <div className={styles.logo}>
-        <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
-      </div>
-    </div>
-    <div className={styles.identityContainer}>
-      <p className={styles.welcomeText}>Manajemen Pusat Soal</p>
-      <h1 className={styles.userName}>Bank Tugas</h1>
-      <div className={styles.containerIdNumber}>
-         <span className={styles.IdNumber}>Anda memiliki {totalTugas} materi yang dibagikan</span>
-      </div>
-    </div>
-  </div>
-));
-HeaderTugas.displayName = "HeaderTugas";
-
-// ============================================================================
-// 2. MAIN COMPONENT (State Management)
-// ============================================================================
 export default function TabTugasPengajar() {
   const [dataSoal, setDataSoal] = useState([]);
   const [dataSiswa, setDataSiswa] = useState([]);
@@ -66,7 +42,7 @@ export default function TabTugasPengajar() {
   const muatData = async () => {
     setLoading(true);
     const res = await ambilSemuaLatihanSoal();
-    if (res.sukses) setDataSoal(res.data || []); // 🛡️ Fallback undefined
+    if (res.sukses) setDataSoal(res.data || []); 
     setLoading(false);
   };
 
@@ -117,7 +93,6 @@ export default function TabTugasPengajar() {
       
       <HeaderTugas totalTugas={dataSoal?.length || 0} />
 
-      {/* 🚀 TOMBOL UTAMA UNTUK BUKA MODAL */}
       <div style={{ padding: '0 16px', marginTop: '24px' }}>
         <button 
           onClick={() => setIsFormOpen(true)} 
@@ -135,7 +110,6 @@ export default function TabTugasPengajar() {
         onHapus={klikHapus} 
       />
 
-      {/* 🚀 RENDER MODAL FORM JIKA AKTIF */}
       {isFormOpen && (
         <ModalFormTugas 
           form={form} 
