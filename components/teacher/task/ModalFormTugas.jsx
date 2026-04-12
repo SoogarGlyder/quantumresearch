@@ -34,8 +34,8 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
               onChange={e => setForm({...form, judul: e.target.value})} 
               placeholder="Cth: Latihan Logaritma Dasar" 
               className={styles.scheduleOption} 
-              // 🚀 FIX: WebkitTouchCallout adalah kunci untuk memunculkan menu PASTE di HP!
-              style={{ WebkitUserSelect: 'text', userSelect: 'text', WebkitTouchCallout: 'default' }}
+              onTouchStart={(e) => e.stopPropagation()}
+              style={{ userSelect: 'auto', WebkitUserSelect: 'auto', WebkitTouchCallout: 'default', pointerEvents: 'auto' }}
             />
           </div>
           
@@ -46,8 +46,8 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
               onChange={e => setForm({...form, url: e.target.value})} 
               placeholder="https://..." 
               className={styles.scheduleOption} 
-              // 🚀 FIX: WebkitTouchCallout adalah kunci untuk memunculkan menu PASTE di HP!
-              style={{ WebkitUserSelect: 'text', userSelect: 'text', WebkitTouchCallout: 'default' }}
+              onTouchStart={(e) => e.stopPropagation()}
+              style={{ userSelect: 'auto', WebkitUserSelect: 'auto', WebkitTouchCallout: 'default', pointerEvents: 'auto' }}
             />
           </div>
           
