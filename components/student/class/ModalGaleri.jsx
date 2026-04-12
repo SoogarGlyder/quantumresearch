@@ -4,9 +4,11 @@ import { memo } from "react";
 import dynamic from 'next/dynamic';
 import { FaXmark, FaBookBookmark, FaTriangleExclamation } from "react-icons/fa6";
 import 'react-medium-image-zoom/dist/styles.css';
-import styles from "../App.module.css";
 
-// 🚀 Lazy Load Zoom agar halaman utama tidak berat
+// 🚀 FIX: Path Absolute
+import styles from "@/components/App.module.css";
+
+// Lazy Load Zoom agar halaman utama tidak berat
 const Zoom = dynamic(() => import('react-medium-image-zoom'), { ssr: false });
 
 const ModalGaleri = memo(({ galeriAktif, onClose }) => {

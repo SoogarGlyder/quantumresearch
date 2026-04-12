@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { dapatkanKlasemenBulanIni } from "../../actions/klasemenAction";
 import { FaTrophy, FaCrown, FaMedal } from "react-icons/fa6";
-import styles from "../App.module.css";
+
+// 🚀 FIX: Path Absolute
+import { dapatkanKlasemenBulanIni } from "@/actions/klasemenAction";
+import styles from "@/components/App.module.css";
 
 export default function ModalKlasemen({ onClose, kelasSiswa }) {
   const [dataKlasemen, setDataKlasemen] = useState([]);

@@ -1,7 +1,9 @@
 "use client";
 
 import { FaXmark } from "react-icons/fa6";
-import styles from "../App.module.css";
+
+// 🚀 FIX: Path Absolute
+import styles from "@/components/App.module.css";
 
 export default function ModalIframeTugas({ urlMitra, onClose }) {
   if (!urlMitra) return null;

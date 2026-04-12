@@ -1,90 +1,18 @@
 "use client";
 
-// ============================================================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================================================
-import { useState, memo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image"; 
+import { FaPenToSquare, FaXmark } from "react-icons/fa6";
 
-import { updateProfilSiswa } from "../../actions/profilAction"; 
-import { VALIDASI_SISTEM } from "../../utils/constants";
-import { 
-  FaIdCard, FaSchool, FaArrowRightFromBracket, 
-  FaPenToSquare, FaWhatsapp, FaHashtag, FaXmark 
-} from "react-icons/fa6";
+// 🚀 PATH ABSOLUTE
+import { updateProfilSiswa } from "@/actions/profilAction"; 
+import { VALIDASI_SISTEM } from "@/utils/constants";
+import styles from "@/components/App.module.css";
 
-import styles from "../App.module.css";
+// 🚀 IMPORT TETANGGA (LOKAL)
+import ProfilView from "./ProfilView";
 
-// ============================================================================
-// 2. SUB-KOMPONEN: HEADER PROFIL (Pure & Memoized)
-// ============================================================================
-const HeaderProfil = memo(() => (
-  <div className={styles.appHeader}>
-    <div className={styles.shapeRed}></div>
-    <div className={styles.shapeYellow}></div>
-    <div className={styles.logoContainer}>
-      <div className={styles.logo}>
-        <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
-      </div>
-    </div>
-    <h1 className={styles.headerTitle}>Profilku</h1>
-  </div>
-));
-HeaderProfil.displayName = "HeaderProfil";
-
-// ============================================================================
-// 3. SUB-KOMPONEN: MINI HELPER (Pure & Memoized)
-// ============================================================================
-const InfoRow = memo(({ icon, label, value, highlight = false }) => (
-  <div style={{ 
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-    backgroundColor: highlight ? '#dbeafe' : '#f8fafc', 
-    padding: '12px 16px', 
-    border: '3px solid #111827', 
-    borderRadius: '12px',
-    boxShadow: '2px 2px 0 rgba(0,0,0,0.1)' 
-  }}>
-    <span style={{ fontSize: '12px', fontWeight: '900', color: '#4b5563', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase' }}>
-      {icon} {label}
-    </span>
-    <span style={{ fontSize: '14px', fontWeight: '900', color: highlight ? '#2563eb' : '#111827' }}>
-      {value}
-    </span>
-  </div>
-));
-InfoRow.displayName = "InfoRow";
-
-// ============================================================================
-// 4. SUB-KOMPONEN: PROFIL VIEW (Pure & Memoized)
-// ============================================================================
-const ProfilView = memo(({ siswa }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-    <InfoRow icon={<FaIdCard />} label="Username" value={`@${siswa.username}`} highlight />
-    <InfoRow icon={<FaHashtag />} label="ID Peserta" value={siswa.nomorPeserta || "-"} />
-    <InfoRow icon={<FaWhatsapp />} label="WhatsApp" value={siswa.noHp || "-"} />
-    <InfoRow icon={<FaSchool />} label="Kelas" value={siswa.kelas || "Belum Diatur"} />
-  </div>
-));
-ProfilView.displayName = "ProfilView";
-
-// ============================================================================
-// 5. SUB-KOMPONEN: TOMBOL LOGOUT (Pure & Memoized)
-// ============================================================================
-const LogoutSection = memo(({ klikLogout }) => (
-  <div style={{ margin: '0 16px', padding: '0' }}>
-    <button onClick={klikLogout} className={styles.logoutButton}>
-      <FaArrowRightFromBracket size={20} /> LOG OUT
-    </button>
-  </div>
-));
-LogoutSection.displayName = "LogoutSection";
-
-// ============================================================================
-// 6. SUB-KOMPONEN: KARTU PROFIL (State Colocation & Logic)
-// Area ini terisolasi agar saat siswa mengetik, hanya kotak ini yang render ulang!
-// ============================================================================
-function ProfilCard({ siswa }) {
+export default function ProfilCard({ siswa }) {
   const router = useRouter();
   
   const [isEditing, setIsEditing] = useState(false);
@@ -140,7 +68,6 @@ function ProfilCard({ siswa }) {
   return (
     <div className={styles.infoContainer} style={{ transform: 'none', margin: '0 16px 32px' }}>
       
-      {/* CARD HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '3px solid #111827', paddingBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div>
@@ -171,7 +98,6 @@ function ProfilCard({ siswa }) {
         </button>
       </div>
       
-      {/* NOTIFICATION BOX */}
       {pesan.teks && (
          <div style={{ 
            marginBottom: '20px', padding: '12px', borderRadius: '12px', border: '3px solid #111827', 
@@ -183,7 +109,6 @@ function ProfilCard({ siswa }) {
          </div>
       )}
 
-      {/* RENDER VIEW OR EDIT MODE */}
       {!isEditing ? (
         <ProfilView siswa={siswa} />
       ) : (
@@ -205,7 +130,7 @@ function ProfilCard({ siswa }) {
               type="password" 
               value={passwordEdit} 
               onChange={(e) => setPasswordEdit(e.target.value)}
-              placeholder={`Min ${VALIDASI_SISTEM.MIN_PASSWORD} karakter (kosongkan jika tak diubah)`}
+              placeholder={`Min ${VALIDASI_SISTEM.MIN_PASSWORD} karakter`}
               className={styles.scheduleOption} 
               style={{ backgroundColor: '#f8fafc', fontSize: '14px' }}
             />
@@ -221,22 +146,6 @@ function ProfilCard({ siswa }) {
           </button>
         </form>
       )}
-    </div>
-  );
-}
-
-// ============================================================================
-// 7. MAIN EXPORT COMPONENT (Compositor)
-// ============================================================================
-export default function TabProfil({ siswa, klikLogout }) {
-  return (
-    <div className={styles.contentArea}>
-      <HeaderProfil />
-
-      <div className={styles.contentContainer}>
-        <ProfilCard siswa={siswa} />
-        <LogoutSection klikLogout={klikLogout} />
-      </div>
     </div>
   );
 }
