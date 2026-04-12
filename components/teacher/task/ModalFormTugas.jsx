@@ -3,7 +3,6 @@
 import { memo } from "react";
 import { FaXmark, FaFloppyDisk } from "react-icons/fa6";
 
-// 🚀 FIX PATH
 import { OPSI_KELAS } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
@@ -35,7 +34,8 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
               onChange={e => setForm({...form, judul: e.target.value})} 
               placeholder="Cth: Latihan Logaritma Dasar" 
               className={styles.scheduleOption} 
-              style={{ WebkitUserSelect: 'text', userSelect: 'text' }}
+              // 🚀 FIX: WebkitTouchCallout adalah kunci untuk memunculkan menu PASTE di HP!
+              style={{ WebkitUserSelect: 'text', userSelect: 'text', WebkitTouchCallout: 'default' }}
             />
           </div>
           
@@ -46,7 +46,8 @@ const ModalFormTugas = memo(({ form, setForm, idEdit, dataSiswa, onSimpan, onBat
               onChange={e => setForm({...form, url: e.target.value})} 
               placeholder="https://..." 
               className={styles.scheduleOption} 
-              style={{ WebkitUserSelect: 'text', userSelect: 'text' }}
+              // 🚀 FIX: WebkitTouchCallout adalah kunci untuk memunculkan menu PASTE di HP!
+              style={{ WebkitUserSelect: 'text', userSelect: 'text', WebkitTouchCallout: 'default' }}
             />
           </div>
           
