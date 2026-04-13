@@ -27,7 +27,7 @@ export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) {
       case "jurnal":
         return <TabJurnalKelas dataUser={dataUser} jadwal={jadwal} />;
       case "scan":
-        return <TabScanPengajar absenAktif={absenAktif} />;
+        return <TabScanPengajar absenAktif={absenAktif} absensi={absensi} />;
       case "tugas":
         return <TabTugasPengajar />;
       case "profil":
@@ -35,7 +35,7 @@ export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) {
       default:
         return null;
     }
-  }, [tab, dataUser, jadwal, absensi, onLogout, absenAktif]); 
+  }, [tab, dataUser, jadwal, absensi, onLogout, absenAktif]);
 
   return (
     <div className={styles.mainContainer}> 

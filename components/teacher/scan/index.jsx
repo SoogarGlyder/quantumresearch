@@ -1,23 +1,30 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation"; 
 
 import { absenPengajarAction } from "@/actions/scanAction"; 
 import { PREFIX_BARCODE } from "@/utils/constants"; 
 import styles from "@/components/App.module.css";
 
+// 🚀 IMPORT KOMPONEN LOKAL
 import HeaderScanner from "./HeaderScanner";
 import InstruksiArea from "./InstruksiArea";
 import CameraArea from "./CameraArea";
 import MessageArea from "./MessageArea";
+import DaftarAbsensiBulanIni from "./DaftarAbsensiBulanIni"; // <-- Tambahkan ini!
 
-export default function TabScanPengajar({ absenAktif }) {
+export default function TabScanPengajar({ absenAktif, absensi = [] }) { // <-- Tambah prop absensi
   const router = useRouter(); 
   const [hasilScan, setHasilScan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorStatus, setErrorStatus] = useState(false);
   const [pesanSistem, setPesanSistem] = useState("");
+
+  // 🚀 STATE & LOGIKA UNTUK DAFTAR ABSENSI DIPINDAH KE SINI
+  const [idAbsenTerbuka, setIdAbsenTerbuka] = useState(null);
+  const toggleAbsen = useCallback((id) => setIdAbsenTerbuka(prev => prev === id ? null : id), []);
+  const riwayatAbsenBulanIni = useMemo(() => absensi || [], [absensi]);
 
   const isSudahMasuk = !!(absenAktif?.waktuMasuk && !absenAktif?.waktuKeluar);
 
@@ -76,6 +83,14 @@ export default function TabScanPengajar({ absenAktif }) {
           resetScanner={resetScanner}
         />
       </div>
+
+      {/* 🚀 RENDER DAFTAR ABSENSI DI BAWAH SCANNER */}
+      <DaftarAbsensiBulanIni 
+        riwayatAbsenBulanIni={riwayatAbsenBulanIni} 
+        idAbsenTerbuka={idAbsenTerbuka} 
+        toggleAbsen={toggleAbsen} 
+      />
+
     </div>
   );
 }
