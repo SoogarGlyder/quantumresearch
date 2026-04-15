@@ -4,6 +4,7 @@ import connectToDatabase from "../lib/db";
 import User from "../models/User";
 import Jadwal from "../models/Jadwal";
 import StudySession from "../models/StudySession"; 
+import Quiz from "../models/Quiz"; // 🚀 IMPORT MODEL QUIZ DI SINI
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { validationHelper } from "../utils/validationHelper";
@@ -45,7 +46,7 @@ function isValidCloudinary(url) {
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 2. TEACHER ACTIONS (JURNAL, DOKUMENTASI, ABSENSI & NILAI)
+// 2. TEACHER ACTIONS (JURNAL, DOKUMENTASI, ABSENSI, NILAI & CBT)
 // ============================================================================
 
 /**
@@ -161,7 +162,6 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
     if (!updateJadwal) return responseHelper.error("Jadwal tidak ditemukan atau akses ditolak.");
 
     // 2. Proses Absensi Masal (BulkWrite)
-    // 🚀 LOGIKA BARU: Jangan pernah menimpa waktuSelesai yang sudah dicatat oleh Scanner!
     if (arrayNilaiSiswa.length > 0) {
       const { awal, akhir } = timeHelper.getRentangHari(updateJadwal.tanggal);
       
@@ -181,20 +181,17 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
                 waktuMulai: { $gte: awal, $lte: akhir }
               },
               update: {
-                // $set digunakan untuk mengubah status dan nilai saja (Tanpa menyentuh waktuSelesai/Mulai)
                 $set: {
                   status: statusFinal,
                   nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest)
                 },
-                // $setOnInsert HANYA dieksekusi jika data sesi ini belum pernah ada di database
-                // (Kasus di mana siswa tidak pernah scan, tapi diabsen manual oleh pengajar)
                 $setOnInsert: {
                   waktuMulai: awal,
-                  waktuSelesai: awal, // Kasih waktu default agar tidak error di laporan admin
+                  waktuSelesai: awal, 
                   terlambatMenit: 0
                 }
               },
-              upsert: true // Izinkan upsert untuk mengakomodasi anak yang lupa absen tapi diabsen manual guru
+              upsert: true 
             }
           };
         });
@@ -213,6 +210,86 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
+
+// ============================================================================
+// 🚀 FUNGSI BARU: MENGAMBIL STATUS LIVE CBT UNTUK RADAR PENGAWAS
+// ============================================================================
+export async function getStatusKuisLive(idJadwal) {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID Jadwal tidak valid.");
+
+    await connectToDatabase();
+    const auth = await pastikanOtoritas();
+    if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const jadwal = await Jadwal.findById(idJadwal).lean();
+    if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
+
+    // 1. Ambil data Quiz untuk melihat siapa yang sudah SELESAI
+    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).lean();
+    const hasilPengerjaan = kuis?.hasilPengerjaan || [];
+
+    // 2. Ambil daftar SISWA di kelas tersebut
+    const siswaKelas = await User.find({
+      peran: PERAN.SISWA.id,
+      kelas: jadwal.kelasTarget,
+      status: STATUS_USER.AKTIF
+    }).select("nama").sort({ nama: 1 }).lean();
+
+    // 3. Ambil data ABSEN hari ini untuk melihat siapa yang MENGERJAKAN (Sudah masuk kelas)
+    const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
+    const sesiHariIni = await StudySession.find({
+      jenisSesi: TIPE_SESI.KELAS,
+      namaMapel: jadwal.mapel,
+      waktuMulai: { $gte: awal, $lte: akhir }
+    }).select("siswaId").lean();
+
+    // 4. Petakan status masing-masing siswa
+    const dataLive = siswaKelas.map(siswa => {
+      const idSiswaStr = siswa._id.toString();
+
+      // Cek apakah sudah selesai (ada nilainya di Quiz)
+      const hasil = hasilPengerjaan.find(h => h.siswaId.toString() === idSiswaStr);
+      if (hasil) {
+        return {
+          id: idSiswaStr,
+          nama: siswa.nama,
+          status: "SELESAI",
+          skor: hasil.skor,
+          pelanggaran: 0 // (Belum live tracking)
+        };
+      }
+
+      // Cek apakah sudah absen masuk
+      const sudahAbsen = sesiHariIni.some(s => s.siswaId.toString() === idSiswaStr);
+      if (sudahAbsen) {
+        return {
+          id: idSiswaStr,
+          nama: siswa.nama,
+          status: "MENGERJAKAN",
+          skor: null,
+          pelanggaran: 0 // (Belum live tracking)
+        };
+      }
+
+      // Jika belum absen dan belum ngerjain
+      return {
+        id: idSiswaStr,
+        nama: siswa.nama,
+        status: "BELUM_MULAI",
+        skor: null,
+        pelanggaran: 0
+      };
+    });
+
+    return responseHelper.success("Data Radar CBT termuat.", serialize(dataLive));
+
+  } catch (error) {
+    console.error("[ERROR getStatusKuisLive]:", error);
+    return responseHelper.error("Gagal menyadap status CBT.");
+  }
+}
+
 
 // ============================================================================
 // 3. ADMIN ACTIONS (MANAGEMENT PENGAJAR)
@@ -369,5 +446,73 @@ export async function prosesBulkTambahPengajar(dataArray) {
     );
   } catch (error) {
     return responseHelper.error("Gagal melakukan upload massal.", error);
+  }
+}
+
+// ============================================================================
+// 🚀 FUNGSI BARU: GOD MODE - RESET UJIAN SISWA
+// ============================================================================
+export async function resetUjianSiswa(idJadwal, idSiswa) {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID tidak valid.");
+
+    await connectToDatabase();
+    const auth = await pastikanOtoritas();
+    if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const kuis = await Quiz.findOne({ jadwalId: idJadwal });
+    if (!kuis) return responseHelper.error("Kuis tidak ditemukan.");
+
+    // Filter/buang data siswa tersebut dari array hasilPengerjaan
+    const initialLength = kuis.hasilPengerjaan.length;
+    kuis.hasilPengerjaan = kuis.hasilPengerjaan.filter(
+      (hasil) => hasil.siswaId.toString() !== idSiswa.toString()
+    );
+
+    if (kuis.hasilPengerjaan.length === initialLength) {
+      return responseHelper.error("Siswa ini belum mengumpulkan ujian.");
+    }
+
+    await kuis.save();
+    return responseHelper.success("Riwayat ujian berhasil dihapus. Siswa dapat mengulang dari awal.");
+  } catch (error) {
+    console.error("[ERROR resetUjianSiswa]:", error);
+    return responseHelper.error("Gagal mereset ujian siswa.");
+  }
+}
+
+// ============================================================================
+// 🚀 FUNGSI BARU: GOD MODE - FORCE SUBMIT (TUTUP PAKSA)
+// ============================================================================
+export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID tidak valid.");
+
+    await connectToDatabase();
+    const auth = await pastikanOtoritas();
+    if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const kuis = await Quiz.findOne({ jadwalId: idJadwal });
+    if (!kuis) return responseHelper.error("Kuis tidak ditemukan.");
+
+    // Pastikan siswa belum mengumpulkan
+    const sudahAda = kuis.hasilPengerjaan.some(h => h.siswaId.toString() === idSiswa.toString());
+    if (sudahAda) return responseHelper.error("Siswa sudah mengumpulkan ujian.");
+
+    // Suntikkan nilai 0 secara paksa untuk mengunci akses siswa
+    const arrayKosong = new Array(kuis.soal.length).fill("");
+    kuis.hasilPengerjaan.push({
+      siswaId: idSiswa,
+      nama: namaSiswa,
+      skor: 0,
+      jawabanSiswa: arrayKosong,
+      dikumpulkanPada: new Date()
+    });
+
+    await kuis.save();
+    return responseHelper.success("Ujian ditutup paksa. Siswa diberi nilai 0.");
+  } catch (error) {
+    console.error("[ERROR forceSubmitUjianSiswa]:", error);
+    return responseHelper.error("Gagal menutup paksa ujian.");
   }
 }

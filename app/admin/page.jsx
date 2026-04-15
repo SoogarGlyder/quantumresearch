@@ -186,8 +186,6 @@ function AdminContent() {
           <button onClick={() => gantiTab("jurnal")} className={`${styles.tombolTab} ${tab === "jurnal" ? styles.tombolTabAktif : ""}`}>📓 JURNAL</button>
           <button onClick={() => gantiTab("jadwal")} className={`${styles.tombolTab} ${tab === "jadwal" ? styles.tombolTabAktif : ""}`}>📅 JADWAL</button>
           <button onClick={() => gantiTab("user")} className={`${styles.tombolTab} ${tab === "user" ? styles.tombolTabAktif : ""}`}>👥 USER</button>
-          
-          {/* 🚀 2. TAMBAHKAN TOMBOL MENU SOAL DI SINI */}
           <button onClick={() => gantiTab("soal")} className={`${styles.tombolTab} ${tab === "soal" ? styles.tombolTabAktif : ""}`}>📚 SOAL</button>
         </div>
 
@@ -198,8 +196,6 @@ function AdminContent() {
             {tab === "jurnal" && <TabJurnal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} />}
             {tab === "jadwal" && <TabJadwal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} />}
             {tab === "user" && <TabUser dataSiswa={dataSiswa} dataPengajar={dataPengajar} muatData={muatData} />}
-            
-            {/* 🚀 3. RENDER TAB SOAL JIKA DIKLIK */}
             {tab === "soal" && <TabSoal dataSiswa={dataSiswa} />}
           </ErrorBoundary>
         </div>

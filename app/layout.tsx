@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 // ============================================================================
-// METADATA MASTER (Poin 7 - Enterprise Level)
+// METADATA MASTER (Enterprise Level)
 // ============================================================================
 export const metadata: Metadata = {
   title: {
@@ -58,15 +58,23 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
+// ============================================================================
+// ROOT LAYOUT
+// ============================================================================
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      {/* 👇 body sekarang bersih dari class font eksternal */}
-      <body className="antialiased">
+    /**
+     * 🚀 FIX HYDRATION ERROR:
+     * suppressHydrationWarning ditambahkan pada <html> dan <body> 
+     * untuk mengabaikan atribut ekstra yang disuntikkan oleh 
+     * ekstensi browser (seperti Grammarly, Google Translate, dll).
+     */
+    <html lang="id" suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>

@@ -114,7 +114,10 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
     <div className={styles.mainContainer}>
       <main>
         {tab === "home" && <TabBerandaSiswa siswa={siswa} jadwal={jadwal} riwayat={riwayat} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} latihanHariIni={latihanHariIni} />}
-        {tab === "kelas" && <TabKelasSiswa jadwal={jadwal} riwayat={riwayat} />}
+        
+        {/* 🚀 FIX: MENGIRIM DATA SISWA KE TAB KELAS / JURNAL */}
+        {tab === "kelas" && <TabKelasSiswa jadwal={jadwal} riwayat={riwayat} siswa={siswa} />}
+        
         {tab === "scan" && <TabScanSiswa modeScan={modeScan} setModeScan={setModeScan} hasilScan={hasilScan} pesanSistem={pesanSistem} sedangLoading={sedangLoading} mapelPilihan={mapelPilihan} setMapelPilihan={setMapelPilihan} saatBarcodeTerbaca={saatBarcodeTerbaca} resetScanner={resetScanner} apakahError={apakahError} adaKonsulAktif={adaKonsulAktif} adaKelasAktif={adaKelasAktif} />}
         {tab === "riwayat" && <TabKonsulSiswa riwayat={riwayat} />}
         {tab === "profil" && <TabProfilSiswa siswa={siswa} klikLogout={klikLogout} />}

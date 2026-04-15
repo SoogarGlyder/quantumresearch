@@ -2,7 +2,7 @@
 
 // 👇 Tambahkan memo dan useCallback di import
 import { useState, useMemo, useEffect, memo, useCallback } from "react";
-import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare } from "react-icons/fa6";
+import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare, FaFileSignature } from "react-icons/fa6"; // 🚀 Tambah FaFileSignature
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import { DndContext, useDraggable, useDroppable, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
@@ -13,8 +13,15 @@ import { DAFTAR_KELAS_BIMBEL, generateDuaMingguKerja, KAMUS_JAM_SESI } from "../
 // 👈 Import Konstanta Lengkap
 import { OPSI_MAPEL_KELAS, OPSI_KELAS, LIMIT_DATA } from "../../utils/constants";
 import { tambahJadwal, hapusJadwal, editJadwal } from "../../actions/adminAction";
+
+// 🚀 Import fungsi ambil kuis untuk mengecek status
+import { ambilKuisByJadwal } from "../../actions/quizAction"; 
+
 import { formatTanggal, potongDataPagination } from "../../utils/formatHelper";
 import styles from "../../app/admin/AdminPage.module.css";
+
+// 🚀 Import ModalKuis yang baru kita buat
+import ModalKuis from "./ModalKuis";
 
 // ============================================================================
 // --- KOMPONEN BANTUAN DND (Telah Dioptimasi dengan React.memo) ---
@@ -41,8 +48,16 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
     <td ref={setNodeRef} className={`${styles.tdDroppable} ${kelasWarna}`}>
       <div className={styles.tumpukanJadwal}>
         {permanenDB.map(j => (
-          <div key={j._id} onClick={() => klikKartuJadwal(j, "permanen")} className={styles.kartuJadwalPermanen} style={{ cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
+          <div key={j._id} onClick={() => klikKartuJadwal(j, "permanen")} className={styles.kartuJadwalPermanen} style={{ cursor: 'pointer', transition: 'transform 0.1s', position: 'relative' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
             <div className={styles.labelTersimpan}><FaDatabase /> TERSIMPAN</div>
+            
+            {/* 🚀 INDIKATOR KUIS DI KARTU PAPAN CATUR */}
+            {j.statusKuis === 'siap' && (
+              <div style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: '#facc15', color: '#111827', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '4px', border: '1px solid #111827' }}>
+                📝 KUIS SIAP
+              </div>
+            )}
+
             <div className={styles.teksMapelKartu}>{j.mapel}</div>
             <div className={styles.teksInfoPengajar}><span>👨‍🏫 {j.kodePengajar || '?'}</span><span>P-{j.pertemuan || '?'}</span></div>
             <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
@@ -68,7 +83,8 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
   if (prevProps.permanenDB.length !== nextProps.permanenDB.length) return false;
   if (prevProps.draftLokal.length !== nextProps.draftLokal.length) return false;
 
-  const isPermanenSama = prevProps.permanenDB.every((j, i) => j._id === nextProps.permanenDB[i]._id);
+  // 🚀 Tambahkan pengecekan statusKuis agar kartu mau merender ulang jika kuis baru ditambah
+  const isPermanenSama = prevProps.permanenDB.every((j, i) => j._id === nextProps.permanenDB[i]._id && j.statusKuis === nextProps.permanenDB[i].statusKuis);
   const isDraftSama = prevProps.draftLokal.every((j, i) => j.idUnik === nextProps.draftLokal[i].idUnik);
 
   return isPermanenSama && isDraftSama;
@@ -78,8 +94,7 @@ DroppableSel.displayName = "DroppableSel";
 // ============================================================================
 // KOMPONEN UTAMA
 // ============================================================================
-// 🚀 FIX: Terima bulanAktif dari page.jsx
-export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
+export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, adminId = "admin-sistem" }) { // 🚀 Tambah props adminId (sementara hardcode gpp jika belum ada auth lengkap)
   // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -87,7 +102,9 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
 
   const page = Number(searchParams.get("page")) || 1;
   
-  // 🚀 LOGIKA PINTAR: Hitung Batas Tanggal Berdasarkan Bulan di Header
+  // 🚀 STATE UNTUK KUIS (Menyimpan mana saja jadwal yang sudah punya kuis)
+  const [daftarStatusKuis, setDaftarStatusKuis] = useState({});
+
   const { minDate, maxDate } = useMemo(() => {
     if (!bulanAktif) return { minDate: "", maxDate: "" };
     
@@ -104,16 +121,13 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
   }, [bulanAktif]);
 
   // --- STATE PAPAN CATUR ---
-  // 🚀 FIX: Tanggal awal papan catur tidak lagi hardcode, melainkan menggunakan tanggal 1 di bulanAktif
   const [tanggalMulai, setTanggalMulai] = useState(minDate || "");
   const [jadwalLokal, setJadwalLokal] = useState([]); 
   
-  // Sinkronisasi: Jika bulanAktif berubah, reset papan catur ke tanggal 1 bulan tersebut
   useEffect(() => {
     if (minDate && minDate !== tanggalMulai) {
       setTanggalMulai(minDate);
       if (jadwalLokal.length > 0) {
-        // Otomatis buang draft lokal jika bulan berganti (mencegah salah simpan)
         setJadwalLokal([]);
       }
     }
@@ -133,6 +147,11 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
   const [formEdit, setFormEdit] = useState({ pengajar: "", pertemuan: "", jamMulai: "", jamSelesai: "" });
   const [isProsesEdit, setIsProsesEdit] = useState(false);
 
+  // 🚀 Modal Kuis
+  const [modalKuisTerbuka, setModalKuisTerbuka] = useState(false);
+  const [dataKuisAktif, setDataKuisAktif] = useState(null);
+  const [isMemuatKuis, setIsMemuatKuis] = useState(false);
+
   const [mapelAktifMelayang, setMapelAktifMelayang] = useState(null);
   const [isMenyimpan, setIsMenyimpan] = useState(false);
 
@@ -143,21 +162,25 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
   
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // SINKRONISASI FILTER: Jika filter berubah, reset halaman ke 1 di URL
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [filterTglMulai, filterTglAkhir, filterKelas]);
+  }, [filterTglMulai, filterTglAkhir, filterKelas, pathname, replace, searchParams]);
 
-  // 🚀 FIX UX: Reset filter lokal jika ganti bulan
   useEffect(() => {
     setFilterTglMulai("");
     setFilterTglAkhir("");
     setFilterKelas("");
   }, [bulanAktif]);
+
+  // 🚀 EFEK UNTUK CEK STATUS KUIS SETIAP KALI dataJadwal BERUBAH (Batch Fetching)
+  // Untuk menghemat database, kita tidak nge-fetch kuis satu-satu. 
+  // Nanti di backend kita bisa buat fungsi "Cek Banyak Kuis Sekaligus". 
+  // Sementara, jika admin klik kartu, baru kita cek. Namun untuk memunculkan icon di tabel, kita butuh datanya.
+  // PENGGANTI SEMENTARA: Kita biarkan indikator kuis kosong sampai admin mengkliknya (Lazy Loading) agar irit database.
 
   // --- LOGIKA DND CATUR ---
   const sensors = useSensors(
@@ -215,7 +238,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
     setDataDraft(null);
   };
 
-  const klikKartuJadwal = useCallback((jadwal, tipe) => {
+  const klikKartuJadwal = useCallback(async (jadwal, tipe) => {
     setJadwalEdit(jadwal);
     setTipeEdit(tipe);
     setFormEdit({
@@ -224,8 +247,41 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
       jamMulai: jadwal.jamMulai || "",
       jamSelesai: jadwal.jamSelesai || ""
     });
+
+    // 🚀 LAZY LOAD: Cek apakah kuis untuk jadwal ini sudah ada di DB saat diklik
+    if (tipe === "permanen") {
+        setIsMemuatKuis(true);
+        const kuisLama = await ambilKuisByJadwal(jadwal._id);
+        
+        // Simpan status kuis ke state global agar papan catur bisa menaruh icon "📝 Kuis Siap"
+        if (kuisLama) {
+            setDaftarStatusKuis(prev => ({...prev, [jadwal._id]: 'siap'}));
+        } else {
+            setDaftarStatusKuis(prev => ({...prev, [jadwal._id]: 'kosong'}));
+        }
+        setIsMemuatKuis(false);
+    }
+
     setModalEditTerbuka(true);
   }, []);
+
+  // 🚀 FUNGSI BUKA MODAL KUIS
+  const klikBukaModalKuis = async () => {
+    setModalEditTerbuka(false); // Tutup modal edit dulu
+    
+    // Tarik data kuis yang asli (beserta soalnya) dari DB
+    const kuisLama = await ambilKuisByJadwal(jadwalEdit._id);
+    setDataKuisAktif(kuisLama); // Simpan ke state agar bisa dioper ke ModalKuis
+    
+    setModalKuisTerbuka(true); // Buka modal kuis
+  };
+
+  // 🚀 FUNGSI SETELAH KUIS DISIMPAN (Tutup modal & update icon)
+  const handleSelesaiKuis = () => {
+      setModalKuisTerbuka(false);
+      // Asumsikan berhasil simpan, langsung beri label "siap" di papan
+      setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'siap'}));
+  };
 
   const simpanPerubahanJadwal = async () => {
     if (!formEdit.pengajar || !formEdit.pertemuan) {
@@ -321,7 +377,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
     } 
   };
 
-  // 🚀 DIET DATA: Potong data 1 tahun jadi 1 bulan SEBELUM difilter di tabel bawah
   const jadwalBulanIni = useMemo(() => {
     return dataJadwal.filter(j => j.tanggal >= minDate && j.tanggal <= maxDate);
   }, [dataJadwal, minDate, maxDate]);
@@ -337,9 +392,12 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
   const { totalPage, dataTerpotong: dataJadwalHalIni } = potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
 
   const cariDraftLokal = (kelasId, tanggalPenuh) => jadwalLokal.filter(j => j.kelasId === kelasId && j.tanggal === tanggalPenuh);
+  
+  // 🚀 Sisipkan statusKuis ke data permanenDB yang dikirim ke papan catur
   const cariPermanenDB = (kelasNama, tanggalPenuh) => {
     if (!dataJadwal) return [];
-    return dataJadwal.filter(j => j.kelasTarget === kelasNama && j.tanggal === tanggalPenuh);
+    const jadwalHariItu = dataJadwal.filter(j => j.kelasTarget === kelasNama && j.tanggal === tanggalPenuh);
+    return jadwalHariItu.map(j => ({ ...j, statusKuis: daftarStatusKuis[j._id] }));
   };
 
   // ============================================================================
@@ -359,7 +417,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
           <div className={styles.wadahKontrolKanan}>
             <div className={styles.wadahInputTanggal}>
               <label className={styles.labelTanggal}>Tanggal Mulai:</label>
-              {/* 🚀 FIX: Kunci input tanggal agar tidak bisa keluar jalur bulan yang aktif */}
               <input 
                 type="date" 
                 value={tanggalMulai} 
@@ -449,7 +506,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
           </div>
           <div className={styles.wadahFilterBawah}>
             <span style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}>Filter:</span>
-            {/* 🚀 FIX: Kunci input filter bawah agar tidak memuat tanggal dari bulan/tahun lain */}
             <input type="date" value={filterTglMulai} min={minDate} max={maxDate} onChange={(e) => setFilterTglMulai(e.target.value)} className={styles.inputTanggalNeo} />
             <span style={{ fontWeight: '900' }}>-</span>
             <input type="date" value={filterTglAkhir} min={minDate} max={maxDate} onChange={(e) => setFilterTglAkhir(e.target.value)} className={styles.inputTanggalNeo} />
@@ -490,9 +546,15 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
                       <div style={{ fontSize: '12px', fontWeight: '800', color: '#6b7280' }}>Pertemuan ke-{j.pertemuan || '?'}</div>
                     </td>
                     <td className={styles.tdDataTabel} style={{ textAlign: 'center' }}>
-                      <button onClick={() => klikHapusJadwalBawah(j._id, j.mapel, j.kelasTarget)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>
-                        <FaTrashCan style={{marginRight: '6px'}}/> Hapus
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        {/* 🚀 TOMBOL EDIT JADWAL & KUIS DI TABEL BAWAH */}
+                        <button onClick={() => klikKartuJadwal(j, "permanen")} className={`${styles.tombolAksi} ${styles.btnEdit}`}>
+                          Edit
+                        </button>
+                        <button onClick={() => klikHapusJadwalBawah(j._id, j.mapel, j.kelasTarget)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>
+                           Hapus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -542,6 +604,22 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
               <div>Kelas: <span>{jadwalEdit.kelasTarget}</span></div>
             </div>
 
+            {/* 🚀 TOMBOL BARU: BUKA MODAL KUIS (Hanya muncul jika jadwal sudah permanen di DB) */}
+            {tipeEdit === 'permanen' && (
+              <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f8fafc', border: '2px dashed #94a3b8', borderRadius: '8px', textAlign: 'center' }}>
+                <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>
+                  {isMemuatKuis ? "⏳ Memeriksa status kuis..." : (daftarStatusKuis[jadwalEdit._id] === 'siap' ? "✅ Kuis untuk kelas ini sudah disiapkan." : "⚠️ Kuis untuk kelas ini belum ada.")}
+                </p>
+                <button 
+                  onClick={klikBukaModalKuis}
+                  disabled={isMemuatKuis}
+                  style={{ width: '100%', padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: '3px solid #1e3a8a', borderRadius: '8px', fontWeight: '900', fontSize: '14px', cursor: isMemuatKuis ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '3px 3px 0 #1e3a8a' }}
+                >
+                  <FaFileSignature size={16} /> {daftarStatusKuis[jadwalEdit._id] === 'siap' ? "EDIT KUIS PRE-TEST" : "BUAT KUIS PRE-TEST"}
+                </button>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
               <div style={{ flex: 1 }}>
                 <label className={styles.labelModal}>Jam Mulai</label>
@@ -581,6 +659,16 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif }) {
           </div>
         </div>
       )}
+
+      {/* 🚀 MODAL KUIS (KOMPONEN EKSTERNAL) */}
+      <ModalKuis 
+        isOpen={modalKuisTerbuka} 
+        onClose={handleSelesaiKuis} 
+        jadwal={jadwalEdit} 
+        kuisLama={dataKuisAktif}
+        adminId={adminId}
+      />
+
     </div>
   );
 }

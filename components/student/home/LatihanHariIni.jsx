@@ -7,7 +7,7 @@ import styles from "@/components/App.module.css";
 const LatihanHariIni = memo(({ latihanHariIni, setUrlMitra }) => {
   return (
     <div className={styles.contentContainer}>
-      <h3 className={styles.contentTitle}><FaBookOpen color="#2563eb" /> Latihan Soal Hari Ini</h3>
+      <h3 className={styles.contentTitle}><FaBookOpen color="#2563eb" /> Bahan Belajar Hari Ini</h3>
       <div className={styles.missionList}>
       {latihanHariIni ? (  
         <div className={styles.missionCard} style={{ cursor: 'pointer', padding: '0', overflow: 'hidden' }} onClick={() => setUrlMitra(latihanHariIni.url)}>

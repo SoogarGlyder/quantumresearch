@@ -7,7 +7,8 @@ import { FaCalendarDays, FaClock } from "react-icons/fa6";
 import { PERIODE_BELAJAR } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
-const JadwalMendatang = memo(({ jadwalMendatang }) => (
+// 🚀 FIX 1: Menambahkan 'onPilihJadwal' ke dalam props
+const JadwalMendatang = memo(({ jadwalMendatang, onPilihJadwal }) => (
   <div className={styles.contentContainer}>
     <h3 className={styles.contentTitle} style={{ color: '#4b5563' }}>
       <FaCalendarDays color="#64748b" /> Jadwal Mendatang
@@ -22,12 +23,15 @@ const JadwalMendatang = memo(({ jadwalMendatang }) => (
         {jadwalMendatang.map((j) => (
           <div 
             key={j._id} 
+            // 🚀 FIX 2: Memasang event onClick ke kartu
+            onClick={() => onPilihJadwal(j)}
             className={styles.scheduleCard} 
             style={{ 
               backgroundColor: '#f8fafc', 
               border: '2px solid #cbd5e1', 
               boxShadow: 'none', 
-              opacity: 0.85 
+              opacity: 0.85,
+              cursor: 'pointer' // 🚀 FIX 3: Tambah cursor pointer agar pengajar tahu ini bisa diklik
             }}
           >
             <div className={styles.scheduleCardRow}>

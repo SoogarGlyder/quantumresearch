@@ -61,28 +61,58 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
     const sekarang = new Date();
     const tglHariIni = timeHelper.getTglJakarta(sekarang);
 
+    // 🚀 FIX: Deteksi Jenis QR dan Ekstrak ID Jadwal sejak awal
     let jenisQR = null;
-    if (teksQR.startsWith(PREFIX_BARCODE.KELAS)) jenisQR = TIPE_SESI.KELAS;
-    else if (teksQR === PREFIX_BARCODE.KONSUL) jenisQR = TIPE_SESI.KONSUL;
+    let jadwalIdDariQR = null;
+
+    if (teksQR.startsWith(PREFIX_BARCODE.KELAS)) {
+      jenisQR = TIPE_SESI.KELAS;
+      jadwalIdDariQR = teksQR.replace(PREFIX_BARCODE.KELAS, "");
+    } else if (teksQR === PREFIX_BARCODE.KONSUL) {
+      jenisQR = TIPE_SESI.KONSUL;
+    }
 
     if (!jenisQR) return responseHelper.error("⚠️ Barcode tidak valid atau tidak dikenali.");
 
-    let sesiAktif = await StudySession.findOne({ 
-      siswaId: userId, 
-      status: STATUS_SESI.BERJALAN.id 
-    });
+    // 🚀 FIX: Logika Pencarian Sesi (Kebal terhadap perubahan status oleh pengajar)
+    let sesiAktif = null;
 
+    if (jenisQR === TIPE_SESI.KELAS) {
+      if (!jadwalIdDariQR || jadwalIdDariQR.length !== 24) {
+        return responseHelper.error("⚠️ Format barcode kelas tidak valid.");
+      }
+      // Kita cari berdasarkan ID jadwal, bukan status berjalan!
+      sesiAktif = await StudySession.findOne({
+        siswaId: userId,
+        jadwalId: jadwalIdDariQR
+      });
+    } else {
+      // Jika konsul, tetap cari yang berjalan
+      sesiAktif = await StudySession.findOne({
+        siswaId: userId,
+        jenisSesi: TIPE_SESI.KONSUL,
+        status: STATUS_SESI.BERJALAN.id
+      });
+    }
+
+    // Auto-tutup sesi kemarin
     if (sesiAktif) {
       const tglSesiLama = timeHelper.getTglJakarta(sesiAktif.waktuMulai);
       if (tglSesiLama !== tglHariIni) {
-        sesiAktif.status = STATUS_SESI.SELESAI.id;
-        sesiAktif.waktuSelesai = sesiAktif.waktuMulai; 
-        await sesiAktif.save();
-        sesiAktif = null;
+        if (!sesiAktif.waktuSelesai) {
+          sesiAktif.status = STATUS_SESI.SELESAI.id;
+          sesiAktif.waktuSelesai = sesiAktif.waktuMulai; 
+          await sesiAktif.save();
+        }
+        sesiAktif = null; // Reset agar dia masuk (check-in) untuk hari ini
+      } else if (sesiAktif.waktuSelesai) {
+        // 🚀 FIX: Jika jam pulang sudah terisi (berarti dia benar-benar sudah check-out)
+        return responseHelper.success("✅ Anda sudah melakukan Check-out untuk kelas ini.");
       }
     }
 
     // --- LOGIKA PULANG SISWA (Check-Out) ---
+    // Di tahap ini, jika sesiAktif ADA, berarti waktuSelesai-nya PASTI kosong
     if (sesiAktif) {
       const durasiMenit = Math.floor((sekarang - sesiAktif.waktuMulai) / 60000);
 
@@ -198,12 +228,8 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
 
     // --- LOGIKA MASUK SISWA (Check-In) ---
     if (jenisQR === TIPE_SESI.KELAS) {
-      const jadwalId = teksQR.replace(PREFIX_BARCODE.KELAS, "");
-      if (!jadwalId || jadwalId.length !== 24) {
-        return responseHelper.error("⚠️ Format barcode kelas tidak valid.");
-      }
-
-      const jadwal = await Jadwal.findById(jadwalId).lean();
+      // Gunakan jadwalId yang sudah kita ekstrak di atas
+      const jadwal = await Jadwal.findById(jadwalIdDariQR).lean();
       if (!jadwal) return responseHelper.error("⚠️ Sesi kelas tidak ditemukan.");
       if (jadwal.tanggal !== tglHariIni) return responseHelper.error("⚠️ Barcode kedaluwarsa.");
       if (jadwal.kelasTarget !== siswa.kelas) return responseHelper.error(`⚠️ Khusus kelas ${jadwal.kelasTarget}.`);
@@ -223,7 +249,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         siswaId: userId,
         jenisSesi: TIPE_SESI.KELAS,
         namaMapel: jadwal.mapel,
-        jadwalId: jadwal._id, // 🚀 FIX: JADWAL ID SEKARANG IKUT TERSIMPAN!
+        jadwalId: jadwal._id, // Relasi ke jadwal yang diklik
         terlambatMenit: telat,
         status: STATUS_SESI.BERJALAN.id,
         waktuMulai: sekarang
