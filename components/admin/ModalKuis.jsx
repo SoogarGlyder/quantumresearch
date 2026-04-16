@@ -42,7 +42,8 @@ const QuantumEditor = ({ value, onChange }) => {
   const editor = useEditor({
     extensions: [
       StarterKit, Underline, Superscript, Subscript, Highlight.configure({ multicolor: true }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      // 🚀 PASTIKAN 'justify' ADA DI SINI
+      TextAlign.configure({ types: ['heading', 'paragraph'], alignments: ['left', 'center', 'right', 'justify'] }),
       Table.configure({ resizable: true }), TableRow, TableHeader, TableCell,
     ],
     content: value,
@@ -68,6 +69,8 @@ const QuantumEditor = ({ value, onChange }) => {
   return (
     <div style={{ border: '4px solid #111827', borderRadius: '15px', overflow: 'hidden', boxShadow: '5px 5px 0 #cbd5e1' }}>
       <div style={{ padding: '10px', borderBottom: '4px solid #111827', background: '#f3f4f6', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+        
+        {/* FORMAT TEKS DASAR */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} style={btnStyle(editor.isActive('bold'))}><FaBold /></button>
           <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} style={btnStyle(editor.isActive('italic'))}><FaItalic /></button>
@@ -76,6 +79,8 @@ const QuantumEditor = ({ value, onChange }) => {
           <button type="button" onClick={() => editor.chain().focus().toggleHighlight().run()} style={btnStyle(editor.isActive('highlight'))}><FaHighlighter /></button>
         </div>
         <div style={{ width: '2px', height: '24px', background: '#cbd5e1' }} />
+        
+        {/* RUMUS & PANGKAT */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <button type="button" onClick={() => { editor.chain().focus().insertContent('$ $').run(); editor.commands.setTextSelection(editor.state.selection.from - 1); }} style={btnStyle(false)}>
             <span style={{fontWeight:'900', fontSize:'13px'}}>$\pi$</span>
@@ -84,22 +89,30 @@ const QuantumEditor = ({ value, onChange }) => {
           <button type="button" onClick={() => editor.chain().focus().toggleSubscript().run()} style={btnStyle(editor.isActive('subscript'))}><FaSubscript /></button>
         </div>
         <div style={{ width: '2px', height: '24px', background: '#cbd5e1' }} />
+        
+        {/* 🚀 ALIGNMENT (TERMASUK JUSTIFY) */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <button type="button" onClick={() => editor.chain().focus().setTextAlign('left').run()} style={btnStyle(editor.isActive({ textAlign: 'left' }))}><FaAlignLeft /></button>
           <button type="button" onClick={() => editor.chain().focus().setTextAlign('center').run()} style={btnStyle(editor.isActive({ textAlign: 'center' }))}><FaAlignCenter /></button>
           <button type="button" onClick={() => editor.chain().focus().setTextAlign('right').run()} style={btnStyle(editor.isActive({ textAlign: 'right' }))}><FaAlignRight /></button>
+          <button type="button" onClick={() => editor.chain().focus().setTextAlign('justify').run()} style={btnStyle(editor.isActive({ textAlign: 'justify' }))}><FaAlignJustify /></button>
         </div>
         <div style={{ width: '2px', height: '24px', background: '#cbd5e1' }} />
+        
+        {/* LIST & TABEL */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} style={btnStyle(editor.isActive('bulletList'))}><FaListUl /></button>
           <button type="button" onClick={() => editor.chain().focus().toggleOrderedList().run()} style={btnStyle(editor.isActive('orderedList'))}><FaListOl /></button>
           <button type="button" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} style={btnStyle(false)}><FaTable /></button>
         </div>
+        
+        {/* UNDO REDO */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
           <button type="button" onClick={() => editor.chain().focus().undo().run()} style={btnStyle(false)}><FaRotateLeft /></button>
           <button type="button" onClick={() => editor.chain().focus().redo().run()} style={btnStyle(false)}><FaRotateRight /></button>
           <button type="button" onClick={() => editor.chain().focus().unsetAllMarks().run()} style={btnStyle(false)}><FaEraser /></button>
         </div>
+
       </div>
       <EditorContent editor={editor} className="tiptap-editor-container" />
       <style>{`
@@ -119,7 +132,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   
-  // 🚀 STATE DURASI (Default 10 Menit)
   const [durasiUjian, setDurasiUjian] = useState(10);
 
   const buatTemplateSoalBaru = () => ({
@@ -142,7 +154,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
           jumlahOpsi: s.jumlahOpsi || Object.keys(s.opsi || {}).length || 5
         }));
         setFormSoal(mappedSoal);
-        // 🚀 Set Durasi dari Database (Atau default 10 jika kosong)
         setDurasiUjian(kuisLama.durasi || 10);
       } else {
         setFormSoal([buatTemplateSoalBaru()]);
@@ -187,7 +198,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
 
     setLoading(true);
     try {
-      // 🚀 PENTING: Saya menambahkan `durasiUjian` sebagai parameter keempat!
       const res = await simpanKuis(jadwal._id, adminId, formSoal, durasiUjian);
       if (res.sukses) {
         alert("✅ Kuis CBT Berhasil Dipublikasikan!");
@@ -220,7 +230,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
         {/* FORM UTAMA */}
         <form onSubmit={handleSimpan} style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
           
-          {/* 🚀 PENGATURAN DURASI UJIAN (NEO-BRUTALISM) */}
+          {/* PENGATURAN DURASI UJIAN */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px', background: '#fef08a', border: '4px solid #111827', padding: '15px 20px', borderRadius: '15px', boxShadow: '6px 6px 0 #111827' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ background: '#111827', padding: '10px', borderRadius: '50%', display: 'flex' }}>
@@ -256,7 +266,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
                       SOAL #{i+1}
                     </span>
                     
-                    {/* SETTING EXP */}
                     <div style={{ display: 'flex', alignItems: 'center', background: '#fef08a', border: '3px solid #111827', borderRadius: '8px', overflow: 'hidden' }}>
                       <span style={{ padding: '8px 10px', background: '#111827', color: '#facc15', fontWeight: '900', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <FaStar /> EXP
@@ -265,25 +274,21 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
                         type="number" min="0" value={soal.bobotExp} 
                         onChange={(e) => handleUpdateSoal(i, 'bobotExp', Number(e.target.value))}
                         style={{ width: '60px', padding: '8px', border: 'none', fontWeight: '900', fontSize: '16px', outline: 'none', textAlign: 'center', background: 'transparent' }} 
-                        title="Bobot Nilai/EXP Soal Ini"
                       />
                     </div>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {/* Pilihan 4 atau 5 Opsi */}
                       <select value={soal.jumlahOpsi} onChange={(e) => handleUpdateSoal(i, 'jumlahOpsi', Number(e.target.value))} style={{ padding: '8px 12px', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: 'pointer', fontSize: '14px' }}>
                           <option value={4}>4 Opsi (A-D)</option>
                           <option value={5}>5 Opsi (A-E)</option>
                       </select>
 
-                      {/* Kunci Jawaban */}
                       <select required value={soal.kunciJawaban} onChange={(e) => handleUpdateSoal(i, 'kunciJawaban', e.target.value)} style={{ padding: '8px 15px', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', background: '#4ade80', color: '#111827', cursor: 'pointer', fontSize: '14px' }}>
                           <option value="">KUNCI JAWABAN</option>
                           {opsiAbjad.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                       </select>
 
-                      {/* Upload Gambar */}
                       <CldUploadWidget uploadPreset="quantum_unsigned" onSuccess={(res) => handleUpdateSoal(i, 'gambar', res.info.secure_url)}>
                           {({ open }) => (
                               <button type="button" onClick={() => open()} style={{ padding: '8px 15px', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: 'pointer', background: soal.gambar ? '#dcfce3' : '#fff', display: 'flex', alignItems: 'center', gap: '8px', color: '#111827' }}>
@@ -292,7 +297,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
                           )}
                       </CldUploadWidget>
 
-                      {/* TOMBOL HAPUS SOAL */}
                       <button type="button" onClick={() => handleHapusSoal(i)} title="Hapus Soal Ini" style={{ padding: '10px', background: '#ef4444', color: 'white', border: '3px solid #111827', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <FaTrashCan size={16} />
                       </button>
@@ -305,7 +309,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
                   <QuantumEditor value={soal.pertanyaan} onChange={(html) => handleUpdateSoal(i, 'pertanyaan', html)} />
                 </div>
 
-                {/* OPSI JAWABAN (A-D atau A-E) */}
+                {/* OPSI JAWABAN */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '20px' }}>
                   {opsiAbjad.map(opsi => (
                     <div key={opsi} style={{ border: '4px solid #111827', borderRadius: '12px', overflow: 'hidden', boxShadow: soal.kunciJawaban === opsi ? '4px 4px 0 #4ade80' : '4px 4px 0 #e2e8f0' }}>
@@ -352,7 +356,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
             );
           })}
 
-          {/* TOMBOL TAMBAH SOAL */}
           <button 
             type="button" 
             onClick={handleTambahSoal}
@@ -361,7 +364,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
             <FaPlus size={22} /> TAMBAH SOAL BARU KE DALAM KUIS
           </button>
 
-          {/* TOMBOL SUBMIT */}
           <button type="submit" disabled={loading} style={{ padding: '25px', background: '#111827', color: '#facc15', border: 'none', borderRadius: '20px', fontWeight: '900', fontSize: '22px', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: '0 10px 0 #2563eb', marginBottom: '30px', textTransform: 'uppercase', letterSpacing: '1px' }}>
             {loading ? "MENYIMPAN DATA..." : <><FaFloppyDisk size={26} /> PUBLIKASIKAN KUIS CBT ({formSoal.length} SOAL)</>}
           </button>

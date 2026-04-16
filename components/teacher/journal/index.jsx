@@ -1,4 +1,3 @@
-// File: components/teacher/journal/index.jsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -10,22 +9,40 @@ import HeaderJurnal from "./HeaderJurnal";
 import RiwayatJurnal from "./RiwayatJurnal";
 import ModalJurnal from "./ModalJurnal"; 
 
+// 🚀 HELPER: Safari-Safe Date Normalizer (Copy dari Home)
+const getNormalizeDate = (dateInput) => {
+  if (!dateInput) return 0;
+  try {
+    const dateObj = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    const jktString = dateObj.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
+    const jktDate = new Date(jktString);
+    jktDate.setHours(0, 0, 0, 0);
+    return jktDate.getTime();
+  } catch (error) { return 0; }
+};
+
 export default function TabJurnalKelas({ dataUser, jadwal = [] }) {
-  const hariIni = timeHelper.getTglJakarta();
+  const hariIniMurni = getNormalizeDate(new Date());
+  const hariIniString = timeHelper.getTglJakarta(); // Untuk dikirim ke Modal
+  
   const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
 
-  // LOGIKA FILTER: Arsip Murni (Pisahkan UI dan Logika)
+  // LOGIKA FILTER: Arsip Murni (Kebal Safari)
   const jadwalArsip = useMemo(() => {
     return (jadwal || [])
       .filter(j => {
-        const isMasaLalu = j.tanggal < hariIni;
-        const isHariIniSudahSelesai = j.tanggal === hariIni && !!j.bab;
-        const masukPeriode = j.tanggal >= PERIODE_BELAJAR.MULAI && j.tanggal <= PERIODE_BELAJAR.AKHIR;
+        const tglJadwalMurni = getNormalizeDate(j.tanggal);
+        const awalPeriodeMurni = getNormalizeDate(PERIODE_BELAJAR.MULAI);
+        const akhirPeriodeMurni = getNormalizeDate(PERIODE_BELAJAR.AKHIR);
+
+        const isMasaLalu = tglJadwalMurni < hariIniMurni;
+        const isHariIniSudahSelesai = tglJadwalMurni === hariIniMurni && !!j.bab;
+        const masukPeriode = tglJadwalMurni >= awalPeriodeMurni && tglJadwalMurni <= akhirPeriodeMurni;
         
         return masukPeriode && (isMasaLalu || isHariIniSudahSelesai);
       })
-      .sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-  }, [jadwal, hariIni]);
+      .sort((a, b) => getNormalizeDate(b.tanggal) - getNormalizeDate(a.tanggal));
+  }, [jadwal, hariIniMurni]);
 
   return (
     <div className={styles.contentArea}>
@@ -40,7 +57,7 @@ export default function TabJurnalKelas({ dataUser, jadwal = [] }) {
       {jadwalTerpilih && (
         <ModalJurnal 
           jadwalTerpilih={jadwalTerpilih} 
-          hariIni={hariIni} 
+          hariIni={hariIniString} 
           onClose={() => setJadwalTerpilih(null)} 
         />
       )}

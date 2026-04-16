@@ -11,38 +11,61 @@ import JadwalMendatang from "./JadwalMendatang";
 import ModalJurnal from "@/components/teacher/journal/ModalJurnal"; 
 import WidgetRadarCBT from "./WidgetRadarCBT";
 
+// 🚀 HELPER: Safari-Safe Date Normalizer (Zona Waktu Jakarta)
+const getNormalizeDate = (dateInput) => {
+  if (!dateInput) return 0;
+  
+  try {
+    // Tangani jika input berupa string atau object Date
+    const dateObj = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    
+    // Konversi ke format string spesifik timezone Jakarta, lalu buat Date object baru darinya
+    // Ini menghilangkan semua bias timezone lokal dari perangkat user/safari
+    const jktString = dateObj.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
+    const jktDate = new Date(jktString);
+    
+    // Reset jam, menit, detik agar kita hanya membandingkan "Hari"-nya saja
+    jktDate.setHours(0, 0, 0, 0);
+    return jktDate.getTime();
+  } catch (error) {
+    return 0; // Jika format benar-benar hancur, abaikan
+  }
+};
+
 export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = [], absenAktif }) {
-  const hariIni = timeHelper.getTglJakarta();
+  // Ambil hari ini murni (jam 00:00:00 di Jakarta)
+  const hariIniMurni = getNormalizeDate(new Date());
+  
+  // Karena Modal Jurnal butuh format YYYY-MM-DD
+  const hariIniString = timeHelper.getTglJakarta(); 
   
   const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
 
   // ===================================================================
-  // 🚀 PERBAIKAN BUG TANGGAL SAFARI (Potong ISO String jadi YYYY-MM-DD)
+  // 🚀 PERBAIKAN BUG SAFARI: Filter menggunakan angka murni (getTime)
   // ===================================================================
   
   // 1. FILTER: Jadwal Hari Ini
   const jadwalHariIni = useMemo(() => (jadwal || [])
     .filter(j => {
-      if (!j?.tanggal) return false;
-      const tglJadwal = j.tanggal.substring(0, 10); // Paksa ambil 10 karakter pertama saja
-      return tglJadwal === hariIni && !j.bab;
+      const tglJadwalMurni = getNormalizeDate(j.tanggal);
+      return tglJadwalMurni === hariIniMurni && !j.bab;
     })
     .sort((a, b) => a.jamMulai.localeCompare(b.jamMulai)), 
-  [jadwal, hariIni]);
+  [jadwal, hariIniMurni]);
 
   // 2. FILTER: Jadwal Mendatang (Besok dan seterusnya)
   const jadwalMendatang = useMemo(() => (jadwal || [])
     .filter(j => {
-      if (!j?.tanggal) return false;
-      const tglJadwal = j.tanggal.substring(0, 10);
-      return tglJadwal > hariIni && !j.bab;
+      const tglJadwalMurni = getNormalizeDate(j.tanggal);
+      return tglJadwalMurni > hariIniMurni && !j.bab;
     }) 
     .sort((a, b) => {
-      const tglA = a.tanggal.substring(0, 10);
-      const tglB = b.tanggal.substring(0, 10);
-      return tglA.localeCompare(tglB) || a.jamMulai.localeCompare(b.jamMulai);
+      const tglAMurni = getNormalizeDate(a.tanggal);
+      const tglBMurni = getNormalizeDate(b.tanggal);
+      return tglAMurni - tglBMurni || a.jamMulai.localeCompare(b.jamMulai);
     }), 
-  [jadwal, hariIni]);
+  [jadwal, hariIniMurni]);
 
   // Statistik
   const statsPengajar = useMemo(() => ({ 
@@ -68,7 +91,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = []
 
       {/* MODAL JURNAL */}
       {jadwalTerpilih && (
-        <ModalJurnal jadwalTerpilih={jadwalTerpilih} hariIni={hariIni} onClose={() => setJadwalTerpilih(null)} />
+        <ModalJurnal jadwalTerpilih={jadwalTerpilih} hariIni={hariIniString} onClose={() => setJadwalTerpilih(null)} />
       )}
     </div>
   );
