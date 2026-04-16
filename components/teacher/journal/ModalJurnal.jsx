@@ -28,7 +28,12 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   const [dataKuisAktif, setDataKuisAktif] = useState(null);
   const [isMemuatKuis, setIsMemuatKuis] = useState(false);
 
-  const isMasaDepan = jadwalTerpilih.tanggal > hariIni;
+  // 🚀 PERBAIKAN BUG TANGGAL (Potong ISO String jadi YYYY-MM-DD saja)
+  const tanggalJadwalMurni = jadwalTerpilih?.tanggal ? jadwalTerpilih.tanggal.substring(0, 10) : "";
+  
+  const isMasaDepan = tanggalJadwalMurni > hariIni;
+  const isHariIni = tanggalJadwalMurni === hariIni;
+  const isMasaLalu = tanggalJadwalMurni < hariIni;
 
   useEffect(() => {
     let isMounted = true; 
@@ -182,7 +187,8 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                     </div>
                   </div>
 
-                  {jadwalTerpilih.tanggal === hariIni && (
+                  {/* 🚀 LOGIKA RENDER QR CODE SUDAH AMAN */}
+                  {isHariIni && (
                     <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                       <div style={{ background: 'white', padding: '16px', border: '4px solid #111827', borderRadius: '16px', display: 'inline-block', boxShadow: '8px 8px 0 #facc15' }}>
                         <QRCodeSVG value={`${PREFIX_BARCODE.KELAS}${jadwalTerpilih._id}`} size={180} level="H" />
@@ -191,7 +197,8 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                     </div>
                   )}
 
-                  {jadwalTerpilih.tanggal < hariIni && (
+                  {/* 🚀 LOGIKA RENDER WARNING KELAS BERLALU */}
+                  {isMasaLalu && (
                     <div style={{ marginBottom: '24px', padding: '16px', background: '#fef08a', border: '4px solid #111827', boxShadow: '4px 4px 0 #111827', borderRadius: '12px', textAlign: 'center' }}>
                       <p style={{ fontSize: '13px', fontWeight: '900', color: '#111827', margin: 0, textTransform: 'uppercase' }}>⚠️ Kelas Berlalu. Anda hanya dapat merevisi jurnal & absensi.</p>
                     </div>
