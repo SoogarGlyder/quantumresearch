@@ -23,9 +23,9 @@ const LatihanHariIni = memo(({ latihanHariIni, setUrlMitra }) => {
                 </div>
               </div>
             </div>
-            <button style={{ backgroundColor: '#2563eb', color: 'white', padding: '10px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', width: '100%', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' }}>
+            {/* <button style={{ backgroundColor: '#2563eb', color: 'white', padding: '10px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', width: '100%', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' }}>
               Kerjakan Sekarang <FaLink size={12} />
-            </button>
+            </button> */}
           </div>
         </div>
       ) : (
