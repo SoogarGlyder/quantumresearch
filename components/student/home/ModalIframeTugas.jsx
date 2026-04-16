@@ -51,7 +51,6 @@ export default function ModalIframeTugas({ urlMitra, onClose }) {
             style={{ border: "none", display: "block" }}
             title="Bahan Belajar"
             allowFullScreen
-            // Tambahkan allow-downloads agar siswa bisa mengunduh jika disediakan oleh Google Docs
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
           />
         </div>

@@ -74,7 +74,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
     }}>
       <div className={styles.containerGallery}>
         
-        {/* 🚀 HEADER MODAL (MATCHING MODAL JURNAL) */}
+        {/* 🚀 HEADER MODAL */}
         <div className={styles.headerGallery}>
           <div className={styles.wrapperTitle}>
             <h3 className={styles.galleryTitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -103,15 +103,15 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
               <span style={{ fontSize: '24px', fontWeight: '900', color: '#2563eb' }}>{totalSiswa}</span>
             </div>
             <div style={{ background: '#fef08a', padding: '16px', borderRadius: '12px', border: '3px solid #111827', textAlign: 'center', boxShadow: '4px 4px 0 #111827' }}>
-              <h4 style={{ margin: 0, color: '#111827', fontSize: '11px', fontWeight: '900' }}>MENGERJAKAN</h4>
+              <h4 style={{ margin: 0, color: '#111827', fontSize: '11px', fontWeight: '900' }}>AKTIF KELAS</h4>
               <span style={{ fontSize: '24px', fontWeight: '900', color: '#b45309' }}>{jumlahMengerjakan}</span>
             </div>
             <div style={{ background: '#dcfce3', padding: '16px', borderRadius: '12px', border: '3px solid #111827', textAlign: 'center', boxShadow: '4px 4px 0 #111827' }}>
-              <h4 style={{ margin: 0, color: '#111827', fontSize: '11px', fontWeight: '900' }}>SELESAI</h4>
+              <h4 style={{ margin: 0, color: '#111827', fontSize: '11px', fontWeight: '900' }}>SELESAI (SUBMIT)</h4>
               <span style={{ fontSize: '24px', fontWeight: '900', color: '#166534' }}>{jumlahSelesai}</span>
             </div>
             <div style={{ background: '#f1f5f9', padding: '16px', borderRadius: '12px', border: '3px solid #111827', textAlign: 'center', boxShadow: '4px 4px 0 #111827' }}>
-              <h4 style={{ margin: 0, color: '#111827', fontSize: '11px', fontWeight: '900' }}>BELUM MULAI</h4>
+              <h4 style={{ margin: 0, color: '#111827', fontSize: '11px', fontWeight: '900' }}>BELUM MASUK</h4>
               <span style={{ fontSize: '24px', fontWeight: '900', color: '#475569' }}>{jumlahBelum}</span>
             </div>
           </div>
@@ -135,7 +135,8 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
                   statusIkon = <span style={{ color: '#166534', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '5px' }}><FaCheckDouble /> SKOR: {siswa.skor}</span>;
                 } else if (isMengerjakan) {
                   bgRow = '#fef08a'; 
-                  statusIkon = <span style={{ color: '#b45309', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '5px' }}><FaClock /> MENGERJAKAN</span>;
+                  // 🚀 UBAH LABEL DI SINI MENJADI LEBIH RELEVAN
+                  statusIkon = <span style={{ color: '#b45309', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '5px' }}><FaClock /> AKTIF (BISA UJIAN)</span>;
                 }
 
                 return (
@@ -164,7 +165,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
                            <button 
                              onClick={() => handleForceSubmit(siswa.id, siswa.nama)} 
                              disabled={isProcessing}
-                             title="Kumpulkan Paksa (Nilai 0)" 
+                             title="Tutup Paksa Akses Ujian (Beri Nilai 0)" 
                              style={{ background: '#ef4444', border: '2px solid #111827', color: 'white', width: '36px', height: '36px', borderRadius: '8px', cursor: isProcessing ? 'wait' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '2px 2px 0 #111827' }}>
                              <FaPowerOff size={14} />
                            </button>

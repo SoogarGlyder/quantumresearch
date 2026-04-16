@@ -22,7 +22,9 @@ export async function dapatkanLatihanSiswa(username, kelasSiswa) {
   noStore(); // 🚀 Matikan Cache
   try {
     await connectToDatabase();
-    const latihan = await LatihanSoal.findOne({
+    
+    // 🚀 PERBAIKAN BUG: Ubah findOne menjadi find() agar mengambil SEMUA tugas
+    const latihan = await LatihanSoal.find({
       isAktif: true,
       $or: [
         { tipeTarget: "SISWA", target: username },
@@ -30,10 +32,13 @@ export async function dapatkanLatihanSiswa(username, kelasSiswa) {
       ]
     }).sort({ dibuatPada: -1 }).lean();
 
-    if (!latihan) return null;
+    // Jika tidak ada data, kembalikan array kosong []
+    if (!latihan || latihan.length === 0) return [];
+    
+    // Mengembalikan array berisi seluruh daftar tugas
     return JSON.parse(JSON.stringify(latihan));
   } catch (error) {
-    return null;
+    return [];
   }
 }
 
