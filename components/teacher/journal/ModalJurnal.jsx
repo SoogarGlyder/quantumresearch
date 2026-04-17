@@ -16,6 +16,32 @@ import styles from "@/components/App.module.css";
 
 import ModalKuis from "../../admin/ModalKuis"; 
 
+// 🚀 HELPER BARU: Konverter Tanggal iOS / WebKit Safe
+// Memastikan tanggal UTC dari database dikonversi ke YYYY-MM-DD versi Jakarta
+const getSafeTanggalJakarta = (dateInput) => {
+  if (!dateInput) return "";
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return dateInput.substring(0, 10);
+
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    
+    const parts = formatter.formatToParts(d);
+    const year = parts.find(p => p.type === 'year').value;
+    const month = parts.find(p => p.type === 'month').value;
+    const day = parts.find(p => p.type === 'day').value;
+    
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    return typeof dateInput === 'string' ? dateInput.substring(0, 10) : "";
+  }
+};
+
 export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   const [loadingDetail, setLoadingDetail] = useState(true);
   const [formJurnal, setFormJurnal] = useState({ bab: "", subBab: "", galeriPapan: "", fotoBersama: "" });
@@ -23,13 +49,12 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   const [loadingJurnal, setLoadingJurnal] = useState(false);
   const [pesanJurnal, setPesanJurnal] = useState({ teks: "", tipe: "" });
 
-  // STATE KHUSUS KUIS
   const [modalKuisTerbuka, setModalKuisTerbuka] = useState(false);
   const [dataKuisAktif, setDataKuisAktif] = useState(null);
   const [isMemuatKuis, setIsMemuatKuis] = useState(false);
 
-  // 🚀 PERBAIKAN BUG TANGGAL (Potong ISO String jadi YYYY-MM-DD saja)
-  const tanggalJadwalMurni = jadwalTerpilih?.tanggal ? jadwalTerpilih.tanggal.substring(0, 10) : "";
+  // 🚀 Terapkan konverter aman di sini
+  const tanggalJadwalMurni = getSafeTanggalJakarta(jadwalTerpilih?.tanggal);
   
   const isMasaDepan = tanggalJadwalMurni > hariIni;
   const isHariIni = tanggalJadwalMurni === hariIni;
@@ -187,7 +212,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                     </div>
                   </div>
 
-                  {/* 🚀 LOGIKA RENDER QR CODE SUDAH AMAN */}
+                  {/* 🚀 LOGIKA RENDER QR CODE (Aman dari iPhone WebKit Bug) */}
                   {isHariIni && (
                     <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                       <div style={{ background: 'white', padding: '16px', border: '4px solid #111827', borderRadius: '16px', display: 'inline-block', boxShadow: '8px 8px 0 #facc15' }}>
