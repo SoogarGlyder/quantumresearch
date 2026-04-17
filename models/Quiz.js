@@ -12,6 +12,9 @@ const quizSchema = new mongoose.Schema({
   pembuatId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   
   isAktif: { type: Boolean, default: true },
+  
+  // 🚀 TAMBAHAN 1: Menerima data durasi ujian
+  durasi: { type: Number, default: 10 },
 
   soal: [
     {
@@ -22,9 +25,16 @@ const quizSchema = new mongoose.Schema({
         B: { type: String, required: true },
         C: { type: String, required: true },
         D: { type: String, required: true },
-        E: { type: String, required: true }
+        // 🚀 PERBAIKAN: E tidak lagi required karena ada mode 4 Opsi (A-D)
+        E: { type: String, default: "" } 
       },
-      kunciJawaban: { type: String, enum: ["A", "B", "C", "D", "E"], required: true }
+      // 🚀 PERBAIKAN: Enum dihapus agar lebih aman untuk variasi soal ke depannya
+      kunciJawaban: { type: String, required: true }, 
+      
+      // 🚀 TAMBAHAN 2: Menerima data struktur soal baru
+      bobotExp: { type: Number, default: 20 },
+      jumlahOpsi: { type: Number, default: 5 },
+      pembahasan: { type: String, default: "" } 
     }
   ],
 
@@ -33,7 +43,7 @@ const quizSchema = new mongoose.Schema({
       siswaId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       nama: String,
       skor: Number,
-      jawabanSiswa: [String], // Opsional: Untuk melihat detail jawaban mereka (misal: ["A", "C", "B", ...])
+      jawabanSiswa: [String], 
       dikumpulkanPada: { type: Date, default: Date.now }
     }
   ]
