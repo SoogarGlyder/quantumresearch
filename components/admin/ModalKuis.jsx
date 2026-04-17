@@ -6,7 +6,8 @@ import {
   FaBold, FaItalic, FaUnderline, FaStrikethrough, 
   FaAlignLeft, FaAlignCenter, FaAlignRight, FaAlignJustify,
   FaListUl, FaListOl, FaSuperscript, FaSubscript, FaTable, FaEraser,
-  FaRotateLeft, FaRotateRight, FaHighlighter, FaEye, FaPlus, FaStar, FaClock
+  FaRotateLeft, FaRotateRight, FaHighlighter, FaEye, FaPlus, FaStar, FaClock,
+  FaArrowUp, FaArrowDown // 🚀 TAMBAHAN: Ikon Panah
 } from "react-icons/fa6";
 import { CldUploadWidget } from "next-cloudinary";
 import { simpanKuis } from "../../actions/quizAction";
@@ -175,6 +176,22 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     }
   };
 
+  // 🚀 FUNGSI BARU: Menggeser soal ke atas atau ke bawah
+  const handleGeserSoal = (index, arah) => {
+    if (arah === 'up' && index === 0) return; 
+    if (arah === 'down' && index === formSoal.length - 1) return;
+
+    const soalBaru = [...formSoal];
+    const targetIndex = arah === 'up' ? index - 1 : index + 1;
+
+    // Tukar posisi di dalam array
+    const temp = soalBaru[index];
+    soalBaru[index] = soalBaru[targetIndex];
+    soalBaru[targetIndex] = temp;
+
+    setFormSoal(soalBaru);
+  };
+
   const handleUpdateSoal = (index, field, value, opsiKey = null) => {
     const soalBaru = [...formSoal];
     if (opsiKey) {
@@ -296,6 +313,28 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
                               </button>
                           )}
                       </CldUploadWidget>
+
+                      {/* 🚀 TOMBOL GESER NAIK/TURUN (REORDER) */}
+                      <div style={{ display: 'flex', gap: '4px', border: '3px solid #111827', borderRadius: '8px', overflow: 'hidden', background: '#111827' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => handleGeserSoal(i, 'up')} 
+                          disabled={i === 0}
+                          title="Geser Soal ke Atas" 
+                          style={{ padding: '8px 12px', background: i === 0 ? '#475569' : '#3b82f6', color: 'white', border: 'none', cursor: i === 0 ? 'not-allowed' : 'pointer' }}
+                        >
+                          <FaArrowUp size={14} />
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => handleGeserSoal(i, 'down')} 
+                          disabled={i === formSoal.length - 1}
+                          title="Geser Soal ke Bawah" 
+                          style={{ padding: '8px 12px', background: i === formSoal.length - 1 ? '#475569' : '#3b82f6', color: 'white', border: 'none', cursor: i === formSoal.length - 1 ? 'not-allowed' : 'pointer' }}
+                        >
+                          <FaArrowDown size={14} />
+                        </button>
+                      </div>
 
                       <button type="button" onClick={() => handleHapusSoal(i)} title="Hapus Soal Ini" style={{ padding: '10px', background: '#ef4444', color: 'white', border: '3px solid #111827', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <FaTrashCan size={16} />
