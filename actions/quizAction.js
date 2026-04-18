@@ -71,3 +71,34 @@ export async function ambilKuisByJadwal(jadwalId) {
     return null;
   }
 }
+
+export async function getRiwayatKuisPengajar(pembuatId) {
+  try {
+    await connectToDatabase();
+    
+    // Pastikan model Jadwal dimuat agar populate berfungsi
+    const Jadwal = mongoose.models.Jadwal || mongoose.model("Jadwal");
+    
+    // Cari semua kuis yang dibuat guru ini, ambil detail jadwalnya
+    const kuisPengajar = await Quiz.find({ pembuatId, isAktif: true })
+      .populate('jadwalId', 'mapel kelasTarget tanggal')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const dataBersih = kuisPengajar
+      .filter(k => k.jadwalId) // Pastikan jadwalnya belum dihapus
+      .map(k => ({
+        jadwalId: k.jadwalId._id.toString(),
+        mapel: k.jadwalId.mapel,
+        kelas: k.jadwalId.kelasTarget,
+        tanggal: k.jadwalId.tanggal,
+        jumlahSoal: k.soal?.length || 0,
+        durasi: k.durasi || 10
+      }));
+
+    return { sukses: true, data: dataBersih };
+  } catch (error) {
+    console.error("Error getRiwayatKuisPengajar:", error);
+    return { sukses: false, data: [] };
+  }
+}

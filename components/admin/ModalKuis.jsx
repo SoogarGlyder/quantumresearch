@@ -7,10 +7,11 @@ import {
   FaAlignLeft, FaAlignCenter, FaAlignRight, FaAlignJustify,
   FaListUl, FaListOl, FaSuperscript, FaSubscript, FaTable, FaEraser,
   FaRotateLeft, FaRotateRight, FaHighlighter, FaEye, FaPlus, FaStar, FaClock,
-  FaArrowUp, FaArrowDown, FaSquareCheck, FaRegSquare, FaEyeSlash // 🚀 TAMBAHAN: Ikon EyeSlash
+  FaArrowUp, FaArrowDown, FaSquareCheck, FaRegSquare, FaEyeSlash,
+  FaDownload // 🚀 TAMBAHAN: Ikon Import
 } from "react-icons/fa6";
 import { CldUploadWidget } from "next-cloudinary";
-import { simpanKuis } from "../../actions/quizAction";
+import { simpanKuis, getRiwayatKuisPengajar, ambilKuisByJadwal } from "../../actions/quizAction"; // 🚀 TAMBAHAN IMPORT ACTION
 import styles from "../../app/admin/AdminPage.module.css";
 
 // 🚀 IMPORT TIPTAP CORE & EXTENSIONS
@@ -119,8 +120,13 @@ const QuantumEditor = ({ value, onChange }) => {
 // --- 2. MODAL KUIS UTAMA ---
 export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, muatData }) {
   const [loading, setLoading] = useState(false);
-  const [showPreview, setShowPreview] = useState(true); // 🚀 STATE TOGGLE PREVIEW
+  const [showPreview, setShowPreview] = useState(true);
   const [durasiUjian, setDurasiUjian] = useState(10);
+
+  // 🚀 STATE KHUSUS IMPORT KUIS
+  const [showImportPanel, setShowImportPanel] = useState(false);
+  const [listRiwayatKuis, setListRiwayatKuis] = useState([]);
+  const [isMengambil, setIsMengambil] = useState(false);
 
   const buatTemplateSoalBaru = () => ({
     tipeSoal: "PG", 
@@ -220,6 +226,37 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     setFormSoal(soalBaru);
   };
 
+  // 🚀 FUNGSI BARU: TOGGLE & EKSEKUSI IMPORT KUIS
+  const togglePanelImport = async () => {
+    setShowImportPanel(!showImportPanel);
+    if (!showImportPanel && listRiwayatKuis.length === 0) {
+      const res = await getRiwayatKuisPengajar(adminId);
+      if (res.sukses) setListRiwayatKuis(res.data);
+    }
+  };
+
+  const handleEksekusiImport = async (jadwalIdLama) => {
+    if(!window.confirm("Yakin ingin ME-REPLACE soal saat ini dengan soal dari kelas tersebut?")) return;
+    
+    setIsMengambil(true);
+    const kuisLamaCoy = await ambilKuisByJadwal(jadwalIdLama);
+    if (kuisLamaCoy && kuisLamaCoy.soal) {
+       const mappedSoal = kuisLamaCoy.soal.map(s => ({
+         ...s,
+         tipeSoal: s.tipeSoal || "PG",
+         bobotExp: s.bobotExp || 20,
+         jumlahOpsi: s.jumlahOpsi || Object.keys(s.opsi || {}).length || 5
+       }));
+       setFormSoal(mappedSoal);
+       setDurasiUjian(kuisLamaCoy.durasi || 10);
+       setShowImportPanel(false);
+       alert("✅ Berhasil meng-copy soal! Silakan edit atau langsung klik Publikasikan.");
+    } else {
+       alert("❌ Gagal menarik soal. Kuis mungkin sudah dihapus.");
+    }
+    setIsMengambil(false);
+  };
+
   const handleSimpan = async (e) => {
     e.preventDefault();
     if (!jadwal?._id) return alert("⚠️ Data jadwal tidak valid.");
@@ -267,7 +304,45 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
         {/* FORM UTAMA */}
         <form onSubmit={handleSimpan} style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
           
-          {/* 🚀 PENGATURAN GLOBAL (DURASI & PREVIEW TOGGLE) */}
+          {/* 🚀 PANEL IMPORT SOAL DARI KELAS LAIN */}
+          <div style={{ marginBottom: '5px' }}>
+            <button 
+              type="button" 
+              onClick={togglePanelImport}
+              style={{ width: '100%', padding: '15px', background: showImportPanel ? '#111827' : '#e0e7ff', color: showImportPanel ? 'white' : '#111827', border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', boxShadow: '4px 4px 0 #111827', transition: '0.2s' }}
+            >
+              <FaDownload size={20} /> {showImportPanel ? "TUTUP PANEL BANK SOAL" : "IMPORT SOAL DARI KELAS LAIN (BANK SOAL)"}
+            </button>
+
+            {showImportPanel && (
+              <div style={{ marginTop: '15px', padding: '20px', background: '#f8fafc', border: '4px dashed #3b82f6', borderRadius: '12px' }}>
+                <h4 style={{ margin: '0 0 15px 0', color: '#1d4ed8', fontWeight: '900', textTransform: 'uppercase' }}>Pilih Kuis Sebelumnya:</h4>
+                
+                {listRiwayatKuis.length === 0 ? (
+                  <p style={{ margin: 0, fontWeight: 'bold', color: '#64748b' }}>Belum ada riwayat kuis yang pernah Anda buat.</p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}>
+                    {listRiwayatKuis.map((riwayat) => (
+                      <div key={riwayat.jadwalId} style={{ background: 'white', border: '3px solid #111827', borderRadius: '10px', padding: '15px', boxShadow: '4px 4px 0 #cbd5e1' }}>
+                        <p style={{ margin: '0 0 5px 0', fontWeight: '900', color: '#111827' }}>{riwayat.mapel}</p>
+                        <p style={{ margin: '0 0 15px 0', fontSize: '13px', color: '#64748b', fontWeight: 'bold' }}>Kelas {riwayat.kelas} • {new Date(riwayat.tanggal).toLocaleDateString('id-ID')}</p>
+                        <button 
+                          type="button" 
+                          disabled={isMengambil}
+                          onClick={() => handleEksekusiImport(riwayat.jadwalId)}
+                          style={{ width: '100%', padding: '10px', background: '#22c55e', color: 'white', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMengambil ? 'wait' : 'pointer' }}
+                        >
+                          {isMengambil ? "MENG-COPY..." : `COPY ${riwayat.jumlahSoal} SOAL`}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* PENGATURAN GLOBAL (DURASI & PREVIEW TOGGLE) */}
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
             
             {/* BOX DURASI */}
@@ -287,7 +362,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
               </div>
             </div>
 
-            {/* 🚀 BOX TOGGLE PREVIEW ON/OFF */}
+            {/* BOX TOGGLE PREVIEW ON/OFF */}
             <div 
               onClick={() => setShowPreview(!showPreview)}
               style={{ flex: 1, minWidth: '280px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: showPreview ? '#dcfce3' : '#f1f5f9', border: '4px solid #111827', padding: '15px 20px', borderRadius: '15px', boxShadow: '6px 6px 0 #111827', cursor: 'pointer', transition: '0.2s' }}
@@ -442,7 +517,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
                   </div>
                 )}
 
-                {/* 🚀 LIVE PREVIEW (DIKONTROL OLEH TOGGLE ON/OFF) */}
+                {/* LIVE PREVIEW (DIKONTROL OLEH TOGGLE ON/OFF) */}
                 {showPreview && (
                   <div style={{ marginTop: '30px', padding: '20px', background: '#eff6ff', border: '4px dashed #3b82f6', borderRadius: '15px' }}>
                     <div style={{ fontSize: '14px', fontWeight: '900', color: '#1d4ed8', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>

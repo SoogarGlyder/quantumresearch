@@ -27,6 +27,10 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
   
   const [soalAktif, setSoalAktif] = useState(0);
   const [jawabanSiswa, setJawabanSiswa] = useState({}); 
+  
+  // 🚀 TAMBAHAN: Brankas Memori Anti-Waktu (Untuk Auto-Submit Timer)
+  const jawabanSiswaRef = useRef({}); 
+  
   const [sisaDetik, setSisaDetik] = useState(durasiMenit * 60);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,6 +52,11 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
       scrollAreaRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [soalAktif]);
+
+  // 🚀 TAMBAHAN: Selalu update isi brankas setiap ada jawaban baru
+  useEffect(() => {
+    jawabanSiswaRef.current = jawabanSiswa;
+  }, [jawabanSiswa]);
 
   useEffect(() => {
     if (isReviewMode) {
@@ -134,7 +143,6 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     return `${m}:${s}`;
   };
 
-  // 🚀 HANDLER JAWABAN (MENDUKUNG SEMUA TIPE SOAL)
   const handlePilihJawaban = (nomorSoal, opsiPilihan) => {
     if (isReviewMode) return; 
     setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: opsiPilihan }));
@@ -178,7 +186,13 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     setIsSubmitting(true); setKoneksiTerputus(false); clearInterval(timerRef.current);
     if (document.fullscreenElement) document.exitFullscreen().catch(e=>e);
 
-    const arrayJawaban = daftarSoal.map((_, index) => jawabanSiswa[index] || "");
+    // 🚀 PERBAIKAN: Gunakan data dari brankas (jawabanSiswaRef.current), jangan dari state jawabanSiswa
+    const jawabanFinal = jawabanSiswaRef.current;
+    
+    const arrayJawaban = daftarSoal.map((_, index) => 
+      jawabanFinal[index] !== undefined ? jawabanFinal[index] : ""
+    );
+    
     try {
       if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error("Offline");
       const res = await kumpulkanUjianSiswa({ jadwalId, siswaId: siswa._id, nama: siswa.nama, jawabanSiswa: arrayJawaban });
