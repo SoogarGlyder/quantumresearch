@@ -4,36 +4,28 @@ const quizSchema = new mongoose.Schema({
   jadwalId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: "Jadwal", 
-    required: true,
-    unique: true, 
-    index: true 
+    required: true, unique: true, index: true 
   },
-  
   pembuatId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  
   isAktif: { type: Boolean, default: true },
-  
-  // 🚀 TAMBAHAN 1: Menerima data durasi ujian
   durasi: { type: Number, default: 10 },
 
   soal: [
     {
+      // 🚀 TAMBAHAN: Identifikasi Tipe Soal (PG, PG_KOMPLEKS, BENAR_SALAH, ISIAN)
+      tipeSoal: { type: String, default: "PG" }, 
+      
       pertanyaan: { type: String, required: true },
       gambar: { type: String, default: "" }, 
-      opsi: {
-        A: { type: String, required: true },
-        B: { type: String, required: true },
-        C: { type: String, required: true },
-        D: { type: String, required: true },
-        // 🚀 PERBAIKAN: E tidak lagi required karena ada mode 4 Opsi (A-D)
-        E: { type: String, default: "" } 
-      },
-      // 🚀 PERBAIKAN: Enum dihapus agar lebih aman untuk variasi soal ke depannya
-      kunciJawaban: { type: String, required: true }, 
       
-      // 🚀 TAMBAHAN 2: Menerima data struktur soal baru
+      // 🚀 UBAH JADI MIXED: Agar Isian Singkat tidak butuh Opsi, dan Menjodohkan bisa pakai Object
+      opsi: { type: mongoose.Schema.Types.Mixed, default: {} },
+      
+      // 🚀 UBAH JADI MIXED: Karena PG Kompleks kuncinya berupa Array (misal: ["A", "C"])
+      kunciJawaban: { type: mongoose.Schema.Types.Mixed, required: true }, 
+      
       bobotExp: { type: Number, default: 20 },
-      jumlahOpsi: { type: Number, default: 5 },
+      jumlahOpsi: { type: Number, default: 5 }, // Berlaku khusus untuk PG
       pembahasan: { type: String, default: "" } 
     }
   ],
@@ -43,7 +35,8 @@ const quizSchema = new mongoose.Schema({
       siswaId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       nama: String,
       skor: Number,
-      jawabanSiswa: [String], 
+      // 🚀 UBAH JADI MIXED: Jawaban siswa bisa berupa Array di dalam Array jika ada PG Kompleks
+      jawabanSiswa: { type: [mongoose.Schema.Types.Mixed], default: [] },
       dikumpulkanPada: { type: Date, default: Date.now }
     }
   ]

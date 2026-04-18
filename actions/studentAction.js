@@ -48,42 +48,57 @@ export const getKuisSiswa = async (jadwalId) => {
 };
 
 // ============================================================================
-// FUNGSI: MENGIRIM JAWABAN SISWA DAN KALKULASI SKOR OTOMATIS
+// FUNGSI: MENGIRIM JAWABAN SISWA DAN KALKULASI SKOR OTOMATIS (ALL TYPES)
 // ============================================================================
 export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSiswa }) => {
   try {
     await connectDB();
 
     const dataKuis = await Quiz.findOne({ jadwalId: jadwalId });
-    
     if (!dataKuis) return { sukses: false, pesan: "Data Kuis tidak ditemukan." };
 
     const sudahPernah = dataKuis.hasilPengerjaan.some(h => h.siswaId.toString() === siswaId.toString());
     if (sudahPernah) return { sukses: false, pesan: "Anda sudah mengerjakan kuis ini." };
 
     const soalAsli = dataKuis.soal;
-    
-    // 🚀 LOGIKA AUTO-GRADING NEO
     let expDidapat = 0;
     let totalExpMaksimal = 0;
 
+    // 🚀 LOGIKA AUTO-GRADING NEO (MENDUKUNG BANYAK TIPE SOAL)
     jawabanSiswa.forEach((jawaban, index) => {
       const soalDatabase = soalAsli[index];
       
       if (soalDatabase) {
-        // Ambil bobot exp dari soal (Default 20 jika tidak diset pengajar)
         const bobotSoal = Number(soalDatabase.bobotExp) || 20;
         totalExpMaksimal += bobotSoal;
+        const tipe = soalDatabase.tipeSoal || "PG";
 
-        // Cocokkan jawaban
-        if (jawaban === soalDatabase.kunciJawaban) {
-          expDidapat += bobotSoal;
+        let isBenar = false;
+
+        // 1. Cek Tipe Pilihan Ganda & Benar-Salah
+        if (tipe === "PG" || tipe === "BENAR_SALAH") {
+          isBenar = (String(jawaban) === String(soalDatabase.kunciJawaban));
+        } 
+        
+        // 2. Cek Tipe Isian Singkat (Toleransi huruf besar/kecil & spasi ujung)
+        else if (tipe === "ISIAN") {
+          const jwbSiswa = String(jawaban || "").toLowerCase().trim();
+          const jwbKunci = String(soalDatabase.kunciJawaban || "").toLowerCase().trim();
+          isBenar = (jwbSiswa === jwbKunci);
         }
+
+        // 3. Cek Tipe PG Kompleks (Harus benar semua pilihannya / Array Match)
+        else if (tipe === "PG_KOMPLEKS") {
+          const jwbArr = Array.isArray(jawaban) ? jawaban.sort() : [];
+          const kunciArr = Array.isArray(soalDatabase.kunciJawaban) ? soalDatabase.kunciJawaban.sort() : [];
+          isBenar = JSON.stringify(jwbArr) === JSON.stringify(kunciArr);
+        }
+
+        // Jika benar, tambahkan EXP-nya!
+        if (isBenar) expDidapat += bobotSoal;
       }
     });
 
-    // 🚀 SKOR AKHIR BERDASARKAN BOBOT (Bukan sekadar jumlah benar)
-    // Supaya adil: Soal susah (EXP besar) bernilai lebih tinggi dari soal mudah
     const skorAkhir = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
 
     dataKuis.hasilPengerjaan.push({
@@ -95,15 +110,6 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
     });
 
     await dataKuis.save();
-
-    // 🚀 CATATAN UNTUK ANDA:
-    // Buka komen ini jika Anda punya skema Model Siswa untuk menyimpan EXP Permanen
-    /*
-    const Siswa = mongoose.model('Siswa');
-    if (Siswa) {
-      await Siswa.findByIdAndUpdate(siswaId, { $inc: { exp: expDidapat } });
-    }
-    */
 
     return { sukses: true, skor: skorAkhir, exp: expDidapat };
 

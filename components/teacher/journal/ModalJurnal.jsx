@@ -16,8 +16,7 @@ import styles from "@/components/App.module.css";
 
 import ModalKuis from "../../admin/ModalKuis"; 
 
-// 🚀 HELPER BARU: Konverter Tanggal iOS / WebKit Safe
-// Memastikan tanggal UTC dari database dikonversi ke YYYY-MM-DD versi Jakarta
+// 🚀 HELPER: Konverter Tanggal iOS / WebKit Safe
 const getSafeTanggalJakarta = (dateInput) => {
   if (!dateInput) return "";
   try {
@@ -53,7 +52,6 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   const [dataKuisAktif, setDataKuisAktif] = useState(null);
   const [isMemuatKuis, setIsMemuatKuis] = useState(false);
 
-  // 🚀 Terapkan konverter aman di sini
   const tanggalJadwalMurni = getSafeTanggalJakarta(jadwalTerpilih?.tanggal);
   
   const isMasaDepan = tanggalJadwalMurni > hariIni;
@@ -212,7 +210,6 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                     </div>
                   </div>
 
-                  {/* 🚀 LOGIKA RENDER QR CODE (Aman dari iPhone WebKit Bug) */}
                   {isHariIni && (
                     <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                       <div style={{ background: 'white', padding: '16px', border: '4px solid #111827', borderRadius: '16px', display: 'inline-block', boxShadow: '8px 8px 0 #facc15' }}>
@@ -222,7 +219,6 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                     </div>
                   )}
 
-                  {/* 🚀 LOGIKA RENDER WARNING KELAS BERLALU */}
                   {isMasaLalu && (
                     <div style={{ marginBottom: '24px', padding: '16px', background: '#fef08a', border: '4px solid #111827', boxShadow: '4px 4px 0 #111827', borderRadius: '12px', textAlign: 'center' }}>
                       <p style={{ fontSize: '13px', fontWeight: '900', color: '#111827', margin: 0, textTransform: 'uppercase' }}>⚠️ Kelas Berlalu. Anda hanya dapat merevisi jurnal & absensi.</p>
@@ -261,10 +257,14 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                       ) : (
                         dataSiswa.map((siswa, idx) => {
                           const isBelum = siswa.statusAbsen === LABEL_SISTEM.BELUM_ABSEN;
+                          // 🚀 LOGIKA BARU: Jika statusnya Sakit atau Izin, tampilkan input Catatan
+                          const butuhCatatan = [STATUS_SESI.SAKIT.id, STATUS_SESI.IZIN.id].includes(siswa.statusAbsen);
+                          
                           return (
                             <div key={siswa.siswaId} style={{ background: isBelum ? '#fff' : '#dcfce3', padding: '16px', borderRadius: '12px', border: '3px solid #111827', boxShadow: '4px 4px 0 #111827' }}>
                               <p style={{ fontWeight: '900', margin: '0 0 8px 0', fontSize: '15px', color: '#111827', textTransform: 'uppercase' }}>{siswa.nama}</p>
-                              <div style={{ display: 'flex', gap: '8px' }}>
+                              
+                              <div style={{ display: 'flex', gap: '8px', marginBottom: butuhCatatan ? '10px' : '0' }}>
                                 <select value={siswa.statusAbsen} onChange={(e) => ubahStatusSiswa(idx, e.target.value)} className={styles.scheduleOption} style={{ flex: 1, padding: '10px', backgroundColor: isBelum ? '#fef08a' : '#fff', boxShadow: 'none', border: '2px solid #111827' }}>
                                   <option value={LABEL_SISTEM.BELUM_ABSEN}>⚠️ BELUM ABSEN</option>
                                   <option value={STATUS_SESI.SELESAI.id}>✅ HADIR</option>
@@ -272,8 +272,22 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                                   <option value={STATUS_SESI.SAKIT.id}>🤒 SAKIT</option>
                                   <option value={STATUS_SESI.IZIN.id}>💌 IZIN</option>
                                 </select>
+                                
                                 <input type="number" placeholder="NILAI" value={siswa.nilaiTest === null ? "" : siswa.nilaiTest} onChange={(e) => ubahNilaiSiswa(idx, e.target.value)} disabled={siswa.statusAbsen === LABEL_SISTEM.BELUM_ABSEN || siswa.statusAbsen === STATUS_SESI.ALPA.id} className={styles.scheduleOption} style={{ width: '80px', padding: '10px', textAlign: 'center', boxShadow: 'none', border: '2px solid #111827' }} />
                               </div>
+
+                              {/* 🚀 KOLOM CATATAN KETIDAKHADIRAN MUNCUL KEMBALI */}
+                              {butuhCatatan && (
+                                <input 
+                                  type="text" 
+                                  placeholder="Keterangan Sakit/Izin (Cth: Sakit Demam)" 
+                                  value={siswa.catatan || ""} 
+                                  onChange={(e) => ubahCatatanSiswa(idx, e.target.value)}
+                                  className={styles.scheduleOption} 
+                                  style={{ width: '100%', padding: '10px', backgroundColor: '#fff', boxShadow: 'none', border: '2px solid #111827', fontSize: '13px' }} 
+                                />
+                              )}
+                              
                             </div>
                           );
                         })
