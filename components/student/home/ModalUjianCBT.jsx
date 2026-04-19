@@ -1,168 +1,42 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { 
-  FaXmark, FaCheckDouble, FaChevronLeft, FaChevronRight, 
-  FaClock, FaExpand, FaTriangleExclamation, FaWifi, 
-  FaCheck, FaXmark as FaCross, FaSquareCheck, FaRegSquare
-} from "react-icons/fa6";
-import { kumpulkanUjianSiswa } from "@/actions/studentAction"; 
+import { useEffect, useRef } from "react";
+import { FaXmark, FaCheckDouble, FaChevronLeft, FaChevronRight, FaClock, FaExpand, FaTriangleExclamation, FaWifi } from "react-icons/fa6";
 import styles from "@/components/App.module.css";
-import katex from 'katex';
-import 'katex/dist/katex.min.css';
 
-const renderLaTeX = (htmlString) => {
-  if (!htmlString) return { __html: "" };
-  const rendered = htmlString.replace(/\$([^\$]+)\$/g, (match, rumus) => {
-    try { return katex.renderToString(rumus, { throwOnError: false }); } 
-    catch (e) { return match; }
-  });
-  return { __html: rendered };
-};
+// 🚀 IMPORT CUSTOM HOOK DAN KOMPONEN ANAK
+import { useCbtEngine } from "./useCbtEngine";
+import KertasSoalCBT from "./KertasSoalCBT";
 
 export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = false, jawabanPast = [], onClose }) {
-  const storageKey = `q_cbt_${jadwalId}_${siswa._id}`;
-  const durasiMenit = kuis?.durasi || 10; 
-  const namaMapel = kuis?.mapel || "Ujian CBT";
-  
-  const [soalAktif, setSoalAktif] = useState(0);
-  const [jawabanSiswa, setJawabanSiswa] = useState({}); 
-  
-  // 🚀 TAMBAHAN: Brankas Memori Anti-Waktu (Untuk Auto-Submit Timer)
-  const jawabanSiswaRef = useRef({}); 
-  
-  const [sisaDetik, setSisaDetik] = useState(durasiMenit * 60);
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDataLoaded, setIsDataLoaded] = useState(false); 
-  const [isUjianMulai, setIsUjianMulai] = useState(false); 
-  const [pelanggaran, setPelanggaran] = useState(0); 
-  const [showPeringatan, setShowPeringatan] = useState(false); 
-  const [koneksiTerputus, setKoneksiTerputus] = useState(false); 
-  
-  const timerRef = useRef(null);
   const containerRef = useRef(null); 
   const scrollAreaRef = useRef(null);
 
   const daftarSoal = kuis?.soal || [];
   const totalSoal = daftarSoal.length;
+  const namaMapel = kuis?.mapel || "Ujian CBT";
+
+  // 🚀 PANGGIL MESIN CBT
+  const {
+    soalAktif, setSoalAktif, jawabanSiswa, sisaDetik,
+    isSubmitting, isUjianMulai, setIsUjianMulai,
+    pelanggaran, showPeringatan, setShowPeringatan, koneksiTerputus,
+    handlePilihJawaban, handleToggleKompleks, handleInputIsian, handleKumpulJawaban, eksekusiSubmit
+  } = useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast, onClose });
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    if (scrollAreaRef.current) scrollAreaRef.current.scrollTo({ top: 0, behavior: "smooth" });
   }, [soalAktif]);
 
-  // 🚀 TAMBAHAN: Selalu update isi brankas setiap ada jawaban baru
   useEffect(() => {
-    jawabanSiswaRef.current = jawabanSiswa;
-  }, [jawabanSiswa]);
-
-  useEffect(() => {
-    if (isReviewMode) {
-      const pastObj = {};
-      jawabanPast.forEach((jawaban, index) => {
-        if (jawaban !== undefined && jawaban !== null && jawaban !== "") pastObj[index] = jawaban;
-      });
-      setJawabanSiswa(pastObj);
-      setIsUjianMulai(true); 
-      setIsDataLoaded(true);
-    } else {
-      const savedState = localStorage.getItem(storageKey);
-      if (savedState) {
-        try {
-          const parsed = JSON.parse(savedState);
-          if (parsed.jawaban) setJawabanSiswa(parsed.jawaban);
-          if (parsed.waktu > 0) setSisaDetik(parsed.waktu);
-          if (parsed.pelanggaran) setPelanggaran(parsed.pelanggaran);
-        } catch (error) { console.error("Gagal membaca memori:", error); }
-      }
-      setIsDataLoaded(true); 
-    }
-  }, [isReviewMode, storageKey, jawabanPast]);
-
-  useEffect(() => {
-    if (isDataLoaded && !isReviewMode) {
-      const stateToSave = { jawaban: jawabanSiswa, waktu: sisaDetik, pelanggaran };
-      localStorage.setItem(storageKey, JSON.stringify(stateToSave));
-    }
-  }, [jawabanSiswa, sisaDetik, isDataLoaded, pelanggaran, storageKey, isReviewMode]);
-
-  useEffect(() => {
-    if (isReviewMode) return; 
-    const handleContextMenu = (e) => e.preventDefault();
-    const handleCopy = (e) => { e.preventDefault(); alert("⚠️ Tindakan menyalin dilarang!"); };
-    const handleVisibilityChange = () => {
-      if (document.hidden && isUjianMulai && !isSubmitting && !koneksiTerputus) {
-        setPelanggaran((prev) => {
-          const pBaru = prev + 1;
-          if (pBaru >= 3) { alert("❌ PELANGGARAN MAKSIMAL!"); eksekusiSubmit(); } 
-          else { setShowPeringatan(true); }
-          return pBaru;
-        });
-      }
-    };
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("copy", handleCopy);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("copy", handleCopy);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUjianMulai, isSubmitting, koneksiTerputus, isReviewMode]);
-
-  useEffect(() => {
-    const handleOnline = () => {
-      if (koneksiTerputus && isSubmitting && !isReviewMode) {
-        setKoneksiTerputus(false); eksekusiSubmit(); 
-      }
-    };
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [koneksiTerputus, isSubmitting, isReviewMode]);
-
-  useEffect(() => {
-    if (isDataLoaded && isUjianMulai && !koneksiTerputus && !isReviewMode) {
-      timerRef.current = setInterval(() => {
-        setSisaDetik((prev) => {
-          if (prev <= 1) { clearInterval(timerRef.current); handleAutoSubmit(); return 0; }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timerRef.current);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDataLoaded, isUjianMulai, koneksiTerputus, isReviewMode]);
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = "auto"; };
+  }, []);
 
   const formatWaktu = (totalDetik) => {
     const m = Math.floor(totalDetik / 60).toString().padStart(2, "0");
     const s = (totalDetik % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
-  };
-
-  const handlePilihJawaban = (nomorSoal, opsiPilihan) => {
-    if (isReviewMode) return; 
-    setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: opsiPilihan }));
-  };
-
-  const handleToggleKompleks = (nomorSoal, opsiPilihan) => {
-    if (isReviewMode) return;
-    setJawabanSiswa((prev) => {
-      const currentArr = Array.isArray(prev[nomorSoal]) ? [...prev[nomorSoal]] : [];
-      if (currentArr.includes(opsiPilihan)) {
-        return { ...prev, [nomorSoal]: currentArr.filter(item => item !== opsiPilihan) };
-      } else {
-        return { ...prev, [nomorSoal]: [...currentArr, opsiPilihan] };
-      }
-    });
-  };
-
-  const handleInputIsian = (nomorSoal, text) => {
-    if (isReviewMode) return;
-    setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: text }));
   };
 
   const handleMulaiUjianFullscreen = async () => {
@@ -173,43 +47,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     setIsUjianMulai(true);
   };
 
-  const handleKumpulJawaban = async () => {
-    if (isReviewMode) return;
-    const konfirmasi = window.confirm("Yakin ingin menyelesaikan ujian?");
-    if (!konfirmasi) return;
-    eksekusiSubmit();
-  };
-
-  const handleAutoSubmit = () => { alert("WAKTU HABIS!"); eksekusiSubmit(); };
-
-  const eksekusiSubmit = async () => {
-    setIsSubmitting(true); setKoneksiTerputus(false); clearInterval(timerRef.current);
-    if (document.fullscreenElement) document.exitFullscreen().catch(e=>e);
-
-    // 🚀 PERBAIKAN: Gunakan data dari brankas (jawabanSiswaRef.current), jangan dari state jawabanSiswa
-    const jawabanFinal = jawabanSiswaRef.current;
-    
-    const arrayJawaban = daftarSoal.map((_, index) => 
-      jawabanFinal[index] !== undefined ? jawabanFinal[index] : ""
-    );
-    
-    try {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error("Offline");
-      const res = await kumpulkanUjianSiswa({ jadwalId, siswaId: siswa._id, nama: siswa.nama, jawabanSiswa: arrayJawaban });
-      
-      if (res.sukses) {
-        localStorage.removeItem(storageKey);
-        alert(`✅ UJIAN SELESAI!\n🎯 Nilai Anda: ${res.skor}\n🌟 Anda mendapatkan +${res.exp} EXP!`);
-        onClose(); 
-      } else { alert("❌ Gagal: " + res.pesan); setIsSubmitting(false); }
-    } catch (err) { setKoneksiTerputus(true); }
-  };
-
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = "auto"; };
-  }, []);
-
+  // EMPTY STATE
   if (totalSoal === 0) {
     return (
       <div className={styles.wrapperGallery} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8fafc', zIndex: 99999, display: 'flex', flexDirection: 'column', padding: '15px' }}>
@@ -221,6 +59,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     );
   }
 
+  // LAYAR PERINGATAN AWAL (FULLSCREEN PROMPT)
   if (!isUjianMulai && !isReviewMode) {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.9)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -244,19 +83,14 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     );
   }
 
-  const soalSekarang = daftarSoal[soalAktif];
-  const tipeSoalAktif = soalSekarang.tipeSoal || "PG";
-  const opsiAbjad = soalSekarang.opsi && Object.keys(soalSekarang.opsi).length === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
   const isSoalTerakhir = soalAktif === totalSoal - 1;
 
+  // LAYAR UJIAN CBT UTAMA
   return (
-    <div ref={containerRef} className={styles.wrapperGallery} style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: '#f8fafc', zIndex: 99999, display: 'flex', flexDirection: 'column'
-    }}>
+    <div ref={containerRef} className={styles.wrapperGallery} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8fafc', zIndex: 99999, display: 'flex', flexDirection: 'column' }}>
       <div className={styles.containerGallery} style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 0, overflow: 'hidden', position: 'relative' }}>
         
-        {/* PERINGATAN PELANGGARAN & OFFLINE (SAMA SEPERTI SEBELUMNYA) */}
+        {/* OVERLAY PERINGATAN PELANGGARAN */}
         {showPeringatan && !isReviewMode && (
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
             <div style={{ background: '#fef2f2', padding: '30px', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', border: '4px solid #111827', boxShadow: '8px 8px 0 #ef4444' }}>
@@ -268,6 +102,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
           </div>
         )}
 
+        {/* OVERLAY KONEKSI OFFLINE */}
         {koneksiTerputus && !isReviewMode && (
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.95)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
             <div style={{ background: '#fef08a', padding: '30px', borderRadius: '16px', textAlign: 'center', maxWidth: '400px', border: '4px solid #111827', boxShadow: '8px 8px 0 #111827' }}>
@@ -279,7 +114,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
           </div>
         )}
 
-        {/* 1. HEADER */}
+        {/* HEADER APLIKASI UJIAN */}
         <div className={styles.headerGallery} style={{ flexShrink: 0, background: isReviewMode ? '#dcfce3' : '#facc15', borderBottom: '4px solid #111827', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div className={styles.wrapperTitle}>
             <h3 className={styles.galleryTitle} style={{ color: '#111827', fontWeight: '900', textTransform: 'uppercase' }}>
@@ -304,7 +139,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
 
         <div ref={scrollAreaRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
           
-          {/* 3. PALET SOAL STICKY */}
+          {/* PALET NOMOR SOAL */}
           <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white', padding: '15px 20px', borderBottom: '4px solid #111827', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h4 style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '13px' }}>PALET SOAL</h4>
@@ -315,53 +150,31 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
                 const jwb = jawabanSiswa[index];
                 const tipe = soal.tipeSoal || "PG";
                 
-                // Cek apakah sudah dijawab
                 let isTerjawab = false;
-                if (tipe === "PG_KOMPLEKS") {
-                  isTerjawab = Array.isArray(jwb) && jwb.length > 0;
-                } else if (tipe === "ISIAN") {
-                  isTerjawab = String(jwb || "").trim() !== "";
-                } else {
-                  isTerjawab = !!jwb;
-                }
+                if (tipe === "PG_KOMPLEKS") isTerjawab = Array.isArray(jwb) && jwb.length > 0;
+                else if (tipe === "ISIAN") isTerjawab = String(jwb || "").trim() !== "";
+                else isTerjawab = !!jwb;
 
                 const isAktif = soalAktif === index;
-                
-                let bgWarna = 'white';
-                let textWarna = '#111827';
-                let bayangan = '2px 2px 0 #111827';
+                let bgWarna = 'white'; let textWarna = '#111827'; let bayangan = '2px 2px 0 #111827';
 
                 if (isReviewMode) {
-                  // Cek Kebenaran di Mode Review
                   let isBenar = false;
-                  if (tipe === "PG" || tipe === "BENAR_SALAH") {
-                    isBenar = String(jwb) === String(soal.kunciJawaban);
-                  } else if (tipe === "PG_KOMPLEKS") {
-                    const jwbArr = Array.isArray(jwb) ? [...jwb].sort() : [];
-                    const kunciArr = Array.isArray(soal.kunciJawaban) ? [...soal.kunciJawaban].sort() : [];
-                    isBenar = JSON.stringify(jwbArr) === JSON.stringify(kunciArr);
-                  } else if (tipe === "ISIAN") {
-                    const ansSiswa = String(jwb || "").trim().toLowerCase();
-                    const ansKunci = String(soal.kunciJawaban || "").trim().toLowerCase();
-                    isBenar = ansSiswa === ansKunci;
-                  }
+                  if (tipe === "PG" || tipe === "BENAR_SALAH") isBenar = String(jwb) === String(soal.kunciJawaban);
+                  else if (tipe === "PG_KOMPLEKS") isBenar = JSON.stringify(Array.isArray(jwb)?jwb.sort():[]) === JSON.stringify(Array.isArray(soal.kunciJawaban)?soal.kunciJawaban.sort():[]);
+                  else if (tipe === "ISIAN") isBenar = String(jwb||"").trim().toLowerCase() === String(soal.kunciJawaban||"").trim().toLowerCase();
 
-                  if (isBenar) { bgWarna = '#4ade80'; } 
-                  else if (isTerjawab) { bgWarna = '#f87171'; }
+                  if (isBenar) bgWarna = '#4ade80';
+                  else if (isTerjawab) bgWarna = '#f87171';
                 } else if (isTerjawab) {
                   bgWarna = '#3b82f6'; textWarna = 'white';
                 }
 
-                if (isAktif) { bayangan = '4px 4px 0 #111827'; }
+                if (isAktif) bayangan = '4px 4px 0 #111827';
 
                 return (
                   <button key={index} onClick={() => setSoalAktif(index)}
-                    style={{
-                      flexShrink: 0, width: '45px', height: '45px', margin: '2px 0',
-                      fontWeight: '900', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center',
-                      border: '3px solid #111827', background: bgWarna, color: textWarna, boxShadow: bayangan,
-                      borderRadius: '10px', cursor: 'pointer', transform: isAktif ? 'translateY(-2px)' : 'none', transition: 'all 0.1s'
-                    }}>
+                    style={{ flexShrink: 0, width: '45px', height: '45px', margin: '2px 0', fontWeight: '900', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '3px solid #111827', background: bgWarna, color: textWarna, boxShadow: bayangan, borderRadius: '10px', cursor: 'pointer', transform: isAktif ? 'translateY(-2px)' : 'none', transition: 'all 0.1s' }}>
                     {index + 1}
                   </button>
                 );
@@ -369,158 +182,21 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
             </div>
           </div>
 
-          {/* 4. KERTAS SOAL DAN JAWABAN */}
+          {/* AREA KERTAS SOAL & TOMBOL NAVIGASI BAWAH */}
           <div style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column', maxWidth: '800px', margin: '0 auto', width: '100%', userSelect: isReviewMode ? 'auto' : 'none' }}>
             
-            <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '4px solid #111827', boxShadow: '8px 8px 0 #111827', marginBottom: '30px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '4px solid #111827', paddingBottom: '16px' }}>
-                <span style={{ fontWeight: '900', fontSize: '18px', color: '#111827', background: '#facc15', padding: '6px 12px', borderRadius: '8px', border: '2px solid #111827' }}>
-                  SOAL NO. {soalAktif + 1}
-                </span>
-                <span style={{ fontWeight: '900', fontSize: '14px', color: '#111827', background: '#e2e8f0', padding: '4px 10px', borderRadius: '6px', border: '2px solid #111827' }}>
-                  {soalSekarang.bobotExp || 20} EXP
-                </span>
-              </div>
+            {/* 🚀 PANGGIL KOMPONEN RENDER SOAL */}
+            <KertasSoalCBT 
+              soalSekarang={daftarSoal[soalAktif]} 
+              soalAktif={soalAktif} 
+              isReviewMode={isReviewMode} 
+              jawabanSiswa={jawabanSiswa} 
+              handlePilihJawaban={handlePilihJawaban} 
+              handleToggleKompleks={handleToggleKompleks} 
+              handleInputIsian={handleInputIsian} 
+            />
 
-              <div style={{ marginBottom: '30px' }}>
-                {soalSekarang.gambar && (
-                  <img src={soalSekarang.gambar} alt="Soal" style={{ maxWidth: '100%', maxHeight: '280px', borderRadius: '12px', border: '3px solid #111827', marginBottom: '20px', objectFit: 'contain', pointerEvents: isReviewMode ? 'auto' : 'none', boxShadow: '4px 4px 0 #111827' }} />
-                )}
-                <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pertanyaan)} style={{ fontSize: '18px', color: '#111827', fontWeight: 'bold', lineHeight: '1.7' }} />
-              </div>
-
-              {/* 🚀 OPSI JAWABAN DINAMIS BERDASARKAN TIPE SOAL */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                
-                {/* TIPE 1: PG BIASA */}
-                {tipeSoalAktif === "PG" && opsiAbjad.map((opsi) => {
-                  if (!soalSekarang.opsi || !soalSekarang.opsi[opsi]) return null;
-                  const isSelected = jawabanSiswa[soalAktif] === opsi;
-                  const isKunciBenar = isReviewMode && soalSekarang.kunciJawaban === opsi;
-                  const isSalahPilih = isReviewMode && isSelected && !isKunciBenar;
-
-                  let bgOpsi = 'white'; let bgHuruf = '#f1f5f9'; let textHuruf = '#111827'; let bayanganOpsi = '4px 4px 0 #111827';
-                  if (isReviewMode) {
-                    if (isKunciBenar) { bgOpsi = '#dcfce3'; bgHuruf = '#22c55e'; textHuruf = 'white'; }
-                    else if (isSalahPilih) { bgOpsi = '#fef2f2'; bgHuruf = '#ef4444'; textHuruf = 'white'; }
-                  } else {
-                    if (isSelected) { bgOpsi = '#bfdbfe'; bgHuruf = '#2563eb'; textHuruf = 'white'; bayanganOpsi = '2px 2px 0 #111827'; }
-                  }
-
-                  return (
-                    <div key={opsi} onClick={() => handlePilihJawaban(soalAktif, opsi)}
-                      style={{ 
-                        display: 'flex', gap: '16px', alignItems: 'center', padding: '16px', background: bgOpsi, border: '3px solid #111827', borderRadius: '12px', boxShadow: bayanganOpsi,
-                        cursor: isReviewMode ? 'default' : 'pointer', transition: '0.1s', transform: (!isReviewMode && isSelected) ? 'translate(2px, 2px)' : 'none'
-                      }}>
-                      <span style={{ fontWeight: '900', width: '36px', height: '36px', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0, background: bgHuruf, color: textHuruf, borderRadius: '8px', border: '2px solid #111827', fontSize: '16px' }}>
-                        {isKunciBenar ? <FaCheck size={16}/> : (isSalahPilih ? <FaCross size={16}/> : opsi)}
-                      </span>
-                      <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.opsi[opsi])} style={{ fontSize: '16px', fontWeight: 'bold', color: '#111827' }} />
-                    </div>
-                  );
-                })}
-
-                {/* TIPE 2: PG KOMPLEKS (CHECKBOX) */}
-                {tipeSoalAktif === "PG_KOMPLEKS" && opsiAbjad.map((opsi) => {
-                  if (!soalSekarang.opsi || !soalSekarang.opsi[opsi]) return null;
-                  
-                  const isSelected = Array.isArray(jawabanSiswa[soalAktif]) && jawabanSiswa[soalAktif].includes(opsi);
-                  const isKunciBenar = isReviewMode && Array.isArray(soalSekarang.kunciJawaban) && soalSekarang.kunciJawaban.includes(opsi);
-                  const isSalahPilih = isReviewMode && isSelected && !isKunciBenar;
-
-                  let bgOpsi = 'white'; let bgHuruf = '#f1f5f9'; let textHuruf = '#111827'; let bayanganOpsi = '4px 4px 0 #111827';
-                  if (isReviewMode) {
-                    if (isKunciBenar) { bgOpsi = '#dcfce3'; bgHuruf = '#22c55e'; textHuruf = 'white'; }
-                    else if (isSalahPilih) { bgOpsi = '#fef2f2'; bgHuruf = '#ef4444'; textHuruf = 'white'; }
-                  } else {
-                    if (isSelected) { bgOpsi = '#bfdbfe'; bgHuruf = '#2563eb'; textHuruf = 'white'; bayanganOpsi = '2px 2px 0 #111827'; }
-                  }
-
-                  return (
-                    <div key={opsi} onClick={() => handleToggleKompleks(soalAktif, opsi)}
-                      style={{ 
-                        display: 'flex', gap: '16px', alignItems: 'center', padding: '16px', background: bgOpsi, border: '3px solid #111827', borderRadius: '12px', boxShadow: bayanganOpsi,
-                        cursor: isReviewMode ? 'default' : 'pointer', transition: '0.1s', transform: (!isReviewMode && isSelected) ? 'translate(2px, 2px)' : 'none'
-                      }}>
-                      <span style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0, color: textHuruf }}>
-                         {isSelected || isKunciBenar ? <FaSquareCheck size={26} /> : <FaRegSquare size={26} />}
-                      </span>
-                      <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.opsi[opsi])} style={{ fontSize: '16px', fontWeight: 'bold', color: '#111827' }} />
-                    </div>
-                  );
-                })}
-
-                {/* TIPE 3: BENAR SALAH */}
-                {tipeSoalAktif === "BENAR_SALAH" && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    {['A', 'B'].map((opsi) => {
-                      const label = opsi === 'A' ? '✅ BENAR' : '❌ SALAH';
-                      const isSelected = jawabanSiswa[soalAktif] === opsi;
-                      const isKunciBenar = isReviewMode && soalSekarang.kunciJawaban === opsi;
-                      const isSalahPilih = isReviewMode && isSelected && !isKunciBenar;
-
-                      let bgOpsi = 'white'; let borderCol = '#111827'; let textColor = '#111827';
-                      if (isReviewMode) {
-                        if (isKunciBenar) { bgOpsi = '#4ade80'; textColor = '#111827'; }
-                        else if (isSalahPilih) { bgOpsi = '#f87171'; textColor = 'white'; borderCol = '#f87171'; }
-                      } else {
-                        if (isSelected) { bgOpsi = '#3b82f6'; textColor = 'white'; }
-                      }
-
-                      return (
-                        <button key={opsi} onClick={() => handlePilihJawaban(soalAktif, opsi)}
-                          style={{
-                            padding: '20px', fontSize: '20px', fontWeight: '900', border: `4px solid ${borderCol}`, borderRadius: '12px', cursor: isReviewMode ? 'default' : 'pointer',
-                            background: bgOpsi, color: textColor, boxShadow: (isReviewMode || isSelected) ? 'none' : '6px 6px 0 #111827',
-                            transform: (!isReviewMode && isSelected) ? 'translate(6px, 6px)' : 'none'
-                          }}
-                        >
-                          {label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {/* TIPE 4: ISIAN SINGKAT */}
-                {tipeSoalAktif === "ISIAN" && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <input 
-                      type="text" 
-                      placeholder={isReviewMode ? "" : "Ketik jawaban Anda di sini..."}
-                      value={jawabanSiswa[soalAktif] || ""}
-                      onChange={(e) => handleInputIsian(soalAktif, e.target.value)}
-                      disabled={isReviewMode}
-                      style={{
-                        width: '100%', padding: '20px', border: '4px solid #111827', borderRadius: '12px', fontSize: '20px', fontWeight: '900', outline: 'none',
-                        background: isReviewMode ? '#f1f5f9' : 'white', color: '#111827', boxShadow: isReviewMode ? 'none' : '4px 4px 0 #111827'
-                      }}
-                    />
-                    
-                    {/* Hasil Isian di Mode Review */}
-                    {isReviewMode && (
-                      <div style={{ padding: '16px', borderRadius: '12px', border: '3px solid #111827', background: String(jawabanSiswa[soalAktif] || "").trim().toLowerCase() === String(soalSekarang.kunciJawaban || "").trim().toLowerCase() ? '#dcfce3' : '#fef2f2' }}>
-                        <span style={{ display: 'block', fontSize: '13px', fontWeight: '900', marginBottom: '4px', color: '#111827' }}>KUNCI JAWABAN YANG BENAR:</span>
-                        <span style={{ fontSize: '20px', fontWeight: '900', color: '#166534' }}>{soalSekarang.kunciJawaban}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-              </div>
-
-              {/* BOX PEMBAHASAN */}
-              {isReviewMode && soalSekarang.pembahasan && (
-                <div style={{ marginTop: '30px', padding: '20px', background: '#fef08a', border: '3px solid #111827', borderRadius: '12px', boxShadow: '4px 4px 0 #111827' }}>
-                  <span style={{ display: 'inline-block', fontWeight: '900', color: '#111827', marginBottom: '12px', fontSize: '15px', background: 'white', padding: '4px 10px', borderRadius: '6px', border: '2px solid #111827' }}>💡 PEMBAHASAN:</span>
-                  <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pembahasan)} style={{ fontSize: '16px', color: '#111827', fontWeight: 'bold', lineHeight: '1.6' }} />
-                </div>
-              )}
-
-            </div>
-
-            {/* Navigasi Bawah */}
+            {/* NAVIGASI KIRI-KANAN */}
             <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingBottom: '20px' }}>
               <button onClick={() => setSoalAktif(prev => Math.max(0, prev - 1))} disabled={soalAktif === 0}
                 style={{ flex: 1, padding: '15px', background: soalAktif === 0 ? '#e2e8f0' : '#f1f5f9', color: '#111827', border: '3px solid #111827', borderRadius: '12px', fontWeight: '900', cursor: soalAktif === 0 ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: soalAktif === 0 ? 'none' : '4px 4px 0 #111827' }}>

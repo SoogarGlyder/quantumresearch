@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FaBookOpen, FaBrain } from "react-icons/fa6";
+import { useState, useEffect, useRef } from "react";
 
 // IMPOR API & KOMPONEN
 import { ambilSemuaLatihanSoal, prosesSimpanLatihanSoal, prosesHapusLatihanSoal, ambilDaftarSiswaDropdown } from "@/actions/soalAction";
@@ -12,6 +11,7 @@ import styles from "@/components/App.module.css";
 
 // IMPOR ANAK KOMPONEN
 import HeaderTugas from "./HeaderTugas";
+import TabSelector from "./TabSelector"; // 🚀 Import komponen baru kita
 import DaftarTugas from "./DaftarTugas";
 import DaftarKuis from "./DaftarKuis"; 
 import ModalFormTugas from "./ModalFormTugas";
@@ -21,12 +21,15 @@ export default function TabTugasPengajar({ pengajarId }) {
   const [activeTab, setActiveTab] = useState("TUGAS"); 
 
   // =========================================================
-  // 1. STATE & LOGIKA TUGAS & MATERI (LAMA)
+  // 1. STATE & LOGIKA TUGAS & MATERI
   // =========================================================
   const [dataSoal, setDataSoal] = useState([]);
   const [dataSiswa, setDataSiswa] = useState([]);
   const [loadingTugas, setLoadingTugas] = useState(true);
   
+  const hasFetchedTugas = useRef(false);
+  const hasFetchedSiswa = useRef(false);
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [idEdit, setIdEdit] = useState(null);
   const [loadingForm, setLoadingForm] = useState(false);
@@ -35,9 +38,17 @@ export default function TabTugasPengajar({ pengajarId }) {
   const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
-    muatDataTugas();
-    ambilDaftarSiswaDropdown().then(res => { if(res.sukses) setDataSiswa(res.data); });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!hasFetchedTugas.current) {
+      muatDataTugas();
+      hasFetchedTugas.current = true;
+    }
+    
+    if (!hasFetchedSiswa.current) {
+      ambilDaftarSiswaDropdown().then(res => { 
+        if(res.sukses) setDataSiswa(res.data); 
+      });
+      hasFetchedSiswa.current = true;
+    }
   }, []);
 
   const muatDataTugas = async () => {
@@ -76,11 +87,13 @@ export default function TabTugasPengajar({ pengajarId }) {
   };
 
   // =========================================================
-  // 2. STATE & LOGIKA BANK SOAL CBT (BARU)
+  // 2. STATE & LOGIKA BANK SOAL CBT
   // =========================================================
   const [dataBankSoal, setDataBankSoal] = useState([]);
   const [loadingBank, setLoadingBank] = useState(false);
   
+  const hasFetchedBank = useRef(false);
+
   const [isModalKuisOpen, setIsModalKuisOpen] = useState(false);
   const [kuisAktif, setKuisAktif] = useState(null); 
 
@@ -92,8 +105,10 @@ export default function TabTugasPengajar({ pengajarId }) {
   };
 
   useEffect(() => {
-    if (activeTab === "BANK_SOAL") muatBankSoal();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (activeTab === "BANK_SOAL" && !hasFetchedBank.current) {
+      muatBankSoal();
+      hasFetchedBank.current = true;
+    }
   }, [activeTab]);
 
   const klikHapusBankSoal = async (id, judul) => {
@@ -105,7 +120,11 @@ export default function TabTugasPengajar({ pengajarId }) {
 
   const bukaModalBuatCBT = () => { setKuisAktif(null); setIsModalKuisOpen(true); };
   const bukaModalEditCBT = (item) => { setKuisAktif(item); setIsModalKuisOpen(true); };
-  const tutupModalCBT = () => { setIsModalKuisOpen(false); muatBankSoal(); };
+  
+  const tutupModalCBT = () => { 
+    setIsModalKuisOpen(false); 
+    muatBankSoal();
+  };
 
   // =========================================================
   // RENDER UI
@@ -113,30 +132,11 @@ export default function TabTugasPengajar({ pengajarId }) {
   return (
     <div className={styles.contentArea}>
       
-      {/* 1. HEADER (Di Paling Atas) */}
+      {/* 1. HEADER */}
       <HeaderTugas totalTugas={dataSoal?.length || 0} totalKuis={dataBankSoal?.length || 0} mode={activeTab} />
 
-      {/* 2. TAB SWITCHER (Tepat di Bawah Header) */}
-      <div style={{ display: 'flex', gap: '10px', padding: '16px', background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10, borderBottom: '4px solid #111827' }}>
-        <button 
-          onClick={() => setActiveTab("TUGAS")}
-          style={{ flex: 1, padding: '12px', fontWeight: '900', fontSize: '15px', borderRadius: '10px', border: '3px solid #111827', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: '0.2s',
-            background: activeTab === "TUGAS" ? '#facc15' : '#fff', color: '#111827',
-            boxShadow: activeTab === "TUGAS" ? '4px 4px 0 #111827' : 'none', transform: activeTab === "TUGAS" ? 'translate(-2px, -2px)' : 'none'
-          }}
-        >
-          <FaBookOpen size={18} /> TUGAS & MATERI
-        </button>
-        <button 
-          onClick={() => setActiveTab("BANK_SOAL")}
-          style={{ flex: 1, padding: '12px', fontWeight: '900', fontSize: '15px', borderRadius: '10px', border: '3px solid #111827', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: '0.2s',
-            background: activeTab === "BANK_SOAL" ? '#3b82f6' : '#fff', color: activeTab === "BANK_SOAL" ? 'white' : '#111827',
-            boxShadow: activeTab === "BANK_SOAL" ? '4px 4px 0 #111827' : 'none', transform: activeTab === "BANK_SOAL" ? 'translate(-2px, -2px)' : 'none'
-          }}
-        >
-          <FaBrain size={18} /> BANK SOAL CBT
-        </button>
-      </div>
+      {/* 2. TAB SWITCHER (Sudah jadi 1 baris bersih) */}
+      <TabSelector activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* 3. AREA KONTEN */}
       {activeTab === "TUGAS" && (

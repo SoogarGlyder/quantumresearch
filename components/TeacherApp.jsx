@@ -29,7 +29,7 @@ export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) {
       case "scan":
         return <TabScanPengajar absenAktif={absenAktif} absensi={absensi} />;
       case "tugas":
-        return <TabTugasPengajar />;
+        return <TabTugasPengajar pengajarId={dataUser?._id} />;
       case "profil":
         return <TabProfilPengajar dataUser={dataUser} onLogout={onLogout} />;
       default:

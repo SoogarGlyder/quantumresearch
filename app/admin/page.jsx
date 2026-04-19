@@ -12,7 +12,9 @@ import {
   ambilAbsensiPengajar 
 } from "../../actions/adminAction";
 import { ambilSemuaPengajar } from "../../actions/teacherAction";
-import { prosesLogout } from "../../actions/authAction";
+
+// 🚀 MENGIMPOR JEMBATAN SESI YANG BARU KITA BUAT
+import { prosesLogout, dapatkanSesiAktif } from "../../actions/authAction"; 
 
 import { KONFIGURASI_SISTEM, PERIODE_BELAJAR } from "../../utils/constants";
 
@@ -28,7 +30,6 @@ import ModalQr from "../../components/admin/ModalQr";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
 
 import TabSoal from "../../components/admin/TabSoal"; 
-// 🚀 1. IMPORT TAB BARU: TabKuis (Gudang Bank Soal)
 import TabKuis from "../../components/admin/TabKuis"; 
 
 // ============================================================================
@@ -74,8 +75,8 @@ function AdminContent() {
   const [dataAbsenStaf, setDataAbsenStaf] = useState([]); 
   const [loadingData, setLoadingData] = useState(true);
 
-  // 🚀 Simulasi Admin ID (Nanti bisa diambil dari session auth)
-  const adminIdAktif = "admin-sistem";
+  // 🚀 STATE UNTUK MENYIMPAN ID ADMIN ASLI
+  const [adminIdAktif, setAdminIdAktif] = useState("000000000000000000000000");
 
   const gantiTab = (namaTabBaru) => {
     const params = new URLSearchParams();
@@ -97,6 +98,15 @@ function AdminContent() {
   const muatData = useCallback(async () => {
     setLoadingData(true);
     try {
+      // 🚀 SEDOT ID ADMIN DARI SESI COOKIE SECARA AMAN
+      const sesi = await dapatkanSesiAktif();
+      if (sesi && sesi.userId) {
+        setAdminIdAktif(sesi.userId);
+      } else {
+        router.push(KONFIGURASI_SISTEM.PATH_LOGIN);
+        return;
+      }
+
       const [hasilDashboard, hasilJadwal, hasilPengajar, hasilAbsenStaf] = await Promise.all([
         ambilDataDashboard(),
         ambilSemuaJadwal(),
@@ -191,7 +201,6 @@ function AdminContent() {
           <button onClick={() => gantiTab("jadwal")} className={`${styles.tombolTab} ${tab === "jadwal" ? styles.tombolTabAktif : ""}`}>📅 JADWAL</button>
           <button onClick={() => gantiTab("user")} className={`${styles.tombolTab} ${tab === "user" ? styles.tombolTabAktif : ""}`}>👥 USER</button>
           <button onClick={() => gantiTab("soal")} className={`${styles.tombolTab} ${tab === "soal" ? styles.tombolTabAktif : ""}`}>📚 TUGAS</button>
-          {/* 🚀 TAMBAHAN: Tombol Tab Kuis CBT */}
           <button onClick={() => gantiTab("kuis")} className={`${styles.tombolTab} ${tab === "kuis" ? styles.tombolTabAktif : ""}`}>🧠 CBT</button>
         </div>
 
@@ -200,11 +209,11 @@ function AdminContent() {
           <ErrorBoundary>
             {tab === "monitoring" && <TabMonitoring dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} dataAbsenStaf={dataAbsenStaf} dataPengajar={dataPengajar} muatData={muatData} bulanAktif={bulanAktif} />}
             {tab === "jurnal" && <TabJurnal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} />}
+            
+            {/* 🚀 TAB JADWAL & KUIS KINI DIKIRIMI ID ASLI */}
             {tab === "jadwal" && <TabJadwal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} adminId={adminIdAktif} />}
             {tab === "user" && <TabUser dataSiswa={dataSiswa} dataPengajar={dataPengajar} muatData={muatData} />}
             {tab === "soal" && <TabSoal dataSiswa={dataSiswa} />}
-            
-            {/* 🚀 RENDER TAB KUIS CBT BARU */}
             {tab === "kuis" && <TabKuis adminId={adminIdAktif} />}
           </ErrorBoundary>
         </div>

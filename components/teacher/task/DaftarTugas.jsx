@@ -7,7 +7,7 @@ import styles from "@/components/App.module.css";
 const DaftarTugas = memo(({ dataSoal, loading, onEdit, onHapus, onBukaForm }) => (
   <div className={styles.contentContainer}>
     
-    <div style={{ padding: '0 16px', marginTop: '24px', marginBottom: '24px' }}>
+    <div style={{ padding: '0 16px', marginBottom: '24px' }}>
       <button onClick={onBukaForm} className={styles.tombolSimpanBiruBaru} style={{ width: '100%', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
         <FaPlus size={18} /> BUAT TUGAS BARU
       </button>

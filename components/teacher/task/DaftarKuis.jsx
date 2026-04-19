@@ -7,11 +7,6 @@ import styles from "@/components/App.module.css";
 const DaftarKuis = memo(({ dataBankSoal, loading, onBuatBaru, onEdit, onHapus }) => (
   <div style={{ padding: '24px 16px' }}>
     
-    <div style={{ marginBottom: '20px', background: '#e0e7ff', padding: '16px', borderRadius: '12px', border: '3px solid #3b82f6' }}>
-      <h3 style={{ margin: '0 0 5px 0', color: '#1d4ed8', fontWeight: '900' }}>Gudang Master Soal CBT</h3>
-      <p style={{ margin: 0, color: '#1e40af', fontSize: '13px', fontWeight: 'bold' }}>Buat soal di sini, lalu pasang ke kelas mana pun melalui Jurnal Kelas.</p>
-    </div>
-
     <button 
       onClick={onBuatBaru} 
       style={{ width: '100%', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: '#22c55e', color: 'white', border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '4px 4px 0 #111827', marginBottom: '30px' }}

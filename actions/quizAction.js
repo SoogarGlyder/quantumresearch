@@ -2,9 +2,13 @@
 
 import connectToDatabase from "../lib/db"; 
 import Quiz from "../models/Quiz";
-import BankSoal from "../models/BankSoal"; // 🚀 TAMBAHAN: Import Model Baru
+import BankSoal from "../models/BankSoal";
 import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
+
+// 🚀 IMPORT UNTUK PENGECEKAN SESI & ROLE
+import { authHelper } from "../utils/authHelper";
+import { PERAN } from "../utils/constants";
 
 // ============================================================================
 // BAGIAN 1: MANAJEMEN BANK SOAL (MASTER TEMPLATE) - Di Tab Task
@@ -14,13 +18,25 @@ export async function ambilSemuaBankSoal(pembuatId) {
   try {
     await connectToDatabase();
     
-    // 🚀 LOGIKA DEWA: Jika Admin, ambil semua (query kosong). Jika guru, ambil miliknya saja.
+    // 🛡️ AMBIL SESI DARI SERVER (Keamanan Berlapis)
+    const { peran } = await authHelper.ambilSesi();
+    
     let query = {};
-    if (pembuatId && pembuatId !== "admin-sistem") {
-      query.pembuatId = pembuatId;
+
+    /**
+     * 🚀 LOGIKA "GOD MODE":
+     * 1. Jika PERAN adalah ADMIN, biarkan query tetap KOSONG {}. 
+     * Artinya Admin bisa melihat SEMUA soal dari SEMUA pengajar.
+     * 2. Jika bukan Admin (PENGAJAR), maka paksa filter berdasarkan pembuatId.
+     */
+    if (peran !== PERAN.ADMIN.id) {
+      // Pastikan pembuatId valid sebagai ObjectId jika bukan admin-sistem
+      if (pembuatId && mongoose.Types.ObjectId.isValid(pembuatId)) {
+        query.pembuatId = pembuatId;
+      }
     }
 
-    // 🚀 POPULATE: Ambil nama pembuat agar Admin tahu ini soal buatan siapa
+    // POPULATE: Mengambil nama pembuat agar Admin tahu ini karya siapa
     const data = await BankSoal.find(query)
       .populate("pembuatId", "nama") 
       .sort({ createdAt: -1 })
@@ -37,15 +53,22 @@ export async function simpanBankSoal(idBankSoal, data) {
   try {
     await connectToDatabase();
     
+    // Pastikan pembuatId murni ObjectId sebelum masuk ke Mongo
+    if (data.pembuatId && mongoose.Types.ObjectId.isValid(data.pembuatId)) {
+      data.pembuatId = new mongoose.Types.ObjectId(data.pembuatId);
+    }
+
     if (idBankSoal) {
       await BankSoal.findByIdAndUpdate(idBankSoal, data);
     } else {
       await BankSoal.create(data);
     }
 
+    revalidatePath("/admin");
     revalidatePath("/teacher/task"); 
     return { sukses: true, pesan: "Master Bank Soal berhasil disimpan!" };
   } catch (error) {
+    console.error("Gagal simpanBankSoal:", error);
     return { sukses: false, pesan: "Gagal simpan master: " + error.message };
   }
 }
@@ -54,6 +77,7 @@ export async function hapusBankSoal(idBankSoal) {
   try {
     await connectToDatabase();
     await BankSoal.findByIdAndDelete(idBankSoal);
+    revalidatePath("/admin");
     revalidatePath("/teacher/task");
     return { sukses: true, pesan: "Master Bank Soal telah dihapus." };
   } catch (error) {
@@ -62,7 +86,7 @@ export async function hapusBankSoal(idBankSoal) {
 }
 
 // ============================================================================
-// BAGIAN 2: PENERAPAN KE JADWAL (SNAPSHOT / COPY) - Di Modal Jurnal
+// BAGIAN 2: PENERAPAN KE JADWAL (SNAPSHOT / COPY)
 // ============================================================================
 
 export async function terapkanBankSoalKeJadwal(idBankSoal, idJadwal, idPengajar) {
@@ -77,7 +101,7 @@ export async function terapkanBankSoalKeJadwal(idBankSoal, idJadwal, idPengajar)
       sumberBankSoalId: idBankSoal,
       pembuatId: idPengajar,
       durasi: master.durasi,
-      soal: master.soal, // Copy array soal murni
+      soal: master.soal, 
       isAktif: true
     };
 
@@ -98,10 +122,9 @@ export async function hapusQuizDariJadwal(idJadwal) {
   try {
     await connectToDatabase();
     
-    // 🚀 PROTEKSI: Cek apakah sudah ada siswa yang mengerjakan?
     const kuis = await Quiz.findOne({ jadwalId: idJadwal }).lean();
     if (kuis?.hasilPengerjaan?.length > 0) {
-      return { sukses: false, pesan: "DITOLAK: Sudah ada siswa yang mengerjakan, nilai bisa hilang!" };
+      return { sukses: false, pesan: "DITOLAK: Sudah ada siswa yang mengerjakan!" };
     }
 
     await Quiz.findOneAndDelete({ jadwalId: idJadwal });
@@ -112,20 +135,15 @@ export async function hapusQuizDariJadwal(idJadwal) {
   }
 }
 
-
 // ============================================================================
-// BAGIAN 3: FUNGSI LAMA (EKSISTING) - TETAP UTUH 100%
+// BAGIAN 3: FUNGSI EKSISTING (TETAP UTUH)
 // ============================================================================
 
-/**
- * FUNGSI: Simpan atau Edit Kuis (Upsert) Secara Langsung
- */
 export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
   await connectToDatabase();
-  
   try {
     const pembuatIdValid = mongoose.Types.ObjectId.isValid(pembuatId) 
-      ? pembuatId 
+      ? new mongoose.Types.ObjectId(pembuatId) 
       : null;
 
     const kuisLama = await Quiz.findOne({ jadwalId });
@@ -135,7 +153,6 @@ export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
       kuisLama.pembuatId = pembuatIdValid; 
       kuisLama.durasi = durasi || 10; 
       kuisLama.isAktif = true; 
-      
       await kuisLama.save();
     } else {
       await Quiz.create({
@@ -149,42 +166,28 @@ export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
 
     revalidatePath("/admin"); 
     revalidatePath("/");
-    
     return { sukses: true, pesan: "Kuis Pro Berhasil Dipublikasikan!" };
   } catch (error) {
-    console.error("[QUIZ_SAVE_ERROR]:", error);
     return { sukses: false, pesan: "Gagal menyimpan kuis: " + error.message };
   }
 }
 
-/**
- * FUNGSI: Ambil data kuis (Digunakan di UI Siswa & Radar Guru)
- */
 export async function ambilKuisByJadwal(jadwalId) {
   if (!jadwalId) return null;
-  
   await connectToDatabase();
-  
   try {
     const kuis = await Quiz.findOne({ jadwalId }).lean();
     if (!kuis) return null;
-
     return JSON.parse(JSON.stringify(kuis));
   } catch (error) {
-    console.error("[GET_QUIZ_ERROR]:", error);
     return null;
   }
 }
 
-/**
- * FUNGSI: Mengambil riwayat kuis lama berdasarkan jadwal 
- */
 export async function getRiwayatKuisPengajar(pembuatId) {
   try {
     await connectToDatabase();
-    
     const Jadwal = mongoose.models.Jadwal || mongoose.model("Jadwal");
-    
     const kuisPengajar = await Quiz.find({ pembuatId, isAktif: true })
       .populate('jadwalId', 'mapel kelasTarget tanggal')
       .sort({ updatedAt: -1 })
@@ -203,7 +206,6 @@ export async function getRiwayatKuisPengajar(pembuatId) {
 
     return { sukses: true, data: dataBersih };
   } catch (error) {
-    console.error("Error getRiwayatKuisPengajar:", error);
     return { sukses: false, data: [] };
   }
 }

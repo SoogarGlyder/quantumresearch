@@ -221,3 +221,11 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
+
+// ============================================================================
+// 4. SESSION EXTRACTOR (Untuk Client Component)
+// ============================================================================
+export async function dapatkanSesiAktif() {
+  const sesi = await authHelper.ambilSesi();
+  return sesi; // Akan mengirim { userId, peran } ke Client
+}
