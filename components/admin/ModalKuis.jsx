@@ -8,10 +8,11 @@ import {
   FaListUl, FaListOl, FaSuperscript, FaSubscript, FaTable, FaEraser,
   FaRotateLeft, FaRotateRight, FaHighlighter, FaEye, FaPlus, FaStar, FaClock,
   FaArrowUp, FaArrowDown, FaSquareCheck, FaRegSquare, FaEyeSlash,
-  FaDownload // 🚀 TAMBAHAN: Ikon Import
+  FaDownload
 } from "react-icons/fa6";
 import { CldUploadWidget } from "next-cloudinary";
-import { simpanKuis, getRiwayatKuisPengajar, ambilKuisByJadwal } from "../../actions/quizAction"; // 🚀 TAMBAHAN IMPORT ACTION
+// 🚀 TAMBAHAN: Import simpanBankSoal
+import { simpanKuis, getRiwayatKuisPengajar, ambilKuisByJadwal, simpanBankSoal } from "../../actions/quizAction"; 
 import styles from "../../app/admin/AdminPage.module.css";
 
 // 🚀 IMPORT TIPTAP CORE & EXTENSIONS
@@ -119,11 +120,17 @@ const QuantumEditor = ({ value, onChange }) => {
 
 // --- 2. MODAL KUIS UTAMA ---
 export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, muatData }) {
+  // 🚀 DETEKTOR MODE: Apakah ini dipanggil dari Tab Bank Soal?
+  const isModeBankSoal = jadwal?._id === "MODE_BANK_SOAL";
+
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [durasiUjian, setDurasiUjian] = useState(10);
+  
+  // 🚀 STATE BARU: Khusus untuk Judul Paket di Bank Soal
+  const [judulBankSoal, setJudulBankSoal] = useState("");
 
-  // 🚀 STATE KHUSUS IMPORT KUIS
+  // STATE KHUSUS IMPORT KUIS
   const [showImportPanel, setShowImportPanel] = useState(false);
   const [listRiwayatKuis, setListRiwayatKuis] = useState([]);
   const [isMengambil, setIsMengambil] = useState(false);
@@ -142,6 +149,13 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
 
   useEffect(() => {
     if (isOpen) {
+      // 🚀 Umpan judul jika sedang edit Bank Soal
+      if (isModeBankSoal && kuisLama?.judul) {
+        setJudulBankSoal(kuisLama.judul);
+      } else {
+        setJudulBankSoal("");
+      }
+
       if (kuisLama?.soal?.length > 0) {
         const mappedSoal = kuisLama.soal.map(s => ({
           ...s,
@@ -156,7 +170,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
         setDurasiUjian(10);
       }
     }
-  }, [isOpen, kuisLama]);
+  }, [isOpen, kuisLama, isModeBankSoal]);
 
   const handleTambahSoal = () => setFormSoal([...formSoal, buatTemplateSoalBaru()]);
 
@@ -226,7 +240,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     setFormSoal(soalBaru);
   };
 
-  // 🚀 FUNGSI BARU: TOGGLE & EKSEKUSI IMPORT KUIS
   const togglePanelImport = async () => {
     setShowImportPanel(!showImportPanel);
     if (!showImportPanel && listRiwayatKuis.length === 0) {
@@ -261,6 +274,11 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     e.preventDefault();
     if (!jadwal?._id) return alert("⚠️ Data jadwal tidak valid.");
     
+    // 🚀 VALIDASI JUDUL KHUSUS BANK SOAL
+    if (isModeBankSoal && !judulBankSoal.trim()) {
+      return alert("⚠️ Judul Master Soal wajib diisi!");
+    }
+
     const adaKosong = formSoal.some(s => {
       if (!s.pertanyaan) return true;
       if (s.tipeSoal === "PG_KOMPLEKS" && (!Array.isArray(s.kunciJawaban) || s.kunciJawaban.length === 0)) return true;
@@ -272,10 +290,22 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
 
     setLoading(true);
     try {
-      const res = await simpanKuis(jadwal._id, adminId, formSoal, durasiUjian);
+      let res;
+      // 🚀 LOGIKA BERCABANG: Simpan ke Koleksi yang Berbeda Tergantung Mode
+      if (isModeBankSoal) {
+        res = await simpanBankSoal(kuisLama?._id || null, {
+          judul: judulBankSoal,
+          pembuatId: adminId,
+          durasi: durasiUjian,
+          soal: formSoal
+        });
+      } else {
+        res = await simpanKuis(jadwal._id, adminId, formSoal, durasiUjian);
+      }
+
       if (res.sukses) {
-        alert("✅ Kuis CBT Berhasil Dipublikasikan!");
-        if (muatData) muatData();
+        alert(isModeBankSoal ? "✅ Master Soal Berhasil Disimpan di Bank!" : "✅ Kuis CBT Berhasil Dipublikasikan!");
+        if (muatData) muatData(); // Refresh list jika ada
         onClose();
       } else { alert("❌ " + res.pesan); }
     } catch (err) { alert("Terjadi kesalahan jaringan."); } 
@@ -290,13 +320,27 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
         
         {/* HEADER MODAL */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '25px', borderBottom: '4px solid #111827', paddingBottom: '15px' }}>
-          <div>
+          <div style={{ flex: 1, paddingRight: '20px' }}>
             <h2 style={{ margin: 0, fontWeight: '900', textTransform: 'uppercase', color: '#111827', fontSize: '26px' }}>🧠 CBT Engine Pro</h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: '15px', color: '#2563eb', fontWeight: '900' }}>
-              {jadwal.mapel} | {jadwal.kelasTarget}
-            </p>
+            
+            {/* 🚀 KONDISIONAL RENDER HEADER (JUDUL VS MAPEL) */}
+            {isModeBankSoal ? (
+              <input 
+                type="text" 
+                placeholder="Ketik Judul Paket Soal (Contoh: Ujian Tengah Semester)..." 
+                value={judulBankSoal}
+                onChange={(e) => setJudulBankSoal(e.target.value)}
+                style={{ marginTop: '12px', padding: '12px 16px', width: '100%', maxWidth: '600px', border: '3px solid #3b82f6', borderRadius: '8px', fontWeight: '900', fontSize: '16px', outline: 'none', background: '#eff6ff', color: '#1e3a8a' }}
+                required
+              />
+            ) : (
+              <p style={{ margin: '5px 0 0 0', fontSize: '15px', color: '#2563eb', fontWeight: '900' }}>
+                {jadwal.mapel} | {jadwal.kelasTarget}
+              </p>
+            )}
+
           </div>
-          <button onClick={onClose} style={{ background: 'white', border: '3px solid #111827', borderRadius: '10px', cursor: 'pointer', padding: '8px', boxShadow: '4px 4px 0 #ef4444' }}>
+          <button onClick={onClose} style={{ background: 'white', border: '3px solid #111827', borderRadius: '10px', cursor: 'pointer', padding: '8px', height: 'fit-content', boxShadow: '4px 4px 0 #ef4444' }}>
             <FaXmark size={24} color="#ef4444" />
           </button>
         </div>
@@ -304,43 +348,45 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
         {/* FORM UTAMA */}
         <form onSubmit={handleSimpan} style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
           
-          {/* 🚀 PANEL IMPORT SOAL DARI KELAS LAIN */}
-          <div style={{ marginBottom: '5px' }}>
-            <button 
-              type="button" 
-              onClick={togglePanelImport}
-              style={{ width: '100%', padding: '15px', background: showImportPanel ? '#111827' : '#e0e7ff', color: showImportPanel ? 'white' : '#111827', border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', boxShadow: '4px 4px 0 #111827', transition: '0.2s' }}
-            >
-              <FaDownload size={20} /> {showImportPanel ? "TUTUP PANEL BANK SOAL" : "IMPORT SOAL DARI KELAS LAIN (BANK SOAL)"}
-            </button>
+          {/* PANEL IMPORT SOAL DARI KELAS LAIN (Hanya tampil jika BUKAN mode Bank Soal) */}
+          {!isModeBankSoal && (
+            <div style={{ marginBottom: '5px' }}>
+              <button 
+                type="button" 
+                onClick={togglePanelImport}
+                style={{ width: '100%', padding: '15px', background: showImportPanel ? '#111827' : '#e0e7ff', color: showImportPanel ? 'white' : '#111827', border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', boxShadow: '4px 4px 0 #111827', transition: '0.2s' }}
+              >
+                <FaDownload size={20} /> {showImportPanel ? "TUTUP PANEL BANK SOAL" : "IMPORT SOAL DARI KELAS LAIN (BANK SOAL)"}
+              </button>
 
-            {showImportPanel && (
-              <div style={{ marginTop: '15px', padding: '20px', background: '#f8fafc', border: '4px dashed #3b82f6', borderRadius: '12px' }}>
-                <h4 style={{ margin: '0 0 15px 0', color: '#1d4ed8', fontWeight: '900', textTransform: 'uppercase' }}>Pilih Kuis Sebelumnya:</h4>
-                
-                {listRiwayatKuis.length === 0 ? (
-                  <p style={{ margin: 0, fontWeight: 'bold', color: '#64748b' }}>Belum ada riwayat kuis yang pernah Anda buat.</p>
-                ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}>
-                    {listRiwayatKuis.map((riwayat) => (
-                      <div key={riwayat.jadwalId} style={{ background: 'white', border: '3px solid #111827', borderRadius: '10px', padding: '15px', boxShadow: '4px 4px 0 #cbd5e1' }}>
-                        <p style={{ margin: '0 0 5px 0', fontWeight: '900', color: '#111827' }}>{riwayat.mapel}</p>
-                        <p style={{ margin: '0 0 15px 0', fontSize: '13px', color: '#64748b', fontWeight: 'bold' }}>Kelas {riwayat.kelas} • {new Date(riwayat.tanggal).toLocaleDateString('id-ID')}</p>
-                        <button 
-                          type="button" 
-                          disabled={isMengambil}
-                          onClick={() => handleEksekusiImport(riwayat.jadwalId)}
-                          style={{ width: '100%', padding: '10px', background: '#22c55e', color: 'white', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMengambil ? 'wait' : 'pointer' }}
-                        >
-                          {isMengambil ? "MENG-COPY..." : `COPY ${riwayat.jumlahSoal} SOAL`}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+              {showImportPanel && (
+                <div style={{ marginTop: '15px', padding: '20px', background: '#f8fafc', border: '4px dashed #3b82f6', borderRadius: '12px' }}>
+                  <h4 style={{ margin: '0 0 15px 0', color: '#1d4ed8', fontWeight: '900', textTransform: 'uppercase' }}>Pilih Kuis Sebelumnya:</h4>
+                  
+                  {listRiwayatKuis.length === 0 ? (
+                    <p style={{ margin: 0, fontWeight: 'bold', color: '#64748b' }}>Belum ada riwayat kuis yang pernah Anda buat.</p>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}>
+                      {listRiwayatKuis.map((riwayat) => (
+                        <div key={riwayat.jadwalId} style={{ background: 'white', border: '3px solid #111827', borderRadius: '10px', padding: '15px', boxShadow: '4px 4px 0 #cbd5e1' }}>
+                          <p style={{ margin: '0 0 5px 0', fontWeight: '900', color: '#111827' }}>{riwayat.mapel}</p>
+                          <p style={{ margin: '0 0 15px 0', fontSize: '13px', color: '#64748b', fontWeight: 'bold' }}>Kelas {riwayat.kelas} • {new Date(riwayat.tanggal).toLocaleDateString('id-ID')}</p>
+                          <button 
+                            type="button" 
+                            disabled={isMengambil}
+                            onClick={() => handleEksekusiImport(riwayat.jadwalId)}
+                            style={{ width: '100%', padding: '10px', background: '#22c55e', color: 'white', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMengambil ? 'wait' : 'pointer' }}
+                          >
+                            {isMengambil ? "MENG-COPY..." : `COPY ${riwayat.jumlahSoal} SOAL`}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* PENGATURAN GLOBAL (DURASI & PREVIEW TOGGLE) */}
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
@@ -561,11 +607,13 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
           })}
 
           <button type="button" onClick={handleTambahSoal} style={{ padding: '20px', background: '#dcfce3', color: '#166534', border: '4px dashed #22c55e', borderRadius: '20px', fontWeight: '900', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '-10px' }}>
-            <FaPlus size={22} /> TAMBAH SOAL BARU KE DALAM KUIS
+            <FaPlus size={22} /> TAMBAH SOAL BARU
           </button>
 
           <button type="submit" disabled={loading} style={{ padding: '25px', background: '#111827', color: '#facc15', border: 'none', borderRadius: '20px', fontWeight: '900', fontSize: '22px', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: '0 10px 0 #2563eb', marginBottom: '30px' }}>
-            {loading ? "MENYIMPAN DATA..." : <><FaFloppyDisk size={26} /> PUBLIKASIKAN KUIS ({formSoal.length} SOAL)</>}
+            {loading ? "MENYIMPAN DATA..." : (
+              <><FaFloppyDisk size={26} /> {isModeBankSoal ? `SIMPAN MASTER SOAL (${formSoal.length} SOAL)` : `PUBLIKASIKAN KUIS (${formSoal.length} SOAL)`}</>
+            )}
           </button>
         </form>
       </div>

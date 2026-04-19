@@ -4,7 +4,7 @@ import { memo } from "react";
 import Image from "next/image";
 import styles from "@/components/App.module.css";
 
-const HeaderTugas = memo(({ totalTugas }) => (
+const HeaderTugas = memo(({ totalTugas, totalKuis, mode }) => (
   <div className={styles.appHeader}>
     <div className={styles.shapeRed}></div>
     <div className={styles.shapeYellow}></div>
@@ -15,9 +15,14 @@ const HeaderTugas = memo(({ totalTugas }) => (
     </div>
     <div className={styles.identityContainer}>
       <p className={styles.welcomeText}>Manajemen Pusat Soal</p>
-      <h1 className={styles.userName}>Bank Tugas</h1>
+      <h1 className={styles.userName}>{mode === "TUGAS" ? "Gudang Materi" : "Bank Soal CBT"}</h1>
       <div className={styles.containerIdNumber}>
-         <span className={styles.IdNumber}>Anda memiliki {totalTugas} materi yang dibagikan</span>
+         <span className={styles.IdNumber}>
+           {mode === "TUGAS" 
+             ? `Anda memiliki ${totalTugas} materi yang dibagikan` 
+             : `Anda telah merakit ${totalKuis} paket soal CBT`
+           }
+         </span>
       </div>
     </div>
   </div>

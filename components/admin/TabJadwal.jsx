@@ -1,8 +1,7 @@
 "use client";
 
-// 👇 Tambahkan memo dan useCallback di import
 import { useState, useMemo, useEffect, memo, useCallback } from "react";
-import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare, FaFileSignature } from "react-icons/fa6"; // 🚀 Tambah FaFileSignature
+import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare, FaFileSignature, FaListUl } from "react-icons/fa6"; // 🚀 Tambah FaListUl
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import { DndContext, useDraggable, useDroppable, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
@@ -10,18 +9,14 @@ import { DndContext, useDraggable, useDroppable, MouseSensor, TouchSensor, useSe
 import PaginationBar from "../ui/PaginationBar";
 import { DAFTAR_KELAS_BIMBEL, generateDuaMingguKerja, KAMUS_JAM_SESI } from "../../utils/jadwalHelper";
 
-// 👈 Import Konstanta Lengkap
 import { OPSI_MAPEL_KELAS, OPSI_KELAS, LIMIT_DATA } from "../../utils/constants";
 import { tambahJadwal, hapusJadwal, editJadwal } from "../../actions/adminAction";
 
-// 🚀 Import fungsi ambil kuis untuk mengecek status
-import { ambilKuisByJadwal } from "../../actions/quizAction"; 
+// 🚀 IMPORT BARU: Menggunakan ekosistem Bank Soal
+import { ambilKuisByJadwal, ambilSemuaBankSoal, terapkanBankSoalKeJadwal, hapusQuizDariJadwal } from "../../actions/quizAction"; 
 
 import { formatTanggal, potongDataPagination } from "../../utils/formatHelper";
 import styles from "../../app/admin/AdminPage.module.css";
-
-// 🚀 Import ModalKuis yang baru kita buat
-import ModalKuis from "./ModalKuis";
 
 // ============================================================================
 // --- KOMPONEN BANTUAN DND (Telah Dioptimasi dengan React.memo) ---
@@ -51,7 +46,7 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
           <div key={j._id} onClick={() => klikKartuJadwal(j, "permanen")} className={styles.kartuJadwalPermanen} style={{ cursor: 'pointer', transition: 'transform 0.1s', position: 'relative' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
             <div className={styles.labelTersimpan}><FaDatabase /> TERSIMPAN</div>
             
-            {/* 🚀 INDIKATOR KUIS DI KARTU PAPAN CATUR */}
+            {/* INDIKATOR KUIS DI KARTU PAPAN CATUR */}
             {j.statusKuis === 'siap' && (
               <div style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: '#facc15', color: '#111827', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '4px', border: '1px solid #111827' }}>
                 📝 KUIS SIAP
@@ -83,7 +78,6 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
   if (prevProps.permanenDB.length !== nextProps.permanenDB.length) return false;
   if (prevProps.draftLokal.length !== nextProps.draftLokal.length) return false;
 
-  // 🚀 Tambahkan pengecekan statusKuis agar kartu mau merender ulang jika kuis baru ditambah
   const isPermanenSama = prevProps.permanenDB.every((j, i) => j._id === nextProps.permanenDB[i]._id && j.statusKuis === nextProps.permanenDB[i].statusKuis);
   const isDraftSama = prevProps.draftLokal.every((j, i) => j.idUnik === nextProps.draftLokal[i].idUnik);
 
@@ -94,15 +88,12 @@ DroppableSel.displayName = "DroppableSel";
 // ============================================================================
 // KOMPONEN UTAMA
 // ============================================================================
-export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, adminId = "admin-sistem" }) { // 🚀 Tambah props adminId (sementara hardcode gpp jika belum ada auth lengkap)
-  // --- HOOKS UNTUK URL STATE ---
+export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, adminId = "admin-sistem" }) { 
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
 
   const page = Number(searchParams.get("page")) || 1;
-  
-  // 🚀 STATE UNTUK KUIS (Menyimpan mana saja jadwal yang sudah punya kuis)
   const [daftarStatusKuis, setDaftarStatusKuis] = useState({});
 
   const { minDate, maxDate } = useMemo(() => {
@@ -120,7 +111,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // --- STATE PAPAN CATUR ---
   const [tanggalMulai, setTanggalMulai] = useState(minDate || "");
   const [jadwalLokal, setJadwalLokal] = useState([]); 
   
@@ -134,28 +124,27 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minDate]);
 
-  // Modal Tambah
   const [modalTerbuka, setModalTerbuka] = useState(false);
   const [dataDraft, setDataDraft] = useState(null); 
   const [inputPengajar, setInputPengajar] = useState("");
   const [inputPertemuan, setInputPertemuan] = useState("");
   
-  // Modal Edit
   const [modalEditTerbuka, setModalEditTerbuka] = useState(false);
   const [jadwalEdit, setJadwalEdit] = useState(null);
   const [tipeEdit, setTipeEdit] = useState(""); 
   const [formEdit, setFormEdit] = useState({ pengajar: "", pertemuan: "", jamMulai: "", jamSelesai: "" });
   const [isProsesEdit, setIsProsesEdit] = useState(false);
 
-  // 🚀 Modal Kuis
-  const [modalKuisTerbuka, setModalKuisTerbuka] = useState(false);
-  const [dataKuisAktif, setDataKuisAktif] = useState(null);
+  // 🚀 STATE BANK SOAL (PENGGANTI MODAL KUIS BUILDER)
+  const [isModalBankOpen, setIsModalBankOpen] = useState(false);
+  const [listBankSoal, setListBankSoal] = useState([]);
+  const [loadingBank, setLoadingBank] = useState(false);
+  const [isMemprosesKuis, setIsMemprosesKuis] = useState(false);
   const [isMemuatKuis, setIsMemuatKuis] = useState(false);
 
   const [mapelAktifMelayang, setMapelAktifMelayang] = useState(null);
   const [isMenyimpan, setIsMenyimpan] = useState(false);
 
-  // --- STATE TABEL MANAJEMEN ---
   const [filterTglMulai, setFilterTglMulai] = useState("");
   const [filterTglAkhir, setFilterTglAkhir] = useState("");
   const [filterKelas, setFilterKelas] = useState("");
@@ -176,13 +165,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     setFilterKelas("");
   }, [bulanAktif]);
 
-  // 🚀 EFEK UNTUK CEK STATUS KUIS SETIAP KALI dataJadwal BERUBAH (Batch Fetching)
-  // Untuk menghemat database, kita tidak nge-fetch kuis satu-satu. 
-  // Nanti di backend kita bisa buat fungsi "Cek Banyak Kuis Sekaligus". 
-  // Sementara, jika admin klik kartu, baru kita cek. Namun untuk memunculkan icon di tabel, kita butuh datanya.
-  // PENGGANTI SEMENTARA: Kita biarkan indikator kuis kosong sampai admin mengkliknya (Lazy Loading) agar irit database.
-
-  // --- LOGIKA DND CATUR ---
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
@@ -248,12 +230,9 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
       jamSelesai: jadwal.jamSelesai || ""
     });
 
-    // 🚀 LAZY LOAD: Cek apakah kuis untuk jadwal ini sudah ada di DB saat diklik
     if (tipe === "permanen") {
         setIsMemuatKuis(true);
         const kuisLama = await ambilKuisByJadwal(jadwal._id);
-        
-        // Simpan status kuis ke state global agar papan catur bisa menaruh icon "📝 Kuis Siap"
         if (kuisLama) {
             setDaftarStatusKuis(prev => ({...prev, [jadwal._id]: 'siap'}));
         } else {
@@ -265,22 +244,47 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     setModalEditTerbuka(true);
   }, []);
 
-  // 🚀 FUNGSI BUKA MODAL KUIS
-  const klikBukaModalKuis = async () => {
-    setModalEditTerbuka(false); // Tutup modal edit dulu
-    
-    // Tarik data kuis yang asli (beserta soalnya) dari DB
-    const kuisLama = await ambilKuisByJadwal(jadwalEdit._id);
-    setDataKuisAktif(kuisLama); // Simpan ke state agar bisa dioper ke ModalKuis
-    
-    setModalKuisTerbuka(true); // Buka modal kuis
+  // 🚀 LOGIKA BARU: BUKA PANEL PILIH BANK SOAL
+  const bukaPanelBankSoal = async () => {
+    setModalEditTerbuka(false); // Tutup modal edit jadwal
+    setIsModalBankOpen(true);
+    setLoadingBank(true);
+    // Ambil data Bank Soal (Bisa difilter per adminId atau ditarik semua tergantung rules nanti)
+    const data = await ambilSemuaBankSoal(adminId);
+    setListBankSoal(data || []);
+    setLoadingBank(false);
   };
 
-  // 🚀 FUNGSI SETELAH KUIS DISIMPAN (Tutup modal & update icon)
-  const handleSelesaiKuis = () => {
-      setModalKuisTerbuka(false);
-      // Asumsikan berhasil simpan, langsung beri label "siap" di papan
+  // 🚀 LOGIKA BARU: TERAPKAN KUIS
+  const handlePilihBankSoal = async (idBankSoal) => {
+    if (!window.confirm("Yakin ingin menerapkan paket soal ini ke jadwal kelas ini?")) return;
+    
+    setIsMemprosesKuis(true);
+    const res = await terapkanBankSoalKeJadwal(idBankSoal, jadwalEdit._id, adminId);
+    
+    if (res.sukses) {
+      alert("✅ " + res.pesan);
+      setIsModalBankOpen(false);
       setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'siap'}));
+    } else {
+      alert("❌ " + res.pesan);
+    }
+    setIsMemprosesKuis(false);
+  };
+
+  // 🚀 LOGIKA BARU: LEPAS KUIS
+  const handleLepasKuis = async () => {
+    if (!window.confirm("Yakin ingin membatalkan/melepas kuis dari kelas ini?")) return;
+    
+    setIsMemprosesKuis(true);
+    const res = await hapusQuizDariJadwal(jadwalEdit._id);
+    if (res.sukses) {
+      alert("✅ " + res.pesan);
+      setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'kosong'}));
+    } else {
+      alert("❌ " + res.pesan);
+    }
+    setIsMemprosesKuis(false);
   };
 
   const simpanPerubahanJadwal = async () => {
@@ -393,7 +397,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
 
   const cariDraftLokal = (kelasId, tanggalPenuh) => jadwalLokal.filter(j => j.kelasId === kelasId && j.tanggal === tanggalPenuh);
   
-  // 🚀 Sisipkan statusKuis ke data permanenDB yang dikirim ke papan catur
   const cariPermanenDB = (kelasNama, tanggalPenuh) => {
     if (!dataJadwal) return [];
     const jadwalHariItu = dataJadwal.filter(j => j.kelasTarget === kelasNama && j.tanggal === tanggalPenuh);
@@ -547,7 +550,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                     </td>
                     <td className={styles.tdDataTabel} style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        {/* 🚀 TOMBOL EDIT JADWAL & KUIS DI TABEL BAWAH */}
                         <button onClick={() => klikKartuJadwal(j, "permanen")} className={`${styles.tombolAksi} ${styles.btnEdit}`}>
                           Edit
                         </button>
@@ -604,19 +606,30 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
               <div>Kelas: <span>{jadwalEdit.kelasTarget}</span></div>
             </div>
 
-            {/* 🚀 TOMBOL BARU: BUKA MODAL KUIS (Hanya muncul jika jadwal sudah permanen di DB) */}
+            {/* 🚀 PANEL KUIS BARU DI MODAL EDIT JADWAL */}
             {tipeEdit === 'permanen' && (
               <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f8fafc', border: '2px dashed #94a3b8', borderRadius: '8px', textAlign: 'center' }}>
                 <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>
                   {isMemuatKuis ? "⏳ Memeriksa status kuis..." : (daftarStatusKuis[jadwalEdit._id] === 'siap' ? "✅ Kuis untuk kelas ini sudah disiapkan." : "⚠️ Kuis untuk kelas ini belum ada.")}
                 </p>
-                <button 
-                  onClick={klikBukaModalKuis}
-                  disabled={isMemuatKuis}
-                  style={{ width: '100%', padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: '3px solid #1e3a8a', borderRadius: '8px', fontWeight: '900', fontSize: '14px', cursor: isMemuatKuis ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '3px 3px 0 #1e3a8a' }}
-                >
-                  <FaFileSignature size={16} /> {daftarStatusKuis[jadwalEdit._id] === 'siap' ? "EDIT KUIS PRE-TEST" : "BUAT KUIS PRE-TEST"}
-                </button>
+
+                {daftarStatusKuis[jadwalEdit._id] === 'siap' ? (
+                  <button 
+                    onClick={handleLepasKuis}
+                    disabled={isMemprosesKuis || isMemuatKuis}
+                    style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', color: 'white', border: '3px solid #7f1d1d', borderRadius: '8px', fontWeight: '900', fontSize: '14px', cursor: (isMemprosesKuis || isMemuatKuis) ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '3px 3px 0 #7f1d1d' }}
+                  >
+                    <FaTrashCan size={16} /> {isMemprosesKuis ? "MEMPROSES..." : "BATALKAN / LEPAS KUIS"}
+                  </button>
+                ) : (
+                  <button 
+                    onClick={bukaPanelBankSoal}
+                    disabled={isMemprosesKuis || isMemuatKuis}
+                    style={{ width: '100%', padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: '3px solid #1e3a8a', borderRadius: '8px', fontWeight: '900', fontSize: '14px', cursor: (isMemprosesKuis || isMemuatKuis) ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '3px 3px 0 #1e3a8a' }}
+                  >
+                    <FaListUl size={16} /> {isMemprosesKuis ? "MEMPROSES..." : "PILIH DARI BANK SOAL"}
+                  </button>
+                )}
               </div>
             )}
 
@@ -660,14 +673,45 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
         </div>
       )}
 
-      {/* 🚀 MODAL KUIS (KOMPONEN EKSTERNAL) */}
-      <ModalKuis 
-        isOpen={modalKuisTerbuka} 
-        onClose={handleSelesaiKuis} 
-        jadwal={jadwalEdit} 
-        kuisLama={dataKuisAktif}
-        adminId={adminId}
-      />
+      {/* 🚀 OVERLAY MODAL PILIH BANK SOAL (UNTUK ADMIN) */}
+      {isModalBankOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '4px solid #111827', width: '100%', maxWidth: '600px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '8px 8px 0 #111827' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #111827', paddingBottom: '16px', marginBottom: '16px' }}>
+              <h2 style={{ margin: 0, fontWeight: '900', color: '#111827' }}>PILIH PAKET SOAL</h2>
+              <button onClick={() => setIsModalBankOpen(false)} style={{ background: 'white', border: '3px solid #111827', borderRadius: '8px', padding: '6px', cursor: 'pointer', boxShadow: '2px 2px 0 #ef4444' }}>
+                <FaXmark size={20} color="#ef4444" />
+              </button>
+            </div>
+
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {loadingBank ? (
+                <p style={{ textAlign: 'center', fontWeight: 'bold' }}>Memuat Bank Soal...</p>
+              ) : listBankSoal.length === 0 ? (
+                <p style={{ textAlign: 'center', fontWeight: 'bold', color: '#64748b' }}>Belum ada Master Soal. Silakan buat di Tab Bank Soal terlebih dahulu.</p>
+              ) : (
+                listBankSoal.map((bank) => (
+                  <div key={bank._id} style={{ background: 'white', border: '3px solid #111827', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', boxShadow: '4px 4px 0 #cbd5e1' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 6px 0', fontWeight: '900', color: '#111827', fontSize: '16px' }}>{bank.judul || "Tanpa Judul"}</h4>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>{bank.soal?.length || 0} Soal • {bank.durasi || 10} Menit</p>
+                    </div>
+                    <button 
+                      onClick={() => handlePilihBankSoal(bank._id)} 
+                      disabled={isMemprosesKuis}
+                      style={{ padding: '10px 16px', background: '#22c55e', color: '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMemprosesKuis ? 'wait' : 'pointer' }}
+                    >
+                      {isMemprosesKuis ? "..." : "TERAPKAN"}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

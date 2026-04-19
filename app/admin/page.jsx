@@ -27,8 +27,9 @@ import TabJadwal from "../../components/admin/TabJadwal";
 import ModalQr from "../../components/admin/ModalQr"; 
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
 
-// 🚀 1. IMPORT TAB SOAL YANG BARU DIBUAT
 import TabSoal from "../../components/admin/TabSoal"; 
+// 🚀 1. IMPORT TAB BARU: TabKuis (Gudang Bank Soal)
+import TabKuis from "../../components/admin/TabKuis"; 
 
 // ============================================================================
 // 1.5 HELPER: GENERATOR BULAN
@@ -72,6 +73,9 @@ function AdminContent() {
   const [dataJadwal, setDataJadwal] = useState([]); 
   const [dataAbsenStaf, setDataAbsenStaf] = useState([]); 
   const [loadingData, setLoadingData] = useState(true);
+
+  // 🚀 Simulasi Admin ID (Nanti bisa diambil dari session auth)
+  const adminIdAktif = "admin-sistem";
 
   const gantiTab = (namaTabBaru) => {
     const params = new URLSearchParams();
@@ -186,7 +190,9 @@ function AdminContent() {
           <button onClick={() => gantiTab("jurnal")} className={`${styles.tombolTab} ${tab === "jurnal" ? styles.tombolTabAktif : ""}`}>📓 JURNAL</button>
           <button onClick={() => gantiTab("jadwal")} className={`${styles.tombolTab} ${tab === "jadwal" ? styles.tombolTabAktif : ""}`}>📅 JADWAL</button>
           <button onClick={() => gantiTab("user")} className={`${styles.tombolTab} ${tab === "user" ? styles.tombolTabAktif : ""}`}>👥 USER</button>
-          <button onClick={() => gantiTab("soal")} className={`${styles.tombolTab} ${tab === "soal" ? styles.tombolTabAktif : ""}`}>📚 SOAL</button>
+          <button onClick={() => gantiTab("soal")} className={`${styles.tombolTab} ${tab === "soal" ? styles.tombolTabAktif : ""}`}>📚 TUGAS</button>
+          {/* 🚀 TAMBAHAN: Tombol Tab Kuis CBT */}
+          <button onClick={() => gantiTab("kuis")} className={`${styles.tombolTab} ${tab === "kuis" ? styles.tombolTabAktif : ""}`}>🧠 CBT</button>
         </div>
 
         {/* AREA KONTEN AKTIF */}
@@ -194,9 +200,12 @@ function AdminContent() {
           <ErrorBoundary>
             {tab === "monitoring" && <TabMonitoring dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} dataAbsenStaf={dataAbsenStaf} dataPengajar={dataPengajar} muatData={muatData} bulanAktif={bulanAktif} />}
             {tab === "jurnal" && <TabJurnal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} />}
-            {tab === "jadwal" && <TabJadwal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} />}
+            {tab === "jadwal" && <TabJadwal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} adminId={adminIdAktif} />}
             {tab === "user" && <TabUser dataSiswa={dataSiswa} dataPengajar={dataPengajar} muatData={muatData} />}
             {tab === "soal" && <TabSoal dataSiswa={dataSiswa} />}
+            
+            {/* 🚀 RENDER TAB KUIS CBT BARU */}
+            {tab === "kuis" && <TabKuis adminId={adminIdAktif} />}
           </ErrorBoundary>
         </div>
 

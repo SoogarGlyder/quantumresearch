@@ -5,16 +5,15 @@ import { QRCodeSVG } from "qrcode.react";
 import { CldUploadWidget } from "next-cloudinary";
 import { 
   FaCamera, FaFloppyDisk, FaImages, FaBookBookmark, 
-  FaUserGraduate, FaXmark, FaFileSignature 
+  FaUserGraduate, FaXmark, FaFileSignature, FaListUl, FaTrashCan // 🚀 TAMBAHAN: Ikon baru
 } from "react-icons/fa6";
 
 import { simpanJurnalPengajar, ambilDetailJurnalPengajar } from "@/actions/teacherAction";
-import { ambilKuisByJadwal } from "@/actions/quizAction"; 
+// 🚀 UBAH IMPORT: Masukkan fungsi Bank Soal, cabut ModalKuis
+import { ambilKuisByJadwal, ambilSemuaBankSoal, terapkanBankSoalKeJadwal, hapusQuizDariJadwal } from "@/actions/quizAction"; 
 import { PREFIX_BARCODE, STATUS_SESI, LABEL_SISTEM } from "@/utils/constants"; 
 import { formatTanggal } from "@/utils/formatHelper";
 import styles from "@/components/App.module.css";
-
-import ModalKuis from "../../admin/ModalKuis"; 
 
 // 🚀 HELPER: Konverter Tanggal iOS / WebKit Safe
 const getSafeTanggalJakarta = (dateInput) => {
@@ -48,9 +47,14 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   const [loadingJurnal, setLoadingJurnal] = useState(false);
   const [pesanJurnal, setPesanJurnal] = useState({ teks: "", tipe: "" });
 
-  const [modalKuisTerbuka, setModalKuisTerbuka] = useState(false);
   const [dataKuisAktif, setDataKuisAktif] = useState(null);
   const [isMemuatKuis, setIsMemuatKuis] = useState(false);
+
+  // 🚀 STATE BARU KHUSUS BANK SOAL
+  const [isModalBankOpen, setIsModalBankOpen] = useState(false);
+  const [listBankSoal, setListBankSoal] = useState([]);
+  const [loadingBank, setLoadingBank] = useState(false);
+  const [isMemprosesKuis, setIsMemprosesKuis] = useState(false);
 
   const tanggalJadwalMurni = getSafeTanggalJakarta(jadwalTerpilih?.tanggal);
   
@@ -129,14 +133,48 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
     }
   };
 
-  const handleBukaKuis = () => setModalKuisTerbuka(true);
-  
-  const handleTutupKuis = async () => {
-    setModalKuisTerbuka(false);
-    setIsMemuatKuis(true);
-    const kuisBaru = await ambilKuisByJadwal(jadwalTerpilih._id);
-    setDataKuisAktif(kuisBaru);
-    setIsMemuatKuis(false);
+  // 🚀 FUNGSI BARU: Buka Daftar Bank Soal
+  const bukaPanelBankSoal = async () => {
+    setIsModalBankOpen(true);
+    setLoadingBank(true);
+    // Ambil bank soal milik pengajar ini
+    const data = await ambilSemuaBankSoal(jadwalTerpilih.pengajarId);
+    setListBankSoal(data || []);
+    setLoadingBank(false);
+  };
+
+  // 🚀 FUNGSI BARU: Eksekusi Terapkan Kuis ke Jadwal
+  const handlePilihBankSoal = async (idBankSoal) => {
+    if (!window.confirm("Yakin ingin menerapkan paket soal ini ke kelas ini?")) return;
+    
+    setIsMemprosesKuis(true);
+    const res = await terapkanBankSoalKeJadwal(idBankSoal, jadwalTerpilih._id, jadwalTerpilih.pengajarId);
+    
+    if (res.sukses) {
+      alert("✅ " + res.pesan);
+      setIsModalBankOpen(false);
+      // Refresh Data Kuis di Jurnal agar tampil
+      const kuisBaru = await ambilKuisByJadwal(jadwalTerpilih._id);
+      setDataKuisAktif(kuisBaru);
+    } else {
+      alert("❌ " + res.pesan);
+    }
+    setIsMemprosesKuis(false);
+  };
+
+  // 🚀 FUNGSI BARU: Lepas Kuis dari Jadwal
+  const handleLepasKuis = async () => {
+    if (!window.confirm("Yakin ingin membatalkan/melepas kuis dari kelas ini?")) return;
+    
+    setIsMemprosesKuis(true);
+    const res = await hapusQuizDariJadwal(jadwalTerpilih._id);
+    if (res.sukses) {
+      alert("✅ " + res.pesan);
+      setDataKuisAktif(null);
+    } else {
+      alert("❌ " + res.pesan);
+    }
+    setIsMemprosesKuis(false);
   };
 
   return (
@@ -179,34 +217,50 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                   <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#334155', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Fase Persiapan Kelas</h3>
                   <p style={{ fontSize: '14px', color: '#64748b', fontWeight: 'bold', margin: '0 0 24px 0' }}>Kelas ini belum dimulai. Anda dapat mempersiapkan Pre-Test besok.</p>
 
+                  {/* 🚀 TOMBOL BARU MASA DEPAN */}
                   <button 
                     type="button" 
-                    onClick={handleBukaKuis}
-                    disabled={isMemuatKuis}
+                    onClick={dataKuisAktif ? handleLepasKuis : bukaPanelBankSoal}
+                    disabled={isMemuatKuis || isMemprosesKuis}
                     style={{ 
-                      width: '100%', padding: '16px', border: '3px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: isMemuatKuis ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', boxShadow: '4px 4px 0 #111827',
-                      backgroundColor: dataKuisAktif ? '#facc15' : '#3b82f6', color: dataKuisAktif ? '#111827' : 'white'
+                      width: '100%', padding: '16px', border: '3px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: (isMemuatKuis || isMemprosesKuis) ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', boxShadow: '4px 4px 0 #111827',
+                      backgroundColor: dataKuisAktif ? '#fca5a5' : '#3b82f6', color: dataKuisAktif ? '#111827' : 'white'
                     }}
                   >
-                    <FaFileSignature size={20} />
-                    {isMemuatKuis ? "MEMERIKSA..." : (dataKuisAktif ? "EDIT KUIS PRE-TEST" : "BUAT KUIS PRE-TEST")}
+                    {isMemuatKuis || isMemprosesKuis ? "MEMPROSES..." : (
+                      dataKuisAktif ? <><FaTrashCan /> BATALKAN / LEPAS KUIS</> : <><FaListUl /> PILIH DARI BANK SOAL</>
+                    )}
                   </button>
+                  {dataKuisAktif && (
+                    <p style={{ marginTop: '12px', fontWeight: 'bold', color: '#166534', fontSize: '14px' }}>✅ Kelas ini sudah dipasangkan paket soal ({dataKuisAktif.soal?.length || 0} Soal).</p>
+                  )}
                 </div>
               ) : (
                 // HARI INI & LALU
                 <>
-                  {/* PANEL TOMBOL KUIS */}
+                  {/* PANEL TOMBOL KUIS LAMA (DIGANTI KE MODE PILIH BANK) */}
                   <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ padding: '16px', border: '3px solid #111827', borderRadius: '12px', backgroundColor: dataKuisAktif ? '#dcfce3' : '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px 0', fontWeight: '900', color: '#111827' }}><FaFileSignature /> PRE-TEST CBT</h4>
+                        <h4 style={{ margin: '0 0 4px 0', fontWeight: '900', color: '#111827' }}>
+                          <FaFileSignature /> {dataKuisAktif ? "KUIS CBT AKTIF" : "KUIS CBT KOSONG"}
+                        </h4>
                         <p style={{ margin: 0, fontSize: '12px', color: '#4b5563', fontWeight: 'bold' }}>
-                          {isMemuatKuis ? "Memeriksa..." : (dataKuisAktif ? "Soal siap dikerjakan siswa." : "Belum ada soal ujian.")}
+                          {isMemuatKuis ? "Memeriksa..." : (dataKuisAktif ? `Terpasang ${dataKuisAktif.soal?.length || 0} Soal (${dataKuisAktif.durasi || 10} Menit).` : "Belum ada paket soal yang dipasang.")}
                         </p>
                       </div>
-                      <button type="button" onClick={handleBukaKuis} disabled={isMemuatKuis} style={{ padding: '8px 16px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>
-                        {dataKuisAktif ? "EDIT SOAL" : "BUAT SOAL"}
-                      </button>
+                      
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {dataKuisAktif ? (
+                          <button type="button" onClick={handleLepasKuis} disabled={isMemprosesKuis} style={{ padding: '8px 16px', backgroundColor: '#ef4444', color: 'white', border: '2px solid #111827', borderRadius: '8px', fontWeight: '900', fontSize: '13px', cursor: 'pointer', boxShadow: '2px 2px 0 #111827' }}>
+                            {isMemprosesKuis ? "..." : "LEPAS"}
+                          </button>
+                        ) : (
+                          <button type="button" onClick={bukaPanelBankSoal} disabled={isMemprosesKuis} style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: '2px solid #111827', borderRadius: '8px', fontWeight: '900', fontSize: '13px', cursor: 'pointer', boxShadow: '2px 2px 0 #111827' }}>
+                            {isMemprosesKuis ? "..." : "PASANG SOAL"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -248,7 +302,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                     </div>
 
                     <div style={{ borderTop: '4px solid #111827', paddingTop: '20px', marginTop: '8px' }}>
-                      <h3 className={styles.contentTitle} style={{ margin: 0 }}><FaUserGraduate color="#ef4444" /> 2. Manajemen Siswa</h3>
+                      <h3 className={styles.contentTitle} style={{ margin: '0 0 10px 0' }}><FaUserGraduate color="#ef4444" /> 2. Manajemen Siswa</h3>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -257,7 +311,6 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                       ) : (
                         dataSiswa.map((siswa, idx) => {
                           const isBelum = siswa.statusAbsen === LABEL_SISTEM.BELUM_ABSEN;
-                          // 🚀 LOGIKA BARU: Jika statusnya Sakit atau Izin, tampilkan input Catatan
                           const butuhCatatan = [STATUS_SESI.SAKIT.id, STATUS_SESI.IZIN.id].includes(siswa.statusAbsen);
                           
                           return (
@@ -276,7 +329,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                                 <input type="number" placeholder="NILAI" value={siswa.nilaiTest === null ? "" : siswa.nilaiTest} onChange={(e) => ubahNilaiSiswa(idx, e.target.value)} disabled={siswa.statusAbsen === LABEL_SISTEM.BELUM_ABSEN || siswa.statusAbsen === STATUS_SESI.ALPA.id} className={styles.scheduleOption} style={{ width: '80px', padding: '10px', textAlign: 'center', boxShadow: 'none', border: '2px solid #111827' }} />
                               </div>
 
-                              {/* 🚀 KOLOM CATATAN KETIDAKHADIRAN MUNCUL KEMBALI */}
+                              {/* 🚀 FITUR CATATAN SISWA AMAN TERKENDALI */}
                               {butuhCatatan && (
                                 <input 
                                   type="text" 
@@ -311,13 +364,45 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
         </div>
       </div>
 
-      <ModalKuis 
-        isOpen={modalKuisTerbuka} 
-        onClose={handleTutupKuis} 
-        jadwal={jadwalTerpilih} 
-        kuisLama={dataKuisAktif}
-        adminId={jadwalTerpilih.pengajarId} 
-      />
+      {/* 🚀 OVERLAY MODAL PILIH BANK SOAL (PENGGANTI MODAL KUIS BUILDER) */}
+      {isModalBankOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '4px solid #111827', width: '100%', maxWidth: '600px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '8px 8px 0 #111827' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #111827', paddingBottom: '16px', marginBottom: '16px' }}>
+              <h2 style={{ margin: 0, fontWeight: '900', color: '#111827' }}>PILIH PAKET SOAL</h2>
+              <button onClick={() => setIsModalBankOpen(false)} style={{ background: 'white', border: '3px solid #111827', borderRadius: '8px', padding: '6px', cursor: 'pointer', boxShadow: '2px 2px 0 #ef4444' }}>
+                <FaXmark size={20} color="#ef4444" />
+              </button>
+            </div>
+
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {loadingBank ? (
+                <p style={{ textAlign: 'center', fontWeight: 'bold' }}>Memuat Bank Soal...</p>
+              ) : listBankSoal.length === 0 ? (
+                <p style={{ textAlign: 'center', fontWeight: 'bold', color: '#64748b' }}>Belum ada Master Soal. Silakan buat di Tab Tugas/Bank Soal terlebih dahulu.</p>
+              ) : (
+                listBankSoal.map((bank) => (
+                  <div key={bank._id} style={{ background: 'white', border: '3px solid #111827', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', boxShadow: '4px 4px 0 #cbd5e1' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 6px 0', fontWeight: '900', color: '#111827', fontSize: '16px' }}>{bank.judul || "Tanpa Judul"}</h4>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>{bank.soal?.length || 0} Soal • {bank.durasi || 10} Menit</p>
+                    </div>
+                    <button 
+                      onClick={() => handlePilihBankSoal(bank._id)} 
+                      disabled={isMemprosesKuis}
+                      style={{ padding: '10px 16px', background: '#22c55e', color: '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMemprosesKuis ? 'wait' : 'pointer' }}
+                    >
+                      {isMemprosesKuis ? "..." : "TERAPKAN"}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
