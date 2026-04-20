@@ -32,7 +32,7 @@ async function pastikanAdmin() {
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 1. DASHBOARD & DATA FETCHING (DIET DATA + PAGAR 1 TAHUN)
+// 1. DASHBOARD & DATA FETCHING
 // ============================================================================
 export async function ambilDataDashboard() {
   try {
@@ -43,26 +43,20 @@ export async function ambilDataDashboard() {
     const akhir = new Date(`${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`);
 
     const [riwayat, siswa] = await Promise.all([
-      StudySession.find({
-        waktuMulai: { $gte: mulai, $lte: akhir }
-      })
+      StudySession.find({ waktuMulai: { $gte: mulai, $lte: akhir } })
         .select("_id siswaId jenisSesi namaMapel waktuMulai waktuSelesai status terlambatMenit konsulExtraMenit jadwalId tanggalAsli")
         .populate("siswaId", "nama username nomorPeserta kelas status") 
         .sort({ waktuMulai: -1 })
-        .lean(),
+        .lean(), // 🚀 Sudah Optimal
         
       User.find({ peran: PERAN.SISWA.id })
         .select("_id nama username nomorPeserta noHp kelas status createdAt")
         .sort({ nama: 1 })
-        .lean()
+        .lean() // 🚀 Sudah Optimal
     ]);
 
-    return responseHelper.success("Data dashboard dimuat.", {
-      riwayat: serialize(riwayat),
-      siswa: serialize(siswa)
-    });
+    return responseHelper.success("Data dashboard dimuat.", { riwayat: serialize(riwayat), siswa: serialize(siswa) });
   } catch (error) {
-    console.error("[ERROR ambilDataDashboard]:", error);
     return responseHelper.error("Gagal mengambil data dashboard.", error);
   }
 }
@@ -78,9 +72,7 @@ export async function ambilAbsensiPengajar() {
     const mulai = new Date(`${PERIODE_BELAJAR.MULAI}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`);
     const akhir = new Date(`${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`);
 
-    const data = await AbsensiPengajar.find({
-      waktuMasuk: { $gte: mulai, $lte: akhir }
-    })
+    const data = await AbsensiPengajar.find({ waktuMasuk: { $gte: mulai, $lte: akhir } })
       .select("_id pengajarId waktuMasuk waktuKeluar status")
       .populate("pengajarId", "nama kodePengajar") 
       .sort({ waktuMasuk: -1 })
@@ -93,19 +85,17 @@ export async function ambilAbsensiPengajar() {
 }
 
 // ============================================================================
-// 3. MANAJEMEN JADWAL (DIET DATA + PAGAR 1 TAHUN)
+// 3. MANAJEMEN JADWAL
 // ============================================================================
 export async function ambilSemuaJadwal() {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const jadwal = await Jadwal.find({
-      tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR }
-    })
-    .select("_id tanggal mapel kelasTarget jamMulai jamSelesai pengajarId pengajar namaPengajar kodePengajar pertemuan bab subBab galeriPapan fotoBersama")
-    .sort({ tanggal: 1 })
-    .lean();
+    const jadwal = await Jadwal.find({ tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR } })
+      .select("_id tanggal mapel kelasTarget jamMulai jamSelesai pengajarId pengajar namaPengajar kodePengajar pertemuan bab subBab galeriPapan fotoBersama")
+      .sort({ tanggal: 1 })
+      .lean();
 
     return responseHelper.success("Data jadwal dimuat.", serialize(jadwal));
   } catch (error) {
@@ -119,24 +109,19 @@ export async function tambahJadwal(dataForm) {
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const kodeCari = dataForm.pengajar?.trim();
+    
+    // 🚀 OPTIMASI: Jangan tarik password dan meta data user lain
     const pengajarObj = await User.findOne({ 
       peran: PERAN.PENGAJAR.id, 
       kodePengajar: { $regex: new RegExp(`^${kodeCari}$`, "i") } 
-    });
+    }).select("_id nama kodePengajar").lean(); 
 
     if (!pengajarObj) return responseHelper.error(`Kode "${kodeCari}" tidak ditemukan!`);
 
     await Jadwal.create({
-      tanggal: dataForm.tanggal,
-      mapel: dataForm.mapel,
-      kelasTarget: dataForm.kelasTarget,
-      jamMulai: dataForm.jamMulai,
-      jamSelesai: dataForm.jamSelesai,
-      pertemuan: Number(dataForm.pertemuan),
-      pengajarId: pengajarObj._id,
-      pengajar: pengajarObj.nama, 
-      namaPengajar: pengajarObj.nama,
-      kodePengajar: pengajarObj.kodePengajar
+      tanggal: dataForm.tanggal, mapel: dataForm.mapel, kelasTarget: dataForm.kelasTarget,
+      jamMulai: dataForm.jamMulai, jamSelesai: dataForm.jamSelesai, pertemuan: Number(dataForm.pertemuan),
+      pengajarId: pengajarObj._id, pengajar: pengajarObj.nama, namaPengajar: pengajarObj.nama, kodePengajar: pengajarObj.kodePengajar
     });
 
     revalidatePath(PERAN.ADMIN.home);
@@ -153,10 +138,12 @@ export async function editJadwal(id, dataBaru) {
 
     let payloadUpdate = { ...dataBaru };
     if (dataBaru.pengajar) {
+      // 🚀 OPTIMASI: Tarik secukupnya saja
       const pengajarObj = await User.findOne({ 
         peran: PERAN.PENGAJAR.id,
         $or: [{ kodePengajar: dataBaru.pengajar }, { nama: dataBaru.pengajar }]
-      });
+      }).select("_id nama kodePengajar").lean();
+      
       if (pengajarObj) {
         payloadUpdate.pengajarId = pengajarObj._id;
         payloadUpdate.pengajar = pengajarObj.nama;
@@ -165,7 +152,8 @@ export async function editJadwal(id, dataBaru) {
       }
     }
 
-    await Jadwal.findByIdAndUpdate(id, payloadUpdate, { new: true });
+    // 🚀 OPTIMASI: updateOne jauh lebih ringan dari findByIdAndUpdate
+    await Jadwal.updateOne({ _id: id }, { $set: payloadUpdate });
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Jadwal diperbarui.");
   } catch (error) {
@@ -178,7 +166,8 @@ export async function hapusJadwal(idJadwal) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    await Jadwal.findByIdAndDelete(idJadwal);
+    // 🚀 OPTIMASI: deleteOne (Hemat RAM karena tidak mengembalikan objek terhapus)
+    await Jadwal.deleteOne({ _id: idJadwal });
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Jadwal dihapus.");
   } catch (error) {
@@ -201,11 +190,10 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
       delete dataUpdate.password;
     }
 
-    if (dataUpdate.username) {
-      dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
-    }
+    if (dataUpdate.username) dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
 
-    await User.findByIdAndUpdate(idSiswa, dataUpdate);
+    // 🚀 OPTIMASI: updateOne
+    await User.updateOne({ _id: idSiswa }, { $set: dataUpdate });
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Data berhasil diperbarui.");
   } catch (error) {
@@ -218,8 +206,9 @@ export async function hapusAkunSiswa(idSiswa) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
+    // 🚀 OPTIMASI: Delete Paralel
     await Promise.all([
-      User.findByIdAndDelete(idSiswa),
+      User.deleteOne({ _id: idSiswa }),
       StudySession.deleteMany({ siswaId: idSiswa })
     ]);
 
@@ -240,25 +229,15 @@ export async function inputAbsenManual(data) {
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const { awal } = timeHelper.getRentangHari(data.tanggal);
-    const statusFinal = data.catatan 
-      ? `${data.keterangan} (${data.catatan})`.toLowerCase() 
-      : data.keterangan.toLowerCase();
+    const statusFinal = data.catatan ? `${data.keterangan} (${data.catatan})`.toLowerCase() : data.keterangan.toLowerCase();
 
-    await StudySession.findOneAndUpdate(
-      {
-        siswaId: data.siswaId,
-        jenisSesi: TIPE_SESI.KELAS,
-        namaMapel: data.mapel,
-        waktuMulai: { $gte: awal }
-      },
+    // 🚀 OPTIMASI: updateOne dengan mode upsert
+    await StudySession.updateOne(
+      { siswaId: data.siswaId, jenisSesi: TIPE_SESI.KELAS, namaMapel: data.mapel, waktuMulai: { $gte: awal } },
       {
         $set: { status: statusFinal, waktuSelesai: awal },
         $setOnInsert: {
-          siswaId: data.siswaId,
-          jenisSesi: TIPE_SESI.KELAS,
-          namaMapel: data.mapel,
-          waktuMulai: awal,
-          terlambatMenit: 0
+          siswaId: data.siswaId, jenisSesi: TIPE_SESI.KELAS, namaMapel: data.mapel, waktuMulai: awal, terlambatMenit: 0
         }
       },
       { upsert: true }
@@ -276,48 +255,34 @@ export async function ambilDetailJurnal(idJadwal) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const jadwal = await Jadwal.findById(idJadwal).lean();
+    // 🚀 OPTIMASI: Jangan tarik kolom gak penting (fotoBersama, galeriPapan bisa berat jika base64 panjang)
+    const jadwal = await Jadwal.findById(idJadwal).select("-galeriPapan -fotoBersama").lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
     const [siswaKelas, sesiHariIni] = await Promise.all([
-      User.find({ 
-        peran: PERAN.SISWA.id, 
-        kelas: jadwal.kelasTarget, 
-        status: STATUS_USER.AKTIF 
-      })
-        .select("nama nomorPeserta")
+      User.find({ peran: PERAN.SISWA.id, kelas: jadwal.kelasTarget, status: STATUS_USER.AKTIF })
+        .select("_id nama nomorPeserta")
         .sort({ nama: 1 })
         .lean(),
-      StudySession.find({
-        jenisSesi: TIPE_SESI.KELAS,
-        namaMapel: jadwal.mapel,
-        waktuMulai: { $gte: awal, $lte: akhir }
-      }).lean()
+      StudySession.find({ jenisSesi: TIPE_SESI.KELAS, namaMapel: jadwal.mapel, waktuMulai: { $gte: awal, $lte: akhir } })
+        .select("_id siswaId status waktuMulai waktuSelesai terlambatMenit konsulExtraMenit nilaiTest") // 🚀 OPTIMASI PROJECTION!
+        .lean()
     ]);
 
     const dataSiswaJurnal = siswaKelas.map(siswa => {
       const sesi = sesiHariIni.find(s => s.siswaId.toString() === siswa._id.toString());
-      
       return {
-        siswaId: siswa._id.toString(),
-        nama: siswa.nama,
-        nomorPeserta: siswa.nomorPeserta,
+        siswaId: siswa._id.toString(), nama: siswa.nama, nomorPeserta: siswa.nomorPeserta,
         sesiId: sesi ? sesi._id.toString() : null,
         statusAbsen: sesi ? sesi.status : LABEL_SISTEM.BELUM_ABSEN,
-        waktuMulai: sesi ? sesi.waktuMulai : null,
-        waktuSelesai: sesi ? sesi.waktuSelesai : null,
-        terlambatMenit: sesi ? sesi.terlambatMenit || 0 : 0,
-        konsulExtraMenit: sesi ? sesi.konsulExtraMenit || 0 : 0,
-        nilaiTest: sesi ? sesi.nilaiTest ?? "" : "" 
+        waktuMulai: sesi ? sesi.waktuMulai : null, waktuSelesai: sesi ? sesi.waktuSelesai : null,
+        terlambatMenit: sesi?.terlambatMenit || 0, konsulExtraMenit: sesi?.konsulExtraMenit || 0, nilaiTest: sesi?.nilaiTest ?? "" 
       };
     });
 
-    return responseHelper.success("Detail jurnal dimuat.", {
-      jadwal: serialize(jadwal),
-      dataSiswa: dataSiswaJurnal
-    });
+    return responseHelper.success("Detail jurnal dimuat.", { jadwal: serialize(jadwal), dataSiswa: dataSiswaJurnal });
   } catch (error) {
     return responseHelper.error("Gagal detail jurnal.", error);
   }
@@ -328,18 +293,14 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const updateJadwal = Jadwal.findByIdAndUpdate(idJadwal, {
-      bab: dataJurnal.bab,
-      subBab: dataJurnal.subBab,
-      galeriPapan: dataJurnal.galeriPapan,
-      fotoBersama: dataJurnal.fotoBersama
+    // 🚀 OPTIMASI: updateOne
+    const updateJadwal = Jadwal.updateOne({ _id: idJadwal }, {
+      $set: { bab: dataJurnal.bab, subBab: dataJurnal.subBab, galeriPapan: dataJurnal.galeriPapan, fotoBersama: dataJurnal.fotoBersama }
     });
 
     let updateSesi = Promise.resolve();
     if (arraySiswa?.length > 0) {
-      const ops = arraySiswa
-        .filter(item => item.sesiId) 
-        .map(item => ({
+      const ops = arraySiswa.filter(item => item.sesiId).map(item => ({
           updateOne: {
             filter: { _id: item.sesiId },
             update: { 
@@ -349,8 +310,7 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
               } 
             }
           }
-        }));
-        
+      }));
       if (ops.length > 0) updateSesi = StudySession.bulkWrite(ops);
     }
 
@@ -362,57 +322,53 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
   }
 }
 
-// 🚀 FITUR BARU: PAKSA HENTIKAN SESI (Dengan Logika PINALTI)
+// 🚀 FITUR: PAKSA HENTIKAN SESI (ATOMIC OPTIMIZED)
 export async function paksaHentikanSesi(idSesi, durasiPilihan) {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const sesi = await StudySession.findById(idSesi);
+    // 🚀 OPTIMASI: Jangan tarik seluruh document, cukup waktuMulai nya saja
+    const sesi = await StudySession.findById(idSesi).select("waktuMulai").lean();
     if (!sesi) return responseHelper.error("Sesi tidak ditemukan.");
 
     const waktuMulaiObj = new Date(sesi.waktuMulai);
     const waktuSelesaiBaru = new Date(waktuMulaiObj.getTime() + durasiPilihan * 60000);
 
-    // 🚀 LOGIKA PINALTI: Jika Admin pilih 0 menit, status jadi PINALTI
+    let statusBaru, catatanInternalBaru;
     if (durasiPilihan === 0) {
-      sesi.status = STATUS_SESI.PINALTI.id;
-      sesi.catatanInternal = "Dihentikan manual (PINALTI - Lupa Scan)";
+      statusBaru = STATUS_SESI.PINALTI.id;
+      catatanInternalBaru = "Dihentikan manual (PINALTI - Lupa Scan)";
     } else {
-      sesi.status = STATUS_SESI.SELESAI.id;
-      sesi.catatanInternal = `Dihentikan manual oleh Admin (${durasiPilihan}m)`;
+      statusBaru = STATUS_SESI.SELESAI.id;
+      catatanInternalBaru = `Dihentikan manual oleh Admin (${durasiPilihan}m)`;
     }
     
-    sesi.waktuSelesai = waktuSelesaiBaru;
-    
-    await sesi.save();
+    // 🚀 OPTIMASI: Langsung Update tanpa load Mongoose Model
+    await StudySession.updateOne(
+      { _id: idSesi },
+      { $set: { status: statusBaru, catatanInternal: catatanInternalBaru, waktuSelesai: waktuSelesaiBaru } }
+    );
     
     revalidatePath(PERAN.ADMIN.home);
     const labelHukuman = durasiPilihan === 0 ? "PINALTI" : `${durasiPilihan} Menit`;
-    return responseHelper.success(`Sesi berhasil dihentikan (${labelHukuman}).`);
+    return responseHelper.success(`Sesi dihentikan (${labelHukuman}).`);
   } catch (error) {
     return responseHelper.error("Gagal menghentikan sesi.", error.message);
   }
 }
 
-// 🚀 FUNGSI BARU: SUNTIK ABSEN STAF MANUAL
 export async function prosesSimpanAbsenManual(data) {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // Gabungkan tanggal dan jam menjadi objek Date (WIB)
     const waktuMasuk = new Date(`${data.tanggal}T${data.jamMasuk}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
-    const waktuKeluar = data.jamKeluar 
-      ? new Date(`${data.tanggal}T${data.jamKeluar}:00${PERIODE_BELAJAR.ISO_OFFSET}`) 
-      : null;
+    const waktuKeluar = data.jamKeluar ? new Date(`${data.tanggal}T${data.jamKeluar}:00${PERIODE_BELAJAR.ISO_OFFSET}`) : null;
 
-    const absenBaru = await AbsensiPengajar.create({
-      pengajarId: data.pengajarId,
-      waktuMasuk: waktuMasuk,
-      waktuKeluar: waktuKeluar,
-      status: "HADIR", // Manual input dianggap hadir
-      keterangan: data.keterangan || "Input Manual Admin (Hari Libur/Lupa Scan)"
+    await AbsensiPengajar.create({
+      pengajarId: data.pengajarId, waktuMasuk, waktuKeluar,
+      status: "HADIR", keterangan: data.keterangan || "Input Manual Admin"
     });
 
     revalidatePath(PERAN.ADMIN.home);
@@ -422,13 +378,13 @@ export async function prosesSimpanAbsenManual(data) {
   }
 }
 
-// 🚀 FUNGSI BARU: HAPUS ABSEN STAF (Jika Admin salah input)
 export async function prosesHapusAbsenStaf(idAbsen) {
   try {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    await AbsensiPengajar.findByIdAndDelete(idAbsen);
+    // 🚀 OPTIMASI: deleteOne
+    await AbsensiPengajar.deleteOne({ _id: idAbsen });
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Data absensi staf dihapus.");
   } catch (error) {

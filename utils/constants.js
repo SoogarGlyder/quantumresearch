@@ -195,7 +195,7 @@ export const OPSI_KETERANGAN_ABSEN = Object.freeze([
 export const LIMIT_DATA = Object.freeze({
   DASHBOARD_HISTORY: 1000, // Nanti Di Hapus
   PAGINATION_DEFAULT: 20,
-  PAGNATION_KELAS: 4,
+  PAGNATION_KELAS: 3,
   PAGNATION_KONSUL: 10
 });
 

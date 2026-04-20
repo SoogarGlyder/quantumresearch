@@ -5,44 +5,35 @@ import Quiz from "../models/Quiz";
 import BankSoal from "../models/BankSoal";
 import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
-
-// 🚀 IMPORT UNTUK PENGECEKAN SESI & ROLE
 import { authHelper } from "../utils/authHelper";
 import { PERAN } from "../utils/constants";
 
+const serialize = (data) => JSON.parse(JSON.stringify(data));
+
 // ============================================================================
-// BAGIAN 1: MANAJEMEN BANK SOAL (MASTER TEMPLATE) - Di Tab Task
+// BAGIAN 1: MANAJEMEN BANK SOAL (MASTER TEMPLATE)
 // ============================================================================
 
 export async function ambilSemuaBankSoal(pembuatId) {
   try {
     await connectToDatabase();
-    
-    // 🛡️ AMBIL SESI DARI SERVER (Keamanan Berlapis)
     const { peran } = await authHelper.ambilSesi();
     
     let query = {};
-
-    /**
-     * 🚀 LOGIKA "GOD MODE":
-     * 1. Jika PERAN adalah ADMIN, biarkan query tetap KOSONG {}. 
-     * Artinya Admin bisa melihat SEMUA soal dari SEMUA pengajar.
-     * 2. Jika bukan Admin (PENGAJAR), maka paksa filter berdasarkan pembuatId.
-     */
     if (peran !== PERAN.ADMIN.id) {
-      // Pastikan pembuatId valid sebagai ObjectId jika bukan admin-sistem
       if (pembuatId && mongoose.Types.ObjectId.isValid(pembuatId)) {
         query.pembuatId = pembuatId;
       }
     }
 
-    // POPULATE: Mengambil nama pembuat agar Admin tahu ini karya siapa
+    // 🚀 OPTIMASI: Projection (Hanya tarik yang tampil di tabel)
     const data = await BankSoal.find(query)
+      .select("judul durasi pembuatId createdAt soal") 
       .populate("pembuatId", "nama") 
       .sort({ createdAt: -1 })
-      .lean();
+      .lean(); 
       
-    return JSON.parse(JSON.stringify(data));
+    return serialize(data);
   } catch (error) {
     console.error("Error ambilSemuaBankSoal:", error);
     return [];
@@ -53,13 +44,13 @@ export async function simpanBankSoal(idBankSoal, data) {
   try {
     await connectToDatabase();
     
-    // Pastikan pembuatId murni ObjectId sebelum masuk ke Mongo
     if (data.pembuatId && mongoose.Types.ObjectId.isValid(data.pembuatId)) {
       data.pembuatId = new mongoose.Types.ObjectId(data.pembuatId);
     }
 
     if (idBankSoal) {
-      await BankSoal.findByIdAndUpdate(idBankSoal, data);
+      // 🚀 OPTIMASI: updateOne (Tanpa load data ke RAM)
+      await BankSoal.updateOne({ _id: idBankSoal }, { $set: data });
     } else {
       await BankSoal.create(data);
     }
@@ -68,7 +59,6 @@ export async function simpanBankSoal(idBankSoal, data) {
     revalidatePath("/teacher/task"); 
     return { sukses: true, pesan: "Master Bank Soal berhasil disimpan!" };
   } catch (error) {
-    console.error("Gagal simpanBankSoal:", error);
     return { sukses: false, pesan: "Gagal simpan master: " + error.message };
   }
 }
@@ -76,7 +66,8 @@ export async function simpanBankSoal(idBankSoal, data) {
 export async function hapusBankSoal(idBankSoal) {
   try {
     await connectToDatabase();
-    await BankSoal.findByIdAndDelete(idBankSoal);
+    // 🚀 OPTIMASI: deleteOne
+    await BankSoal.deleteOne({ _id: idBankSoal });
     revalidatePath("/admin");
     revalidatePath("/teacher/task");
     return { sukses: true, pesan: "Master Bank Soal telah dihapus." };
@@ -86,14 +77,15 @@ export async function hapusBankSoal(idBankSoal) {
 }
 
 // ============================================================================
-// BAGIAN 2: PENERAPAN KE JADWAL (SNAPSHOT / COPY)
+// BAGIAN 2: PENERAPAN KE JADWAL
 // ============================================================================
 
 export async function terapkanBankSoalKeJadwal(idBankSoal, idJadwal, idPengajar) {
   try {
     await connectToDatabase();
 
-    const master = await BankSoal.findById(idBankSoal).lean();
+    // 🚀 OPTIMASI: Select soal dan durasi saja
+    const master = await BankSoal.findById(idBankSoal).select("soal durasi").lean();
     if (!master) throw new Error("Master soal tidak ditemukan.");
 
     const dataCopy = {
@@ -105,14 +97,15 @@ export async function terapkanBankSoalKeJadwal(idBankSoal, idJadwal, idPengajar)
       isAktif: true
     };
 
+    // 🚀 OPTIMASI: findOneAndUpdate dengan upsert (Atomic)
     await Quiz.findOneAndUpdate(
       { jadwalId: idJadwal },
       { $set: dataCopy },
-      { upsert: true, new: true }
-    );
+      { upsert: true } 
+    ).lean();
 
     revalidatePath("/");
-    return { sukses: true, pesan: "Soal berhasil diterapkan ke kelas ini!" };
+    return { sukses: true, pesan: "Soal berhasil diterapkan!" };
   } catch (error) {
     return { sukses: false, pesan: "Gagal menerapkan soal: " + error.message };
   }
@@ -122,63 +115,57 @@ export async function hapusQuizDariJadwal(idJadwal) {
   try {
     await connectToDatabase();
     
-    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).lean();
+    // Cek keberadaan hasil pengerjaan (Hanya field ini saja)
+    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).select("hasilPengerjaan").lean();
     if (kuis?.hasilPengerjaan?.length > 0) {
       return { sukses: false, pesan: "DITOLAK: Sudah ada siswa yang mengerjakan!" };
     }
 
-    await Quiz.findOneAndDelete({ jadwalId: idJadwal });
+    await Quiz.deleteOne({ jadwalId: idJadwal });
     revalidatePath("/");
-    return { sukses: true, pesan: "Kuis berhasil dilepas dari jadwal ini." };
+    return { sukses: true, pesan: "Kuis berhasil dilepas." };
   } catch (error) {
     return { sukses: false, pesan: "Gagal melepas kuis." };
   }
 }
 
 // ============================================================================
-// BAGIAN 3: FUNGSI EKSISTING (TETAP UTUH)
+// BAGIAN 3: FUNGSI EKSISTING
 // ============================================================================
 
 export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
-  await connectToDatabase();
   try {
-    const pembuatIdValid = mongoose.Types.ObjectId.isValid(pembuatId) 
-      ? new mongoose.Types.ObjectId(pembuatId) 
-      : null;
+    await connectToDatabase();
+    const pId = mongoose.Types.ObjectId.isValid(pembuatId) ? new mongoose.Types.ObjectId(pembuatId) : null;
 
-    const kuisLama = await Quiz.findOne({ jadwalId });
-
-    if (kuisLama) {
-      kuisLama.soal = dataSoal;
-      kuisLama.pembuatId = pembuatIdValid; 
-      kuisLama.durasi = durasi || 10; 
-      kuisLama.isAktif = true; 
-      await kuisLama.save();
-    } else {
-      await Quiz.create({
-        jadwalId,
-        pembuatId: pembuatIdValid,
-        soal: dataSoal,
-        durasi: durasi || 10, 
-        isAktif: true
-      });
-    }
+    // 🚀 OPTIMASI: findOneAndUpdate (Satu kali tembak ke DB)
+    await Quiz.findOneAndUpdate(
+      { jadwalId },
+      { 
+        $set: {
+          soal: dataSoal,
+          pembuatId: pId,
+          durasi: durasi || 10,
+          isAktif: true
+        }
+      },
+      { upsert: true }
+    );
 
     revalidatePath("/admin"); 
     revalidatePath("/");
-    return { sukses: true, pesan: "Kuis Pro Berhasil Dipublikasikan!" };
+    return { sukses: true, pesan: "Kuis Berhasil Dipublikasikan!" };
   } catch (error) {
-    return { sukses: false, pesan: "Gagal menyimpan kuis: " + error.message };
+    return { sukses: false, pesan: "Gagal: " + error.message };
   }
 }
 
 export async function ambilKuisByJadwal(jadwalId) {
   if (!jadwalId) return null;
-  await connectToDatabase();
   try {
+    await connectToDatabase();
     const kuis = await Quiz.findOne({ jadwalId }).lean();
-    if (!kuis) return null;
-    return JSON.parse(JSON.stringify(kuis));
+    return kuis ? serialize(kuis) : null;
   } catch (error) {
     return null;
   }
@@ -187,9 +174,10 @@ export async function ambilKuisByJadwal(jadwalId) {
 export async function getRiwayatKuisPengajar(pembuatId) {
   try {
     await connectToDatabase();
-    const Jadwal = mongoose.models.Jadwal || mongoose.model("Jadwal");
+    
     const kuisPengajar = await Quiz.find({ pembuatId, isAktif: true })
       .populate('jadwalId', 'mapel kelasTarget tanggal')
+      .select('jadwalId soal durasi updatedAt')
       .sort({ updatedAt: -1 })
       .lean();
 

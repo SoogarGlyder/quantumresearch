@@ -4,7 +4,7 @@ import connectToDatabase from "../lib/db";
 import User from "../models/User";
 import Jadwal from "../models/Jadwal";
 import StudySession from "../models/StudySession"; 
-import Quiz from "../models/Quiz"; // 🚀 IMPORT MODEL QUIZ DI SINI
+import Quiz from "../models/Quiz"; 
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { validationHelper } from "../utils/validationHelper";
@@ -25,19 +25,12 @@ import mongoose from "mongoose";
 // ============================================================================
 // 1. INTERNAL HELPERS
 // ============================================================================
-
-/**
- * Memastikan user memiliki otoritas sebelum melanjutkan aksi
- */
 async function pastikanOtoritas(roleWajib = [PERAN.PENGAJAR.id, PERAN.ADMIN.id]) {
   const { userId, peran } = await authHelper.ambilSesi();
   if (!userId || !roleWajib.includes(peran)) return null;
   return { userId, peran };
 }
 
-/**
- * Validasi apakah URL berasal dari domain Cloudinary resmi
- */
 function isValidCloudinary(url) {
   if (!url || typeof url !== "string") return false;
   return url.includes(KONFIGURASI_MEDIA.DOMAIN_RESMI); 
@@ -46,16 +39,11 @@ function isValidCloudinary(url) {
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 2. TEACHER ACTIONS (JURNAL, DOKUMENTASI, ABSENSI, NILAI & CBT)
+// 2. TEACHER ACTIONS
 // ============================================================================
-
-/**
- * Mengambil detail jurnal untuk ditampilkan di modal pengajar
- */
 export async function ambilDetailJurnalPengajar(idJadwal) {
   try {
     if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID Jadwal tidak valid.");
-
     await connectToDatabase();
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
@@ -70,21 +58,14 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
     const [siswaKelas, sesiHariIni] = await Promise.all([
-      User.find({ 
-        peran: PERAN.SISWA.id, 
-        kelas: jadwal.kelasTarget, 
-        status: STATUS_USER.AKTIF 
-      }).select("nama nomorPeserta").sort({ nama: 1 }).lean(),
-      StudySession.find({
-        jenisSesi: TIPE_SESI.KELAS,
-        namaMapel: jadwal.mapel,
-        waktuMulai: { $gte: awal, $lte: akhir }
-      }).lean()
+      User.find({ peran: PERAN.SISWA.id, kelas: jadwal.kelasTarget, status: STATUS_USER.AKTIF })
+        .select("nama nomorPeserta").sort({ nama: 1 }).lean(),
+      StudySession.find({ jenisSesi: TIPE_SESI.KELAS, namaMapel: jadwal.mapel, waktuMulai: { $gte: awal, $lte: akhir } })
+        .select("siswaId status nilaiTest").lean() // 🚀 OPTIMASI PROJECTION
     ]);
 
     const dataSiswaJurnal = siswaKelas.map(siswa => {
       const sesi = sesiHariIni.find(s => s.siswaId.toString() === siswa._id.toString());
-      
       let baseStatus = LABEL_SISTEM.BELUM_ABSEN;
       let ekstrakCatatan = "";
 
@@ -99,33 +80,21 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
       }
 
       return {
-        siswaId: siswa._id.toString(),
-        nama: siswa.nama,
-        nomorPeserta: siswa.nomorPeserta,
-        sesiId: sesi ? sesi._id.toString() : null,
-        statusAbsen: baseStatus,
-        catatan: ekstrakCatatan,
+        siswaId: siswa._id.toString(), nama: siswa.nama, nomorPeserta: siswa.nomorPeserta,
+        sesiId: sesi ? sesi._id.toString() : null, statusAbsen: baseStatus, catatan: ekstrakCatatan,
         nilaiTest: sesi ? sesi.nilaiTest ?? "" : ""
       };
     });
 
-    return responseHelper.success("Detail jurnal dimuat.", {
-      jadwal: serialize(jadwal),
-      dataSiswa: dataSiswaJurnal
-    });
+    return responseHelper.success("Detail jurnal dimuat.", { jadwal: serialize(jadwal), dataSiswa: dataSiswaJurnal });
   } catch (error) {
-    console.error("[ERROR ambilDetailJurnalPengajar]:", error);
     return responseHelper.error("Gagal mengambil detail jurnal kelas.");
   }
 }
 
-/**
- * Menyimpan data Jurnal (Materi & Foto) serta Absensi massal
- */
 export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa = []) {
   try {
     if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID Jadwal tidak valid.");
-
     await connectToDatabase();
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
@@ -133,184 +102,101 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
     const babClean = validationHelper.sanitize(dataJurnal.bab);
     if (!babClean) return responseHelper.error("Materi (Bab) wajib diisi!");
 
-    const rawLinks = Array.isArray(dataJurnal.galeriPapan) 
-      ? dataJurnal.galeriPapan 
-      : (dataJurnal.galeriPapan || "").split(",").filter(Boolean);
-
-    const galeriBersih = [...new Set(
-      rawLinks.map(link => link.trim()).filter(link => isValidCloudinary(link))
-    )];
+    const rawLinks = Array.isArray(dataJurnal.galeriPapan) ? dataJurnal.galeriPapan : (dataJurnal.galeriPapan || "").split(",").filter(Boolean);
+    const galeriBersih = [...new Set(rawLinks.map(link => link.trim()).filter(link => isValidCloudinary(link)))];
 
     const query = { _id: idJadwal };
     if (auth.peran !== PERAN.ADMIN.id) query.pengajarId = auth.userId; 
 
-    // 1. Update data Jadwal (Jurnal)
+    // 🚀 OPTIMASI: findOneAndUpdate dengan lean() mengembalikan data murni
     const updateJadwal = await Jadwal.findOneAndUpdate(
       query,
-      {
-        $set: {
-          bab: babClean,
-          subBab: validationHelper.sanitize(dataJurnal.subBab),
-          galeriPapan: galeriBersih,
-          fotoBersama: isValidCloudinary(dataJurnal.fotoBersama) ? dataJurnal.fotoBersama : "",
-          jurnalTerakhirUpdate: new Date()
-        }
-      },
+      { $set: { bab: babClean, subBab: validationHelper.sanitize(dataJurnal.subBab), galeriPapan: galeriBersih, fotoBersama: isValidCloudinary(dataJurnal.fotoBersama) ? dataJurnal.fotoBersama : "", jurnalTerakhirUpdate: new Date() } },
       { new: true }
-    );
+    ).lean();
 
     if (!updateJadwal) return responseHelper.error("Jadwal tidak ditemukan atau akses ditolak.");
 
-    // 2. Proses Absensi Masal (BulkWrite)
     if (arrayNilaiSiswa.length > 0) {
       const { awal, akhir } = timeHelper.getRentangHari(updateJadwal.tanggal);
-      
-      const ops = arrayNilaiSiswa
-        .filter(item => item.statusAbsen !== LABEL_SISTEM.BELUM_ABSEN) 
-        .map(item => {
-          const statusFinal = item.catatan?.trim() 
-            ? `${item.statusAbsen} (${item.catatan.trim()})`.toLowerCase() 
-            : item.statusAbsen.toLowerCase();
-
+      const ops = arrayNilaiSiswa.filter(item => item.statusAbsen !== LABEL_SISTEM.BELUM_ABSEN).map(item => {
+          const statusFinal = item.catatan?.trim() ? `${item.statusAbsen} (${item.catatan.trim()})`.toLowerCase() : item.statusAbsen.toLowerCase();
           return {
             updateOne: {
-              filter: {
-                siswaId: item.siswaId,
-                jenisSesi: TIPE_SESI.KELAS,
-                namaMapel: updateJadwal.mapel,
-                waktuMulai: { $gte: awal, $lte: akhir }
-              },
-              update: {
-                $set: {
-                  status: statusFinal,
-                  nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest)
-                },
-                $setOnInsert: {
-                  waktuMulai: awal,
-                  waktuSelesai: awal, 
-                  terlambatMenit: 0
-                }
-              },
+              filter: { siswaId: item.siswaId, jenisSesi: TIPE_SESI.KELAS, namaMapel: updateJadwal.mapel, waktuMulai: { $gte: awal, $lte: akhir } },
+              update: { $set: { status: statusFinal, nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest) }, $setOnInsert: { waktuMulai: awal, waktuSelesai: awal, terlambatMenit: 0 } },
               upsert: true 
             }
           };
-        });
-
-      if (ops.length > 0) {
-        await StudySession.bulkWrite(ops);
-      }
+      });
+      if (ops.length > 0) await StudySession.bulkWrite(ops);
     }
 
     revalidatePath(PERAN.PENGAJAR.home); 
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("✅ Jurnal Kelas & Absensi Siswa Berhasil Disimpan.");
-
   } catch (error) {
-    console.error("[ERROR simpanJurnalPengajar]:", error);
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
 
 // ============================================================================
-// 🚀 FUNGSI BARU: MENGAMBIL STATUS LIVE CBT UNTUK RADAR PENGAWAS
+// 🚀 FUNGSI BARU: RADAR CBT (HEAVILY OPTIMIZED)
 // ============================================================================
 export async function getStatusKuisLive(idJadwal) {
   try {
     if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID Jadwal tidak valid.");
-
     await connectToDatabase();
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const jadwal = await Jadwal.findById(idJadwal).lean();
+    // 🚀 OPTIMASI: Projection maksimal (Hanya mapel, tanggal, kelas)
+    const jadwal = await Jadwal.findById(idJadwal).select("mapel tanggal kelasTarget").lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
-    // 1. Ambil data Quiz untuk melihat siapa yang sudah SELESAI
-    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).lean();
+    // 🚀 BOM MEMORI DIJINAKKAN: Jangan tarik array soal! Cukup ambil hasilPengerjaan!
+    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).select("hasilPengerjaan.siswaId hasilPengerjaan.skor").lean();
     const hasilPengerjaan = kuis?.hasilPengerjaan || [];
 
-    // 2. Ambil daftar SISWA di kelas tersebut
-    const siswaKelas = await User.find({
-      peran: PERAN.SISWA.id,
-      kelas: jadwal.kelasTarget,
-      status: STATUS_USER.AKTIF
-    }).select("nama").sort({ nama: 1 }).lean();
-
-    // 3. Ambil data ABSEN hari ini untuk melihat siapa yang MENGERJAKAN (Sudah masuk kelas)
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
-    const sesiHariIni = await StudySession.find({
-      jenisSesi: TIPE_SESI.KELAS,
-      namaMapel: jadwal.mapel,
-      waktuMulai: { $gte: awal, $lte: akhir }
-    }).select("siswaId").lean();
+    
+    const [siswaKelas, sesiHariIni] = await Promise.all([
+      User.find({ peran: PERAN.SISWA.id, kelas: jadwal.kelasTarget, status: STATUS_USER.AKTIF })
+        .select("_id nama").sort({ nama: 1 }).lean(),
+      StudySession.find({ jenisSesi: TIPE_SESI.KELAS, namaMapel: jadwal.mapel, waktuMulai: { $gte: awal, $lte: akhir } })
+        .select("siswaId").lean()
+    ]);
 
-    // 4. Petakan status masing-masing siswa
     const dataLive = siswaKelas.map(siswa => {
       const idSiswaStr = siswa._id.toString();
-
-      // Cek apakah sudah selesai (ada nilainya di Quiz)
       const hasil = hasilPengerjaan.find(h => h.siswaId.toString() === idSiswaStr);
-      if (hasil) {
-        return {
-          id: idSiswaStr,
-          nama: siswa.nama,
-          status: "SELESAI",
-          skor: hasil.skor,
-          pelanggaran: 0 // (Belum live tracking)
-        };
-      }
-
-      // Cek apakah sudah absen masuk
+      
+      if (hasil) return { id: idSiswaStr, nama: siswa.nama, status: "SELESAI", skor: hasil.skor, pelanggaran: 0 };
+      
       const sudahAbsen = sesiHariIni.some(s => s.siswaId.toString() === idSiswaStr);
-      if (sudahAbsen) {
-        return {
-          id: idSiswaStr,
-          nama: siswa.nama,
-          status: "MENGERJAKAN",
-          skor: null,
-          pelanggaran: 0 // (Belum live tracking)
-        };
-      }
+      if (sudahAbsen) return { id: idSiswaStr, nama: siswa.nama, status: "MENGERJAKAN", skor: null, pelanggaran: 0 };
 
-      // Jika belum absen dan belum ngerjain
-      return {
-        id: idSiswaStr,
-        nama: siswa.nama,
-        status: "BELUM_MULAI",
-        skor: null,
-        pelanggaran: 0
-      };
+      return { id: idSiswaStr, nama: siswa.nama, status: "BELUM_MULAI", skor: null, pelanggaran: 0 };
     });
 
     return responseHelper.success("Data Radar CBT termuat.", serialize(dataLive));
-
   } catch (error) {
-    console.error("[ERROR getStatusKuisLive]:", error);
     return responseHelper.error("Gagal menyadap status CBT.");
   }
 }
 
-
 // ============================================================================
 // 3. ADMIN ACTIONS (MANAGEMENT PENGAJAR)
 // ============================================================================
-
 export async function ambilSemuaPengajar() {
   try {
     await connectToDatabase();
     if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const pengajar = await User.find({ peran: PERAN.PENGAJAR.id })
-      .select("_id nama kodePengajar username noHp")
-      .sort({ nama: 1 })
-      .lean();
+      .select("_id nama kodePengajar username noHp").sort({ nama: 1 }).lean();
       
-    const dataBersih = pengajar.map(p => ({
-      ...p,
-      _id: p._id.toString(),
-      kodePengajar: p.kodePengajar || "-"
-    }));
-
+    const dataBersih = pengajar.map(p => ({ ...p, _id: p._id.toString(), kodePengajar: p.kodePengajar || "-" }));
     return responseHelper.success("Data pengajar dimuat.", serialize(dataBersih));
   } catch (error) {
     return responseHelper.error("Gagal memuat data pengajar.");
@@ -325,21 +211,14 @@ export async function tambahPengajarBaru(formData) {
     const username = validationHelper.sanitize(formData.username).toLowerCase();
     const kodePengajar = validationHelper.sanitize(formData.kodePengajar).toUpperCase();
 
-    const exist = await User.findOne({ 
-      $or: [{ username }, { kodePengajar }] 
-    }).select("_id").lean();
-    
+    // 🚀 OPTIMASI: exists()
+    const exist = await User.exists({ $or: [{ username }, { kodePengajar }] });
     if (exist) return responseHelper.error("Username/Kode sudah terdaftar.");
 
     const hashed = await authHelper.buatHash(formData.password || KONFIGURASI_SISTEM.DEFAULT_PASSWORD);
 
     await User.create({
-      ...formData,
-      username,
-      kodePengajar,
-      password: hashed,
-      peran: PERAN.PENGAJAR.id,
-      status: STATUS_USER.AKTIF
+      ...formData, username, kodePengajar, password: hashed, peran: PERAN.PENGAJAR.id, status: STATUS_USER.AKTIF
     });
 
     revalidatePath(PERAN.ADMIN.home);
@@ -354,7 +233,7 @@ export async function hapusPengajar(idPengajar) {
     await connectToDatabase();
     if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    await User.findByIdAndDelete(idPengajar);
+    await User.deleteOne({ _id: idPengajar }); // 🚀 OPTIMASI: deleteOne
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Pengajar dihapus.");
   } catch (error) {
@@ -375,15 +254,10 @@ export async function editPengajar(idPengajar, dataBaru) {
       delete dataUpdate.password;
     }
 
-    if (dataUpdate.username) {
-      dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
-    }
-    
-    if (dataUpdate.kodePengajar) {
-      dataUpdate.kodePengajar = validationHelper.sanitize(dataUpdate.kodePengajar).toUpperCase();
-    }
+    if (dataUpdate.username) dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
+    if (dataUpdate.kodePengajar) dataUpdate.kodePengajar = validationHelper.sanitize(dataUpdate.kodePengajar).toUpperCase();
 
-    await User.findByIdAndUpdate(idPengajar, dataUpdate);
+    await User.updateOne({ _id: idPengajar }, { $set: dataUpdate }); // 🚀 OPTIMASI: updateOne
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Data pengajar berhasil diperbarui.");
   } catch (error) {
@@ -399,6 +273,17 @@ export async function prosesBulkTambahPengajar(dataArray) {
     let suksesCount = 0;
     let laporan = [];
 
+    // 🚀 OPTIMASI MASAL: Tarik yang dibutuhkan sekaligus (Seperti di authAction)
+    const uNames = dataArray.map(i => (i.username || i.kodePengajar)?.toLowerCase()).filter(Boolean);
+    const kodes = dataArray.map(i => i.kodePengajar?.toUpperCase()).filter(Boolean);
+    
+    const existing = await User.find({ 
+      $or: [{ username: { $in: uNames } }, { kodePengajar: { $in: kodes } }] 
+    }).select("username kodePengajar").lean();
+    
+    const setU = new Set(existing.map(e => e.username));
+    const setK = new Set(existing.map(e => e.kodePengajar));
+
     for (let [index, item] of dataArray.entries()) {
       try {
         if (!item.nama || !item.kodePengajar) {
@@ -410,11 +295,7 @@ export async function prosesBulkTambahPengajar(dataArray) {
         const username = validationHelper.sanitize(usernameTarget).toLowerCase();
         const kodePengajar = validationHelper.sanitize(item.kodePengajar).toUpperCase();
 
-        const exist = await User.findOne({ 
-          $or: [{ username }, { kodePengajar }] 
-        }).select("_id").lean();
-        
-        if (exist) {
+        if (setU.has(username) || setK.has(kodePengajar)) {
           laporan.push(`Baris ${index + 1} (${item.nama}): Username '${username}' atau Kode '${kodePengajar}' sudah dipakai.`);
           continue;
         }
@@ -423,14 +304,8 @@ export async function prosesBulkTambahPengajar(dataArray) {
         const hashed = await authHelper.buatHash(pwd);
 
         await User.create({
-          nama: item.nama,
-          nomorPeserta: item.nomorPeserta || "",
-          username,
-          kodePengajar,
-          noHp: item.noHp || "",
-          password: hashed,
-          peran: PERAN.PENGAJAR.id,
-          status: STATUS_USER.AKTIF
+          nama: item.nama, nomorPeserta: item.nomorPeserta || "", username, kodePengajar,
+          noHp: item.noHp || "", password: hashed, peran: PERAN.PENGAJAR.id, status: STATUS_USER.AKTIF
         });
 
         suksesCount++;
@@ -440,40 +315,30 @@ export async function prosesBulkTambahPengajar(dataArray) {
     }
 
     revalidatePath(PERAN.ADMIN.home);
-    return responseHelper.success(
-      `Selesai: ${suksesCount} berhasil terdaftar, ${laporan.length} gagal.`, 
-      { laporan }
-    );
+    return responseHelper.success(`Selesai: ${suksesCount} berhasil terdaftar, ${laporan.length} gagal.`, { laporan });
   } catch (error) {
     return responseHelper.error("Gagal melakukan upload massal.", error);
   }
 }
 
 // ============================================================================
-// 🚀 FUNGSI BARU: GOD MODE - RESET UJIAN SISWA
+// 🚀 GOD MODE - RESET UJIAN SISWA (ATOMIC $pull)
 // ============================================================================
 export async function resetUjianSiswa(idJadwal, idSiswa) {
   try {
     if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID tidak valid.");
-
     await connectToDatabase();
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const kuis = await Quiz.findOne({ jadwalId: idJadwal });
-    if (!kuis) return responseHelper.error("Kuis tidak ditemukan.");
-
-    // Filter/buang data siswa tersebut dari array hasilPengerjaan
-    const initialLength = kuis.hasilPengerjaan.length;
-    kuis.hasilPengerjaan = kuis.hasilPengerjaan.filter(
-      (hasil) => hasil.siswaId.toString() !== idSiswa.toString()
+    // 🚀 OPTIMASI MEMORI: Tidak perlu fetch dokumen Kuis. Langsung tembak $pull ke array!
+    const hasil = await Quiz.updateOne(
+      { jadwalId: idJadwal },
+      { $pull: { hasilPengerjaan: { siswaId: new mongoose.Types.ObjectId(idSiswa) } } }
     );
 
-    if (kuis.hasilPengerjaan.length === initialLength) {
-      return responseHelper.error("Siswa ini belum mengumpulkan ujian.");
-    }
+    if (hasil.modifiedCount === 0) return responseHelper.error("Siswa ini belum mengumpulkan ujian.");
 
-    await kuis.save();
     return responseHelper.success("Riwayat ujian berhasil dihapus. Siswa dapat mengulang dari awal.");
   } catch (error) {
     console.error("[ERROR resetUjianSiswa]:", error);
@@ -482,34 +347,42 @@ export async function resetUjianSiswa(idJadwal, idSiswa) {
 }
 
 // ============================================================================
-// 🚀 FUNGSI BARU: GOD MODE - FORCE SUBMIT (TUTUP PAKSA)
+// 🚀 GOD MODE - FORCE SUBMIT (ATOMIC $push)
 // ============================================================================
 export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
   try {
     if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID tidak valid.");
-
     await connectToDatabase();
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const kuis = await Quiz.findOne({ jadwalId: idJadwal });
+    // 🚀 OPTIMASI: Cukup fetch array soal untuk mengetahui panjang kuis
+    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).select("soal").lean();
     if (!kuis) return responseHelper.error("Kuis tidak ditemukan.");
 
-    // Pastikan siswa belum mengumpulkan
-    const sudahAda = kuis.hasilPengerjaan.some(h => h.siswaId.toString() === idSiswa.toString());
-    if (sudahAda) return responseHelper.error("Siswa sudah mengumpulkan ujian.");
+    const arrayKosong = new Array(kuis.soal?.length || 0).fill("");
+    
+    // 🚀 OPTIMASI MEMORI: Gunakan Atomic $push
+    const updateResult = await Quiz.updateOne(
+      { 
+        jadwalId: idJadwal,
+        "hasilPengerjaan.siswaId": { $ne: new mongoose.Types.ObjectId(idSiswa) } // Cegah double push
+      },
+      { 
+        $push: { 
+          hasilPengerjaan: {
+            siswaId: new mongoose.Types.ObjectId(idSiswa),
+            nama: namaSiswa,
+            skor: 0,
+            jawabanSiswa: arrayKosong,
+            dikumpulkanPada: new Date()
+          } 
+        } 
+      }
+    );
 
-    // Suntikkan nilai 0 secara paksa untuk mengunci akses siswa
-    const arrayKosong = new Array(kuis.soal.length).fill("");
-    kuis.hasilPengerjaan.push({
-      siswaId: idSiswa,
-      nama: namaSiswa,
-      skor: 0,
-      jawabanSiswa: arrayKosong,
-      dikumpulkanPada: new Date()
-    });
+    if (updateResult.modifiedCount === 0) return responseHelper.error("Siswa sudah mengumpulkan ujian.");
 
-    await kuis.save();
     return responseHelper.success("Ujian ditutup paksa. Siswa diberi nilai 0.");
   } catch (error) {
     console.error("[ERROR forceSubmitUjianSiswa]:", error);

@@ -3,59 +3,51 @@
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation"; 
 
-import PaginationBar from "@/components/ui/PaginationBar"; 
 import { potongDataPagination } from "@/utils/formatHelper"; 
 import { pilahJadwalSiswa } from "@/utils/kalkulatorData";
 import { PERIODE_BELAJAR, LIMIT_DATA } from "@/utils/constants"; 
 import styles from "@/components/App.module.css";
 
 import HeaderKelas from "./HeaderKelas";
+import TabSelector from "./TabSelector"; 
 import DaftarRiwayatKelas from "./DaftarRiwayatKelas";
 import ModalGaleri from "./ModalGaleri";
 
-// 🚀 IMPORT UNTUK KUIS CBT
 import DaftarRiwayatKuis from "./DaftarRiwayatKuis";
 import ModalUjianCBT from "../home/ModalUjianCBT"; 
 import { getRiwayatKuisSiswa, getPembahasanKuis } from "@/actions/studentAction";
 
 export default function TabKelas({ jadwal = [], riwayat = [], siswa }) {
+  const [activeTab, setActiveTab] = useState("KELAS"); 
   const [galeriAktif, setGaleriAktif] = useState(null);
-  const searchParams = useSearchParams();
   
+  const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KELAS || 10;
   
-  // STATE KHUSUS RIWAYAT KUIS
   const [riwayatKuis, setRiwayatKuis] = useState([]);
   const [kuisAktifReview, setKuisAktifReview] = useState(null);
   const [jawabanPastReview, setJawabanPastReview] = useState([]);
   
-  // 🚀 Ambil data riwayat kuis
   useEffect(() => {
-    // Pastikan `siswa._id` ada sebelum menembak ke server
     if (siswa?._id) {
       getRiwayatKuisSiswa(siswa._id).then(res => {
         if (res.sukses) setRiwayatKuis(res.data);
       });
-    } else {
-      console.warn("⚠️ Data 'siswa' belum dikirim ke TabKelas!");
     }
   }, [siswa]);
 
+  // 🚀 LOGIKA PEMOTONGAN DATA KELAS
   const { jadwalSelesai } = useMemo(() => {
     return pilahJadwalSiswa(jadwal, riwayat, PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR);
   }, [jadwal, riwayat]);
+  const { totalPage: totalPageKelas, dataTerpotong: dataKelasHalIni } = potongDataPagination(jadwalSelesai, page, ITEMS_PER_PAGE);
 
-  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(jadwalSelesai, page, ITEMS_PER_PAGE);
+  // 🚀 LOGIKA PEMOTONGAN DATA KUIS (BARU)
+  const { totalPage: totalPageKuis, dataTerpotong: dataKuisHalIni } = potongDataPagination(riwayatKuis, page, ITEMS_PER_PAGE);
 
   const klikBukaCatatan = (jadwalItem) => {
-    setGaleriAktif({
-      mapel: jadwalItem.mapel,
-      tanggal: jadwalItem.tanggal,
-      foto: jadwalItem.galeriPapan || [], 
-      bab: jadwalItem.bab,
-      subBab: jadwalItem.subBab
-    });
+    setGaleriAktif({ mapel: jadwalItem.mapel, tanggal: jadwalItem.tanggal, foto: jadwalItem.galeriPapan || [], bab: jadwalItem.bab, subBab: jadwalItem.subBab });
   };
 
   const handleBukaPembahasan = async (jadwalId) => {
@@ -71,47 +63,34 @@ export default function TabKelas({ jadwal = [], riwayat = [], siswa }) {
 
   return (
     <div className={styles.contentArea}>
-      
       <HeaderKelas />
+      <TabSelector activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* RENDER DAFTAR RIWAYAT ABSENSI/KELAS */}
-      <DaftarRiwayatKelas 
-        dataHalIni={dataHalIni} 
-        onBukaCatatan={klikBukaCatatan} 
-      />
+      {activeTab === "KELAS" && (
+        <DaftarRiwayatKelas 
+          dataHalIni={dataKelasHalIni} 
+          totalPage={totalPageKelas} // 👈 Melempar total page ke komponen anak
+          onBukaCatatan={klikBukaCatatan} 
+        />
+      )}
 
-      <div>
-        <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly'}} />
-      </div>
-
-      {/* RENDER DAFTAR RIWAYAT KUIS (Jika ada isinya) */}
-      {riwayatKuis.length > 0 && (
+      {activeTab === "KUIS" && (
         <DaftarRiwayatKuis 
-          dataRiwayatKuis={riwayatKuis} 
+          dataRiwayatKuis={dataKuisHalIni} // 👈 Sekarang melempar data yang sudah dipotong
+          totalPage={totalPageKuis}        // 👈 Melempar total page ke komponen anak
           onBukaPembahasan={handleBukaPembahasan} 
         />
       )}
 
-      <ModalGaleri 
-        galeriAktif={galeriAktif} 
-        onClose={() => setGaleriAktif(null)} 
-      />
+      <ModalGaleri galeriAktif={galeriAktif} onClose={() => setGaleriAktif(null)} />
 
-      {/* MODAL PEMBAHASAN CBT */}
       {kuisAktifReview && siswa && (
         <ModalUjianCBT 
-          jadwalId={kuisAktifReview.jadwalId}
-          kuis={kuisAktifReview} 
-          siswa={siswa}
-          isReviewMode={true} 
-          jawabanPast={jawabanPastReview} 
-          onClose={() => {
-            setKuisAktifReview(null); 
-            setJawabanPastReview([]);
-          }} 
+          jadwalId={kuisAktifReview.jadwalId} kuis={kuisAktifReview} siswa={siswa}
+          isReviewMode={true} jawabanPast={jawabanPastReview} 
+          onClose={() => { setKuisAktifReview(null); setJawabanPastReview([]); }} 
         />
       )}
-
     </div>
   );
 }

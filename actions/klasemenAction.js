@@ -15,11 +15,6 @@ import {
 // ============================================================================
 // 1. INTERNAL HELPERS (Gamification)
 // ============================================================================
-
-/**
- * Memberikan gelar berdasarkan total jam belajar yang dikumpulkan
- * 🚀 SEKARANG MEMBACA OTOMATIS DARI CONSTANTS
- */
 function tentukanGelar(jamTotal) {
   const gelarMatch = GAMIFIKASI.GELAR_KLASEMEN.find(g => jamTotal >= g.minJam);
   return gelarMatch ? gelarMatch.gelar : "🐢 Masih Pemanasan";
@@ -28,7 +23,6 @@ function tentukanGelar(jamTotal) {
 // ============================================================================
 // 2. MAIN ACTION (HIGH PERFORMANCE AGGREGATION)
 // ============================================================================
-
 export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
   try {
     await connectToDatabase();
@@ -85,9 +79,7 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
     ];
 
     if (filterKelas && filterKelas !== "Semua Kelas") {
-      pipeline.push({
-        $match: { "siswa.kelas": filterKelas }
-      });
+      pipeline.push({ $match: { "siswa.kelas": filterKelas } });
     }
 
     pipeline.push(
@@ -102,6 +94,7 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
       }
     );
 
+    // 🚀 OPTIMASI: Aggregation di MongoDB otomatis me-return objek mentah, jadi aman.
     const klasemenMentah = await StudySession.aggregate(pipeline);
 
     const dataFinal = klasemenMentah.map((item, index) => {
@@ -111,7 +104,6 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
 
       return {
         peringkat: index + 1,
-        // ✅ FIX: Mengubah ObjectId menjadi String murni agar Next.js tidak error
         idSiswa: item._id.toString(), 
         nama: item.nama || "Siswa Quantum", 
         kelas: item.kelas || "N/A",        

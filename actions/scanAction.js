@@ -45,7 +45,6 @@ function isLokasiValid(lokasi) {
 // ============================================================================
 // 2. CORE SCAN LOGIC (SISWA)
 // ============================================================================
-
 export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
   try {
     await connectToDatabase();
@@ -53,6 +52,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
+    // 🚀 DIBIARKAN UTUH KARENA BUTUH .save() UNTUK ARRAY LENCANA & MISI
     const siswa = await User.findById(userId);
     if (!siswa || siswa.status !== STATUS_USER.AKTIF) {
       return responseHelper.error("Akun dinonaktifkan atau tidak ditemukan.");
@@ -61,7 +61,6 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
     const sekarang = new Date();
     const tglHariIni = timeHelper.getTglJakarta(sekarang);
 
-    // 🚀 FIX: Deteksi Jenis QR dan Ekstrak ID Jadwal sejak awal
     let jenisQR = null;
     let jadwalIdDariQR = null;
 
@@ -74,24 +73,16 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
 
     if (!jenisQR) return responseHelper.error("⚠️ Barcode tidak valid atau tidak dikenali.");
 
-    // 🚀 FIX: Logika Pencarian Sesi (Kebal terhadap perubahan status oleh pengajar)
     let sesiAktif = null;
 
     if (jenisQR === TIPE_SESI.KELAS) {
       if (!jadwalIdDariQR || jadwalIdDariQR.length !== 24) {
         return responseHelper.error("⚠️ Format barcode kelas tidak valid.");
       }
-      // Kita cari berdasarkan ID jadwal, bukan status berjalan!
-      sesiAktif = await StudySession.findOne({
-        siswaId: userId,
-        jadwalId: jadwalIdDariQR
-      });
+      sesiAktif = await StudySession.findOne({ siswaId: userId, jadwalId: jadwalIdDariQR });
     } else {
-      // Jika konsul, tetap cari yang berjalan
       sesiAktif = await StudySession.findOne({
-        siswaId: userId,
-        jenisSesi: TIPE_SESI.KONSUL,
-        status: STATUS_SESI.BERJALAN.id
+        siswaId: userId, jenisSesi: TIPE_SESI.KONSUL, status: STATUS_SESI.BERJALAN.id
       });
     }
 
@@ -104,15 +95,13 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
           sesiAktif.waktuSelesai = sesiAktif.waktuMulai; 
           await sesiAktif.save();
         }
-        sesiAktif = null; // Reset agar dia masuk (check-in) untuk hari ini
+        sesiAktif = null; 
       } else if (sesiAktif.waktuSelesai) {
-        // 🚀 FIX: Jika jam pulang sudah terisi (berarti dia benar-benar sudah check-out)
         return responseHelper.success("✅ Anda sudah melakukan Check-out untuk kelas ini.");
       }
     }
 
     // --- LOGIKA PULANG SISWA (Check-Out) ---
-    // Di tahap ini, jika sesiAktif ADA, berarti waktuSelesai-nya PASTI kosong
     if (sesiAktif) {
       const durasiMenit = Math.floor((sekarang - sesiAktif.waktuMulai) / 60000);
 
@@ -123,14 +112,16 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         }
 
         let menitExtra = 0;
-        const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tglHariIni }).lean();
+        // 🚀 OPTIMASI PROJECTION
+        const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tglHariIni })
+          .select("jamSelesai")
+          .lean();
+
         if (jadwal) {
           const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
           if (sekarang > waktuSelesaiJadwal) {
             const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
-            if (hitungExtra > 15) {
-               menitExtra = hitungExtra;
-            }
+            if (hitungExtra > 15) menitExtra = hitungExtra;
           }
         }
 
@@ -158,18 +149,15 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         }
 
         siswa.totalExp += expDapat;
-        if (lencanaBaru.length > 0) {
-          siswa.koleksiLencana.push(...lencanaBaru);
-        }
+        if (lencanaBaru.length > 0) siswa.koleksiLencana.push(...lencanaBaru);
         
-        // 🎯 CEK MISI: HADIR_KELAS
         const misiUpdates = updateMisiSiswa(siswa, tglHariIni, { jenis: "HADIR_KELAS" });
         await siswa.save();
 
         let pesanAkhir = `Check-out Berhasil! ✨ +${expDapat} EXP`;
-        if (menitExtra > 0) pesanAkhir += ` (Termasuk Ekstra Konsul ${menitExtra}m)`;
-        if (lencanaBaru.length > 0) pesanAkhir += ` 🏅 Mendapat ${lencanaBaru.length} Lencana Baru!`;
-        if (misiUpdates > 0) pesanAkhir += ` 🎯 Ada Misi Harian yang selesai!`;
+        if (menitExtra > 0) pesanAkhir += ` (Ekstra Konsul ${menitExtra}m)`;
+        if (lencanaBaru.length > 0) pesanAkhir += ` 🏅 Mendapat ${lencanaBaru.length} Lencana!`;
+        if (misiUpdates > 0) pesanAkhir += ` 🎯 Misi Harian selesai!`;
 
         revalidatePath("/", "layout"); 
         return responseHelper.success(pesanAkhir);
@@ -178,9 +166,9 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
       if (sesiAktif.jenisSesi === TIPE_SESI.KONSUL) {
         const minKonsul = KONFIGURASI_SISTEM.MIN_DURASI_KONSUL_SAH;
         if (durasiMenit < minKonsul) {
-          await StudySession.findByIdAndDelete(sesiAktif._id);
+          await StudySession.deleteOne({ _id: sesiAktif._id }); // 🚀 OPTIMASI deleteOne
           revalidatePath("/", "layout");
-          return responseHelper.success("Sesi Konsul dibatalkan (durasi kurang dari 5 menit).");
+          return responseHelper.success("Sesi Konsul dibatalkan (durasi < 5 menit).");
         }
 
         sesiAktif.status = STATUS_SESI.SELESAI.id;
@@ -196,30 +184,18 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         const lencanaDimiliki = siswa.koleksiLencana?.map(l => l.idLencana) || [];
         const jamSelesai = sekarang.getHours();
 
-        if (!lencanaDimiliki.includes(GAMIFIKASI.LENCANA.FIRST_BLOOD)) {
-          lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.FIRST_BLOOD, tanggalDidapat: sekarang });
-        }
-
-        if (jamSelesai >= 18 && !lencanaDimiliki.includes(GAMIFIKASI.LENCANA.BURUNG_HANTU)) {
-          lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.BURUNG_HANTU, tanggalDidapat: sekarang });
-        }
+        if (!lencanaDimiliki.includes(GAMIFIKASI.LENCANA.FIRST_BLOOD)) lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.FIRST_BLOOD, tanggalDidapat: sekarang });
+        if (jamSelesai >= 18 && !lencanaDimiliki.includes(GAMIFIKASI.LENCANA.BURUNG_HANTU)) lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.BURUNG_HANTU, tanggalDidapat: sekarang });
 
         siswa.totalExp += expDapat;
-        if (lencanaBaru.length > 0) {
-          siswa.koleksiLencana.push(...lencanaBaru);
-        }
+        if (lencanaBaru.length > 0) siswa.koleksiLencana.push(...lencanaBaru);
 
-        // 🎯 CEK MISI: KONSUL DURASI & MALAM HARI
-        const misiUpdates = updateMisiSiswa(siswa, tglHariIni, { 
-          jenis: "KONSUL", 
-          durasi: durasiMenit, 
-          jam: jamSelesai 
-        });
+        const misiUpdates = updateMisiSiswa(siswa, tglHariIni, { jenis: "KONSUL", durasi: durasiMenit, jam: jamSelesai });
         await siswa.save();
 
         let pesanAkhir = `Sesi Konsul Selesai! ✨ +${expDapat} EXP`;
-        if (lencanaBaru.length > 0) pesanAkhir += ` 🏅 Mendapat ${lencanaBaru.length} Lencana Baru!`;
-        if (misiUpdates > 0) pesanAkhir += ` 🎯 Ada Misi Harian yang selesai!`;
+        if (lencanaBaru.length > 0) pesanAkhir += ` 🏅 Mendapat ${lencanaBaru.length} Lencana!`;
+        if (misiUpdates > 0) pesanAkhir += ` 🎯 Misi Harian selesai!`;
 
         revalidatePath("/", "layout");
         return responseHelper.success(pesanAkhir);
@@ -228,8 +204,9 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
 
     // --- LOGIKA MASUK SISWA (Check-In) ---
     if (jenisQR === TIPE_SESI.KELAS) {
-      // Gunakan jadwalId yang sudah kita ekstrak di atas
-      const jadwal = await Jadwal.findById(jadwalIdDariQR).lean();
+      // 🚀 OPTIMASI PROJECTION
+      const jadwal = await Jadwal.findById(jadwalIdDariQR).select("tanggal kelasTarget mapel jamMulai jamSelesai").lean();
+      
       if (!jadwal) return responseHelper.error("⚠️ Sesi kelas tidak ditemukan.");
       if (jadwal.tanggal !== tglHariIni) return responseHelper.error("⚠️ Barcode kedaluwarsa.");
       if (jadwal.kelasTarget !== siswa.kelas) return responseHelper.error(`⚠️ Khusus kelas ${jadwal.kelasTarget}.`);
@@ -237,29 +214,21 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
       const waktuMulaiJadwal = new Date(`${tglHariIni}T${jadwal.jamMulai}:00+07:00`);
       const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
 
-      const windowScan = KONFIGURASI_SISTEM.WINDOW_SCAN_MASUK_MENIT;
-      const windowScanStart = new Date(waktuMulaiJadwal.getTime() - windowScan * 60000);
+      const windowScanStart = new Date(waktuMulaiJadwal.getTime() - KONFIGURASI_SISTEM.WINDOW_SCAN_MASUK_MENIT * 60000);
       
-      if (sekarang < windowScanStart) return responseHelper.error(`Scan dibuka ${windowScan}m sebelum kelas.`);
+      if (sekarang < windowScanStart) return responseHelper.error(`Scan dibuka ${KONFIGURASI_SISTEM.WINDOW_SCAN_MASUK_MENIT}m sebelum kelas.`);
       if (sekarang > waktuSelesaiJadwal) return responseHelper.error("Gagal! Sesi kelas sudah berakhir.");
 
       let telat = sekarang > waktuMulaiJadwal ? Math.floor((sekarang - waktuMulaiJadwal) / 60000) : 0;
 
       await StudySession.create({
-        siswaId: userId,
-        jenisSesi: TIPE_SESI.KELAS,
-        namaMapel: jadwal.mapel,
-        jadwalId: jadwal._id, // Relasi ke jadwal yang diklik
-        terlambatMenit: telat,
-        status: STATUS_SESI.BERJALAN.id,
-        waktuMulai: sekarang
+        siswaId: userId, jenisSesi: TIPE_SESI.KELAS, namaMapel: jadwal.mapel,
+        jadwalId: jadwal._id, terlambatMenit: telat, status: STATUS_SESI.BERJALAN.id, waktuMulai: sekarang
       });
 
-      // 🎯 CEK MISI: DATANG AWAL
       let pesanTambahan = "";
       if (sekarang.getHours() < 15) {
-        const up = updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" });
-        if (up > 0) {
+        if (updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" }) > 0) {
           await siswa.save();
           pesanTambahan = " 🎯 Misi Datang Awal selesai!";
         }
@@ -271,20 +240,14 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
 
     if (jenisQR === TIPE_SESI.KONSUL) {
       if (!mapelPilihan) return responseHelper.error("Pilih Mata Pelajaran konsul dahulu!");
-
       await StudySession.create({
-        siswaId: userId,
-        jenisSesi: TIPE_SESI.KONSUL,
-        namaMapel: mapelPilihan.trim(),
-        status: STATUS_SESI.BERJALAN.id,
-        waktuMulai: sekarang
+        siswaId: userId, jenisSesi: TIPE_SESI.KONSUL, namaMapel: mapelPilihan.trim(),
+        status: STATUS_SESI.BERJALAN.id, waktuMulai: sekarang
       });
 
-      // 🎯 CEK MISI: DATANG AWAL
       let pesanTambahan = "";
       if (sekarang.getHours() < 15) {
-        const up = updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" });
-        if (up > 0) {
+        if (updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" }) > 0) {
           await siswa.save();
           pesanTambahan = " 🎯 Misi Datang Awal selesai!";
         }
@@ -303,7 +266,6 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
 // ============================================================================
 // 3. CORE SCAN LOGIC (STAFF/PENGAJAR)
 // ============================================================================
-
 export async function absenPengajarAction(teksQR, lokasi) {
   try {
     await connectToDatabase();
@@ -313,46 +275,39 @@ export async function absenPengajarAction(teksQR, lokasi) {
       return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
     }
 
-    if (teksQR !== PREFIX_BARCODE.ADMIN) {
-      return responseHelper.error("⚠️ Barcode Staf tidak valid.");
-    }
+    if (teksQR !== PREFIX_BARCODE.ADMIN) return responseHelper.error("⚠️ Barcode Staf tidak valid.");
 
     const sekarang = new Date();
     const { awal, akhir } = timeHelper.getRentangHari(sekarang);
 
+    // 🚀 OPTIMASI: Cukup fetch dengan lean()
     let absenHariIni = await AbsensiPengajar.findOne({
-      pengajarId: userId,
-      waktuMasuk: { $gte: awal, $lte: akhir }
-    });
+      pengajarId: userId, waktuMasuk: { $gte: awal, $lte: akhir }
+    }).lean();
 
     if (absenHariIni) {
       if (absenHariIni.waktuKeluar) {
-         return responseHelper.success("✅ Anda sudah melakukan Clock-Out untuk hari ini.");
+         return responseHelper.success("✅ Anda sudah melakukan Clock-Out hari ini.");
       }
 
-      absenHariIni.waktuKeluar = sekarang;
-      if (lokasi) { absenHariIni.lokasiScanKeluar = lokasi; }
-      
-      await absenHariIni.save();
+      // 🚀 OPTIMASI: updateOne (Satu operasi atomik)
+      const payloadOut = { waktuKeluar: sekarang };
+      if (lokasi) payloadOut.lokasiScanKeluar = lokasi;
+
+      await AbsensiPengajar.updateOne({ _id: absenHariIni._id }, { $set: payloadOut });
 
       revalidatePath("/", "layout");
       revalidatePath(PERAN.PENGAJAR.home);
-
       return responseHelper.success("✅ Clock-Out Berhasil! Terima kasih.");
       
     } else {
-      const dataAbsenBaru = {
-        pengajarId: userId,
-        waktuMasuk: sekarang
-      };
-
-      if (lokasi) { dataAbsenBaru.lokasiScanMasuk = lokasi; }
+      const dataAbsenBaru = { pengajarId: userId, waktuMasuk: sekarang, status: "HADIR" };
+      if (lokasi) dataAbsenBaru.lokasiScanMasuk = lokasi;
 
       await AbsensiPengajar.create(dataAbsenBaru);
 
       revalidatePath("/", "layout");
       revalidatePath(PERAN.PENGAJAR.home);
-
       return responseHelper.success("✅ Clock-In Berhasil!");
     }
 
@@ -362,41 +317,26 @@ export async function absenPengajarAction(teksQR, lokasi) {
   }
 }
 
-// ============================================================================
-// 4. HELPER FUNCTION: DETEKTIF MISI
-// ============================================================================
 function updateMisiSiswa(siswa, tanggalSekarang, aksi) {
   let adaUpdate = 0;
-  
-  if (!siswa.misiHarian || siswa.misiHarian.tanggal !== tanggalSekarang) {
-    return adaUpdate; // Bukan misi hari ini, abaikan
-  }
+  if (!siswa.misiHarian || siswa.misiHarian.tanggal !== tanggalSekarang) return adaUpdate;
 
   siswa.misiHarian.daftar.forEach(misi => {
-    if (misi.selesai) return; // Sudah selesai, abaikan
-
+    if (misi.selesai) return; 
     let tercapai = false;
 
     if (aksi.jenis === "HADIR_KELAS" && misi.kodeMisi === "HADIR_KELAS") {
-      misi.progress = 1;
-      tercapai = true;
-    } 
-    else if (aksi.jenis === "KONSUL" && misi.kodeMisi.startsWith("KONSUL_")) {
+      misi.progress = 1; tercapai = true;
+    } else if (aksi.jenis === "KONSUL" && misi.kodeMisi.startsWith("KONSUL_")) {
       if (misi.kodeMisi === "KONSUL_30" && aksi.durasi >= 30) tercapai = true;
       if (misi.kodeMisi === "KONSUL_60" && aksi.durasi >= 60) tercapai = true;
       if (misi.kodeMisi === "KONSUL_MALAM" && aksi.jam >= 18) tercapai = true;
-
       if (tercapai) misi.progress = misi.target;
-    }
-    else if (aksi.jenis === "DATANG_AWAL" && misi.kodeMisi === "DATANG_AWAL") {
-      misi.progress = 1;
-      tercapai = true;
+    } else if (aksi.jenis === "DATANG_AWAL" && misi.kodeMisi === "DATANG_AWAL") {
+      misi.progress = 1; tercapai = true;
     }
 
-    if (tercapai) {
-      misi.selesai = true;
-      adaUpdate++;
-    }
+    if (tercapai) { misi.selesai = true; adaUpdate++; }
   });
 
   return adaUpdate;

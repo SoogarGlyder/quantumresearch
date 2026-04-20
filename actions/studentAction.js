@@ -3,60 +3,55 @@
 import connectDB from "../lib/db"; 
 import Jadwal from "../models/Jadwal"; 
 import Quiz from "../models/Quiz";
+import StudySession from "../models/StudySession"; // 🚀 IMPORT MODEL JURNAL
 import mongoose from "mongoose";
 
+const serialize = (data) => JSON.parse(JSON.stringify(data));
+
 // ============================================================================
-// FUNGSI: MENGAMBIL DATA KUIS UNTUK SISWA (ANTI-CHEAT & OPTIMIZED)
+// FUNGSI: MENGAMBIL DATA KUIS (ANTI-CHEAT + PARALLEL)
 // ============================================================================
 export const getKuisSiswa = async (jadwalId) => {
   try {
     await connectDB();
 
-    // 1. Ambil info dasar (Mapel & Kelas) dari tabel Jadwal
-    const jadwalData = await Jadwal.findById(jadwalId).select('mapel kelasTarget').lean();
+    // 🚀 OPTIMASI: Ambil Jadwal dan Quiz secara PARALEL
+    const [jadwalData, dataKuis] = await Promise.all([
+      Jadwal.findById(jadwalId).select('mapel kelasTarget').lean(),
+      Quiz.findOne({ jadwalId, isAktif: true }).select('-soal.kunciJawaban').lean()
+    ]);
 
-    // 2. CARI SOAL DI TABEL QUIZ
-    // Buang kunciJawaban agar tidak bocor ke Inspect Element browser siswa
-    const dataKuis = await Quiz.findOne({ jadwalId: jadwalId, isAktif: true })
-      .select('-soal.kunciJawaban') 
-      .lean();
-
-    // Jika Kuis tidak ditemukan atau array soalnya kosong
     if (!dataKuis || !dataKuis.soal || dataKuis.soal.length === 0) {
       return { sukses: false, pesan: "Soal ujian belum tersedia." };
     }
-
-    // 🚀 PERBAIKAN BUG: 
-    // Jangan diacak! Index array harus sama persis antara frontend dan database 
-    // agar kalkulasi auto-grading kumpulkanUjianSiswa tidak salah kunci.
-    const soalUjian = dataKuis.soal;
 
     return { 
       sukses: true, 
       data: {
         mapel: jadwalData?.mapel || "Kuis CBT",
         kelas: jadwalData?.kelasTarget || "-",
-        jumlahSoal: soalUjian.length,
-        soal: soalUjian
+        jumlahSoal: dataKuis.soal.length,
+        soal: dataKuis.soal
       } 
     };
 
   } catch (error) {
-    console.error("Error getKuisSiswa:", error);
     return { sukses: false, pesan: "Terjadi kesalahan server." };
   }
 };
 
 // ============================================================================
-// FUNGSI: MENGIRIM JAWABAN SISWA DAN KALKULASI SKOR OTOMATIS (ALL TYPES)
+// FUNGSI: KIRIM JAWABAN & AUTO-SYNC JURNAL (ATOMIC $PUSH OPTIMIZED)
 // ============================================================================
 export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSiswa }) => {
   try {
     await connectDB();
 
-    const dataKuis = await Quiz.findOne({ jadwalId: jadwalId });
+    // 🚀 OPTIMASI: Cukup ambil data soal untuk grading
+    const dataKuis = await Quiz.findOne({ jadwalId }).select("soal hasilPengerjaan.siswaId").lean();
     if (!dataKuis) return { sukses: false, pesan: "Data Kuis tidak ditemukan." };
 
+    // Cek duplikat di RAM (Data sudah diproject di atas)
     const sudahPernah = dataKuis.hasilPengerjaan.some(h => h.siswaId.toString() === siswaId.toString());
     if (sudahPernah) return { sukses: false, pesan: "Anda sudah mengerjakan kuis ini." };
 
@@ -64,68 +59,79 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
     let expDidapat = 0;
     let totalExpMaksimal = 0;
 
-    // 🚀 LOGIKA AUTO-GRADING NEO (MENDUKUNG BANYAK TIPE SOAL)
+    // --- LOGIKA GRADING TETAP SAMA ---
     jawabanSiswa.forEach((jawaban, index) => {
       const soalDatabase = soalAsli[index];
-      
       if (soalDatabase) {
         const bobotSoal = Number(soalDatabase.bobotExp) || 20;
         totalExpMaksimal += bobotSoal;
         const tipe = soalDatabase.tipeSoal || "PG";
-
         let isBenar = false;
 
-        // 1. Cek Tipe Pilihan Ganda & Benar-Salah
         if (tipe === "PG" || tipe === "BENAR_SALAH") {
           isBenar = (String(jawaban) === String(soalDatabase.kunciJawaban));
-        } 
-        
-        // 2. Cek Tipe Isian Singkat (Toleransi huruf besar/kecil & spasi ujung)
-        else if (tipe === "ISIAN") {
+        } else if (tipe === "ISIAN") {
           const jwbSiswa = String(jawaban || "").toLowerCase().trim();
           const jwbKunci = String(soalDatabase.kunciJawaban || "").toLowerCase().trim();
           isBenar = (jwbSiswa === jwbKunci);
-        }
-
-        // 3. Cek Tipe PG Kompleks (Harus benar semua pilihannya / Array Match)
-        else if (tipe === "PG_KOMPLEKS") {
+        } else if (tipe === "PG_KOMPLEKS") {
           const jwbArr = Array.isArray(jawaban) ? jawaban.sort() : [];
           const kunciArr = Array.isArray(soalDatabase.kunciJawaban) ? soalDatabase.kunciJawaban.sort() : [];
           isBenar = JSON.stringify(jwbArr) === JSON.stringify(kunciArr);
         }
-
-        // Jika benar, tambahkan EXP-nya!
         if (isBenar) expDidapat += bobotSoal;
       }
     });
 
     const skorAkhir = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
 
-    dataKuis.hasilPengerjaan.push({
-      siswaId: siswaId,
-      nama: nama,
-      skor: skorAkhir,
-      jawabanSiswa: jawabanSiswa,
-      dikumpulkanPada: new Date()
-    });
+    // 🚀 1. UPDATE KUIS: Atomic $push (Langsung simpan hasil ke array tanpa load seluruh kuis)
+    const updateQuiz = Quiz.updateOne(
+      { jadwalId },
+      { 
+        $push: { 
+          hasilPengerjaan: {
+            siswaId: new mongoose.Types.ObjectId(siswaId),
+            nama,
+            skor: skorAkhir,
+            jawabanSiswa,
+            dikumpulkanPada: new Date()
+          } 
+        } 
+      }
+    );
 
-    await dataKuis.save();
+    // 🚀 2. AUTO-SYNC JURNAL: Memasukkan nilaiTest ke absen siswa
+    const updateJurnal = StudySession.updateOne(
+      { 
+        siswaId: new mongoose.Types.ObjectId(siswaId), 
+        jadwalId: new mongoose.Types.ObjectId(jadwalId) 
+      },
+      { 
+        $set: { nilaiTest: skorAkhir } 
+      }
+    );
+
+    // 🚀 EKSEKUSI PARALEL (Jauh lebih ngebut!)
+    await Promise.all([updateQuiz, updateJurnal]);
 
     return { sukses: true, skor: skorAkhir, exp: expDidapat };
 
   } catch (error) {
-    console.error("Error kumpulkanUjian:", error);
-    return { sukses: false, pesan: "Terjadi kesalahan saat memproses nilai." };
+    return { sukses: false, pesan: "Terjadi kesalahan proses nilai." };
   }
 };
 
 // ============================================================================
-// FUNGSI: CEK KETERSEDIAAN KUIS UNTUK KARTU BERANDA SISWA
+// FUNGSI: CEK KETERSEDIAAN (DIET DATA)
 // ============================================================================
 export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
   try {
     await connectDB();
-    const kuis = await Quiz.findOne({ jadwalId: jadwalId, isAktif: true }).lean();
+    // 🚀 OPTIMASI: Projection (Jangan tarik isi soal, cukup jumlahnya saja)
+    const kuis = await Quiz.findOne({ jadwalId, isAktif: true })
+      .select("durasi hasilPengerjaan soal")
+      .lean();
     
     if (!kuis || !kuis.soal) return { ada: false };
 
@@ -137,80 +143,84 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
       ada: true,
       data: {
         _id: kuis._id.toString(),
-        jumlahSoal: kuis.soal.length,
+        jumlahSoal: kuis.soal.length, // Ukuran array soal
         durasi: kuis.durasi || 10,
         isSudahDikerjakan: !!riwayatPengerjaan, 
         skor: riwayatPengerjaan ? riwayatPengerjaan.skor : null,
       }
     };
   } catch (error) {
-    console.error("Error cek kuis:", error);
     return { ada: false };
   }
 };
 
-// ============================================================================
-// FUNGSI: MENGAMBIL DATA PEMBAHASAN KUIS (HANYA UNTUK YANG SUDAH SELESAI)
-// ============================================================================
 export const getPembahasanKuis = async (jadwalId, siswaId) => {
   try {
     await connectDB();
-    
-    const dataKuis = await Quiz.findOne({ jadwalId: jadwalId }).lean();
+    const dataKuis = await Quiz.findOne({ jadwalId }).select("soal hasilPengerjaan").lean();
     if (!dataKuis) return { sukses: false, pesan: "Data Kuis tidak ditemukan." };
 
-    const riwayatPengerjaan = dataKuis.hasilPengerjaan?.find(
-      (hasil) => hasil.siswaId.toString() === siswaId.toString()
-    );
+    const riwayat = dataKuis.hasilPengerjaan?.find(h => h.siswaId.toString() === siswaId.toString());
+    if (!riwayat) return { sukses: false, pesan: "Akses ditolak." };
 
-    if (!riwayatPengerjaan) {
-      return { sukses: false, pesan: "Akses ditolak. Anda belum menyelesaikan ujian ini." };
-    }
-
-    return {
-      sukses: true,
-      data: {
-        soal: dataKuis.soal, 
-        jawabanSiswa: riwayatPengerjaan.jawabanSiswa 
-      }
-    };
+    return { sukses: true, data: { soal: dataKuis.soal, jawabanSiswa: riwayat.jawabanSiswa } };
   } catch (error) {
-    console.error("Error getPembahasan:", error);
-    return { sukses: false, pesan: "Terjadi kesalahan server saat memuat pembahasan." };
+    return { sukses: false, pesan: "Terjadi kesalahan server." };
   }
 };
 
 // ============================================================================
-// FUNGSI: MENGAMBIL RIWAYAT CBT YANG SUDAH SELESAI (UNTUK TAB JURNAL/KELAS)
+// FUNGSI: RIWAYAT KUIS (N+1 EXTERMINATOR - 1 QUERY SAJA!)
 // ============================================================================
 export const getRiwayatKuisSiswa = async (siswaId) => {
   try {
     await connectDB();
-    
-    const Quiz = require("../models/Quiz").default || require("../models/Quiz");
-    const Jadwal = require("../models/Jadwal").default || require("../models/Jadwal");
+    const oid = new mongoose.Types.ObjectId(siswaId);
 
-    const kuisSelesai = await Quiz.find({ "hasilPengerjaan.siswaId": siswaId }).lean();
-    
-    if (!kuisSelesai || kuisSelesai.length === 0) return { sukses: true, data: [] };
+    // 🚀 OPTIMASI TOTAL: Gunakan Aggregation Pipeline (Menyatukan Quiz & Jadwal)
+    const riwayat = await Quiz.aggregate([
+      { $match: { "hasilPengerjaan.siswaId": oid } }, // Cari kuis yang pernah dikerjakan siswa
+      {
+        $lookup: { // JOIN dengan tabel Jadwals
+          from: "jadwals", 
+          localField: "jadwalId",
+          foreignField: "_id",
+          as: "infoJadwal"
+        }
+      },
+      { $unwind: "$infoJadwal" }, // Pecah array hasil join
+      {
+        $project: { // Pilih field yang dibutuhkan saja
+          _id: 1,
+          jadwalId: 1,
+          mapel: "$infoJadwal.mapel",
+          bab: "$infoJadwal.bab",
+          tanggal: "$infoJadwal.tanggal",
+          jumlahSoal: { $size: "$soal" },
+          // Ekstrak skor milik siswa tersebut dari array hasilPengerjaan
+          hasil: {
+            $filter: {
+              input: "$hasilPengerjaan",
+              as: "h",
+              cond: { $eq: ["$$h.siswaId", oid] }
+            }
+          }
+        }
+      },
+      { $sort: { tanggal: -1 } }
+    ]);
 
-    const dataRiwayat = await Promise.all(kuisSelesai.map(async (k) => {
-      const jadwal = await Jadwal.findById(k.jadwalId).select('mapel bab tanggal').lean();
-      const hasil = k.hasilPengerjaan.find(h => h.siswaId.toString() === siswaId.toString());
-      
-      return {
-        _id: k._id.toString(),
-        jadwalId: k.jadwalId.toString(),
-        mapel: jadwal?.mapel || "Kuis CBT",
-        bab: jadwal?.bab || "Ujian",
-        tanggal: jadwal?.tanggal || new Date(),
-        skor: hasil ? hasil.skor : 0,
-        jumlahSoal: k.soal.length
-      };
+    const dataFinal = riwayat.map(r => ({
+      _id: r._id.toString(),
+      jadwalId: r.jadwalId.toString(),
+      mapel: r.mapel || "Kuis CBT",
+      bab: r.bab || "Ujian",
+      tanggal: r.tanggal || new Date(),
+      skor: r.hasil[0] ? r.hasil[0].skor : 0,
+      jumlahSoal: r.jumlahSoal
     }));
 
-    dataRiwayat.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-    return { sukses: true, data: dataRiwayat };
+    return { sukses: true, data: dataFinal };
   } catch (error) {
     console.error("Error getRiwayatKuisSiswa:", error);
     return { sukses: false, data: [] };
