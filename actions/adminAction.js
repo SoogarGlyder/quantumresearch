@@ -47,12 +47,12 @@ export async function ambilDataDashboard() {
         .select("_id siswaId jenisSesi namaMapel waktuMulai waktuSelesai status terlambatMenit konsulExtraMenit jadwalId tanggalAsli")
         .populate("siswaId", "nama username nomorPeserta kelas status") 
         .sort({ waktuMulai: -1 })
-        .lean(), // 🚀 Sudah Optimal
+        .lean(), 
         
       User.find({ peran: PERAN.SISWA.id })
         .select("_id nama username nomorPeserta noHp kelas status createdAt")
         .sort({ nama: 1 })
-        .lean() // 🚀 Sudah Optimal
+        .lean() 
     ]);
 
     return responseHelper.success("Data dashboard dimuat.", { riwayat: serialize(riwayat), siswa: serialize(siswa) });
@@ -110,7 +110,6 @@ export async function tambahJadwal(dataForm) {
 
     const kodeCari = dataForm.pengajar?.trim();
     
-    // 🚀 OPTIMASI: Jangan tarik password dan meta data user lain
     const pengajarObj = await User.findOne({ 
       peran: PERAN.PENGAJAR.id, 
       kodePengajar: { $regex: new RegExp(`^${kodeCari}$`, "i") } 
@@ -138,7 +137,6 @@ export async function editJadwal(id, dataBaru) {
 
     let payloadUpdate = { ...dataBaru };
     if (dataBaru.pengajar) {
-      // 🚀 OPTIMASI: Tarik secukupnya saja
       const pengajarObj = await User.findOne({ 
         peran: PERAN.PENGAJAR.id,
         $or: [{ kodePengajar: dataBaru.pengajar }, { nama: dataBaru.pengajar }]
@@ -152,7 +150,6 @@ export async function editJadwal(id, dataBaru) {
       }
     }
 
-    // 🚀 OPTIMASI: updateOne jauh lebih ringan dari findByIdAndUpdate
     await Jadwal.updateOne({ _id: id }, { $set: payloadUpdate });
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Jadwal diperbarui.");
@@ -166,7 +163,6 @@ export async function hapusJadwal(idJadwal) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 OPTIMASI: deleteOne (Hemat RAM karena tidak mengembalikan objek terhapus)
     await Jadwal.deleteOne({ _id: idJadwal });
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Jadwal dihapus.");
@@ -192,7 +188,6 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
 
     if (dataUpdate.username) dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
 
-    // 🚀 OPTIMASI: updateOne
     await User.updateOne({ _id: idSiswa }, { $set: dataUpdate });
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Data berhasil diperbarui.");
@@ -206,7 +201,6 @@ export async function hapusAkunSiswa(idSiswa) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 OPTIMASI: Delete Paralel
     await Promise.all([
       User.deleteOne({ _id: idSiswa }),
       StudySession.deleteMany({ siswaId: idSiswa })
@@ -231,7 +225,6 @@ export async function inputAbsenManual(data) {
     const { awal } = timeHelper.getRentangHari(data.tanggal);
     const statusFinal = data.catatan ? `${data.keterangan} (${data.catatan})`.toLowerCase() : data.keterangan.toLowerCase();
 
-    // 🚀 OPTIMASI: updateOne dengan mode upsert
     await StudySession.updateOne(
       { siswaId: data.siswaId, jenisSesi: TIPE_SESI.KELAS, namaMapel: data.mapel, waktuMulai: { $gte: awal } },
       {
@@ -255,8 +248,8 @@ export async function ambilDetailJurnal(idJadwal) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 OPTIMASI: Jangan tarik kolom gak penting (fotoBersama, galeriPapan bisa berat jika base64 panjang)
-    const jadwal = await Jadwal.findById(idJadwal).select("-galeriPapan -fotoBersama").lean();
+    // 🚀 BUG FIXED: Mencabut blokir -fotoBersama dan -galeriPapan agar foto muncul di Cetak Laporan!
+    const jadwal = await Jadwal.findById(idJadwal).lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
@@ -267,7 +260,7 @@ export async function ambilDetailJurnal(idJadwal) {
         .sort({ nama: 1 })
         .lean(),
       StudySession.find({ jenisSesi: TIPE_SESI.KELAS, namaMapel: jadwal.mapel, waktuMulai: { $gte: awal, $lte: akhir } })
-        .select("_id siswaId status waktuMulai waktuSelesai terlambatMenit konsulExtraMenit nilaiTest") // 🚀 OPTIMASI PROJECTION!
+        .select("_id siswaId status waktuMulai waktuSelesai terlambatMenit konsulExtraMenit nilaiTest") 
         .lean()
     ]);
 
@@ -293,7 +286,6 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 OPTIMASI: updateOne
     const updateJadwal = Jadwal.updateOne({ _id: idJadwal }, {
       $set: { bab: dataJurnal.bab, subBab: dataJurnal.subBab, galeriPapan: dataJurnal.galeriPapan, fotoBersama: dataJurnal.fotoBersama }
     });
@@ -328,7 +320,6 @@ export async function paksaHentikanSesi(idSesi, durasiPilihan) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 OPTIMASI: Jangan tarik seluruh document, cukup waktuMulai nya saja
     const sesi = await StudySession.findById(idSesi).select("waktuMulai").lean();
     if (!sesi) return responseHelper.error("Sesi tidak ditemukan.");
 
@@ -344,7 +335,6 @@ export async function paksaHentikanSesi(idSesi, durasiPilihan) {
       catatanInternalBaru = `Dihentikan manual oleh Admin (${durasiPilihan}m)`;
     }
     
-    // 🚀 OPTIMASI: Langsung Update tanpa load Mongoose Model
     await StudySession.updateOne(
       { _id: idSesi },
       { $set: { status: statusBaru, catatanInternal: catatanInternalBaru, waktuSelesai: waktuSelesaiBaru } }
@@ -383,7 +373,6 @@ export async function prosesHapusAbsenStaf(idAbsen) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 OPTIMASI: deleteOne
     await AbsensiPengajar.deleteOne({ _id: idAbsen });
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Data absensi staf dihapus.");
