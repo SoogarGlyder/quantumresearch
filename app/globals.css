@@ -157,6 +157,7 @@ body::before {
    ============================================================================ */
 
 ::-webkit-scrollbar {
+  background-color: var(--background);
   display: none;
   width: 0px;
   background: transparent;
@@ -164,5 +165,6 @@ body::before {
 
 html {
   scrollbar-width: none;
+  background-color: var(--background);
   -ms-overflow-style: none; /* Untuk Edge lawas */
 }
