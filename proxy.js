@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-export function middleware(request) {
+// 🚀 NAMA FUNGSI DIUBAH MENJADI PROXY (STANDAR NEXT.JS 16)
+export function proxy(request) {
   const path = request.nextUrl.pathname;
   
   // 🚀 Ambil Karcis (Token) dan Peran dari Cookie

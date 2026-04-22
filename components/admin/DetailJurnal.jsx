@@ -98,7 +98,7 @@ export default function DetailJurnal({
         <div className={cetakStyles.header}>
           <div>
             <h1 className={cetakStyles.judulHeader}>Laporan Belajar Harian</h1>
-            <p className={cetakStyles.subJudulHeader}>Quantum Research Academy</p>
+            <p className={cetakStyles.subJudulHeader}>Bimbingan Belajar Quantum Research</p>
           </div>
           <div className={cetakStyles.teksKananAtas}>
             <p className={cetakStyles.teksTanggal}>{formatTanggal(detailJadwal.tanggal)}</p>
@@ -183,7 +183,7 @@ export default function DetailJurnal({
         <div className={cetakStyles.footer}>
            Laporan ini dicetak otomatis dari Sistem Akademik Quantum. <br/>
            Dokumentasi foto papan tulis selengkapnya dapat diakses melalui link resmi Admin. <br/>
-           <span className={cetakStyles.copyright}>Quantum Research Academy &copy; {new Date().getFullYear()}</span>
+           <span className={cetakStyles.copyright}>Bimbingan Belajar Quantum Research &copy; {new Date().getFullYear()}</span>
         </div>
       </div>
 

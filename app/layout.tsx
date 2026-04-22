@@ -5,27 +5,29 @@ import "./globals.css";
 // METADATA MASTER (Enterprise Level)
 // ============================================================================
 export const metadata: Metadata = {
+  metadataBase: new URL("https://bimbel-qr.vercel.app"),
   title: {
     default: "Portal Belajar | Quantum Research",
     template: "%s | Quantum Research"
   },
-  description: "Sistem Manajemen Pembelajaran (LMS) Terpadu untuk Siswa dan Pengajar Quantum Research Academy.",
+  description: "Sistem Manajemen Pembelajaran (LMS) Terpadu untuk Siswa dan Pengajar Quantum Research.",
   keywords: ["LMS", "Bimbel", "Quantum Research", "E-learning", "Absensi QR", "Portal Siswa"],
   authors: [{ name: "Quantum IT Team" }],
-  creator: "Quantum Research Academy",
+  creator: "Bimbingan Belajar Quantum Research",
   publisher: "Quantum Research",
+  manifest: "/manifest.json",
   
   openGraph: {
     title: "Quantum Research - Portal Akademik",
     description: "Pantau progres belajar, statistik harian, dan absensi dalam satu genggaman digital.",
     url: "https://bimbel-qr.vercel.app",
-    siteName: "Quantum LMS",
+    siteName: "Quantum Research LMS",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Quantum Research Academy Portal",
+        alt: "Bimbingan Belajar Quantum Research Portal",
       },
     ],
     locale: "id_ID",
