@@ -48,7 +48,7 @@
 
 /* 👇 TAMBAHAN POIN 10: Selection global agar feel brutal terasa di seluruh web */
 ::selection {
-  background-color: var(--brutal-kuning);
+  background-color: var(--brutal-biru);
   color: var(--brutal-hitam);
 }
 
