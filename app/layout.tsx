@@ -15,7 +15,6 @@ export const metadata: Metadata = {
   authors: [{ name: "Quantum IT Team" }],
   creator: "Bimbingan Belajar Quantum Research",
   publisher: "Quantum Research",
-  manifest: "/manifest.json",
   
   openGraph: {
     title: "Quantum Research - Portal Akademik",
@@ -27,7 +26,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Bimbingan Belajar Quantum Research Portal",
+        alt: "Bimbingan Belajar Quantum Research",
       },
     ],
     locale: "id_ID",
