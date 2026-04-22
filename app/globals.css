@@ -151,3 +151,18 @@ body::before {
   background-color: var(--brutal-biru);
   z-index: 99999;
 }
+
+/* ============================================================================
+   4. 🚀 PENGALAMAN NATIVE APP (Sembunyikan Scroll Bar)
+   ============================================================================ */
+
+::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  background: transparent;
+}
+
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none; /* Untuk Edge lawas */
+}
