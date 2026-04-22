@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Sistem Manajemen Pembelajaran (LMS) Terpadu untuk Siswa dan Pengajar Bimbingan Belajar Quantum Research.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
+    background_color: '#2563eb',
     theme_color: '#2563eb',
     orientation: 'portrait',
     icons: [
