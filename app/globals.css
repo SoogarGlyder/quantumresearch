@@ -140,3 +140,14 @@ body {
 .header-aman-poni {
   padding-top: env(safe-area-inset-top);
 }
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: env(safe-area-inset-top);
+  background-color: var(--brutal-biru);
+  z-index: 99999;
+}
