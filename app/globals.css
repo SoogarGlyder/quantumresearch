@@ -132,3 +132,11 @@ body {
 [data-rmiz-modal-portal] {
   z-index: 10000 !important;
 }
+
+/* ============================================================================
+   3. 🚀 OPTIMASI PWA & MOBILE LAYOUT (iOS Notch Fix)
+   ============================================================================ */
+
+.header-aman-poni {
+  padding-top: env(safe-area-inset-top);
+}

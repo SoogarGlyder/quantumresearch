@@ -43,8 +43,8 @@
   max-width: 448px;
   margin: 0 auto;
   position: relative;
-  border-left: 4px solid #111827;
-  border-right: 4px solid #111827;
+  /* border-left: 4px solid #111827;
+  border-right: 4px solid #111827; */
   box-shadow: 0 0 0 rgba(0,0,0,1);
   display: flex;
   flex-direction: column;
@@ -261,7 +261,12 @@
 /* ==========================================================================
    8. MENU NAVIGASI BAWAH (Bold Border)
    ========================================================================== */
-.navMenu { position: fixed; bottom: 0; left: 0; right: 0; max-width: 448px; margin: 0 auto; background-color: white; border-top: 4px solid #111827; border-left: 4px solid #111827; border-right: 4px solid #111827; display: flex; justify-content: space-around; align-items: center; padding: 12px 0; z-index: 50; }
+.navMenu { position: fixed; bottom: 0; left: 0; right: 0; max-width: 448px; margin: 0 auto; background-color: white;
+   border-top: 4px solid #111827;
+   /* border-bottom: 4px solid #111827;
+   /* border-left: 4px solid #111827;
+   border-right: 4px solid #111827; */
+   display: flex; justify-content: space-around; align-items: center; padding: 12px 0; z-index: 50; }
 .navButton { display: flex; flex-direction: column; align-items: center; padding: 8px; width: 20%; border: none; background: transparent; color: #9ca3af; cursor: pointer; transition: color 0.1s; }
 .navButtonActive { color: #2563eb; }
 .navIcon { font-size: 28px; margin-bottom: 6px; transition: transform 0.1s; }

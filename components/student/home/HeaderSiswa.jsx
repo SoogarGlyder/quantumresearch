@@ -15,7 +15,7 @@ const HeaderSiswa = memo(({ siswa, statsBulanIni, streakKonsul, onBukaKlasemen }
   const lencanaSiswa = siswa.koleksiLencana || [];
 
   return (
-    <div className={styles.appHeader}>
+    <div className={`${styles.appHeader} header-aman-poni`}>
       <div className={styles.shapeRed}></div>
       <div className={styles.shapeYellow}></div>
       <div className={styles.logoContainer}>

@@ -49,10 +49,15 @@ export const metadata: Metadata = {
     icon: "/logo-qr.png",
     apple: "/logo-qr.png",
   },
+  appleWebApp: {
+    capable: true,
+    title: "Quantum Research LMS",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#facc15", 
+  themeColor: "#2563eb", 
   width: "device-width",
   initialScale: 1,
   maximumScale: 1, 
