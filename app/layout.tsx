@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import UpdatePrompt from "@/components/UpdatePrompt";
+import InstallPrompt from "@/components/InstallPrompt";
 
 // ============================================================================
 // METADATA MASTER (Enterprise Level)
@@ -7,26 +9,26 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://bimbel-qr.vercel.app"),
   title: {
-    default: "Portal Belajar | Quantum Research",
-    template: "%s | Quantum Research"
+    default: "QuRi | Portal Belajar",
+    template: "%s | QuRi"
   },
-  description: "Sistem Manajemen Pembelajaran (LMS) Terpadu untuk Siswa dan Pengajar Quantum Research.",
-  keywords: ["LMS", "Bimbel", "Quantum Research", "E-learning", "Absensi QR", "Portal Siswa"],
-  authors: [{ name: "Quantum IT Team" }],
+  description: "QuRi: Sistem Manajemen Pembelajaran (LMS) Terpadu untuk Siswa dan Pengajar Bimbingan Belajar Quantum Research.",
+  keywords: ["QuRi", "LMS", "Bimbel", "Quantum Research", "E-learning", "Absensi QR", "Portal Siswa"],
+  authors: [{ name: "Quantum Research IT Team" }],
   creator: "Bimbingan Belajar Quantum Research",
   publisher: "Quantum Research",
   
   openGraph: {
-    title: "Quantum Research - Portal Akademik",
-    description: "Pantau progres belajar, statistik harian, dan absensi dalam satu genggaman digital.",
+    title: "QuRi - Portal Akademik",
+    description: "Pantau progres belajar, statistik harian, dan absensi dalam satu genggaman digital bersama QuRi.",
     url: "https://bimbel-qr.vercel.app",
-    siteName: "Quantum Research LMS",
+    siteName: "QuRi",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Bimbingan Belajar Quantum Research",
+        alt: "QuRi by Quantum Research",
       },
     ],
     locale: "id_ID",
@@ -35,8 +37,8 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Quantum Research Portal",
-    description: "Sistem LMS Modern Terintegrasi.",
+    title: "QuRi Portal",
+    description: "QuRi: Sistem LMS Modern Terintegrasi.",
     images: ["/og-image.png"],
   },
 
@@ -51,7 +53,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "Quantum Research LMS",
+    title: "QuRi",
     statusBarStyle: "black-translucent",
   },
 };
@@ -82,6 +84,8 @@ export default function RootLayout({
      */
     <html lang="id" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning>
+        <UpdatePrompt />
+        <InstallPrompt />
         {children}
       </body>
     </html>

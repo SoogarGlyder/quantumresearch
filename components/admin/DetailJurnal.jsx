@@ -91,7 +91,6 @@ export default function DetailJurnal({
       {/* ================================================================= */}
       {/* AREA RENDER KERTAS CETAK (POTRAIT) */}
       {/* ================================================================= */}
-      {/* 🚀 FIX: Diberi style inline width: 800px agar memanjang ke bawah layaknya A4 */}
       <div id="kertas-laporan-jurnal" style={{ display: 'none', width: '800px', margin: '0 auto' }} className={cetakStyles.kertasLaporan}>
         
         {/* HEADER DOKUMEN */}
@@ -106,7 +105,7 @@ export default function DetailJurnal({
           </div>
         </div>
 
-        {/* INFO KELAS (Side-by-side tetap aman di 800px) */}
+        {/* INFO KELAS */}
         <div className={cetakStyles.infoBox}>
           <div className={cetakStyles.infoKiri}>
             <p className={cetakStyles.labelLabel}>Kelas & Mata Pelajaran</p>
@@ -120,12 +119,11 @@ export default function DetailJurnal({
           </div>
         </div>
 
-        {/* 🚀 LAYOUT POTRAIT: FOTO DI ATAS */}
+        {/* 📸 FOTO DOKUMENTASI */}
         <div style={{ marginBottom: '40px' }}>
           <h3 className={cetakStyles.judulBagian} style={{ display: 'block', textAlign: 'center' }}>📸 Dokumentasi Kelas</h3>
           {formJurnal.fotoBersama ? (
             <div className={cetakStyles.wadahFoto}>
-              {/* Foto dibikin full width dengan max-height proporsional */}
               <img src={ubahKeJpg(formJurnal.fotoBersama)} alt="Foto Bersama" className={cetakStyles.fotoBersama} style={{ width: '100%', maxHeight: '500px', objectFit: 'cover' }} crossOrigin="anonymous" />
               <div className={cetakStyles.captionFoto}>Keseruan Kelas Quantum Hari Ini</div>
             </div>
@@ -136,7 +134,7 @@ export default function DetailJurnal({
           )}
         </div>
 
-        {/* 🚀 LAYOUT POTRAIT: TABEL DI BAWAH FOTO */}
+        {/* 📊 TABEL ABSENSI (CETAK) */}
         <div style={{ marginBottom: '24px' }}>
           <h3 className={cetakStyles.judulBagian} style={{ display: 'block', textAlign: 'center' }}>📊 Kehadiran & Kedisiplinan</h3>
           <table className={cetakStyles.tabelLaporan} style={{ width: '100%' }}>
@@ -164,14 +162,30 @@ export default function DetailJurnal({
                       {isAbsen || isBelumAbsen ? "-" : `${siswa.waktuMulai ? formatJam(siswa.waktuMulai) : '--:--'} - ${siswa.waktuSelesai ? formatJam(siswa.waktuSelesai) : '??:??'}`}
                     </td>
                     
+                    {/* 🚀 Kolom Absensi: Menampilkan "Tidak Hadir" jika absen */}
                     <td className={`${cetakStyles.statusSiswa} ${isAbsen ? cetakStyles.bgAbsen : isHadir ? cetakStyles.bgHadir : ''}`} style={{ padding: '16px' }}>
-                      {isAbsen ? "Absen" : isBelumAbsen ? "Belum" : "Hadir"}
+                      {isAbsen ? "Tidak Hadir" : isBelumAbsen ? "Belum" : "Hadir"}
                     </td>
                     
+                    {/* 🚀 Kolom Keterangan: Menampilkan Izin/Sakit/Alpa dan Catatan Guru */}
                     <td style={{ textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '16px' }}>
-                      {telat && <div style={{ color: '#ef4444' }}>Telat {siswa.terlambatMenit}m</div>}
-                      {extra && <div style={{ color: '#2563eb' }}>Extra {siswa.konsulExtraMenit}m</div>}
-                      {!telat && !extra ? "-" : null}
+                      {isAbsen ? (
+                        <div style={{ color: '#ef4444' }}>
+                          <span style={{ textTransform: 'uppercase' }}>{siswa.statusAbsen}</span>
+                          {/* Jika ada keterangan dari guru, tampilkan di bawahnya */}
+                          {siswa.keterangan && (
+                            <span style={{ display: 'block', fontSize: '10px', color: '#4b5563', marginTop: '4px', fontStyle: 'italic' }}>
+                              "{siswa.keterangan}"
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          {telat && <div style={{ color: '#ef4444' }}>Telat {siswa.terlambatMenit}m</div>}
+                          {extra && <div style={{ color: '#2563eb' }}>Extra {siswa.konsulExtraMenit}m</div>}
+                          {!telat && !extra ? "-" : null}
+                        </>
+                      )}
                     </td>
                   </tr>
                 );
@@ -189,7 +203,7 @@ export default function DetailJurnal({
 
 
       {/* ================================================================= */}
-      {/* AREA RENDER FORM (Tampilan UI Interaktif Admin) - TIDAK BERUBAH */}
+      {/* AREA RENDER FORM (Tampilan UI Interaktif Admin) */}
       {/* ================================================================= */}
       <div className={styles.aksiAtas}>
         <button onClick={tutupJurnal} className={`${styles.tombolBatalForm} ${styles.tombolKembali}`}>
@@ -226,7 +240,6 @@ export default function DetailJurnal({
           </div>
           
           <div className={styles.formGrid}>
-            {/* UPLOAD FOTO BERSAMA */}
             <div className={styles.formKolom}>
               <label className={styles.labelForm}><FaCameraRetro /> Upload Foto Kelas (Sampul Laporan)</label>
               <CldUploadWidget 
@@ -242,7 +255,6 @@ export default function DetailJurnal({
               {formJurnal.fotoBersama && <p style={{fontSize: '13px', color: '#15803d', fontWeight: '900', marginTop: '8px'}}>✅ Foto siap dicetak!</p>}
             </div>
 
-            {/* UPLOAD FOTO PAPAN TULIS */}
             <div className={styles.formKolom}>
               <label className={styles.labelForm}><FaImages /> Upload Foto Papan Tulis (Arsip Bebas)</label>
               <CldUploadWidget 
@@ -315,9 +327,17 @@ export default function DetailJurnal({
                             )}
                           </td>
 
+                          {/* 🚀 Kolom Keterangan di UI Admin juga dimodifikasi untuk menampilkan catatan pengajar */}
                           <td style={{textAlign: 'center'}}>
                             {isAbsen ? (
-                              <span className={styles.teksAlpa}>{siswa.statusAbsen.toUpperCase()}</span>
+                              <span className={styles.teksAlpa} style={{ display: 'inline-block', lineHeight: '1.4' }}>
+                                {siswa.statusAbsen.toUpperCase()}
+                                {siswa.keterangan && (
+                                  <span style={{ display: 'block', fontSize: '11px', color: '#6b7280', fontWeight: 'bold', fontStyle: 'italic' }}>
+                                    "{siswa.keterangan}"
+                                  </span>
+                                )}
+                              </span>
                             ) : isBelumAbsen ? (
                                <span className={styles.teksPudar}>-</span>
                             ) : siswa.terlambatMenit > 0 ? (
