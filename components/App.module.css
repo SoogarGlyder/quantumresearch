@@ -64,7 +64,9 @@
    ========================================================================== */
 .appHeader {
   background-color: #2563eb;
-  padding: 24px 24px 50px;
+  padding-bottom: 50px;
+  padding-left: 24px;
+  padding-right: 24px;
   box-shadow: 0 4px 0 #111827;
   color: white;
   position: relative;
@@ -94,7 +96,7 @@
 /* ==========================================================================
    3. PROFIL & KARTU NEO-BRUTAL (Hard Shadows & Borders)
    ========================================================================== */
-.logoContainer { margin-bottom: 24px; position: relative; z-index: 10; }
+.logoContainer { padding-top: 24px; margin-bottom: 24px; position: relative; z-index: 10; }
 .logo { background-color: white; padding: 8px 20px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
 
 .identityContainer { width: -webkit-fill-available; display: inline-grid; align-items: flex-end; position: relative; z-index: 10; }
