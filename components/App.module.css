@@ -73,7 +73,7 @@
 }
 
 /* Orbs diubah jadi bentuk solid nyentrik */
-.shapeRed { position: absolute; top: -20px; right: -20px; width: 120px; height: 120px; background-color: #ef4444; border: 4px solid #111827; border-radius: 50%; }
+.shapeRed { position: absolute; right: -20px; width: 120px; height: 120px; background-color: #ef4444; border: 4px solid #111827; border-radius: 50%; }
 .shapeYellow { position: absolute; bottom: -40px; left: -40px; width: 100px; height: 100px; background-color: #facc15; border: 4px solid #111827; transform: rotate(45deg); border-radius: 16px; }
 
 .headerTitle { 
@@ -343,3 +343,81 @@
    ========================================================================== */
 .fill { width: 100%; background-color: #dbeafe; border: 3px solid #111827; border-radius: 12px; padding: 16px; margin-bottom: 4px; font-size: 16px; font-weight: 900; color: #111827; outline: none; appearance: none; box-shadow: 4px 4px 0 #111827; }
 .fill:focus { background-color: #bfdbfe; }
+
+/* ==========================================================================
+   15. UJIAN CBT (MODAL & KERTAS SOAL)
+   ========================================================================== */
+
+/* Layout Dasar Modal */
+.cbtFixedOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.cbtBgLight { background-color: #f8fafc; }
+.cbtBgDark { background-color: rgba(15, 23, 42, 0.9); }
+.cbtBgDarker { background-color: rgba(0,0,0,0.8); }
+.cbtBgOffline { background-color: rgba(15, 23, 42, 0.95); }
+
+/* Kotak Peringatan / Prompt */
+.cbtPromptCard { background: white; padding: 30px; border-radius: 16px; max-width: 400px; width: 100%; text-align: center; border: 4px solid #111827; box-shadow: 8px 8px 0 #facc15; }
+.cbtPromptCardDanger { box-shadow: 8px 8px 0 #ef4444; background: #fef2f2; max-width: 350px; }
+.cbtPromptCardOffline { box-shadow: 8px 8px 0 #111827; background: #fef08a; }
+
+.cbtIconBox { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #111827; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+.cbtIconBoxDanger { background: #fef2f2; box-shadow: 4px 4px 0 #ef4444; }
+
+.cbtTitle { margin: 0 0 10px 0; color: #111827; font-weight: 900; text-transform: uppercase; }
+.cbtDesc { color: #334155; font-size: 15px; font-weight: bold; line-height: 1.6; margin-bottom: 30px; }
+
+/* Tombol Aksi Modal */
+.cbtBtnGroup { display: flex; gap: 12px; }
+.cbtBtn { padding: 15px; border: 3px solid #111827; border-radius: 12px; font-weight: 900; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 4px 4px 0 #111827; transition: transform 0.1s, box-shadow 0.1s; }
+.cbtBtn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.cbtBtn:disabled { cursor: not-allowed; opacity: 0.7; }
+
+.cbtBtnBatal { background: #f1f5f9; color: #111827; flex: 1; }
+.cbtBtnPrimary { background: #3b82f6; color: white; flex: 2; }
+.cbtBtnDanger { background: #ef4444; color: white; width: 100%; }
+.cbtBtnSuccess { background: #22c55e; color: #111827; flex: 1; }
+.cbtBtnSecondary { background: #e2e8f0; color: #111827; flex: 1; box-shadow: none; }
+.cbtBtnDark { background: #111827; color: white; flex: 1; }
+
+/* Header Ujian */
+.cbtHeader { flex-shrink: 0; border-bottom: 4px solid #111827; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+.cbtHeaderNormal { background: #facc15; }
+.cbtHeaderReview { background: #dcfce3; }
+.cbtTimer { display: flex; align-items: center; gap: 6px; font-weight: 900; font-size: 15px; margin-top: 4px; }
+.cbtTimerDanger { color: #ef4444; }
+.cbtTimerSafe { color: #111827; }
+.cbtBadgeReview { background: #22c55e; color: white; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; border: 2px solid #111827; margin-top: 4px; display: inline-block; }
+
+/* Palet Soal */
+.paletContainer { position: sticky; top: 0; z-index: 10; background: white; padding: 15px 20px; border-bottom: 4px solid #111827; display: flex; flex-direction: column; gap: 10px; }
+.paletScroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; padding-right: 2px; -webkit-overflow-scrolling: touch; user-select: none; }
+.paletBtn { flex-shrink: 0; width: 45px; height: 45px; margin: 2px 0; font-weight: 900; font-size: 16px; display: flex; justify-content: center; align-items: center; border: 3px solid #111827; border-radius: 10px; cursor: pointer; transition: all 0.1s; }
+
+/* Area Kertas Soal Dasar */
+.kertasSoalArea { padding: 24px; flex-grow: 1; display: flex; flex-direction: column; max-width: 800px; margin: 0 auto; width: 100%; }
+.kertasSoalCard { margin-bottom: 30px; }
+.kertasHeaderInfo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.badgeSoalNo { font-weight: 900; font-size: 18px; color: #111827; background: #facc15; padding: 6px 12px; border-radius: 8px; border: 2px solid #111827; }
+.badgeSoalExp { font-weight: 900; font-size: 14px; color: #111827; background: #e2e8f0; padding: 4px 10px; border-radius: 6px; border: 2px solid #111827; }
+
+/* Konten Kertas Soal */
+.soalImage { max-width: 100%; margin-bottom: 20px; object-fit: contain; }
+.soalText { font-size: 20px; color: #111827; line-height: 1.7; padding: 0 1px 0 1px; }
+
+/* Opsi Jawaban PG / Kompleks */
+.opsiContainer { display: flex; flex-direction: column; gap: 16px; }
+.opsiItem { display: flex; gap: 16px; align-items: center; padding: 16px; border: 3px solid #111827; border-radius: 12px; transition: 0.1s; }
+.opsiHuruf { font-weight: 900; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; border-radius: 8px; border: 2px solid #111827; font-size: 16px; }
+.opsiText { font-size: 16px; font-weight: bold; color: #111827; }
+
+/* Opsi Benar/Salah */
+.opsiBsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.opsiBsBtn { padding: 20px; font-size: 20px; font-weight: 900; border-radius: 12px; transition: 0.1s; }
+
+/* Isian Singkat */
+.isianInput { width: 100%; padding: 20px; border: 3px solid #111827; border-radius: 12px; font-size: 20px; font-weight: 900; outline: none; color: #111827; }
+.isianKunciBox { padding: 16px; border-radius: 12px; border: 3px solid #111827; }
+
+/* Pembahasan */
+.pembahasanBox { margin-top: 30px; padding: 20px; background: #fef08a; border: 3px solid #111827; border-radius: 12px; box-shadow: 4px 4px 0 #111827; }
+.pembahasanBadge { display: inline-block; font-weight: 900; color: #111827; margin-bottom: 12px; font-size: 15px; background: white; padding: 4px 10px; border-radius: 6px; border: 2px solid #111827; }

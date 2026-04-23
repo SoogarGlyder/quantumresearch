@@ -4,6 +4,7 @@ import { memo } from "react";
 import { FaCheck, FaXmark as FaCross, FaSquareCheck, FaRegSquare } from "react-icons/fa6";
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import styles from "@/components/App.module.css";
 
 const renderLaTeX = (htmlString) => {
   if (!htmlString) return { __html: "" };
@@ -22,28 +23,24 @@ const KertasSoalCBT = memo(({
   const opsiAbjad = soalSekarang.opsi && Object.keys(soalSekarang.opsi).length === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
 
   return (
-    <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '4px solid #111827', boxShadow: '8px 8px 0 #111827', marginBottom: '30px' }}>
+    <div className={styles.kertasSoalCard}>
       
       {/* HEADER SOAL */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '4px solid #111827', paddingBottom: '16px' }}>
-        <span style={{ fontWeight: '900', fontSize: '18px', color: '#111827', background: '#facc15', padding: '6px 12px', borderRadius: '8px', border: '2px solid #111827' }}>
-          SOAL NO. {soalAktif + 1}
-        </span>
-        <span style={{ fontWeight: '900', fontSize: '14px', color: '#111827', background: '#e2e8f0', padding: '4px 10px', borderRadius: '6px', border: '2px solid #111827' }}>
-          {soalSekarang.bobotExp || 20} EXP
-        </span>
+      <div className={styles.kertasHeaderInfo}>
+        <span className={styles.badgeSoalNo}>SOAL NO. {soalAktif + 1}</span>
+        <span className={styles.badgeSoalExp}>{soalSekarang.bobotExp || 20} EXP</span>
       </div>
 
       {/* GAMBAR & TEKS SOAL */}
       <div style={{ marginBottom: '30px' }}>
         {soalSekarang.gambar && (
-          <img src={soalSekarang.gambar} alt="Soal" style={{ maxWidth: '100%', maxHeight: '280px', borderRadius: '12px', border: '3px solid #111827', marginBottom: '20px', objectFit: 'contain', pointerEvents: isReviewMode ? 'auto' : 'none', boxShadow: '4px 4px 0 #111827' }} />
+          <img src={soalSekarang.gambar} alt="Soal" className={styles.soalImage} style={{ pointerEvents: isReviewMode ? 'auto' : 'none' }} />
         )}
-        <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pertanyaan)} style={{ fontSize: '18px', color: '#111827', fontWeight: 'bold', lineHeight: '1.7' }} />
+        <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pertanyaan)} className={styles.soalText} />
       </div>
 
       {/* OPSI JAWABAN */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className={styles.opsiContainer}>
         
         {tipeSoalAktif === "PG" && opsiAbjad.map((opsi) => {
           if (!soalSekarang.opsi || !soalSekarang.opsi[opsi]) return null;
@@ -61,11 +58,12 @@ const KertasSoalCBT = memo(({
 
           return (
             <div key={opsi} onClick={() => handlePilihJawaban(soalAktif, opsi)}
-              style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px', background: bgOpsi, border: '3px solid #111827', borderRadius: '12px', boxShadow: bayanganOpsi, cursor: isReviewMode ? 'default' : 'pointer', transition: '0.1s', transform: (!isReviewMode && isSelected) ? 'translate(2px, 2px)' : 'none' }}>
-              <span style={{ fontWeight: '900', width: '36px', height: '36px', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0, background: bgHuruf, color: textHuruf, borderRadius: '8px', border: '2px solid #111827', fontSize: '16px' }}>
+              className={styles.opsiItem}
+              style={{ background: bgOpsi, boxShadow: bayanganOpsi, cursor: isReviewMode ? 'default' : 'pointer', transform: (!isReviewMode && isSelected) ? 'translate(2px, 2px)' : 'none' }}>
+              <span className={styles.opsiHuruf} style={{ background: bgHuruf, color: textHuruf }}>
                 {isKunciBenar ? <FaCheck size={16}/> : (isSalahPilih ? <FaCross size={16}/> : opsi)}
               </span>
-              <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.opsi[opsi])} style={{ fontSize: '16px', fontWeight: 'bold', color: '#111827' }} />
+              <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.opsi[opsi])} className={styles.opsiText} />
             </div>
           );
         })}
@@ -86,17 +84,18 @@ const KertasSoalCBT = memo(({
 
           return (
             <div key={opsi} onClick={() => handleToggleKompleks(soalAktif, opsi)}
-              style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px', background: bgOpsi, border: '3px solid #111827', borderRadius: '12px', boxShadow: bayanganOpsi, cursor: isReviewMode ? 'default' : 'pointer', transition: '0.1s', transform: (!isReviewMode && isSelected) ? 'translate(2px, 2px)' : 'none' }}>
+              className={styles.opsiItem}
+              style={{ background: bgOpsi, boxShadow: bayanganOpsi, cursor: isReviewMode ? 'default' : 'pointer', transform: (!isReviewMode && isSelected) ? 'translate(2px, 2px)' : 'none' }}>
               <span style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0, color: textHuruf }}>
                  {isSelected || isKunciBenar ? <FaSquareCheck size={26} /> : <FaRegSquare size={26} />}
               </span>
-              <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.opsi[opsi])} style={{ fontSize: '16px', fontWeight: 'bold', color: '#111827' }} />
+              <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.opsi[opsi])} className={styles.opsiText} />
             </div>
           );
         })}
 
         {tipeSoalAktif === "BENAR_SALAH" && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className={styles.opsiBsGrid}>
             {['A', 'B'].map((opsi) => {
               const label = opsi === 'A' ? '✅ BENAR' : '❌ SALAH';
               const isSelected = jawabanSiswa[soalAktif] === opsi;
@@ -113,7 +112,8 @@ const KertasSoalCBT = memo(({
 
               return (
                 <button key={opsi} onClick={() => handlePilihJawaban(soalAktif, opsi)}
-                  style={{ padding: '20px', fontSize: '20px', fontWeight: '900', border: `4px solid ${borderCol}`, borderRadius: '12px', cursor: isReviewMode ? 'default' : 'pointer', background: bgOpsi, color: textColor, boxShadow: (isReviewMode || isSelected) ? 'none' : '6px 6px 0 #111827', transform: (!isReviewMode && isSelected) ? 'translate(6px, 6px)' : 'none' }}
+                  className={styles.opsiBsBtn}
+                  style={{ border: `4px solid ${borderCol}`, cursor: isReviewMode ? 'default' : 'pointer', background: bgOpsi, color: textColor, boxShadow: (isReviewMode || isSelected) ? 'none' : '6px 6px 0 #111827', transform: (!isReviewMode && isSelected) ? 'translate(6px, 6px)' : 'none' }}
                 >
                   {label}
                 </button>
@@ -130,10 +130,11 @@ const KertasSoalCBT = memo(({
               value={jawabanSiswa[soalAktif] || ""}
               onChange={(e) => handleInputIsian(soalAktif, e.target.value)}
               disabled={isReviewMode}
-              style={{ width: '100%', padding: '20px', border: '4px solid #111827', borderRadius: '12px', fontSize: '20px', fontWeight: '900', outline: 'none', background: isReviewMode ? '#f1f5f9' : 'white', color: '#111827', boxShadow: isReviewMode ? 'none' : '4px 4px 0 #111827' }}
+              className={styles.isianInput}
+              style={{ background: isReviewMode ? '#f1f5f9' : 'white', boxShadow: isReviewMode ? 'none' : '4px 4px 0 #111827' }}
             />
             {isReviewMode && (
-              <div style={{ padding: '16px', borderRadius: '12px', border: '3px solid #111827', background: String(jawabanSiswa[soalAktif] || "").trim().toLowerCase() === String(soalSekarang.kunciJawaban || "").trim().toLowerCase() ? '#dcfce3' : '#fef2f2' }}>
+              <div className={styles.isianKunciBox} style={{ background: String(jawabanSiswa[soalAktif] || "").trim().toLowerCase() === String(soalSekarang.kunciJawaban || "").trim().toLowerCase() ? '#dcfce3' : '#fef2f2' }}>
                 <span style={{ display: 'block', fontSize: '13px', fontWeight: '900', marginBottom: '4px', color: '#111827' }}>KUNCI JAWABAN YANG BENAR:</span>
                 <span style={{ fontSize: '20px', fontWeight: '900', color: '#166534' }}>{soalSekarang.kunciJawaban}</span>
               </div>
@@ -144,9 +145,9 @@ const KertasSoalCBT = memo(({
 
       {/* BOX PEMBAHASAN */}
       {isReviewMode && soalSekarang.pembahasan && (
-        <div style={{ marginTop: '30px', padding: '20px', background: '#fef08a', border: '3px solid #111827', borderRadius: '12px', boxShadow: '4px 4px 0 #111827' }}>
-          <span style={{ display: 'inline-block', fontWeight: '900', color: '#111827', marginBottom: '12px', fontSize: '15px', background: 'white', padding: '4px 10px', borderRadius: '6px', border: '2px solid #111827' }}>💡 PEMBAHASAN:</span>
-          <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pembahasan)} style={{ fontSize: '16px', color: '#111827', fontWeight: 'bold', lineHeight: '1.6' }} />
+        <div className={styles.pembahasanBox}>
+          <span className={styles.pembahasanBadge}>💡 PEMBAHASAN:</span>
+          <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pembahasan)} className={styles.soalText} style={{ lineHeight: '1.6' }} />
         </div>
       )}
     </div>
