@@ -9,7 +9,7 @@ const StudentBottomNav = memo(({ tab, setTab }) => (
   <nav className={styles.navMenu}>
     <button onClick={() => setTab("home")} className={`${styles.navButton} ${tab === "home" ? styles.navButtonActive : ""}`}>
       <FaHouse className={styles.navIcon} />
-      <span className={styles.teksNav}>Beranda</span>
+      <span className={styles.teksNav}>Home</span>
     </button>
     
     <button onClick={() => setTab("kelas")} className={`${styles.navButton} ${tab === "kelas" ? styles.navButtonActive : ""}`}>
@@ -25,7 +25,7 @@ const StudentBottomNav = memo(({ tab, setTab }) => (
     
     <button onClick={() => setTab("riwayat")} className={`${styles.navButton} ${tab === "riwayat" ? styles.navButtonActive : ""}`}>
       <FaClockRotateLeft className={styles.navIcon} />
-      <span className={styles.teksNav}>Record</span>
+      <span className={styles.teksNav}>Konsul</span>
     </button>
 
     <button onClick={() => setTab("profil")} className={`${styles.navButton} ${tab === "profil" ? styles.navButtonActive : ""}`}>

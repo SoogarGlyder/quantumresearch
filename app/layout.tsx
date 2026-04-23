@@ -52,7 +52,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Quantum Research LMS",
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
 };
 

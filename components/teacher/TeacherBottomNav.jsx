@@ -13,7 +13,7 @@ const TeacherBottomNav = memo(({ tab, setTab }) => {
         aria-label="Beranda Pengajar"
       >
         <FaHouse className={styles.navIcon} />
-        <span className={styles.teksNav}>Beranda</span>
+        <span className={styles.teksNav}>Home</span>
       </button>
 
       <button 

@@ -32,7 +32,7 @@ const HeaderPengajar = memo(({ dataUser, statsPengajar }) => (
             <span className={`${styles.statValue} ${styles.nilaiStatHijau}`}>{statsPengajar.jurnalSelesai}</span>
           </div>
           <div className={styles.statContainer}>        
-            <span className={styles.statLabel} style={{fontSize: '11px'}}>Absensi</span>
+            <span className={styles.statLabel} style={{fontSize: '11px'}}>Presensi</span>
             <span className={`${styles.statValue} ${styles.nilaiStatMerah}`}>{statsPengajar.totalAbsensi}</span>
           </div>
        </div>
