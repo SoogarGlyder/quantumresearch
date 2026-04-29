@@ -1,26 +1,19 @@
 "use client";
 
-// ============================================================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================================================
 import { useState } from "react";
 import { 
   FaArrowLeft, FaCheck, FaImages, FaCameraRetro, 
-  FaDownload, FaClock, FaTriangleExclamation 
+  FaDownload, FaClock, FaTriangleExclamation, FaXmark
 } from "react-icons/fa6";
 import { CldUploadWidget } from 'next-cloudinary';
-import html2canvas from "html2canvas";
+import { toPng } from 'html-to-image'; // 🚀 MENGGUNAKAN HTML-TO-IMAGE
 
-// 🚀 Menggunakan formatJam dari helper agar seragam dengan TabKelas
 import { formatTanggal, formatYYYYMMDD, formatJam } from "../../utils/formatHelper";
 import { KONFIGURASI_MEDIA, STATUS_SESI, LABEL_SISTEM } from "../../utils/constants";
 
 import styles from "../../app/admin/AdminPage.module.css";
 import cetakStyles from "../../app/admin/LaporanCetak.module.css";
 
-// ============================================================================
-// 2. MAIN EXPORT COMPONENT
-// ============================================================================
 export default function DetailJurnal({ 
   detailJadwal, 
   dataSiswa, 
@@ -33,6 +26,7 @@ export default function DetailJurnal({
   pesan 
 }) {
   const [sedangMencetak, setSedangMencetak] = useState(false);
+  const [showModalPratinjau, setShowModalPratinjau] = useState(false);
 
   const ubahKeJpg = (url) => {
     if (!url) return "";
@@ -48,34 +42,22 @@ export default function DetailJurnal({
     setDataSiswa(newData);
   };
 
-  const ubahExtraMenit = (index, nilaiBaru) => {
-    const newData = [...dataSiswa];
-    newData[index].konsulExtraMenit = nilaiBaru === "" ? "" : Math.max(0, Number(nilaiBaru));
-    setDataSiswa(newData);
-  };
-
   const cetakLaporanKeGambar = async () => {
     setSedangMencetak(true);
     try {
-      const elemenLaporan = document.getElementById("kertas-laporan-jurnal");
-      elemenLaporan.style.display = "block";
+      const elemenLaporan = document.getElementById("wrapper-kertas-jurnal");
       
-      const canvas = await html2canvas(elemenLaporan, {
-        scale: 2, 
+      // 🚀 IMPLEMENTASI HTML-TO-IMAGE UNTUK JURNAL
+      const dataUrl = await toPng(elemenLaporan, { 
+        quality: 1.0, 
         backgroundColor: "#fdfbf7",
-        useCORS: true, 
-        allowTaint: false,
+        pixelRatio: 2 // Kualitas High Definition
       });
       
-      elemenLaporan.style.display = "none";
-
-      const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
-      link.href = image;
       link.download = `Laporan-${detailJadwal.mapel}-${detailJadwal.kelasTarget}-${formatYYYYMMDD(new Date(detailJadwal.tanggal))}.png`;
-      document.body.appendChild(link);
+      link.href = dataUrl;
       link.click();
-      document.body.removeChild(link);
       
     } catch (error) {
       console.error("[ERROR Cetak Jurnal]:", error);
@@ -89,129 +71,165 @@ export default function DetailJurnal({
     <div className={styles.isiTab}>
       
       {/* ================================================================= */}
-      {/* AREA RENDER KERTAS CETAK (POTRAIT) */}
+      {/* 🚀 MODAL PRATINJAU CETAK (Pop-Up) */}
       {/* ================================================================= */}
-      <div id="kertas-laporan-jurnal" style={{ display: 'none', width: '800px', margin: '0 auto' }} className={cetakStyles.kertasLaporan}>
-        
-        {/* HEADER DOKUMEN */}
-        <div className={cetakStyles.header}>
-          <div>
-            <h1 className={cetakStyles.judulHeader}>Laporan Belajar Harian</h1>
-            <p className={cetakStyles.subJudulHeader}>Bimbingan Belajar Quantum Research</p>
+      {showModalPratinjau && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(17,24,39,0.95)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', padding: '40px 20px' }}>
+          
+          {/* Header Aksi Modal */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '880px', marginBottom: '20px', gap: '16px' }}>
+            <button 
+              onClick={() => setShowModalPratinjau(false)} 
+              style={{ background: '#ef4444', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 'bold', border: '3px solid #111827', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <FaXmark /> Tutup Pratinjau
+            </button>
+            <button 
+              onClick={cetakLaporanKeGambar} 
+              disabled={sedangMencetak} 
+              style={{ flex: 1, background: '#2563eb', color: 'white', padding: '12px 24px', borderRadius: '12px', fontWeight: 900, border: '3px solid #111827', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '4px 4px 0 #facc15' }}
+            >
+              <FaDownload /> {sedangMencetak ? "Mencetak..." : "Download Gambar Sekarang"}
+            </button>
           </div>
-          <div className={cetakStyles.teksKananAtas}>
-            <p className={cetakStyles.teksTanggal}>{formatTanggal(detailJadwal.tanggal)}</p>
-            <p className={cetakStyles.teksJam}>⏰ {detailJadwal.jamMulai} - {detailJadwal.jamSelesai}</p>
+
+          {/* ========================================================= */}
+          {/* 1. PEMBUNGKUS LUAR (Wrapper) -> TARGET KAMERA html-to-image */}
+          {/* ========================================================= */}
+          <div 
+            id="wrapper-kertas-jurnal" 
+            style={{ 
+              background: '#fdfbf7', // Latar meja
+              padding: '40px',       // 🚀 RUANG AGAR BAYANGAN MASUK FRAME
+              display: 'flex',
+              justifyContent: 'center',
+              width: '880px',        // 800px Kertas + (40px padding kiri & kanan)
+              flexShrink: 0
+            }}
+          >
+            {/* ========================================================= */}
+            {/* 2. KERTAS ASLINYA (Putih dengan Bayangan) */}
+            {/* ========================================================= */}
+            <div 
+              className={cetakStyles.kertasLaporan}
+            >
+              <div className={cetakStyles.header}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '10px' }}>
+                  <img src="/logo-qr-persegi.png" alt="Logo" style={{ height: '90px', borderRight: '3px solid #111827', paddingRight: '15px'}} />
+                  <div>
+                    <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#111827' }}>JURNAL BELAJAR HARIAN</h1>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbel Quantum Research Cempaka Putih</p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>Jalan Cempaka Putih Tengah XV No.05</p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>021 2169 0016 | 0896 9612 9658</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={cetakStyles.infoBox}>
+                <div className={cetakStyles.infoKiri}>
+                  <p className={cetakStyles.labelLabel}>Kelas & Mata Pelajaran</p>
+                  <p className={cetakStyles.nilaiLabelKiri}>Kelas: {detailJadwal.kelasTarget}</p>
+                  <p className={cetakStyles.nilaiLabelKiri}>Mapel: {detailJadwal.mapel}</p>
+                  <p className={cetakStyles.nilaiLabelKiri}>Tanggal: {formatTanggal(detailJadwal.tanggal)}</p>
+                  <p className={cetakStyles.nilaiLabelKiri}>Waktu: {detailJadwal.jamMulai} - {detailJadwal.jamSelesai}</p>
+                </div>
+                <div className={cetakStyles.infoKanan}>
+                  <p className={cetakStyles.labelLabel}>Pokok Bahasan Materi</p>
+                  <p className={cetakStyles.nilaiLabelKanan}>{formJurnal.bab || "Belum Diisi"}</p>
+                  <p className={cetakStyles.nilaiSubBab}>{formJurnal.subBab ? `${formJurnal.subBab}` : ""}</p>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '40px' }}>
+                <h3 className={cetakStyles.judulBagian} style={{ display: 'block', textAlign: 'center' }}>Dokumentasi Kelas</h3>
+                {formJurnal.fotoBersama ? (
+                  <div className={cetakStyles.wadahFoto}>
+                    <img src={ubahKeJpg(formJurnal.fotoBersama)} alt="Foto Bersama" className={cetakStyles.fotoBersama} style={{ width: '100%', maxHeight: '500px', objectFit: 'cover' }} crossOrigin="anonymous" />
+                    <div className={cetakStyles.captionFoto}>Foto Adik-Adik dari Kelas {detailJadwal.kelasTarget}</div>
+                  </div>
+                ) : (
+                  <div className={cetakStyles.fotoKosong} style={{ height: '200px' }}>
+                    <p className={cetakStyles.teksFotoKosong}>Tanpa Dokumentasi Foto</p>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 className={cetakStyles.judulBagian} style={{ display: 'block', textAlign: 'center' }}>Kehadiran & Kedisiplinan</h3>
+                <table className={cetakStyles.tabelLaporan} style={{ width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding: '16px' }}>Nama Siswa</th>
+                      <th style={{ textAlign: 'center', padding: '16px' }}>Waktu Sesi</th>
+                      <th style={{ textAlign: 'center', padding: '16px' }}>Kehadiran</th>
+                      <th style={{ textAlign: 'center', padding: '16px' }}>Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dataSiswa.map(siswa => {
+                      const isHadir = siswa.statusAbsen === STATUS_SESI.SELESAI.id || siswa.statusAbsen === STATUS_SESI.BERJALAN.id;
+                      const isBelumAbsen = siswa.statusAbsen === LABEL_SISTEM.BELUM_ABSEN;
+                      const isAbsen = !isHadir && !isBelumAbsen;
+                      const telat = siswa.terlambatMenit > 0;
+                      const extra = siswa.konsulExtraMenit > 0;
+
+                      return (
+                        <tr key={siswa.siswaId}>
+                          <td className={cetakStyles.namaSiswa} style={{ padding: '16px' }}>{siswa.nama}</td>
+                          <td style={{ textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#4b5563', padding: '16px' }}>
+                            {isAbsen || isBelumAbsen ? "-" : `${siswa.waktuMulai ? formatJam(siswa.waktuMulai) : '--:--'} - ${siswa.waktuSelesai ? formatJam(siswa.waktuSelesai) : '??:??'}`}
+                          </td>
+                          <td className={`${cetakStyles.statusSiswa} ${isAbsen ? cetakStyles.bgAbsen : isHadir ? cetakStyles.bgHadir : ''}`} style={{ padding: '16px' }}>
+                            {isAbsen ? "Tidak Hadir" : isBelumAbsen ? "Belum" : "Hadir"}
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '16px' }}>
+                            {isAbsen ? (
+                              <div style={{ color: '#ef4444' }}>
+                                <span style={{ textTransform: 'uppercase' }}>{siswa.statusAbsen}</span>
+                                {siswa.keterangan && (
+                                  <span style={{ display: 'block', fontSize: '10px', color: '#4b5563', marginTop: '4px', fontStyle: 'italic' }}>
+                                    "{siswa.keterangan}"
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <>
+                                {telat && <div style={{ color: '#ef4444' }}>Telat {siswa.terlambatMenit}m</div>}
+                                {extra && <div style={{ color: '#2563eb' }}>Extra {siswa.konsulExtraMenit}m</div>}
+                                {!telat && !extra ? "-" : null}
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className={cetakStyles.footer}>
+                 Laporan ini dicetak otomatis dari Sistem Akademik Quantum. <br/>
+                 Dokumentasi foto papan tulis selengkapnya dapat diakses melalui link resmi Admin. <br/>
+                 <span className={cetakStyles.copyright}>Bimbingan Belajar Quantum Research &copy; {new Date().getFullYear()}</span>
+              </div>
+            </div> 
+            {/* Akhir Kertas Asli */}
           </div>
+          {/* Akhir Wrapper */}
         </div>
-
-        {/* INFO KELAS */}
-        <div className={cetakStyles.infoBox}>
-          <div className={cetakStyles.infoKiri}>
-            <p className={cetakStyles.labelLabel}>Kelas & Mata Pelajaran</p>
-            <p className={cetakStyles.nilaiLabel}>{detailJadwal.kelasTarget}</p>
-            <p className={cetakStyles.nilaiLabelBiru}>{detailJadwal.mapel}</p>
-          </div>
-          <div className={cetakStyles.infoKanan}>
-            <p className={cetakStyles.labelLabel}>Pokok Bahasan Materi</p>
-            <p className={cetakStyles.nilaiLabel}>{formJurnal.bab || "Belum Diisi"}</p>
-            <p className={cetakStyles.nilaiSubBab}>{formJurnal.subBab ? `(${formJurnal.subBab})` : ""}</p>
-          </div>
-        </div>
-
-        {/* 📸 FOTO DOKUMENTASI */}
-        <div style={{ marginBottom: '40px' }}>
-          <h3 className={cetakStyles.judulBagian} style={{ display: 'block', textAlign: 'center' }}>📸 Dokumentasi Kelas</h3>
-          {formJurnal.fotoBersama ? (
-            <div className={cetakStyles.wadahFoto}>
-              <img src={ubahKeJpg(formJurnal.fotoBersama)} alt="Foto Bersama" className={cetakStyles.fotoBersama} style={{ width: '100%', maxHeight: '500px', objectFit: 'cover' }} crossOrigin="anonymous" />
-              <div className={cetakStyles.captionFoto}>Keseruan Kelas Quantum Hari Ini</div>
-            </div>
-          ) : (
-            <div className={cetakStyles.fotoKosong} style={{ height: '200px' }}>
-              <p className={cetakStyles.teksFotoKosong}>📷 Tanpa Dokumentasi Foto</p>
-            </div>
-          )}
-        </div>
-
-        {/* 📊 TABEL ABSENSI (CETAK) */}
-        <div style={{ marginBottom: '24px' }}>
-          <h3 className={cetakStyles.judulBagian} style={{ display: 'block', textAlign: 'center' }}>📊 Kehadiran & Kedisiplinan</h3>
-          <table className={cetakStyles.tabelLaporan} style={{ width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ padding: '16px' }}>Nama Siswa</th>
-                <th style={{ textAlign: 'center', padding: '16px' }}>Waktu Sesi</th>
-                <th style={{ textAlign: 'center', padding: '16px' }}>Absensi</th>
-                <th style={{ textAlign: 'center', padding: '16px' }}>Keterangan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dataSiswa.map(siswa => {
-                const isHadir = siswa.statusAbsen === STATUS_SESI.SELESAI.id || siswa.statusAbsen === STATUS_SESI.BERJALAN.id;
-                const isBelumAbsen = siswa.statusAbsen === LABEL_SISTEM.BELUM_ABSEN;
-                const isAbsen = !isHadir && !isBelumAbsen;
-                const telat = siswa.terlambatMenit > 0;
-                const extra = siswa.konsulExtraMenit > 0;
-
-                return (
-                  <tr key={siswa.siswaId}>
-                    <td className={cetakStyles.namaSiswa} style={{ padding: '16px' }}>{siswa.nama}</td>
-                    
-                    <td style={{ textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#4b5563', padding: '16px' }}>
-                      {isAbsen || isBelumAbsen ? "-" : `${siswa.waktuMulai ? formatJam(siswa.waktuMulai) : '--:--'} - ${siswa.waktuSelesai ? formatJam(siswa.waktuSelesai) : '??:??'}`}
-                    </td>
-                    
-                    {/* 🚀 Kolom Absensi: Menampilkan "Tidak Hadir" jika absen */}
-                    <td className={`${cetakStyles.statusSiswa} ${isAbsen ? cetakStyles.bgAbsen : isHadir ? cetakStyles.bgHadir : ''}`} style={{ padding: '16px' }}>
-                      {isAbsen ? "Tidak Hadir" : isBelumAbsen ? "Belum" : "Hadir"}
-                    </td>
-                    
-                    {/* 🚀 Kolom Keterangan: Menampilkan Izin/Sakit/Alpa dan Catatan Guru */}
-                    <td style={{ textAlign: 'center', fontWeight: '900', fontSize: '14px', padding: '16px' }}>
-                      {isAbsen ? (
-                        <div style={{ color: '#ef4444' }}>
-                          <span style={{ textTransform: 'uppercase' }}>{siswa.statusAbsen}</span>
-                          {/* Jika ada keterangan dari guru, tampilkan di bawahnya */}
-                          {siswa.keterangan && (
-                            <span style={{ display: 'block', fontSize: '10px', color: '#4b5563', marginTop: '4px', fontStyle: 'italic' }}>
-                              "{siswa.keterangan}"
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          {telat && <div style={{ color: '#ef4444' }}>Telat {siswa.terlambatMenit}m</div>}
-                          {extra && <div style={{ color: '#2563eb' }}>Extra {siswa.konsulExtraMenit}m</div>}
-                          {!telat && !extra ? "-" : null}
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className={cetakStyles.footer}>
-           Laporan ini dicetak otomatis dari Sistem Akademik Quantum. <br/>
-           Dokumentasi foto papan tulis selengkapnya dapat diakses melalui link resmi Admin. <br/>
-           <span className={cetakStyles.copyright}>Bimbingan Belajar Quantum Research &copy; {new Date().getFullYear()}</span>
-        </div>
-      </div>
+      )}
 
 
       {/* ================================================================= */}
-      {/* AREA RENDER FORM (Tampilan UI Interaktif Admin) */}
+      {/* AREA RENDER FORM (Tampilan UI Interaktif Admin Utama) */}
       {/* ================================================================= */}
       <div className={styles.aksiAtas}>
         <button onClick={tutupJurnal} className={`${styles.tombolBatalForm} ${styles.tombolKembali}`}>
           <FaArrowLeft /> Kembali ke Daftar
         </button>
         
-        <button onClick={cetakLaporanKeGambar} disabled={sedangMencetak} className={styles.tombolCetak}>
-          <FaDownload /> {sedangMencetak ? "Mencetak Laporan..." : "Download Laporan (Kirim ke WA)"}
+        <button onClick={() => setShowModalPratinjau(true)} className={styles.tombolCetak}>
+          Pratinjau Jurnal (Sebelum Download)
         </button>
       </div>
 
@@ -327,7 +345,6 @@ export default function DetailJurnal({
                             )}
                           </td>
 
-                          {/* 🚀 Kolom Keterangan di UI Admin juga dimodifikasi untuk menampilkan catatan pengajar */}
                           <td style={{textAlign: 'center'}}>
                             {isAbsen ? (
                               <span className={styles.teksAlpa} style={{ display: 'inline-block', lineHeight: '1.4' }}>

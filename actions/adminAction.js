@@ -380,3 +380,53 @@ export async function prosesHapusAbsenStaf(idAbsen) {
     return responseHelper.error("Gagal menghapus absensi.", error.message);
   }
 }
+
+// ============================================================================
+// 6. LAPORAN BULANAN SISWA (RAPOR)
+// ============================================================================
+export async function ambilLaporanBulananSiswa(siswaId, bulan, tahun) {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    // 1. Ambil Data Profil Siswa
+    const siswa = await User.findById(siswaId)
+      .select("nama nomorPeserta kelas jadwalKelas jamKelas totalExp koleksiLencana")
+      .lean();
+      
+    if (!siswa) return responseHelper.error("Siswa tidak ditemukan.");
+
+    // 2. Tentukan Rentang Waktu Bulan (Awal bulan s/d Akhir bulan)
+    const tanggalMulai = new Date(tahun, bulan - 1, 1);
+    const tanggalAkhir = new Date(tahun, bulan, 0, 23, 59, 59, 999);
+
+    // 3. Ambil Semua Sesi Belajar di Bulan Tersebut
+    const sesiBulanan = await StudySession.find({
+      siswaId: siswaId,
+      waktuMulai: { $gte: tanggalMulai, $lte: tanggalAkhir },
+      status: { $nin: [STATUS_SESI.BERJALAN.id] } // Jangan hitung yang masih berjalan
+    }).sort({ waktuMulai: 1 }).lean();
+
+    // 4. Pilah menjadi Kelas dan Konsul
+    const sesiKelas = sesiBulanan.filter(s => s.jenisSesi === TIPE_SESI.KELAS);
+    const sesiKonsul = sesiBulanan.filter(s => s.jenisSesi === TIPE_SESI.KONSUL);
+
+    const dataRapor = {
+      profil: {
+        nama: siswa.nama,
+        nomorPeserta: siswa.nomorPeserta,
+        kelas: siswa.kelas,
+        jadwalKelas: siswa.jadwalKelas,
+        jamKelas: siswa.jamKelas,
+        totalExp: siswa.totalExp || 0,
+        jumlahLencana: siswa.koleksiLencana?.length || 0
+      },
+      kelas: serialize(sesiKelas),
+      konsul: serialize(sesiKonsul)
+    };
+
+    return responseHelper.success("Data rapor berhasil ditarik.", dataRapor);
+  } catch (error) {
+    return responseHelper.error("Gagal mengambil data rapor.", error.message);
+  }
+}

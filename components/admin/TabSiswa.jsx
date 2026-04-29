@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import PaginationBar from "../ui/PaginationBar";
+import ModalRaporSiswa from "./ModalRaporSiswa";
 
 import { editAkunSiswa, hapusAkunSiswa } from "../../actions/adminAction";
 import { prosesTambahSiswa, prosesBulkTambahSiswa } from "../../actions/authAction";
@@ -53,8 +54,9 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [hasilBulk, setHasilBulk] = useState(null);
 
-  // --- STATE: FILTER ---
+  // --- STATE: FILTER & CETAK RAPOR ---
   const [filterKelas, setFilterKelas] = useState("");
+  const [siswaCetak, setSiswaCetak] = useState(null); // 🚀 STATE MODAL RAPOR
   
   // 🛡️ ZERO HARDCODE LIMIT
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
@@ -66,7 +68,7 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [filterKelas]);
+  }, [filterKelas, pathname, replace, searchParams]);
 
   // --- LOGIKA BULK UPLOAD ---
   const unduhTemplate = () => {
@@ -371,23 +373,13 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
                       <td>{s.noHp}</td>
                       <td>
                         <p style={{ margin: 0, fontWeight: '900' }}>{s.kelas || "-"}</p>
-                        {/* <span style={{ 
-                          fontSize: '11px', 
-                          padding: '2px 6px', 
-                          borderRadius: '4px', 
-                          backgroundColor: isNonaktif ? '#fee2e2' : '#dcfce3', 
-                          color: isNonaktif ? '#b91c1c' : '#15803d', 
-                          border: `1px solid ${isNonaktif ? '#ef4444' : '#22c55e'}`,
-                          display: 'inline-block',
-                          marginTop: '4px'
-                        }}>
-                          {isNonaktif ? '🔴 Tidak Aktif' : '🟢 Aktif'}
-                        </span> */}
                       </td>
                       <td style={{textAlign:'center'}}>
                         <div className={styles.wadahAksiInlineHorizontal}>
                           <button onClick={() => klikEditSiswa(s)} className={`${styles.tombolAksi} ${styles.btnEdit}`}>Edit</button> 
                           <button onClick={() => klikHapusSiswa(s._id, s.nama)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>Hapus</button>
+                          {/* 🚀 TOMBOL CETAK RAPOR BARU */}
+                          <button onClick={() => setSiswaCetak(s)} className={`${styles.tombolAksi} ${styles.btnCetak}`} style={{ backgroundColor: '#111827', color: 'white' }}>Cetak</button>
                         </div>
                       </td>
                     </tr>
@@ -400,6 +392,12 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
         
         <PaginationBar totalPages={totalPage} />
       </div>
+
+      {/* 🚀 MOUNTING MODAL RAPOR (Akan muncul jika siswaCetak tidak null) */}
+      {siswaCetak && (
+        <ModalRaporSiswa siswa={siswaCetak} onClose={() => setSiswaCetak(null)} />
+      )}
+      
     </div>
   );
 }

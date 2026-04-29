@@ -1,25 +1,45 @@
 /* File: app/admin/LaporanCetak.module.css */
 
 /* ==========================================================================
-   1. KERTAS LAPORAN (Layout Portrait 800px - Neo Brutalism)
+   A. PENGATURAN UMUM KERTAS (WRAPPER)
    ========================================================================== */
+
+/* 1. Kertas Jurnal Harian (Lebar 800px) */
 .kertasLaporan {
-  position: absolute;
-  top: -9999px;
   width: 800px;
-  background-color: #fdfbf7; 
+  flex-shrink: 0;
+  min-height: 1056px; 
+  background-color: #ffffff; 
   padding: 40px;
   color: #111827;
   font-family: system-ui, -apple-system, sans-serif;
   border: 4px solid #111827; 
+  border-radius: 8px; 
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
   box-sizing: border-box;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
 }
 
+/* 2. Kertas Rapor Siswa (Lebar 900px, gaya sedikit berbeda) */
+.kertasPortrait {
+  width: 900px; 
+  background-color: #ffffff; 
+  padding: 50px;
+  color: #111827;
+  font-family: system-ui, -apple-system, sans-serif;
+  border: 4px solid #111827; 
+  border-radius: 12px;
+  box-sizing: border-box;
+  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  box-shadow: 8px 8px 0 #111827;
+}
+
 /* ==========================================================================
-   2. KOP LAPORAN (Header Dokumen)
+   B. KOMPONEN JURNAL HARIAN (Gaya Spesifik Jurnal)
    ========================================================================== */
+
+/* Header Jurnal */
 .header {
   display: flex;
   justify-content: space-between;
@@ -55,13 +75,13 @@
   text-align: right;
 }
 
-.teksTanggal {
-  margin: 0 0 8px 0;
+/* .teksTanggal {
+  margin: 8px 0;
   font-size: 14px;
   font-weight: 900;
   color: #111827;
   background-color: #fef08a; 
-  padding: 4px 8px;
+  padding: 6px 8px;
   border-radius: 6px;
   border: 2px solid #111827;
   text-transform: uppercase;
@@ -79,11 +99,9 @@
   border: 2px solid #111827;
   text-align: center;
   display: block;
-}
+} */
 
-/* ==========================================================================
-   3. INFO MATERI (Detail Kelas) - bergaya infoContainer Brutalist
-   ========================================================================== */
+/* Info Box Jurnal */
 .infoBox {
   display: flex;
   gap: 16px;
@@ -91,195 +109,133 @@
 }
 
 .infoKiri, .infoKanan {
+  display: grid;
+  justify-items: start;
   flex: 1;
   padding: 16px;
   background-color: white;
   border: 3px solid #111827;
   border-radius: 12px;
-  box-shadow: 4px 4px 0 #111827; 
+  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  box-shadow: 4px 4px 0 #111827;
 }
 
-.labelLabel {
-  margin: 0 0 8px 0;
-  font-size: 12px;
-  font-weight: 800;
-  color: #4b5563; 
-  text-transform: uppercase;
+.labelLabel { margin: 0 0 8px 0; font-size: 12px; font-weight: 800; color: #4b5563; text-transform: uppercase; }
+.nilaiLabelKanan { margin: 0; font-size: 20px; font-weight: 900; color: #111827; text-transform: uppercase; }
+.nilaiLabelKiri { margin: 0; font-size: 20px; font-weight: 800; color: #111827;}
+/* .nilaiLabelBiru, .nilaiLabelMerah {
+  margin: 8px 0 0 0; font-size: 16px; font-weight: 900; color: white; background-color: #2563eb; 
+  padding: 4px 12px; border-radius: 6px; border: 2px solid #111827; display: inline-block; text-transform: uppercase;
 }
+.nilaiLabelMerah {
+  color: white; background-color: #ef4444; font-size: 20px; 
+} */
+.nilaiSubBab { margin: 4px 0 0 0; font-weight: 800; color: #4b5563; font-size: 14px; display: block; text-align: justify;}
 
-.nilaiLabel {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 900;
-  color: #111827;
-  text-transform: uppercase;
-}
-
-.nilaiLabelBiru {
-  margin: 8px 0 0 0;
-  font-size: 16px;
-  font-weight: 900;
-  color: white;
-  background-color: #2563eb; 
-  padding: 4px 12px;
-  border-radius: 6px;
-  border: 2px solid #111827;
-  display: inline-block;
-  text-transform: uppercase;
-}
-
-.nilaiSubBab {
-  margin: 4px 0 0 0;
-  font-weight: 800;
-  color: #4b5563;
-  font-size: 14px;
-  display: block;
-}
-
-/* ==========================================================================
-   4. JUDUL BAGIAN (Section Titles)
-   ========================================================================== */
 .judulBagian {
-  font-size: 16px;
-  font-weight: 900;
-  text-transform: uppercase;
-  margin: 0 0 16px 0;
-  color: #111827;
-  display: flex;
-  align-items: center;
-  justify-content: center; /* Teks ke tengah */
-  gap: 8px;
-  border-bottom: 3px solid #111827;
-  padding-bottom: 8px;
+  font-size: 16px; font-weight: 900; text-transform: uppercase; margin: 0 0 16px 0; color: #111827;
+  display: flex; align-items: center; justify-content: center; gap: 8px; border-bottom: 3px solid #111827; padding-bottom: 8px;
 }
 
-/* ==========================================================================
-   5. AREA FOTO DOKUMENTASI
-   ========================================================================== */
+/* Foto Jurnal */
 .wadahFoto {
-  border: 3px solid #111827;
-  border-radius: 12px;
-  background-color: #e5e7eb; 
+  background-color: #e5e7eb; border: 3px solid #111827; border-radius: 12px; overflow: hidden; margin-bottom: 32px;
+  /* 🚀 BOX SHADOW DIKEMBALIKAN */
   box-shadow: 4px 4px 0 #111827;
-  overflow: hidden;
-  margin-bottom: 32px;
+}
+.fotoBersama { width: 100%; max-height: 450px; object-fit: cover; display: block; border-bottom: 3px solid #111827; }
+.captionFoto { text-align: center; font-weight: 900; font-size: 14px; text-transform: uppercase; padding: 12px; background-color: #facc15; color: #111827; }
+.fotoKosong { border: 3px dashed #111827; border-radius: 12px; height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #e5e7eb; margin-bottom: 32px; }
+.teksFotoKosong { color: #4b5563; font-weight: 900; font-size: 14px; text-transform: uppercase; }
+
+
+/* ==========================================================================
+   C. KOMPONEN RAPOR SISWA (Gaya Spesifik Rapor)
+   ========================================================================== */
+
+/* Header Rapor */
+.headerAtas {
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 5px solid #111827; padding-bottom: 24px; margin-bottom: 32px;
 }
 
-.fotoBersama {
-  width: 100%;
-  max-height: 450px;
-  object-fit: cover;
-  display: block;
-  border-bottom: 3px solid #111827;
-}
+.identitasKiri h1 { margin: 0; font-size: 32px; font-weight: 900; text-transform: uppercase; }
+.identitasKiri p { margin: 8px 0 0 0; font-size: 16px; font-weight: 800; color: #4b5563; }
+.identitasKiri .badgeKelas { background: #2563eb; color: white; padding: 4px 12px; border-radius: 8px; border: 2px solid #111827; margin-left: 12px; }
 
-.captionFoto {
-  text-align: center;
-  font-weight: 900;
-  font-size: 14px;
-  text-transform: uppercase;
-  padding: 12px;
-  background-color: #facc15; 
-  color: #111827;
+/* Box Prestasi / Info Tambahan Rapor */
+.boxPrestasi { 
+  background: #facc15; border: 3px solid #111827; padding: 12px 24px; border-radius: 12px; display: inline-block; text-align: right; 
+  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  box-shadow: 6px 6px 0 #111827;
 }
+.boxPrestasi p { margin: 0; font-weight: 900; font-size: 16px; }
+.teksExp { font-size: 24px; color: #ef4444; }
 
-.fotoKosong {
-  border: 3px dashed #111827;
-  border-radius: 12px;
-  height: 150px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: #e5e7eb;
-  margin-bottom: 32px;
-}
+/* Ringkasan & Tabel Rapor */
+.blokTabel { margin-bottom: 40px; }
+.judulKolom { font-size: 22px; font-weight: 900; text-transform: uppercase; border-bottom: 4px solid #111827; padding-bottom: 8px; margin: 0 0 20px 0; }
 
-.teksFotoKosong {
-  color: #4b5563;
-  font-weight: 900;
-  font-size: 14px;
-  text-transform: uppercase;
+.summaryBox { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.summaryBoxTwo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+
+.summaryItem {
+  background: white; border: 3px solid #111827; border-radius: 10px; padding: 12px; text-align: center;
+  font-weight: 900; font-size: 13px; display: flex; flex-direction: column; gap: 4px;
+  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  box-shadow: 3px 3px 0 #111827;
 }
 
 /* ==========================================================================
-   6. TABEL KEHADIRAN & BADGE
+   D. KOMPONEN BERSAMA (Tabel, Teks, Status)
    ========================================================================== */
-.tabelLaporan {
-  width: 100%;
-  border-collapse: collapse;
-  border: 3px solid #111827;
-  background-color: white;
-  border-radius: 12px;
+
+/* Tabel (Digunakan oleh Jurnal & Rapor dengan layout fix) */
+.tabelLaporan, .tabelRapor {
+  width: 100%; background-color: white; border: 3px solid #111827; border-radius: 12px; 
+  /* 🚀 BOX SHADOW DIKEMBALIKAN */
   box-shadow: 4px 4px 0 #111827;
 }
 
-.tabelLaporan th {
-  background-color: #dbeafe; 
-  color: #111827;
-  padding: 12px;
-  border-bottom: 3px solid #111827;
-  border-right: 2px solid #111827;
-  font-weight: 900;
-  text-transform: uppercase;
-  font-size: 14px;
+.tabelRapor { table-layout: fixed; } 
+
+.tabelLaporan th, .tabelRapor th {
+  background-color: #dbeafe; color: #111827; padding: 12px 14px; border-bottom: 3px solid #111827; border-right: 2px solid #111827;
+  font-weight: 900; text-transform: uppercase; font-size: 13px;
 }
 
-.tabelLaporan th:last-child {
+.tabelLaporan td, .tabelRapor td {
+  padding: 12px 14px; border-bottom: 2px solid #111827; border-right: 2px solid #111827; color: #111827; font-weight: 800; font-size: 14px; word-wrap: break-word;
+}
+
+.tabelLaporan th:last-child, .tabelLaporan td:last-child, .tabelRapor th:last-child, .tabelRapor td:last-child {
   border-right: none;
 }
-
-.tabelLaporan td {
-  padding: 12px;
-  border-bottom: 2px solid #111827;
-  border-right: 2px solid #111827;
-  color: #111827;
-  font-weight: 800;
+.tabelLaporan tr:last-child td, .tabelRapor tr:last-child td {
+  border-bottom: none;
 }
 
-.tabelLaporan td:last-child {
-  border-right: none;
-}
-
-.namaSiswa {
-  font-weight: 900;
-  font-size: 14px;
-  text-transform: uppercase;
-}
-
-.statusSiswa {
-  text-align: center;
-  font-weight: 900;
-  font-size: 12px;
-  text-transform: uppercase;
-}
+/* Utilitas Teks & Warna */
+.namaSiswa { font-weight: 900; font-size: 14px; text-transform: uppercase; }
+.statusSiswa { text-align: center; font-weight: 900; font-size: 12px; text-transform: uppercase; }
 
 .bgHadir { background-color: #4ade80 !important; color: #111827 !important; }
 .bgAbsen { background-color: #ef4444 !important; color: white !important; }
 
-/* Badge Khusus untuk Keterangan (Telat/Extra) */
+.teksMerah { color: #ef4444; }
+.teksHijau { color: #15803d; }
+.teksBiru { color: #2563eb; }
+.teksTebal { font-weight: 900; }
+
+.badgeMenit { background: #fef08a; padding: 4px 10px; border: 2px solid #111827; border-radius: 6px; font-weight: 900; }
 .badgeTelat { background-color: #fee2e2; border: 2px solid #ef4444; color: #b91c1c; padding: 2px 8px; border-radius: 6px; display: inline-block; font-size: 12px; margin-bottom: 4px; }
 .badgeExtra { background-color: #dbeafe; border: 2px solid #2563eb; color: #1d4ed8; padding: 2px 8px; border-radius: 6px; display: inline-block; font-size: 12px; }
 
-/* ==========================================================================
-   7. FOOTER DOKUMEN
-   ========================================================================== */
-.footer {
-  border-top: 3px dashed #111827;
-  padding-top: 16px;
-  margin-top: 32px;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 800;
-  color: #4b5563;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+/* Custom Width Kolom Rapor */
+.colTgl { width: 25%; } .colMapel { width: 20%; } .colWaktu { width: 15%; } .colStatus { width: 15%; } .colCatatan { width: 25%; }
+.colKonsulTgl { width: 25%; } .colKonsulMapel { width: 25%; } .colKonsulWaktu { width: 25%; } .colKonsulDurasi { width: 25%; }
 
-.copyright {
-  font-size: 12px;
-  font-weight: 900;
-  color: #111827;
-  text-transform: uppercase;
-}
+/* Footer */
+.footer { border-top: 3px dashed #111827; padding-top: 16px; margin-top: 32px; text-align: center; font-size: 12px; font-weight: 800; color: #4b5563; display: flex; flex-direction: column; gap: 8px; }
+.copyright { font-size: 12px; font-weight: 900; color: #111827; text-transform: uppercase; }
+.footerDoc { text-align: center; font-weight: 800; font-size: 14px; border-top: 3px dashed #111827; padding-top: 20px; margin-top: 20px; color: #6b7280; }
