@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import UpdatePrompt from "@/components/UpdatePrompt";
 import InstallPrompt from "@/components/InstallPrompt";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 
 // ============================================================================
 // METADATA MASTER (Enterprise Level)
@@ -86,7 +88,12 @@ export default function RootLayout({
       <body className="antialiased" suppressHydrationWarning>
         <UpdatePrompt />
         <InstallPrompt />
+        
         {children}
+
+        {/* 🚀 RADAR VERCEL DIPASANG DI SINI (Paling Bawah Body) */}
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
