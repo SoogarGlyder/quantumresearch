@@ -16,7 +16,6 @@ import {
   PERAN, 
   STATUS_SESI, 
   KONFIGURASI_SISTEM, 
-  LIMIT_DATA, 
   LABEL_SISTEM 
 } from "../utils/constants";
 
@@ -57,14 +56,33 @@ export default async function Home() {
   const sekarang = new Date();
   const y = sekarang.getFullYear();
   const m = sekarang.getMonth();
+  const d = sekarang.getDate();
 
-  // 1. Pagar Staf (29 bulan lalu - 28 bulan ini)
-  const minDateStafObj = new Date(y, m - 1, 29);
-  const maxDateStafObj = new Date(y, m, 28, 23, 59, 59);
+  // --------------------------------------------------------------------------
+  // 1. Pagar Staf (Cut-off Dinamis: 29 s/d 28)
+  // --------------------------------------------------------------------------
+  let minDateStafObj, maxDateStafObj;
+
+  if (d >= 29) {
+    // 🚩 KASUS: Tanggal 29, 30, 31
+    // Artinya sudah masuk siklus bulan depan.
+    // Contoh: 29 April -> Start: 29 April | End: 28 Mei
+    minDateStafObj = new Date(y, m, 29);
+    maxDateStafObj = new Date(y, m + 1, 28, 23, 59, 59);
+  } else {
+    // 🚩 KASUS: Tanggal 1 s/d 28
+    // Masih berada di dalam siklus yang dimulai bulan lalu.
+    // Contoh: 10 April -> Start: 29 Maret | End: 28 April
+    minDateStafObj = new Date(y, m - 1, 29);
+    maxDateStafObj = new Date(y, m, 28, 23, 59, 59);
+  }
+
   const strMinStaf = formatYMD(minDateStafObj);
   const strMaxStaf = formatYMD(maxDateStafObj);
 
-  // 2. Pagar Siswa (Tanggal 1 - Akhir bulan ini)
+  // --------------------------------------------------------------------------
+  // 2. Pagar Siswa (Tetap Tanggal 1 s/d Akhir Bulan)
+  // --------------------------------------------------------------------------
   const minDateSiswaObj = new Date(y, m, 1);
   const maxDateSiswaObj = new Date(y, m + 1, 0, 23, 59, 59);
   const strMinSiswa = formatYMD(minDateSiswaObj);
@@ -75,7 +93,7 @@ export default async function Home() {
   // ==========================================================================
   if (userLogin.peran === PERAN.PENGAJAR.id) {
     
-    // 🚀 FILTER HANYA BULAN BERJALAN AGAR HP GURU TETAP RINGAN
+    // 🚀 MENGGUNAKAN PAGAR STAF DINAMIS
     const [jadwalPengajar, riwayatAbsensi] = await Promise.all([
       Jadwal.find({ 
         kodePengajar: userLogin.kodePengajar,
@@ -105,7 +123,6 @@ export default async function Home() {
   // CABANG 3: SISWA 
   // ==========================================================================
   
-  // 🛡️ STATISTIK ALL-TIME: Tidak dipotong agar EXP & Level Gamifikasi tidak reset
   const statsSiswaPromise = StudySession.aggregate([
     { 
       $match: { 
@@ -129,8 +146,6 @@ export default async function Home() {
     }
   ]).exec();
 
-  // 🚀 FILTER HANYA BULAN BERJALAN AGAR HP MURID TETAP RINGAN
-  // 👉 SUNTIKAN: Tambahkan pengambilan data Latihan Soal di dalam Promise.all
   const [riwayatRaw, jadwalRaw, statsRaw, latihanHariIniRaw] = await Promise.all([
     StudySession.find({ 
       siswaId: userLogin._id,
@@ -145,7 +160,6 @@ export default async function Home() {
       .sort({ tanggal: 1 })
       .lean(),
     statsSiswaPromise,
-    // Eksekusi penarikan Latihan Soal dari actions
     dapatkanLatihanSiswa(userLogin.username, userLogin.kelas)
   ]);
 
@@ -157,7 +171,6 @@ export default async function Home() {
       riwayat={serialize(riwayatRaw)} 
       jadwal={serialize(jadwalRaw)}
       statistik={serialize(statistik)}
-      // 🚀 LEMPAR DATA LATIHAN KE KOMPONEN
       latihanHariIni={serialize(latihanHariIniRaw)} 
     />
   );
