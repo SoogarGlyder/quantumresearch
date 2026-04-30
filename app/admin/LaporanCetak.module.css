@@ -238,4 +238,4 @@
 /* Footer */
 .footer { border-top: 3px dashed #111827; padding-top: 16px; margin-top: 32px; text-align: center; font-size: 12px; font-weight: 800; color: #4b5563; display: flex; flex-direction: column; gap: 8px; }
 .copyright { font-size: 12px; font-weight: 900; color: #111827; text-transform: uppercase; }
-.footerDoc { text-align: center; font-weight: 800; font-size: 14px; border-top: 3px dashed #111827; padding-top: 20px; margin-top: 20px; color: #6b7280; }
+.footerDoc { text-align: center; font-weight: 800; font-size: 14px; border-top: 3px dashed #111827; padding-top: 20px; margin-top: 18px; color: #6b7280; }

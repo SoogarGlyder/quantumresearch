@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-// 🚀 PERBAIKAN: Mengganti FaSearch menjadi FaMagnifyingGlass
 import { FaPlus, FaBrain, FaPenToSquare, FaTrashCan, FaUserTie, FaMagnifyingGlass } from "react-icons/fa6"; 
 
 import { ambilSemuaBankSoal, hapusBankSoal } from "../../actions/quizAction";
@@ -12,7 +11,6 @@ import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 import ModalKuis from "./ModalKuis"; 
 
-// 🚀 PERBAIKAN: Menghapus ID Dummy. Sekarang wajib menerima ID asli dari Session!
 export default function TabKuis({ adminId }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -24,13 +22,22 @@ export default function TabKuis({ adminId }) {
   const [isModalKuisOpen, setIsModalKuisOpen] = useState(false);
   const [kuisAktif, setKuisAktif] = useState(null); 
 
-  // 🚀 AMBIL STATE DARI URL UNTUK FILTER & PAGINATION
-  const searchQuery = searchParams.get("search") || "";
+  // 🚀 STATE FILTER LOKAL PENCARIAN 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const currentPage = Number(searchParams.get("page")) || 1;
-  const ITEMS_PER_PAGE = 5; // Bebas disesuaikan (misal: 10 atau 20)
+  const ITEMS_PER_PAGE = 5; 
+
+  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  const resetHalamanKeSatu = () => {
+    const params = new URLSearchParams(searchParams);
+    if (params.has("page")) {
+      params.delete("page");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  };
 
   useEffect(() => {
-    // Pastikan adminId sudah ada sebelum menarik data
     if (adminId) {
       muatBankSoal();
     }
@@ -42,21 +49,6 @@ export default function TabKuis({ adminId }) {
     const data = await ambilSemuaBankSoal(adminId); 
     setDataBankSoal(data || []);
     setLoading(false);
-  };
-
-  // 🚀 LOGIKA PENCARIAN & UPDATE URL
-  const handleSearch = (e) => {
-    const val = e.target.value;
-    const params = new URLSearchParams(searchParams.toString());
-    
-    if (val) {
-      params.set("search", val);
-    } else {
-      params.delete("search");
-    }
-    
-    params.set("page", "1"); 
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   // 🚀 LOGIKA FILTERING DATA
@@ -107,12 +99,15 @@ export default function TabKuis({ adminId }) {
       <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
            <div style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#64748b' }}>
-             {/* 🚀 Menggunakan FaMagnifyingGlass */}
              <FaMagnifyingGlass size={18} />
            </div>
+           {/* 🚀 PERBAIKAN: Menggunakan fungsi reset halaman saat filter diubah */}
            <FilterInput 
              value={searchQuery} 
-             onChange={handleSearch} 
+             onChange={(e) => {
+                 setSearchQuery(e.target.value);
+                 resetHalamanKeSatu();
+             }} 
              placeholder="Cari judul soal atau nama pembuat..." 
              style={{ width: '100%', padding: '16px 16px 16px 45px', border: '3px solid #111827', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', boxShadow: '4px 4px 0 #111827' }}
            />

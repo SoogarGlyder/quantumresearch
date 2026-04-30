@@ -33,13 +33,6 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
   const [filterNama, setFilterNama] = useState("");
   const [filterKelasKonsul, setFilterKelasKonsul] = useState(""); 
 
-  useEffect(() => {
-    setFilterTglKonsul("");
-    setFilterNama("");
-    setFilterKelasKonsul("");
-    setFilterMapel("");
-  }, [bulanAktif]);
-
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   const { minDate, maxDate } = useMemo(() => {
@@ -57,20 +50,32 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
+  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  const resetHalamanKeSatu = () => {
+    const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterTglKonsul, filterMapel, filterNama, filterKelasKonsul]);
+  };
+
+  useEffect(() => {
+    setFilterTglKonsul("");
+    setFilterNama("");
+    setFilterKelasKonsul("");
+    setFilterMapel("");
+    resetHalamanKeSatu(); // Pastikan kembali ke halaman 1 saat ganti bulan
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bulanAktif]);
+
+  // ❌ PERBAIKAN: useEffect yang membuat pagination macet sudah DIHAPUS
 
   const resetFilter = () => {
     setFilterTglKonsul("");
     setFilterMapel("");
     setFilterNama("");
     setFilterKelasKonsul(""); 
+    resetHalamanKeSatu(); // Reset halaman ke 1 saat tombol reset ditekan
   };
 
   const riwayatBulanIni = useMemo(() => {
@@ -163,17 +168,49 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
         
         <div className={styles.wadahCari} style={{ minWidth: '180px' }}>
           <div className={styles.iconCari}><FaMagnifyingGlass color="#6b7280" /></div>
-          <input type="text" placeholder="Cari Nama..." value={filterNama} onChange={(e) => setFilterNama(e.target.value)} className={styles.inputCari} />
+          <input 
+            type="text" 
+            placeholder="Cari Nama..." 
+            value={filterNama} 
+            onChange={(e) => {
+              setFilterNama(e.target.value);
+              resetHalamanKeSatu();
+            }} 
+            className={styles.inputCari} 
+          />
         </div>
         
-        <FilterInput type="date" value={filterTglKonsul} onChange={(e) => setFilterTglKonsul(e.target.value)} min={minDate} max={maxDate} />
+        <FilterInput 
+          type="date" 
+          value={filterTglKonsul} 
+          onChange={(e) => {
+            setFilterTglKonsul(e.target.value);
+            resetHalamanKeSatu();
+          }} 
+          min={minDate} 
+          max={maxDate} 
+        />
         
-        <select value={filterKelasKonsul} onChange={(e) => setFilterKelasKonsul(e.target.value)} className={styles.filterSelectMurni}>
+        <select 
+          value={filterKelasKonsul} 
+          onChange={(e) => {
+            setFilterKelasKonsul(e.target.value);
+            resetHalamanKeSatu();
+          }} 
+          className={styles.filterSelectMurni}
+        >
           <option value="">Semua Kelas</option>
           {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
         </select>
 
-        <select value={filterMapel} onChange={(e) => setFilterMapel(e.target.value)} className={styles.filterSelectMurni}>
+        <select 
+          value={filterMapel} 
+          onChange={(e) => {
+            setFilterMapel(e.target.value);
+            resetHalamanKeSatu();
+          }} 
+          className={styles.filterSelectMurni}
+        >
           <option value="">Semua Mapel</option>
           {OPSI_MAPEL_KONSUL.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
         </select>

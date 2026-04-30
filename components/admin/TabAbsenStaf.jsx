@@ -150,9 +150,20 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
   const [filterTglAbsen, setFilterTglAbsen] = useState("");
   const [filterNama, setFilterNama] = useState("");
   
+  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  const resetHalamanKeSatu = () => {
+    const params = new URLSearchParams(searchParams);
+    if (params.has("page")) {
+      params.delete("page");
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  };
+
   useEffect(() => {
     setFilterTglAbsen("");
     setFilterNama("");
+    resetHalamanKeSatu(); // Reset halaman ke 1 saat ganti bulan
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulanAktif]);
 
   const { minDate, maxDate } = useMemo(() => {
@@ -172,15 +183,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // 🚀 FIX PAGINATION: Hapus `searchParams` dari dependency array!
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterTglAbsen, filterNama]); 
+  // ❌ PERBAIKAN: useEffect yang membuat pagination macet sudah DIHAPUS
 
   const absenBulanIni = useMemo(() => {
     return dataAbsenStaf.filter(a => {
@@ -259,7 +262,10 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
             type="text" 
             placeholder="Cari Nama / Kode..." 
             value={filterNama} 
-            onChange={(e) => setFilterNama(e.target.value)} 
+            onChange={(e) => {
+              setFilterNama(e.target.value);
+              resetHalamanKeSatu();
+            }} 
             className={styles.inputCari}
           />
         </div>
@@ -267,12 +273,22 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
         <FilterInput 
           type="date" 
           value={filterTglAbsen} 
-          onChange={(e) => setFilterTglAbsen(e.target.value)} 
+          onChange={(e) => {
+            setFilterTglAbsen(e.target.value);
+            resetHalamanKeSatu();
+          }} 
           min={minDate}
           max={maxDate}
         />
 
-        <button onClick={() => { setFilterTglAbsen(""); setFilterNama(""); }} className={styles.btnReset}>
+        <button 
+          onClick={() => { 
+            setFilterTglAbsen(""); 
+            setFilterNama(""); 
+            resetHalamanKeSatu();
+          }} 
+          className={styles.btnReset}
+        >
           Reset
         </button>
       </div>

@@ -215,7 +215,26 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
                 </tbody>
               </table>
             </div>
-
+            <div style={{ borderBottom: '5px solid #111827', marginBottom: '15px' }}></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+              <p style={{ fontSize: '20px', color: 'red', fontWeight: '700', margin: 0 }}>
+                Sisa Tagihan:
+              </p>
+              <input
+                type="text"
+                placeholder="Ketik nominal..."
+                style={{
+                  fontSize: '20px',
+                  color: 'red',
+                  fontWeight: '700',
+                  border: 'none',
+                  borderBottom: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
             <div className={cetakStyles.footerDoc}>
               <p>Dicetak otomatis oleh Sistem Akademik QuRi Bimbingan Belajar Quantum Research pada {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
               <br></br>

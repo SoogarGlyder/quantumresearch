@@ -151,18 +151,23 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  useEffect(() => {
+  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [filterTglMulai, filterTglAkhir, filterKelas, pathname, replace, searchParams]);
+  };
+
+  // ❌ PERBAIKAN: useEffect yang membuat pagination macet sudah DIHAPUS
 
   useEffect(() => {
     setFilterTglMulai("");
     setFilterTglAkhir("");
     setFilterKelas("");
+    resetHalamanKeSatu(); // Reset halaman ke 1 saat ganti bulan
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulanAktif]);
 
   const sensors = useSensors(
@@ -509,15 +514,54 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
           </div>
           <div className={styles.wadahFilterBawah}>
             <span style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}>Filter:</span>
-            <input type="date" value={filterTglMulai} min={minDate} max={maxDate} onChange={(e) => setFilterTglMulai(e.target.value)} className={styles.inputTanggalNeo} />
+            {/* 🚀 PERBAIKAN: Pasang resetHalamanKeSatu() di trigger filter */}
+            <input 
+              type="date" 
+              value={filterTglMulai} 
+              min={minDate} 
+              max={maxDate} 
+              onChange={(e) => {
+                setFilterTglMulai(e.target.value);
+                resetHalamanKeSatu();
+              }} 
+              className={styles.inputTanggalNeo} 
+            />
             <span style={{ fontWeight: '900' }}>-</span>
-            <input type="date" value={filterTglAkhir} min={minDate} max={maxDate} onChange={(e) => setFilterTglAkhir(e.target.value)} className={styles.inputTanggalNeo} />
+            <input 
+              type="date" 
+              value={filterTglAkhir} 
+              min={minDate} 
+              max={maxDate} 
+              onChange={(e) => {
+                setFilterTglAkhir(e.target.value);
+                resetHalamanKeSatu();
+              }} 
+              className={styles.inputTanggalNeo} 
+            />
             
-            <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className={styles.inputTanggalNeo} style={{ backgroundColor: 'white' }}>
+            <select 
+              value={filterKelas} 
+              onChange={(e) => {
+                setFilterKelas(e.target.value);
+                resetHalamanKeSatu();
+              }} 
+              className={styles.inputTanggalNeo} 
+              style={{ backgroundColor: 'white' }}
+            >
               <option value="">Semua Kelas</option>
               {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
             </select>
-            <button onClick={() => { setFilterTglMulai(""); setFilterTglAkhir(""); setFilterKelas(""); }} className={styles.btnReset}>Reset</button>
+            <button 
+              onClick={() => { 
+                setFilterTglMulai(""); 
+                setFilterTglAkhir(""); 
+                setFilterKelas(""); 
+                resetHalamanKeSatu();
+              }} 
+              className={styles.btnReset}
+            >
+              Reset
+            </button>
           </div>
         </div>
 
@@ -679,7 +723,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
           <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '4px solid #111827', width: '100%', maxWidth: '600px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '8px 8px 0 #111827' }}>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #111827', paddingBottom: '16px', marginBottom: '16px' }}>
-              <h2 style={{ margin: 0, fontWeight: '900', color: '#111827' }}>PILIH PAKET SOAL</h2>
+              <h2 style={{ margin: '0 0 12px 0', fontWeight: '900', color: '#111827' }}>PILIH PAKET SOAL</h2>
               <button onClick={() => setIsModalBankOpen(false)} style={{ background: 'white', border: '3px solid #111827', borderRadius: '8px', padding: '6px', cursor: 'pointer', boxShadow: '2px 2px 0 #ef4444' }}>
                 <FaXmark size={20} color="#ef4444" />
               </button>

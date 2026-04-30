@@ -16,7 +16,6 @@ import { formatTanggal, formatJam, formatYYYYMMDD, potongDataPagination, ekstrak
 
 import { STATUS_SESI, OPSI_KELAS, OPSI_MAPEL_KELAS, OPSI_KETERANGAN_ABSEN, LIMIT_DATA, STATUS_USER } from "../../utils/constants";
 
-// 🚀 FIX: Tambah icon MagnifyingGlass untuk pencarian nama
 import { FaFileExcel, FaTriangleExclamation, FaClock, FaFilter, FaMagnifyingGlass } from "react-icons/fa6";
 import styles from "../../app/admin/AdminPage.module.css";
 
@@ -35,15 +34,8 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   const [filterTglKelas, setFilterTglKelas] = useState("");
   const [filterKelasAbsen, setFilterKelasAbsen] = useState("");
   const [filterMapelKelas, setFilterMapelKelas] = useState("");
-  const [filterNama, setFilterNama] = useState(""); // 🚀 STATE BARU: Pencarian Nama
+  const [filterNama, setFilterNama] = useState(""); 
 
-  useEffect(() => {
-    setFilterTglKelas("");
-    setFilterNama("");
-    setFilterKelasAbsen("");
-    setFilterMapelKelas("");
-  }, [bulanAktif]);
-  
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   const [editingAbsenId, setEditingAbsenId] = useState(null);
@@ -67,14 +59,23 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // Hapus filter "page" jika filter lokal berubah (termasuk filter nama)
-  useEffect(() => {
+  // Fungsi untuk mengembalikan ke halaman 1
+  const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [filterTglKelas, filterKelasAbsen, filterMapelKelas, filterNama]);
+  };
+
+  useEffect(() => {
+    setFilterTglKelas("");
+    setFilterNama("");
+    setFilterKelasAbsen("");
+    setFilterMapelKelas("");
+    resetHalamanKeSatu();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bulanAktif]);
 
   // DIET MEMORI: Potong "Paket 1 Tahun" menjadi "Paket 1 Bulan" SEBELUM dikalkulasi
   const riwayatBulanIni = useMemo(() => {
@@ -88,8 +89,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     return dataJadwal.filter(j => j.tanggal >= minDate && j.tanggal <= maxDate);
   }, [dataJadwal, minDate, maxDate]);
 
-
-  // Kalkulasi Alpa / Hadir HANYA untuk bulan ini (Lebih Cepat!)
+  // Kalkulasi Alpa / Hadir HANYA untuk bulan ini
   const riwayatKelasMurni = useMemo(() => {
     return kalkulasiAbsensiLengkap(riwayatBulanIni, jadwalBulanIni, dataSiswa);
   }, [riwayatBulanIni, jadwalBulanIni, dataSiswa]);
@@ -101,7 +101,6 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     if (filterTglKelas) riwayat = riwayat.filter(s => formatYYYYMMDD(s.waktuMulai) === filterTglKelas);
     if (filterKelasAbsen) riwayat = riwayat.filter(s => s.siswaId?.kelas === filterKelasAbsen);
     if (filterMapelKelas) riwayat = riwayat.filter(s => s.namaMapel === filterMapelKelas);
-    // 🚀 FILTER BARU: Pencarian Nama (Case Insensitive)
     if (filterNama) {
       const keyword = filterNama.toLowerCase();
       riwayat = riwayat.filter(s => s.siswaId?.nama?.toLowerCase().includes(keyword));
@@ -168,43 +167,69 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
           <span className={styles.labelFilter}>Filter:</span>
         </div>
         
-        {/* 🚀 UI BARU: Kolom Pencarian Nama (Sejajar dengan Filter) */}
         <div className={styles.wadahCari} style={{ minWidth: '180px' }}>
           <div className={styles.iconCari}><FaMagnifyingGlass color="#6b7280" /></div>
           <input 
             type="text" 
             placeholder="Cari Nama Siswa..." 
             value={filterNama} 
-            onChange={(e) => setFilterNama(e.target.value)} 
+            onChange={(e) => {
+              setFilterNama(e.target.value);
+              resetHalamanKeSatu();
+            }} 
             className={styles.inputCari}
           />
         </div>
 
-        {/* Kalender "Terkunci" berdasarkan bulan yang dipilih di atas */}
         <FilterInput 
           type="date" 
           value={filterTglKelas} 
-          onChange={(e) => setFilterTglKelas(e.target.value)} 
+          onChange={(e) => {
+            setFilterTglKelas(e.target.value);
+            resetHalamanKeSatu();
+          }} 
           min={minDate} 
           max={maxDate} 
         />
         
-        <select value={filterKelasAbsen} onChange={(e) => setFilterKelasAbsen(e.target.value)} className={styles.filterSelectMurni}>
+        <select 
+          value={filterKelasAbsen} 
+          onChange={(e) => {
+            setFilterKelasAbsen(e.target.value);
+            resetHalamanKeSatu();
+          }} 
+          className={styles.filterSelectMurni}
+        >
           <option value="">Semua Kelas</option>
           {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
         </select>
 
-        <select value={filterMapelKelas} onChange={(e) => setFilterMapelKelas(e.target.value)} className={styles.filterSelectMurni}>
+        <select 
+          value={filterMapelKelas} 
+          onChange={(e) => {
+            setFilterMapelKelas(e.target.value);
+            resetHalamanKeSatu();
+          }} 
+          className={styles.filterSelectMurni}
+        >
           <option value="">Semua Mapel</option>
           {OPSI_MAPEL_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
         </select>
 
-        <button onClick={() => { setFilterTglKelas(""); setFilterKelasAbsen(""); setFilterMapelKelas(""); setFilterNama(""); }} className={styles.btnReset}>
+        <button 
+          onClick={() => { 
+            setFilterTglKelas(""); 
+            setFilterKelasAbsen(""); 
+            setFilterMapelKelas(""); 
+            setFilterNama(""); 
+            resetHalamanKeSatu();
+          }} 
+          className={styles.btnReset}
+        >
           Reset
         </button>
       </div>
 
-      {/* --- TABEL DATA --- (Tetap Sama) */}
       <div className={styles.wadahTabel}>
         <table className={styles.tabelStyle}>
           <thead>

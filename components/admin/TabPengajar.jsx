@@ -7,6 +7,9 @@ import { useState, useMemo, useRef } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import PaginationBar from "../ui/PaginationBar";
+// 🚀 FIX: Import FilterInput dan Icon Pencarian
+import FilterInput from "../ui/FilterInput";
+import { FaMagnifyingGlass } from "react-icons/fa6";
 
 // ⚠️ Pastikan editPengajar dan prosesBulkTambahPengajar sudah ada di teacherAction.js
 import { tambahPengajarBaru, hapusPengajar, editPengajar, prosesBulkTambahPengajar } from "../../actions/teacherAction";
@@ -31,6 +34,9 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
   // Ambil halaman aktif langsung dari URL
   const page = Number(searchParams.get("page")) || 1;
   
+  // 🚀 STATE BARU: PENCARIAN
+  const [searchQuery, setSearchQuery] = useState("");
+
   // --- STATE: FORM PENGAJAR (🛡️ ZERO HARDCODE STATUS) ---
   const initialFormState = { 
     nama: "", 
@@ -53,6 +59,15 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
 
   // 🛡️ ZERO HARDCODE LIMIT
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
+
+  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL saat mencari
+  const resetHalamanKeSatu = () => {
+    const params = new URLSearchParams(searchParams);
+    if (params.has("page")) {
+      params.delete("page");
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  };
 
   // --- LOGIKA BULK UPLOAD ---
   const unduhTemplate = () => {
@@ -181,8 +196,20 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
 
   // --- LOGIKA FILTER & PAGINATION ---
   const pengajarDitampilkan = useMemo(() => {
-    return [...dataPengajar].sort((a, b) => a.nama.localeCompare(b.nama));
-  }, [dataPengajar]);
+    let listData = [...dataPengajar];
+    
+    // 🚀 FILTER PENCARIAN (Berdasarkan Nama, Kode, atau Username)
+    if (searchQuery) {
+      const kataKunci = searchQuery.toLowerCase();
+      listData = listData.filter(g => 
+        (g.nama && g.nama.toLowerCase().includes(kataKunci)) ||
+        (g.kodePengajar && g.kodePengajar.toLowerCase().includes(kataKunci)) ||
+        (g.username && g.username.toLowerCase().includes(kataKunci))
+      );
+    }
+    
+    return listData.sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [dataPengajar, searchQuery]);
 
   const { totalPage, dataTerpotong: dataPengajarHalIni } = potongDataPagination(pengajarDitampilkan, page, ITEMS_PER_PAGE);
 
@@ -286,8 +313,26 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
       
       {/* PANEL KANAN: TABEL PENGAJAR */}
       <div className={styles.flexDua}>
-        <div className={styles.headerTabSiswa}>
-          <h3 className={styles.judulTabelKanan}>Daftar Pengajar ({pengajarDitampilkan.length})</h3>
+        
+        {/* 🚀 HEADER & PENCARIAN */}
+        <div className={styles.headerTabSiswa} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+          <h3 className={styles.judulTabelKanan} style={{ margin: 0 }}>Daftar Pengajar ({pengajarDitampilkan.length})</h3>
+          
+          <div style={{ position: 'relative', width: '250px' }}>
+            <div style={{ position: 'absolute', top: '50%', left: '12px', transform: 'translateY(-50%)', color: '#6b7280' }}>
+              <FaMagnifyingGlass size={14} />
+            </div>
+            <FilterInput 
+              type="text" 
+              placeholder="Cari nama, kode, username..." 
+              value={searchQuery} 
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                resetHalamanKeSatu();
+              }} 
+              style={{ width: '100%', padding: '8px 12px 8px 36px', border: '2px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+            />
+          </div>
         </div>
 
         <div className={styles.wadahTabel}>
@@ -302,7 +347,7 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
             </thead>
             <tbody>
               {dataPengajarHalIni.length === 0 ? (
-                <tr><td colSpan="4" className={styles.selKosong}>Tidak ada data pengajar.</td></tr>
+                <tr><td colSpan="4" className={styles.selKosong}>{searchQuery ? "Pencarian tidak ditemukan." : "Tidak ada data pengajar."}</td></tr>
               ) : (
                 dataPengajarHalIni.map(g => {
                   const isNonaktif = g.status === STATUS_USER.NONAKTIF;

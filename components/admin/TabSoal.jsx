@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+// 🚀 FIX: Import navigasi Next.js untuk Pagination
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+
 import { 
   ambilSemuaLatihanSoal, 
   prosesSimpanLatihanSoal, 
@@ -8,16 +11,30 @@ import {
 } from "../../actions/soalAction";
 import { OPSI_KELAS } from "../../utils/constants";
 import styles from "../../app/admin/AdminPage.module.css";
-import { FaBookOpen, FaLink, FaTrash, FaPenToSquare } from "react-icons/fa6";
+// 🚀 FIX: Tambah icon pencarian
+import { FaBookOpen, FaLink, FaTrash, FaPenToSquare, FaMagnifyingGlass } from "react-icons/fa6";
 
-// 🚀 FIX: Menerima prop dataSiswa dari halaman utama Admin
+// 🚀 FIX: Import amunisi UI kita
+import FilterInput from "../ui/FilterInput";
+import PaginationBar from "../ui/PaginationBar";
+
 export default function TabSoal({ dataSiswa = [] }) {
+  // 🚀 SETUP URL-DRIVEN STATE
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [dataSoal, setDataSoal] = useState([]);
   const [loading, setLoading] = useState(true);
   
   const [idEdit, setIdEdit] = useState(null);
   const [loadingForm, setLoadingForm] = useState(false);
   
+  // 🚀 STATE FILTER PENCARIAN
+  const [searchQuery, setSearchQuery] = useState("");
+  const currentPage = Number(searchParams.get("page")) || 1;
+  const ITEMS_PER_PAGE = 5; // Batas data per halaman
+
   const initialForm = {
     judul: "",
     url: "",
@@ -26,6 +43,15 @@ export default function TabSoal({ dataSiswa = [] }) {
     isAktif: true
   };
   const [form, setForm] = useState(initialForm);
+
+  // 🚀 FUNGSI PENAWAR BUG PAGINATION
+  const resetHalamanKeSatu = () => {
+    const params = new URLSearchParams(searchParams);
+    if (params.has("page")) {
+      params.delete("page");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  };
 
   useEffect(() => {
     muatData();
@@ -38,11 +64,27 @@ export default function TabSoal({ dataSiswa = [] }) {
     setLoading(false);
   };
 
+  // 🚀 LOGIKA FILTERING & PENCARIAN DATA
+  const dataFiltered = useMemo(() => {
+    if (!searchQuery) return dataSoal;
+    return dataSoal.filter(item => 
+      item.judul?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.target?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [dataSoal, searchQuery]);
+
+  // 🚀 LOGIKA PAGINATION (MEMOTONG DATA)
+  const totalPages = Math.ceil(dataFiltered.length / ITEMS_PER_PAGE) || 1;
+  const dataPaginated = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    return dataFiltered.slice(start, end);
+  }, [dataFiltered, currentPage]);
+
   const handleSimpan = async (e) => {
     e.preventDefault();
     setLoadingForm(true);
     
-    // Pastikan target terisi jika tipenya SISWA
     let finalTarget = form.target;
     if (form.tipeTarget === "SISWA" && !finalTarget) {
       alert("Silakan pilih siswa terlebih dahulu!");
@@ -50,13 +92,11 @@ export default function TabSoal({ dataSiswa = [] }) {
       return;
     }
 
-    // 🚀 LOGIKA OTOMATISASI GOOGLE DRIVE LINK (Sama seperti punya Pengajar)
     let finalUrl = form.url;
     if (finalUrl.includes("drive.google.com") && finalUrl.includes("/view")) {
       finalUrl = finalUrl.split("/view")[0] + "/preview";
     }
 
-    // 🚀 KIRIM finalUrl ke database
     const res = await prosesSimpanLatihanSoal(idEdit, { ...form, target: finalTarget, url: finalUrl });
     
     if (res.sukses) {
@@ -92,14 +132,13 @@ export default function TabSoal({ dataSiswa = [] }) {
     }
   };
 
-  // 🚀 OPTIONAL: Urutkan siswa berdasarkan nama agar mudah dicari di dropdown
   const siswaUrut = [...dataSiswa].sort((a, b) => a.nama.localeCompare(b.nama));
 
   return (
-    <div className={`${styles.isiTab} ${styles.SembunyiPrint}`} style={{ display: 'flex', gap: '24px' }}>
+    <div className={`${styles.isiTab} ${styles.SembunyiPrint}`} style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
       
       {/* KIRI: FORM */}
-      <div className={`${styles.formPanel} ${idEdit ? styles.formPanelEdit : styles.formPanelBiasa}`} style={{ flex: '1', height: 'fit-content' }}>
+      <div className={`${styles.formPanel} ${idEdit ? styles.formPanelEdit : styles.formPanelBiasa}`} style={{ flex: '1', minWidth: '300px', height: 'fit-content' }}>
         <h3 className={idEdit ? styles.judulFormEdit : styles.judulFormPanel}>
           {idEdit ? "✏️ Edit Latihan Soal" : "➕ Kirim Latihan Soal"}
         </h3>
@@ -112,7 +151,6 @@ export default function TabSoal({ dataSiswa = [] }) {
           
           <div>
             <label style={{ fontSize: '12px', fontWeight: 'bold' }}>URL / Link Web</label>
-            {/* 💡 Hint tambahan untuk Admin */}
             <input type="url" required value={form.url} onChange={e => setForm({...form, url: e.target.value})} placeholder="Cth: https://drive.google.com/..." className={styles.formInput} />
           </div>
 
@@ -133,7 +171,6 @@ export default function TabSoal({ dataSiswa = [] }) {
                   {OPSI_KELAS.map(k => <option key={k} value={k}>{k}</option>)}
                 </select>
               ) : (
-                // 🚀 FIX: Dropdown List Siswa (Menampilkan Nama, tapi menyimpan Username)
                 <select required value={form.target} onChange={e => setForm({...form, target: e.target.value})} className={styles.formInput}>
                   <option value="" disabled>-- Pilih Siswa --</option>
                   {siswaUrut.map(s => (
@@ -164,9 +201,27 @@ export default function TabSoal({ dataSiswa = [] }) {
       </div>
 
       {/* KANAN: TABEL */}
-      <div style={{ flex: '2' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <div style={{ flex: '2', minWidth: '400px' }}>
+        
+        {/* HEADER & SEARCH BAR */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900' }}>📚 Daftar Distribusi Soal</h3>
+          
+          <div style={{ position: 'relative', width: '250px' }}>
+            <div style={{ position: 'absolute', top: '50%', left: '12px', transform: 'translateY(-50%)', color: '#6b7280' }}>
+              <FaMagnifyingGlass size={14} />
+            </div>
+            {/* 🚀 Menggunakan fungsi reset halaman saat mencari */}
+            <FilterInput 
+              value={searchQuery} 
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                resetHalamanKeSatu();
+              }} 
+              placeholder="Cari judul atau target..." 
+              style={{ width: '100%', padding: '8px 12px 8px 36px', border: '2px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+            />
+          </div>
         </div>
 
         <div className={styles.wadahTabel}>
@@ -182,10 +237,11 @@ export default function TabSoal({ dataSiswa = [] }) {
             <tbody>
               {loading ? (
                 <tr><td colSpan="4" className={styles.selKosong}>Memuat data...</td></tr>
-              ) : dataSoal.length === 0 ? (
-                <tr><td colSpan="4" className={styles.selKosong}>Belum ada latihan soal yang dibagikan.</td></tr>
+              ) : dataPaginated.length === 0 ? (
+                <tr><td colSpan="4" className={styles.selKosong}>{searchQuery ? "Pencarian tidak ditemukan." : "Belum ada latihan soal yang dibagikan."}</td></tr>
               ) : (
-                dataSoal.map(item => (
+                // 🚀 RENDER DATA YANG SUDAH DIPOTONG (dataPaginated)
+                dataPaginated.map(item => (
                   <tr key={item._id}>
                     <td>
                       <p style={{ margin: 0, fontWeight: 'bold', color: '#111827' }}>{item.judul}</p>
@@ -216,8 +272,13 @@ export default function TabSoal({ dataSiswa = [] }) {
             </tbody>
           </table>
         </div>
-      </div>
 
+        {/* 🚀 RENDER PAGINATION BAR */}
+        <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+          <PaginationBar totalPages={totalPages} />
+        </div>
+        
+      </div>
     </div>
   );
 }

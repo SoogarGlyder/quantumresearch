@@ -3,7 +3,7 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react"; // 👈 useEffect masih dipakai untuk auto-reset saat bulan berubah
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import FilterInput from "../ui/FilterInput";
@@ -15,13 +15,12 @@ import { ambilDetailJurnal, simpanJurnal } from "../../actions/adminAction";
 import { formatTanggal, formatYYYYMMDD, potongDataPagination } from "../../utils/formatHelper";
 import { OPSI_KELAS, LIMIT_DATA } from "../../utils/constants";
 
-import { FaBookBookmark, FaMagnifyingGlass, FaFilter } from "react-icons/fa6"; // 🚀 FIX: Tambah FaFilter
+import { FaBookBookmark, FaMagnifyingGlass, FaFilter } from "react-icons/fa6"; 
 import styles from "../../app/admin/AdminPage.module.css";
 
 // ============================================================================
 // 2. MAIN COMPONENT (DAFTAR JURNAL)
 // ============================================================================
-// 🚀 FIX: Terima props bulanAktif dari page.jsx
 export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -31,7 +30,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   // --- FILTER & PENCARIAN ---
-  const [filterTglJurnal, setFilterTglJurnal] = useState(""); // 🚀 FIX: Ganti bulan jadi hari
+  const [filterTglJurnal, setFilterTglJurnal] = useState(""); 
   const [filterKelas, setFilterKelas] = useState("");
   const [cariTopik, setCariTopik] = useState(""); 
   
@@ -62,21 +61,25 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // 🚀 FIX UX: Auto-Reset filter lokal jika Admin mengganti Bulan di Header
-  useEffect(() => {
-    setFilterTglJurnal("");
-    setFilterKelas("");
-    setCariTopik("");
-  }, [bulanAktif]);
-
-  // Reset pagination ke halaman 1 jika filter berubah
-  useEffect(() => {
+  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [filterTglJurnal, filterKelas, cariTopik, pathname, replace, searchParams]);
+  };
+
+  // 🚀 FIX UX: Auto-Reset filter lokal jika Admin mengganti Bulan di Header
+  useEffect(() => {
+    setFilterTglJurnal("");
+    setFilterKelas("");
+    setCariTopik("");
+    resetHalamanKeSatu(); // Pastikan kembali ke halaman 1 saat ganti bulan
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bulanAktif]);
+
+  // ❌ PERBAIKAN: useEffect yang membuat pagination macet sudah DIHAPUS dari sini.
 
   // --- HANDLER BUKA JURNAL ---
   const bukaJurnal = async (idJadwal) => {
@@ -207,7 +210,6 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
         <h2 className={styles.judulIsiTab} style={{margin: 0}}><FaBookBookmark /> Jurnal Kelas</h2>
       </div>
 
-      {/* 🚀 FIX: UI Filter disamakan dengan standar tab sebelumnya */}
       <div className={styles.filterBar}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <FaFilter color="#111827" size={18} style={{marginRight: '8px'}} />
@@ -216,29 +218,56 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
         
         <div className={styles.wadahCari} style={{ minWidth: '180px' }}>
           <div className={styles.iconCari}><FaMagnifyingGlass color="#6b7280" /></div>
+          {/* 🚀 PERBAIKAN: Tambahkan resetHalamanKeSatu() saat ngetik pencarian */}
           <input 
             type="text" 
             placeholder="Cari Bab / Materi..." 
             value={cariTopik} 
-            onChange={(e) => setCariTopik(e.target.value)} 
+            onChange={(e) => {
+              setCariTopik(e.target.value);
+              resetHalamanKeSatu();
+            }} 
             className={styles.inputCari}
           />
         </div>
 
+        {/* 🚀 PERBAIKAN: Tambahkan resetHalamanKeSatu() saat ganti tanggal */}
         <FilterInput 
           type="date" 
           value={filterTglJurnal} 
-          onChange={(e) => setFilterTglJurnal(e.target.value)} 
+          onChange={(e) => {
+            setFilterTglJurnal(e.target.value);
+            resetHalamanKeSatu();
+          }} 
           min={minDate}
           max={maxDate}
         />
         
-        <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className={styles.filterSelectMurni}>
+        {/* 🚀 PERBAIKAN: Tambahkan resetHalamanKeSatu() saat pilih kelas */}
+        <select 
+          value={filterKelas} 
+          onChange={(e) => {
+            setFilterKelas(e.target.value);
+            resetHalamanKeSatu();
+          }} 
+          className={styles.filterSelectMurni}
+        >
           <option value="">Semua Kelas</option>
           {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
         </select>
         
-        <button onClick={() => { setFilterTglJurnal(""); setFilterKelas(""); setCariTopik(""); }} className={styles.btnReset}>Reset</button>
+        {/* 🚀 PERBAIKAN: Tambahkan resetHalamanKeSatu() di tombol reset */}
+        <button 
+          onClick={() => { 
+            setFilterTglJurnal(""); 
+            setFilterKelas(""); 
+            setCariTopik(""); 
+            resetHalamanKeSatu();
+          }} 
+          className={styles.btnReset}
+        >
+          Reset
+        </button>
       </div>
 
       <div className={styles.wadahTabel}>

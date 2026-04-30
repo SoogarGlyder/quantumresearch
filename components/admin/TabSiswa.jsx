@@ -3,7 +3,7 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState, useEffect, useMemo, useRef } from "react"; 
+import { useState, useMemo, useRef } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import PaginationBar from "../ui/PaginationBar";
@@ -13,7 +13,6 @@ import { editAkunSiswa, hapusAkunSiswa } from "../../actions/adminAction";
 import { prosesTambahSiswa, prosesBulkTambahSiswa } from "../../actions/authAction";
 import { potongDataPagination } from "../../utils/formatHelper";
 
-// 👈 Import Konstanta Sistem
 import { OPSI_KELAS, STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, KONFIGURASI_SISTEM } from "../../utils/constants"; 
 
 import styles from "../../app/admin/AdminPage.module.css";
@@ -32,7 +31,7 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   // Ambil halaman aktif langsung dari URL (Default ke 1)
   const page = Number(searchParams.get("page")) || 1;
   
-  // --- STATE: FORM SISWA (🛡️ ZERO HARDCODE STATUS) ---
+  // --- STATE: FORM SISWA ---
   const initialFormState = { 
     nama: "", 
     nomorPeserta: "", 
@@ -50,30 +49,33 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   const [loadingForm, setLoadingForm] = useState(false);
   const [pesanForm, setPesanForm] = useState("");
 
-  // --- STATE BARU UNTUK BULK UPLOAD ---
+  // --- STATE UNTUK BULK UPLOAD ---
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [hasilBulk, setHasilBulk] = useState(null);
 
   // --- STATE: FILTER & CETAK RAPOR ---
   const [filterKelas, setFilterKelas] = useState("");
-  const [siswaCetak, setSiswaCetak] = useState(null); // 🚀 STATE MODAL RAPOR
+  const [siswaCetak, setSiswaCetak] = useState(null);
   
-  // 🛡️ ZERO HARDCODE LIMIT
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // SINKRONISASI FILTER: Jika filter kelas berubah, reset halaman ke 1 di URL
-  useEffect(() => {
+  // ============================================================================
+  // 🚀 PERBAIKAN: HANDLER GANTI FILTER (PENGGANTI useEffect)
+  // ============================================================================
+  const handleGantiFilterKelas = (e) => {
+    setFilterKelas(e.target.value);
+    
+    // Setiap kali filter diubah, bersihkan parameter 'page' dari URL agar kembali ke halaman 1
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
       params.delete("page");
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [filterKelas, pathname, replace, searchParams]);
+  };
 
   // --- LOGIKA BULK UPLOAD ---
   const unduhTemplate = () => {
     const header = "nama,nomorPeserta,noHp,kelas,username,password\n";
-    // Sesuaikan contoh dengan default sistem
     const contoh = `Budi Santoso,QTM-001,08123456789,10 SMA,budi_qtm,${KONFIGURASI_SISTEM.DEFAULT_PASSWORD}`;
     const blob = new Blob([header + contoh], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -124,7 +126,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   const simpanSiswa = async (e) => { 
     e.preventDefault(); 
     
-    // Validasi panjang password
     if (formSiswa.password && formSiswa.password.length < VALIDASI_SISTEM.MIN_PASSWORD) {
       setPesanForm(`⚠️ Sandi minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter!`);
       return;
@@ -262,7 +263,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
           />
           <input 
             type="text" 
-            // 🛡️ ZERO HARDCODE PLACEHOLDER
             placeholder={idEdit ? "Kosongkan jika tak diubah" : `Sandi (Min ${VALIDASI_SISTEM.MIN_PASSWORD} char, Def: No HP)`} 
             required={!idEdit} 
             value={formSiswa.password} 
@@ -285,7 +285,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             className={styles.formInput} 
             style={{ fontWeight: '900', color: formSiswa.status === STATUS_USER.NONAKTIF ? '#ef4444' : '#15803d' }}
           >
-            {/* 🛡️ ZERO HARDCODE STATUS */}
             <option value={STATUS_USER.AKTIF}>🟢 Status: Aktif</option>
             <option value={STATUS_USER.NONAKTIF}>🔴 Status: Tidak Aktif (Blokir Login)</option>
           </select>
@@ -330,14 +329,14 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
             )}
           </div>
         )}
-
       </div>
       
       {/* PANEL KANAN: TABEL SISWA */}
       <div className={styles.flexDua}>
         <div className={styles.headerTabSiswa}>
           <h3 className={styles.judulTabelKanan}>Daftar Siswa ({siswaDitampilkan.length})</h3>
-          <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className={styles.filterSelectMurni}>
+          {/* 🚀 PERBAIKAN: Menggunakan handleGantiFilterKelas di sini */}
+          <select value={filterKelas} onChange={handleGantiFilterKelas} className={styles.filterSelectMurni}>
             <option value="">Semua Kelas</option>
             {OPSI_KELAS.map((opsiKls) => (
               <option key={opsiKls} value={opsiKls}>{opsiKls}</option>
@@ -360,7 +359,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
                 <tr><td colSpan="4" className={styles.selKosong}>Tidak ada data siswa.</td></tr>
               ) : (
                 dataSiswaHalIni.map(s => {
-                  // 🛡️ ZERO HARDCODE STATUS
                   const isNonaktif = s.status === STATUS_USER.NONAKTIF;
                   return (
                     <tr key={s._id} style={{ opacity: isNonaktif ? 0.6 : 1 }}>
@@ -378,7 +376,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
                         <div className={styles.wadahAksiInlineHorizontal}>
                           <button onClick={() => klikEditSiswa(s)} className={`${styles.tombolAksi} ${styles.btnEdit}`}>Edit</button> 
                           <button onClick={() => klikHapusSiswa(s._id, s.nama)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>Hapus</button>
-                          {/* 🚀 TOMBOL CETAK RAPOR BARU */}
                           <button onClick={() => setSiswaCetak(s)} className={`${styles.tombolAksi} ${styles.btnCetak}`} style={{ backgroundColor: '#111827', color: 'white' }}>Cetak</button>
                         </div>
                       </td>
@@ -393,7 +390,6 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
         <PaginationBar totalPages={totalPage} />
       </div>
 
-      {/* 🚀 MOUNTING MODAL RAPOR (Akan muncul jika siswaCetak tidak null) */}
       {siswaCetak && (
         <ModalRaporSiswa siswa={siswaCetak} onClose={() => setSiswaCetak(null)} />
       )}
