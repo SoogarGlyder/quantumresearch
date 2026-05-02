@@ -104,7 +104,7 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
               <img src="/logo-qr-persegi.png" alt="Logo" style={{ height: '90px', borderRight: '3px solid #111827', paddingRight: '15px'}} />
               <div>
-                <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#111827' }}>LAPORAN BULANAN BELAJAR SISWA</h1>
+                <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#111827' }}>LAPORAN BELAJAR BULANAN SISWA</h1>
                 <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbingan Belajar Quantum Research Cempaka Putih</p>
                 <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>Jalan Cempaka Putih Tengah XV No.05</p>
                 <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>021 2169 0016 | 0896 9612 9658</p>
