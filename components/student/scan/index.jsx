@@ -2,7 +2,7 @@
 
 import styles from "@/components/App.module.css";
 
-// 🚀 IMPORT TETANGGA (LOKAL)
+// IMPORT TETANGGA (LOKAL)
 import HeaderScanner from "./HeaderScanner";
 import ModeSelector from "./ModeSelector";
 import CameraArea from "./CameraArea";

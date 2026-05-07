@@ -8,7 +8,7 @@ import { PERIODE_BELAJAR, TIPE_SESI, STATUS_SESI } from "@/utils/constants";
 import { cekDanGenerateMisiHarian, klaimHadiahMisi } from "@/actions/misiAction"; 
 import styles from "@/components/App.module.css";
 
-// 🚀 IMPORT CUSTOM HOOK
+// IMPORT CUSTOM HOOK
 import { useStudentStats } from "./useStudentStats";
 
 import HeaderSiswa from "./HeaderSiswa";
@@ -45,7 +45,7 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
   const [jawabanPastReview, setJawabanPastReview] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0); 
 
-  // 🚀 PANGGIL CUSTOM HOOK (Semua logika rumit disembunyikan di sini)
+  // PANGGIL CUSTOM HOOK (Semua logika rumit disembunyikan di sini)
   const { streakKonsul, statsBulanIni, misiBulanan } = useStudentStats(riwayat, jadwal, siswa);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
   const { jadwalAktif } = useMemo(() => pilahJadwalSiswa(jadwal, riwayat, PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR), [jadwal, riwayat]);
 
   // ==========================================================
-  // 🚀 LOGIKA PENCARIAN KUIS HARI INI
+  // LOGIKA PENCARIAN KUIS HARI INI
   // ==========================================================
   const tglJakartaHariIni = getTglJakarta();
   

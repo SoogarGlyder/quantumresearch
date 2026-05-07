@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-// 🚀 FIX: Import navigasi Next.js untuk Pagination
+// FIX: Import navigasi Next.js untuk Pagination
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 import { 
@@ -11,15 +11,15 @@ import {
 } from "../../actions/soalAction";
 import { OPSI_KELAS } from "../../utils/constants";
 import styles from "../../app/admin/AdminPage.module.css";
-// 🚀 FIX: Tambah icon pencarian
+// FIX: Tambah icon pencarian
 import { FaBookOpen, FaLink, FaTrash, FaPenToSquare, FaMagnifyingGlass } from "react-icons/fa6";
 
-// 🚀 FIX: Import amunisi UI kita
+// FIX: Import amunisi UI kita
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
 export default function TabSoal({ dataSiswa = [] }) {
-  // 🚀 SETUP URL-DRIVEN STATE
+  // SETUP URL-DRIVEN STATE
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -30,7 +30,7 @@ export default function TabSoal({ dataSiswa = [] }) {
   const [idEdit, setIdEdit] = useState(null);
   const [loadingForm, setLoadingForm] = useState(false);
   
-  // 🚀 STATE FILTER PENCARIAN
+  // STATE FILTER PENCARIAN
   const [searchQuery, setSearchQuery] = useState("");
   const currentPage = Number(searchParams.get("page")) || 1;
   const ITEMS_PER_PAGE = 5; // Batas data per halaman
@@ -44,7 +44,7 @@ export default function TabSoal({ dataSiswa = [] }) {
   };
   const [form, setForm] = useState(initialForm);
 
-  // 🚀 FUNGSI PENAWAR BUG PAGINATION
+  // FUNGSI PENAWAR BUG PAGINATION
   const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
@@ -64,7 +64,7 @@ export default function TabSoal({ dataSiswa = [] }) {
     setLoading(false);
   };
 
-  // 🚀 LOGIKA FILTERING & PENCARIAN DATA
+  // LOGIKA FILTERING & PENCARIAN DATA
   const dataFiltered = useMemo(() => {
     if (!searchQuery) return dataSoal;
     return dataSoal.filter(item => 
@@ -73,7 +73,7 @@ export default function TabSoal({ dataSiswa = [] }) {
     );
   }, [dataSoal, searchQuery]);
 
-  // 🚀 LOGIKA PAGINATION (MEMOTONG DATA)
+  // LOGIKA PAGINATION (MEMOTONG DATA)
   const totalPages = Math.ceil(dataFiltered.length / ITEMS_PER_PAGE) || 1;
   const dataPaginated = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -211,7 +211,7 @@ export default function TabSoal({ dataSiswa = [] }) {
             <div style={{ position: 'absolute', top: '50%', left: '12px', transform: 'translateY(-50%)', color: '#6b7280' }}>
               <FaMagnifyingGlass size={14} />
             </div>
-            {/* 🚀 Menggunakan fungsi reset halaman saat mencari */}
+            {/* Menggunakan fungsi reset halaman saat mencari */}
             <FilterInput 
               value={searchQuery} 
               onChange={(e) => {
@@ -240,7 +240,7 @@ export default function TabSoal({ dataSiswa = [] }) {
               ) : dataPaginated.length === 0 ? (
                 <tr><td colSpan="4" className={styles.selKosong}>{searchQuery ? "Pencarian tidak ditemukan." : "Belum ada latihan soal yang dibagikan."}</td></tr>
               ) : (
-                // 🚀 RENDER DATA YANG SUDAH DIPOTONG (dataPaginated)
+                // RENDER DATA YANG SUDAH DIPOTONG (dataPaginated)
                 dataPaginated.map(item => (
                   <tr key={item._id}>
                     <td>
@@ -273,7 +273,7 @@ export default function TabSoal({ dataSiswa = [] }) {
           </table>
         </div>
 
-        {/* 🚀 RENDER PAGINATION BAR */}
+        {/* RENDER PAGINATION BAR */}
         <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
           <PaginationBar totalPages={totalPages} />
         </div>

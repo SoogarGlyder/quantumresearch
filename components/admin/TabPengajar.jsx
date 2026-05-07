@@ -7,16 +7,13 @@ import { useState, useMemo, useRef } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import PaginationBar from "../ui/PaginationBar";
-// 🚀 FIX: Import FilterInput dan Icon Pencarian
 import FilterInput from "../ui/FilterInput";
 import { FaMagnifyingGlass } from "react-icons/fa6";
 
-// ⚠️ Pastikan editPengajar dan prosesBulkTambahPengajar sudah ada di teacherAction.js
 import { tambahPengajarBaru, hapusPengajar, editPengajar, prosesBulkTambahPengajar } from "../../actions/teacherAction";
 import { potongDataPagination } from "../../utils/formatHelper";
 
-// 👈 Import Konstanta Sistem
-import { STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, KONFIGURASI_SISTEM } from "../../utils/constants";
+import { STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, KONFIGURASI_SISTEM, PANGKAT_PENGAJAR, OPSI_KELAS } from "../../utils/constants";
 
 import styles from "../../app/admin/AdminPage.module.css";
 
@@ -24,27 +21,24 @@ import styles from "../../app/admin/AdminPage.module.css";
 // 2. MAIN COMPONENT (TAB PENGAJAR)
 // ============================================================================
 export default function TabPengajar({ dataPengajar = [], muatData }) {
-  // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
   
   const fileInputRef = useRef(null);
 
-  // Ambil halaman aktif langsung dari URL
   const page = Number(searchParams.get("page")) || 1;
-  
-  // 🚀 STATE BARU: PENCARIAN
   const [searchQuery, setSearchQuery] = useState("");
 
-  // --- STATE: FORM PENGAJAR (🛡️ ZERO HARDCODE STATUS) ---
   const initialFormState = { 
     nama: "", 
-    nomorPeserta: "", // ID Unik
+    nomorPeserta: "", 
     username: "", 
-    password: "",     // Disamakan dengan form siswa (sebelumnya kataSandi)
+    password: "",     
     noHp: "", 
     kodePengajar: "", 
+    pangkat: PANGKAT_PENGAJAR.FREELANCE, 
+    kelasAsuh: [], 
     status: STATUS_USER.AKTIF 
   };
   
@@ -53,14 +47,11 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
   const [loadingForm, setLoadingForm] = useState(false);
   const [pesanForm, setPesanForm] = useState("");
 
-  // --- STATE UNTUK BULK UPLOAD ---
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [hasilBulk, setHasilBulk] = useState(null);
 
-  // 🛡️ ZERO HARDCODE LIMIT
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL saat mencari
   const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
@@ -69,7 +60,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
     }
   };
 
-  // --- LOGIKA BULK UPLOAD ---
   const unduhTemplate = () => {
     const header = "nama,nomorPeserta,kodePengajar,noHp,username,password\n";
     const contoh = `Baskoro Cahhyo,PG-001,BC,08123456789,baskoro_bc,${KONFIGURASI_SISTEM.DEFAULT_PASSWORD}`;
@@ -104,7 +94,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
           }, {});
         });
 
-      // Panggil fungsi bulk dari action
       const res = await prosesBulkTambahPengajar(jsonData);
       setIsBulkLoading(false);
       
@@ -119,11 +108,19 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
     reader.readAsText(file);
   };
 
-  // --- HANDLERS: CRUD ---
+  const handleKelasAsuhChange = (kelas) => {
+    setFormPengajar(prev => {
+      const isSelected = prev.kelasAsuh.includes(kelas);
+      const newKelasAsuh = isSelected 
+        ? prev.kelasAsuh.filter(k => k !== kelas) 
+        : [...prev.kelasAsuh, kelas]; 
+      return { ...prev, kelasAsuh: newKelasAsuh };
+    });
+  };
+
   const simpanPengajar = async (e) => { 
     e.preventDefault(); 
     
-    // Validasi panjang password
     if (formPengajar.password && formPengajar.password.length < VALIDASI_SISTEM.MIN_PASSWORD) {
       setPesanForm(`⚠️ Sandi minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter!`);
       return;
@@ -134,6 +131,11 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
     
     let payloadPengajar = { ...formPengajar };
     
+    // Jika pangkat diubah dari Kakak Asuh ke yang lain, kosongkan kelas asuhnya
+    if (payloadPengajar.pangkat !== PANGKAT_PENGAJAR.KAKAK_ASUH) {
+      payloadPengajar.kelasAsuh = [];
+    }
+
     if (!payloadPengajar.username || payloadPengajar.username.trim() === "") {
       payloadPengajar.username = payloadPengajar.kodePengajar || payloadPengajar.nomorPeserta;
     }
@@ -164,9 +166,11 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
       nama: pengajar.nama, 
       nomorPeserta: pengajar.nomorPeserta || "", 
       username: pengajar.username || "", 
-      password: "", // Kosongkan password saat edit agar tidak terubah jika tidak diisi
+      password: "", 
       noHp: pengajar.noHp || "", 
       kodePengajar: pengajar.kodePengajar || "", 
+      pangkat: pengajar.pangkat || PANGKAT_PENGAJAR.FREELANCE, 
+      kelasAsuh: pengajar.kelasAsuh || [], 
       status: pengajar.status || STATUS_USER.AKTIF 
     }); 
     
@@ -194,11 +198,9 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
     } 
   };
 
-  // --- LOGIKA FILTER & PAGINATION ---
   const pengajarDitampilkan = useMemo(() => {
     let listData = [...dataPengajar];
     
-    // 🚀 FILTER PENCARIAN (Berdasarkan Nama, Kode, atau Username)
     if (searchQuery) {
       const kataKunci = searchQuery.toLowerCase();
       listData = listData.filter(g => 
@@ -231,16 +233,18 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
             value={formPengajar.nama} onChange={e => setFormPengajar({...formPengajar, nama: e.target.value})} 
             className={styles.formInput} 
           />
-          <input 
-            type="text" placeholder="ID Unik / No Induk" required 
-            value={formPengajar.nomorPeserta} onChange={e => setFormPengajar({...formPengajar, nomorPeserta: e.target.value})} 
-            className={styles.formInput} 
-          />
-          <input 
-            type="text" placeholder="Kode Pengajar (Cth: BC)" required 
-            value={formPengajar.kodePengajar} onChange={e => setFormPengajar({...formPengajar, kodePengajar: e.target.value})} 
-            className={styles.formInput} 
-          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input 
+              type="text" placeholder="No Induk/ID" required 
+              value={formPengajar.nomorPeserta} onChange={e => setFormPengajar({...formPengajar, nomorPeserta: e.target.value})} 
+              className={styles.formInput} style={{ flex: 2 }}
+            />
+            <input 
+              type="text" placeholder="Kode (BC)" required 
+              value={formPengajar.kodePengajar} onChange={e => setFormPengajar({...formPengajar, kodePengajar: e.target.value})} 
+              className={styles.formInput} style={{ flex: 1 }}
+            />
+          </div>
           <input 
             type="text" placeholder="Username (Opsional)" 
             value={formPengajar.username} onChange={e => setFormPengajar({...formPengajar, username: e.target.value})} 
@@ -258,10 +262,52 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
             value={formPengajar.password} onChange={e => setFormPengajar({...formPengajar, password: e.target.value})} 
             className={styles.formInput} 
           />
+
+          {/* DROPDOWN PANGKAT PENGAJAR */}
+          <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginTop: '12px' }}>Pangkat / Peran:</label>
+          <select 
+            value={formPengajar.pangkat} 
+            onChange={e => setFormPengajar({...formPengajar, pangkat: e.target.value})} 
+            className={styles.formInput} 
+            style={{ 
+              fontWeight: '900', 
+              backgroundColor: formPengajar.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH ? '#f3e8ff' : (formPengajar.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK ? '#dbeafe' : '#f8fafc') 
+            }}
+          >
+            <option value={PANGKAT_PENGAJAR.FREELANCE}>👨‍🏫 Pengajar Freelance</option>
+            <option value={PANGKAT_PENGAJAR.TETAP}>👨‍🏫 Pengajar Tetap</option>
+            <option value={PANGKAT_PENGAJAR.KAKAK_ASUH}>🦸‍♂️ Kakak Asuh (Wali Kelas)</option>
+            {/* FIX: Opsi Staff Akademik diaktifkan kembali */}
+            <option value={PANGKAT_PENGAJAR.STAFF_AKADEMIK}>🛡️ Staff Akademik (Admin Cabang)</option>
+          </select>
+
+          {/* CHECKBOX GRID KELAS ASUH (Hanya Muncul Jika Pangkat = KAKAK_ASUH) */}
+          {formPengajar.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH && (
+            <div style={{ marginTop: '10px', marginBottom: '16px', padding: '12px', border: '3px solid #111827', borderRadius: '12px', backgroundColor: '#fdf4ff', boxShadow: '4px 4px 0 #111827' }}>
+              <label style={{ fontSize: '13px', fontWeight: '900', display: 'block', marginBottom: '10px', color: '#111827' }}>Pilih Kelas Tanggung Jawab:</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                {OPSI_KELAS.map(kelas => (
+                  <label key={kelas} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: 'white', padding: '6px 10px', borderRadius: '6px', border: '2px solid #cbd5e1' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={formPengajar.kelasAsuh.includes(kelas)}
+                      onChange={() => handleKelasAsuhChange(kelas)}
+                      style={{ accentColor: '#c084fc', transform: 'scale(1.2)' }}
+                    />
+                    {kelas}
+                  </label>
+                ))}
+              </div>
+              {formPengajar.kelasAsuh.length === 0 && (
+                <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '8px', fontWeight: 'bold', margin: '8px 0 0 0' }}>⚠️ Minimal pilih satu kelas asuh.</p>
+              )}
+            </div>
+          )}
+
           <select 
             value={formPengajar.status} onChange={e => setFormPengajar({...formPengajar, status: e.target.value})} 
             className={styles.formInput} 
-            style={{ fontWeight: '900', color: formPengajar.status === STATUS_USER.NONAKTIF ? '#ef4444' : '#15803d' }}
+            style={{ fontWeight: '900', color: formPengajar.status === STATUS_USER.NONAKTIF ? '#ef4444' : '#15803d', marginTop: '12px' }}
           >
             <option value={STATUS_USER.AKTIF}>🟢 Status: Aktif</option>
             <option value={STATUS_USER.NONAKTIF}>🔴 Status: Tidak Aktif (Blokir)</option>
@@ -271,7 +317,7 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
             {idEdit && (
               <button type="button" onClick={batalEdit} className={styles.tombolBatalForm}>Batal</button>
             )}
-            <button type="submit" disabled={loadingForm} className={idEdit ? styles.tombolSimpanKuning : styles.tombolSimpanBiruBaru}>
+            <button type="submit" disabled={loadingForm || (formPengajar.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH && formPengajar.kelasAsuh.length === 0)} className={idEdit ? styles.tombolSimpanKuning : styles.tombolSimpanBiruBaru}>
               {loadingForm ? "..." : "Simpan"}
             </button>
           </div>
@@ -283,10 +329,10 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
           )}
         </form>
 
-        {/* --- UI BULK ACTIONS (Hanya Muncul Saat Mode Tambah) --- */}
+        {/* --- UI BULK ACTIONS --- */}
         {!idEdit && (
           <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px dashed #ccc' }}>
-            <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#111827', fontWeight: '900' }}>🚀 Pendaftaran Massal (CSV)</h4>
+            <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#111827', fontWeight: '900' }}>Pendaftaran Massal (CSV)</h4>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button type="button" onClick={unduhTemplate} className={styles.tombolBatalForm} style={{ fontSize: '12px', flex: 1 }}>
                 Unduh Template
@@ -314,7 +360,7 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
       {/* PANEL KANAN: TABEL PENGAJAR */}
       <div className={styles.flexDua}>
         
-        {/* 🚀 HEADER & PENCARIAN */}
+        {/* HEADER & PENCARIAN */}
         <div className={styles.headerTabSiswa} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
           <h3 className={styles.judulTabelKanan} style={{ margin: 0 }}>Daftar Pengajar ({pengajarDitampilkan.length})</h3>
           
@@ -340,7 +386,7 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
             <thead>
               <tr>
                 <th>Pengajar</th>
-                <th>Akses & Kode</th>
+                <th>Otoritas & Kode</th>
                 <th>Kontak</th>
                 <th className={styles.kolomAksiKecil}>Aksi</th>
               </tr>
@@ -351,22 +397,45 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
               ) : (
                 dataPengajarHalIni.map(g => {
                   const isNonaktif = g.status === STATUS_USER.NONAKTIF;
+                  
+                  // Pewarnaan baris dan badge berdasarkan pangkat
+                  let bgBaris = 'transparent';
+                  let bgBadge = '#e5e7eb';
+                  let colorBadge = '#111827';
+                  
+                  if (g.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH) {
+                    bgBaris = '#faf5ff'; bgBadge = '#c084fc'; colorBadge = 'white';
+                  } else if (g.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK) {
+                    bgBaris = '#eff6ff'; bgBadge = '#3b82f6'; colorBadge = 'white';
+                  }
+
                   return (
-                    <tr key={g._id} style={{ opacity: isNonaktif ? 0.6 : 1 }}>
+                    <tr key={g._id} style={{ opacity: isNonaktif ? 0.6 : 1, backgroundColor: bgBaris }}>
                       <td>
-                        <p className={styles.teksNamaSiswa} style={{ color: isNonaktif ? '#ef4444' : 'inherit' }}>
+                        <p className={styles.teksNamaSiswa} style={{ color: isNonaktif ? '#ef4444' : '#111827' }}>
                           {g.nama} {isNonaktif && '(Nonaktif)'}
                         </p>
                         <p className={styles.teksUsernameSiswa}>ID: {g.nomorPeserta || "-"}</p>
                       </td>
                       <td>
-                        <p style={{margin: 0, fontWeight: '900'}}>@{g.username}</p>
-                        <span className={styles.badgeStatus} style={{backgroundColor: '#fef08a', color: '#111827', fontSize: '10px'}}>
-                          Kode: {g.kodePengajar || "-"}
-                        </span>
+                        <p style={{margin: 0, fontWeight: '900', color: '#111827'}}>@{g.username}</p>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                          <span className={styles.badgeStatus} style={{backgroundColor: '#fef08a', color: '#111827', fontSize: '10px', padding: '2px 6px'}}>
+                            Kode: {g.kodePengajar || "-"}
+                          </span>
+                          <span className={styles.badgeStatus} style={{backgroundColor: bgBadge, color: colorBadge, fontSize: '10px', padding: '2px 6px', fontWeight: '900'}}>
+                            {g.pangkat?.replace('_', ' ') || "FREELANCE"}
+                          </span>
+                        </div>
+                        {/* Jika dia Kakak Asuh, Tampilkan daftar kelas asuhnya */}
+                        {g.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH && g.kelasAsuh?.length > 0 && (
+                          <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#9333ea', margin: '6px 0 0 0', lineHeight: '1.4' }}>
+                            Asuh: {g.kelasAsuh.join(", ")}
+                          </p>
+                        )}
                       </td>
                       <td>
-                        <p style={{margin: 0, fontSize: '13px'}}>{g.noHp || "-"}</p>
+                        <p style={{margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#4b5563'}}>{g.noHp || "-"}</p>
                       </td>
                       <td style={{textAlign:'center'}}>
                         <div className={styles.wadahAksiInlineHorizontal}>
@@ -382,7 +451,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
           </table>
         </div>
         
-        {/* 🚀 PaginationBar dibungkus div agar punya jarak dengan tabel */}
         <div style={{ marginTop: '24px' }}>
           <PaginationBar totalPages={totalPage} />
         </div>

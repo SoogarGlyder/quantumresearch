@@ -2,7 +2,7 @@
    1. KAMUS DESAIN & WARNA (Vanilla CSS Variables)
    ============================================================================ */
 :root {
-  /* 🚀 KUNCI MUTLAK: Paksa browser hp/laptop tetap di mode terang! */
+  /* KUNCI MUTLAK: Paksa browser hp/laptop tetap di mode terang! */
   color-scheme: light only;
 
   /* Bawaan Sistem */
@@ -46,7 +46,7 @@
   --font-premium: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
-/* 🚀 PERTAHANAN LAPIS KEDUA: Jika HP masih memaksa (Override Samsung/Xiaomi) */
+/* PERTAHANAN LAPIS KEDUA: Jika HP masih memaksa (Override Samsung/Xiaomi) */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #ffffff !important;
@@ -146,7 +146,7 @@ body {
 }
 
 /* ============================================================================
-   3. 🚀 OPTIMASI PWA & MOBILE LAYOUT (iOS Notch Fix)
+   3. OPTIMASI PWA & MOBILE LAYOUT (iOS Notch Fix)
    ============================================================================ */
 
 .header-aman-poni {
@@ -154,7 +154,7 @@ body {
 }
 
 /* ============================================================================
-   4. 🚀 PENGALAMAN NATIVE APP (Sembunyikan Scroll Bar)
+   4. PENGALAMAN NATIVE APP (Sembunyikan Scroll Bar)
    ============================================================================ */
 
 ::-webkit-scrollbar {

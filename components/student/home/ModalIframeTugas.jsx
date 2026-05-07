@@ -5,7 +5,7 @@ import { FaXmark } from "react-icons/fa6";
 import styles from "@/components/App.module.css";
 
 export default function ModalIframeTugas({ urlMitra, onClose }) {
-  // 🚀 Mencegah body/halaman utama ikut ter-scroll saat modal terbuka
+  // Mencegah body/halaman utama ikut ter-scroll saat modal terbuka
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -15,7 +15,7 @@ export default function ModalIframeTugas({ urlMitra, onClose }) {
 
   if (!urlMitra) return null;
 
-  // 🚀 LOGIKA ANTI-NGEBUG: Deteksi apakah URL berakhiran .pdf
+  // LOGIKA ANTI-NGEBUG: Deteksi apakah URL berakhiran .pdf
   // Jika ya, bungkus dengan Google Docs Viewer agar bisa di-zoom di Safari/iOS
   let finalUrl = urlMitra;
   
@@ -26,7 +26,7 @@ export default function ModalIframeTugas({ urlMitra, onClose }) {
   return (
     <div 
       className={styles.wrapperGallery} 
-      onClick={onClose} // 🚀 Tutup modal jika area luar diklik
+      onClick={onClose} // Tutup modal jika area luar diklik
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
         backgroundColor: 'rgba(248, 250, 252, 0.9)', // Sedikit transparan agar lebih elegan
@@ -36,13 +36,13 @@ export default function ModalIframeTugas({ urlMitra, onClose }) {
     >
       <div 
         className={styles.containerGallery} 
-        onClick={(e) => e.stopPropagation()} // 🚀 KUNCI UTAMA: Mencegah klik tembus/bocor ke latar belakang!
+        onClick={(e) => e.stopPropagation()} // KUNCI UTAMA: Mencegah klik tembus/bocor ke latar belakang!
         style={{ 
           display: 'flex', flexDirection: 'column', maxHeight: '100%', height: '100%', padding: 0, 
           overflow: 'hidden', 
           border: '4px solid #111827', 
-          boxShadow: '8px 8px 0 #111827', // 🚀 Sentuhan Neo-Brutalism Anda
-          pointerEvents: 'auto', // 🚀 Memastikan elemen bisa diklik
+          boxShadow: '8px 8px 0 #111827', // Sentuhan Neo-Brutalism Anda
+          pointerEvents: 'auto', // Memastikan elemen bisa diklik
           backgroundColor: '#fff'
         }}
       >
@@ -79,13 +79,13 @@ export default function ModalIframeTugas({ urlMitra, onClose }) {
             style={{ 
               border: "none", 
               display: "block",
-              pointerEvents: 'auto', // 🚀 GARANSI BISA DIKLIK!
+              pointerEvents: 'auto', // GARANSI BISA DIKLIK!
               position: 'absolute',
               top: 0,
               left: 0
             }}
             title="Bahan Belajar"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" // 🚀 Izin ekstra interaktivitas
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" // Izin ekstra interaktivitas
             allowFullScreen
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
           />

@@ -9,17 +9,38 @@ import {
   PERAN, 
   STATUS_USER, 
   KONFIGURASI_SISTEM, 
-  PESAN_SISTEM 
+  PESAN_SISTEM,
+  PANGKAT_PENGAJAR // FIX: Import Pangkat Pengajar
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
-// 1. INTERNAL SECURITY
+// 1. INTERNAL SECURITY & HELPERS
 // ============================================================================
 
+// FUNGSI BARU: Ekstraktor Cabang Otomatis
+function ekstrakKodeCabang(nomorPeserta) {
+  if (!nomorPeserta || nomorPeserta.length < 6) return "010101"; // Default aman ke CPT jika format salah
+  return nomorPeserta.substring(0, 6);
+}
+
+// FIX: Gerbang Penjaga (RBAC) - Izinkan Admin Utama ATAU Staff Akademik
 async function pastikanAdmin() {
-  const { userId, peran } = await authHelper.ambilSesi();
-  return userId && peran === PERAN.ADMIN.id;
+  const sesi = await authHelper.ambilSesi();
+  if (!sesi || !sesi.userId) return false;
+
+  // Izinkan jika dia Admin Mutlak
+  const isStaffAkademik = sesi.peran === PERAN.PENGAJAR.id && sesi.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK;
+  
+  if (sesi.peran !== PERAN.ADMIN.id && !isStaffAkademik) {
+    return responseHelper.error("Akses Ditolak. Khusus Admin atau Staff Akademik.");
+  }
+  
+  // Izinkan jika dia Pengajar tapi berpangkat Staff Akademik
+  if (sesi.peran === PERAN.PENGAJAR.id && sesi.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK) return true;
+
+  // Selain itu (Siswa, Freelance, Tetap, Kakak Asuh) -> TOLAK!
+  return false;
 }
 
 // ============================================================================
@@ -43,7 +64,7 @@ export async function prosesLogin(dataFormulir) {
       return responseHelper.error("ID dan Kata Sandi wajib diisi.");
     }
 
-    // 🚀 OPTIMASI: Gunakan .lean() karena kita hanya butuh data mentah untuk validasi
+    // OPTIMASI: Gunakan .lean() karena kita hanya butuh data mentah untuk validasi
     const user = await User.findOne({
       $or: [
         { peran: PERAN.ADMIN.id, username: idInputLower },
@@ -77,7 +98,7 @@ export async function prosesLogin(dataFormulir) {
     
     if (!passwordCocok) return responseHelper.error("Kata sandi salah!");
 
-    await authHelper.setSesi(user);
+    await authHelper.setSesi(user); // ⚠️ CATATAN: Pastikan fungsi ini di authHelper.js menyimpan pangkat & kodeCabang
     
     return responseHelper.success("Login Berhasil! Memuat portal...");
   } catch (error) {
@@ -92,7 +113,7 @@ export async function prosesLogout() {
 }
 
 // ============================================================================
-// 3. REGISTRATION ACTIONS (ADMIN ONLY)
+// 3. REGISTRATION ACTIONS (ADMIN & STAFF AKADEMIK ONLY)
 // ============================================================================
 
 export async function prosesTambahSiswa(dataFormulir) {
@@ -106,15 +127,22 @@ export async function prosesTambahSiswa(dataFormulir) {
     let passPolos = (dataFormulir.password || dataFormulir.kataSandi || "").toString().trim();
     if (!passPolos) passPolos = noHp || KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
 
-    // 🚀 OPTIMASI: exists() lebih cepat dan hemat memori dari findOne()
     const cekDuplikat = await User.exists({ $or: [{ username }, { nomorPeserta: dataFormulir.nomorPeserta }] });
     if (cekDuplikat) return responseHelper.error("Username atau Nomor Peserta sudah digunakan!");
 
     const passwordHashed = await authHelper.buatHash(passPolos);
+    
+    // FIX: Ekstrak kode cabang dari nomor peserta
+    const kodeCabangSiswa = ekstrakKodeCabang(dataFormulir.nomorPeserta);
 
     await User.create({
-      ...dataFormulir, username, noHp, password: passwordHashed,
-      peran: PERAN.SISWA.id, status: STATUS_USER.AKTIF
+      ...dataFormulir, 
+      username, 
+      noHp, 
+      password: passwordHashed,
+      peran: PERAN.SISWA.id, 
+      status: STATUS_USER.AKTIF,
+      kodeCabang: kodeCabangSiswa // Masukkan cabang otomatis
     });
 
     revalidatePath(PERAN.ADMIN.home);
@@ -141,9 +169,18 @@ export async function prosesTambahPengajar(dataFormulir) {
     // Atomic hapus data lama jika ada, lalu buat baru
     await User.deleteOne({ $or: [{ username }, { kodePengajar }] });
 
+    // FIX: Ekstrak kode cabang dari nomor peserta
+    const kodeCabangPengajar = ekstrakKodeCabang(dataFormulir.nomorPeserta);
+
     await User.create({
-      ...dataFormulir, username, kodePengajar, noHp, password: passwordHashed, 
-      peran: PERAN.PENGAJAR.id, status: STATUS_USER.AKTIF
+      ...dataFormulir, 
+      username, 
+      kodePengajar, 
+      noHp, 
+      password: passwordHashed, 
+      peran: PERAN.PENGAJAR.id, 
+      status: STATUS_USER.AKTIF,
+      kodeCabang: kodeCabangPengajar // Masukkan cabang otomatis
     });
 
     revalidatePath(PERAN.ADMIN.home);
@@ -158,8 +195,6 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
     await connectToDatabase();
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
     
-    // 🚀 BOM WAKTU DIJINAKKAN: Jangan tarik seluruh data User!
-    // Ekstrak username & nomor dari file Excel, lalu cek yang cocok saja ke Database.
     const barisUsername = daftarSiswaRaw.map(s => validationHelper.sanitize(s.username || s.nomorPeserta).toLowerCase());
     const barisNomor = daftarSiswaRaw.map(s => validationHelper.sanitize(s.nomorPeserta));
 
@@ -175,7 +210,6 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
 
     const dataSiap = [];
 
-    // Proses hashing berjalan sekuensial agar tidak memicu Vercel CPU Timeout saat mass-upload
     for (const s of daftarSiswaRaw) {
       const id = validationHelper.sanitize(s.nomorPeserta);
       const user = validationHelper.sanitize(s.username || id).toLowerCase();
@@ -186,14 +220,22 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
       let pRaw = (s.password || s.kataSandi || "").toString().trim();
       if (!pRaw) pRaw = noHp || KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
 
+      // FIX: Ekstrak kode cabang dari setiap baris Excel
+      const kodeCabangSiswa = ekstrakKodeCabang(id);
+
       dataSiap.push({
-        ...s, nomorPeserta: id, username: user, noHp: noHp,
+        ...s, 
+        nomorPeserta: id, 
+        username: user, 
+        noHp: noHp,
         password: await authHelper.buatHash(pRaw),
-        peran: PERAN.SISWA.id, status: STATUS_USER.AKTIF
+        peran: PERAN.SISWA.id, 
+        status: STATUS_USER.AKTIF,
+        kodeCabang: kodeCabangSiswa // Masukkan cabang otomatis
       });
     }
 
-    if (dataSiap.length > 0) await User.insertMany(dataSiap); // 🚀 Atomic Insert Bulk
+    if (dataSiap.length > 0) await User.insertMany(dataSiap); 
     
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success(`${dataSiap.length} Siswa berhasil di-upload.`);

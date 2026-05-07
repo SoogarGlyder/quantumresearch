@@ -9,13 +9,18 @@ import { TIPE_SESI } from "../../utils/constants";
 import styles from "../../app/admin/AdminPage.module.css";
 import { FaChalkboardUser, FaLightbulb, FaUserShield } from "react-icons/fa6";
 
-// 🚀 FIX: Tambahkan dataPengajar di dalam props ini 👇
-export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, dataAbsenStaf, dataPengajar, muatData, bulanAktif }) {
+// FIX: Menambahkan isKakakAsuh ke dalam parameter props
+export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, dataAbsenStaf, dataPengajar, muatData, bulanAktif, isKakakAsuh }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  const subView = searchParams.get("sub") || TIPE_SESI.KELAS;
+  let subView = searchParams.get("sub") || TIPE_SESI.KELAS;
+
+  // FIX: Jika Kakak Asuh iseng mengetik ?sub=staf di URL, paksa kembali ke tab Kelas
+  if (isKakakAsuh && subView === "staf") {
+    subView = TIPE_SESI.KELAS;
+  }
 
   const gantiSubView = (idBaru) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -83,32 +88,33 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
           <FaLightbulb size={20} /> KONSUL SISWA
         </button>
 
-        {/* BUTTON: MONITORING STAF */}
-        <button 
-          onClick={() => gantiSubView("staf")}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '10px',
-            border: subView === "staf" ? '3px solid #111827' : '3px solid transparent',
-            backgroundColor: subView === "staf" ? '#3b82f6' : 'transparent',
-            color: subView === "staf" ? 'white' : '#111827',
-            fontWeight: '900',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            transition: 'all 0.2s',
-            boxShadow: subView === "staf" ? '4px 4px 0 #111827' : 'none',
-            transform: subView === "staf" ? 'translate(-2px, -2px)' : 'none'
-          }}
-        >
-          <FaUserShield size={20} /> MONITORING STAF
-        </button>
+        {/* BUTTON: MONITORING STAF (FIX: Disembunyikan dari Kakak Asuh) */}
+        {!isKakakAsuh && (
+          <button 
+            onClick={() => gantiSubView("staf")}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '10px',
+              border: subView === "staf" ? '3px solid #111827' : '3px solid transparent',
+              backgroundColor: subView === "staf" ? '#3b82f6' : 'transparent',
+              color: subView === "staf" ? 'white' : '#111827',
+              fontWeight: '900',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              transition: 'all 0.2s',
+              boxShadow: subView === "staf" ? '4px 4px 0 #111827' : 'none',
+              transform: subView === "staf" ? 'translate(-2px, -2px)' : 'none'
+            }}
+          >
+            <FaUserShield size={20} /> MONITORING STAF
+          </button>
+        )}
       </div>
 
       {/* 📦 AREA TAMPILAN (Animasi Fade In) */}
       <div key={subView} style={{ animation: 'fadeIn 0.3s ease-out' }}>
-        {/* 🚀 FIX: Oper bulanAktif ke masing-masing Tab */}
         {subView === TIPE_SESI.KELAS && (
           <TabKelas dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} muatData={muatData} bulanAktif={bulanAktif} />
         )}
@@ -117,7 +123,8 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
           <TabKonsul dataRiwayat={dataRiwayat} bulanAktif={bulanAktif} />
         )}
 
-        {subView === "staf" && (
+        {/* FIX: Tab ini tidak akan pernah di-render untuk Kakak Asuh */}
+        {subView === "staf" && !isKakakAsuh && (
           <TabAbsenStaf dataAbsenStaf={dataAbsenStaf} dataPengajar={dataPengajar} muatData={muatData} bulanAktif={bulanAktif} />
         )}
       </div>

@@ -37,13 +37,13 @@ export default function TabKelas({ jadwal = [], riwayat = [], siswa }) {
     }
   }, [siswa]);
 
-  // 🚀 LOGIKA PEMOTONGAN DATA KELAS
+  // LOGIKA PEMOTONGAN DATA KELAS
   const { jadwalSelesai } = useMemo(() => {
     return pilahJadwalSiswa(jadwal, riwayat, PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR);
   }, [jadwal, riwayat]);
   const { totalPage: totalPageKelas, dataTerpotong: dataKelasHalIni } = potongDataPagination(jadwalSelesai, page, ITEMS_PER_PAGE);
 
-  // 🚀 LOGIKA PEMOTONGAN DATA KUIS (BARU)
+  // LOGIKA PEMOTONGAN DATA KUIS (BARU)
   const { totalPage: totalPageKuis, dataTerpotong: dataKuisHalIni } = potongDataPagination(riwayatKuis, page, ITEMS_PER_PAGE);
 
   const klikBukaCatatan = (jadwalItem) => {

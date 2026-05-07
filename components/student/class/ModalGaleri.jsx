@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { FaXmark, FaBookBookmark, FaTriangleExclamation } from "react-icons/fa6";
 import 'react-medium-image-zoom/dist/styles.css';
 
-// 🚀 FIX: Path Absolute
+// FIX: Path Absolute
 import styles from "@/components/App.module.css";
 
 // Lazy Load Zoom agar halaman utama tidak berat

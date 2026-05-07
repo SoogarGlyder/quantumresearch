@@ -6,7 +6,7 @@ import {
   FaDownload, FaClock, FaTriangleExclamation, FaXmark
 } from "react-icons/fa6";
 import { CldUploadWidget } from 'next-cloudinary';
-import { toPng } from 'html-to-image'; // 🚀 MENGGUNAKAN HTML-TO-IMAGE
+import { toPng } from 'html-to-image'; // MENGGUNAKAN HTML-TO-IMAGE
 
 import { formatTanggal, formatYYYYMMDD, formatJam } from "../../utils/formatHelper";
 import { KONFIGURASI_MEDIA, STATUS_SESI, LABEL_SISTEM } from "../../utils/constants";
@@ -47,7 +47,7 @@ export default function DetailJurnal({
     try {
       const elemenLaporan = document.getElementById("wrapper-kertas-jurnal");
       
-      // 🚀 IMPLEMENTASI HTML-TO-IMAGE UNTUK JURNAL
+      // IMPLEMENTASI HTML-TO-IMAGE UNTUK JURNAL
       const dataUrl = await toPng(elemenLaporan, { 
         quality: 1.0, 
         backgroundColor: "#fdfbf7",
@@ -71,7 +71,7 @@ export default function DetailJurnal({
     <div className={styles.isiTab}>
       
       {/* ================================================================= */}
-      {/* 🚀 MODAL PRATINJAU CETAK (Pop-Up) */}
+      {/* MODAL PRATINJAU CETAK (Pop-Up) */}
       {/* ================================================================= */}
       {showModalPratinjau && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(17,24,39,0.95)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', padding: '40px 20px' }}>
@@ -100,7 +100,7 @@ export default function DetailJurnal({
             id="wrapper-kertas-jurnal" 
             style={{ 
               background: '#fdfbf7', // Latar meja
-              padding: '40px',       // 🚀 RUANG AGAR BAYANGAN MASUK FRAME
+              padding: '40px',       // RUANG AGAR BAYANGAN MASUK FRAME
               display: 'flex',
               justifyContent: 'center',
               width: '880px',        // 800px Kertas + (40px padding kiri & kanan)

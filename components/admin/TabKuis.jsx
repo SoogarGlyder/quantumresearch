@@ -22,13 +22,13 @@ export default function TabKuis({ adminId }) {
   const [isModalKuisOpen, setIsModalKuisOpen] = useState(false);
   const [kuisAktif, setKuisAktif] = useState(null); 
 
-  // 🚀 STATE FILTER LOKAL PENCARIAN 
+  // STATE FILTER LOKAL PENCARIAN 
   const [searchQuery, setSearchQuery] = useState("");
 
   const currentPage = Number(searchParams.get("page")) || 1;
   const ITEMS_PER_PAGE = 5; 
 
-  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  // FUNGSI BARU: Membersihkan parameter 'page' dari URL
   const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
@@ -46,12 +46,13 @@ export default function TabKuis({ adminId }) {
 
   const muatBankSoal = async () => {
     setLoading(true);
-    const data = await ambilSemuaBankSoal(adminId); 
+    // THE FIX: Kosongkan parameternya! Biarkan Backend menarik semua data sesuai otoritasnya.
+    const data = await ambilSemuaBankSoal(); 
     setDataBankSoal(data || []);
     setLoading(false);
   };
 
-  // 🚀 LOGIKA FILTERING DATA
+  // LOGIKA FILTERING DATA
   const dataFiltered = useMemo(() => {
     if (!searchQuery) return dataBankSoal;
     return dataBankSoal.filter(bank => 
@@ -60,7 +61,7 @@ export default function TabKuis({ adminId }) {
     );
   }, [dataBankSoal, searchQuery]);
 
-  // 🚀 LOGIKA PAGINATION (MEMOTONG DATA)
+  // LOGIKA PAGINATION (MEMOTONG DATA)
   const totalPages = Math.ceil(dataFiltered.length / ITEMS_PER_PAGE);
   const dataPaginated = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -101,7 +102,7 @@ export default function TabKuis({ adminId }) {
            <div style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#64748b' }}>
              <FaMagnifyingGlass size={18} />
            </div>
-           {/* 🚀 PERBAIKAN: Menggunakan fungsi reset halaman saat filter diubah */}
+           {/* PERBAIKAN: Menggunakan fungsi reset halaman saat filter diubah */}
            <FilterInput 
              value={searchQuery} 
              onChange={(e) => {

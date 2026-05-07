@@ -2,7 +2,7 @@
 
 import styles from "@/components/App.module.css";
 
-// 🚀 IMPORT TETANGGA (LOKAL)
+// IMPORT TETANGGA (LOKAL)
 import HeaderProfil from "./HeaderProfil";
 import ProfilCard from "./ProfilCard";
 import LogoutSection from "./LogoutSection";

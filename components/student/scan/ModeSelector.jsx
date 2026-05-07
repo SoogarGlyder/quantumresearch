@@ -3,7 +3,7 @@
 import { memo, useEffect } from "react";
 import { FaBookOpen, FaLightbulb } from "react-icons/fa6";
 
-// 🚀 PATH ABSOLUTE
+// PATH ABSOLUTE
 import { MODE_SCAN, OPSI_MAPEL_KONSUL } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 

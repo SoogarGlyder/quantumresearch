@@ -9,14 +9,15 @@ import { redirect } from "next/navigation";
 import StudentApp from "../components/StudentApp";
 import TeacherApp from "../components/TeacherApp";
 
-// 🚀 IMPORT FUNGSI PENGAMBIL DATA LATIHAN SOAL
 import { dapatkanLatihanSiswa } from "../actions/soalAction";
 
+// FIX: Tambahkan import CABANG_QUANTUM
 import { 
   PERAN, 
   STATUS_SESI, 
   KONFIGURASI_SISTEM, 
-  LABEL_SISTEM 
+  LABEL_SISTEM,
+  CABANG_QUANTUM 
 } from "../utils/constants";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,6 @@ export const revalidate = 0;
 
 const serialize = (data: any) => JSON.parse(JSON.stringify(data));
 
-// 🚀 HELPER: Format YYYY-MM-DD aman tanpa terpengaruh Zona Waktu UTC
 const formatYMD = (d: Date) => {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -40,7 +40,7 @@ export default async function Home() {
 
   if (!karcis) redirect(KONFIGURASI_SISTEM.PATH_LOGIN);
 
-  const userLogin = await User.findById(karcis).select("-password").lean();
+  const userLogin = await User.findById(karcis).select("-password").lean() as any;
   
   if (!userLogin) {
     redirect(`${KONFIGURASI_SISTEM.PATH_LOGIN}?${LABEL_SISTEM.REDIRECT_CLEAR}`); 
@@ -51,28 +51,19 @@ export default async function Home() {
   }
 
   // ==========================================================================
-  // 🚀 LOGIKA WAKTU "DIET DATA" BERDASARKAN BULAN BERJALAN
+  // LOGIKA WAKTU "DIET DATA" BERDASARKAN BULAN BERJALAN
   // ==========================================================================
   const sekarang = new Date();
   const y = sekarang.getFullYear();
   const m = sekarang.getMonth();
   const d = sekarang.getDate();
 
-  // --------------------------------------------------------------------------
-  // 1. Pagar Staf (Cut-off Dinamis: 29 s/d 28)
-  // --------------------------------------------------------------------------
   let minDateStafObj, maxDateStafObj;
 
   if (d >= 29) {
-    // 🚩 KASUS: Tanggal 29, 30, 31
-    // Artinya sudah masuk siklus bulan depan.
-    // Contoh: 29 April -> Start: 29 April | End: 28 Mei
     minDateStafObj = new Date(y, m, 29);
     maxDateStafObj = new Date(y, m + 1, 28, 23, 59, 59);
   } else {
-    // 🚩 KASUS: Tanggal 1 s/d 28
-    // Masih berada di dalam siklus yang dimulai bulan lalu.
-    // Contoh: 10 April -> Start: 29 Maret | End: 28 April
     minDateStafObj = new Date(y, m - 1, 29);
     maxDateStafObj = new Date(y, m, 28, 23, 59, 59);
   }
@@ -80,9 +71,6 @@ export default async function Home() {
   const strMinStaf = formatYMD(minDateStafObj);
   const strMaxStaf = formatYMD(maxDateStafObj);
 
-  // --------------------------------------------------------------------------
-  // 2. Pagar Siswa (Tetap Tanggal 1 s/d Akhir Bulan)
-  // --------------------------------------------------------------------------
   const minDateSiswaObj = new Date(y, m, 1);
   const maxDateSiswaObj = new Date(y, m + 1, 0, 23, 59, 59);
   const strMinSiswa = formatYMD(minDateSiswaObj);
@@ -92,8 +80,6 @@ export default async function Home() {
   // CABANG 2: PENGAJAR 
   // ==========================================================================
   if (userLogin.peran === PERAN.PENGAJAR.id) {
-    
-    // 🚀 MENGGUNAKAN PAGAR STAF DINAMIS
     const [jadwalPengajar, riwayatAbsensi] = await Promise.all([
       Jadwal.find({ 
         kodePengajar: userLogin.kodePengajar,
@@ -146,22 +132,38 @@ export default async function Home() {
     }
   ]).exec();
 
-  const [riwayatRaw, jadwalRaw, statsRaw, latihanHariIniRaw] = await Promise.all([
+  const [riwayatRaw, jadwalMentah, statsRaw, latihanHariIniRaw] = await Promise.all([
     StudySession.find({ 
       siswaId: userLogin._id,
       waktuMulai: { $gte: minDateSiswaObj, $lte: maxDateSiswaObj }
     })
       .sort({ waktuMulai: -1 })
       .lean(),
+    // FIX: Intip pengajarnya dari cabang mana
     Jadwal.find({ 
       kelasTarget: userLogin.kelas,
       tanggal: { $gte: strMinSiswa, $lte: strMaxSiswa }
     })
+      .populate({ path: "pengajarId", select: "kodeCabang" }) 
       .sort({ tanggal: 1 })
       .lean(),
     statsSiswaPromise,
-    dapatkanLatihanSiswa(userLogin.username, userLogin.kelas)
+    dapatkanLatihanSiswa(userLogin.username, userLogin.kelas, userLogin.kodeCabang)
   ]);
+
+  // FIX: Saring agar jadwal yang masuk murni milik guru yang secabang dengan murid
+  let jadwalBersih = jadwalMentah as any[];
+  if (userLogin.kodeCabang && userLogin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
+    jadwalBersih = jadwalBersih.filter((j: any) => 
+      j.pengajarId && j.pengajarId.kodeCabang === userLogin.kodeCabang
+    );
+  }
+
+  // FIX: Normalisasi object ID kembali ke String agar UI (Client Component) tidak error
+  const jadwalFinal = jadwalBersih.map(j => ({
+    ...j,
+    pengajarId: j.pengajarId ? j.pengajarId._id.toString() : null
+  }));
 
   const statistik = statsRaw.length > 0 ? statsRaw[0] : { totalMenit: 0, totalSesi: 0 };
 
@@ -169,7 +171,7 @@ export default async function Home() {
     <StudentApp 
       siswa={serialize(userLogin)} 
       riwayat={serialize(riwayatRaw)} 
-      jadwal={serialize(jadwalRaw)}
+      jadwal={serialize(jadwalFinal)} // 👈 Gunakan jadwal yang sudah difilter
       statistik={serialize(statistik)}
       latihanHariIni={serialize(latihanHariIniRaw)} 
     />

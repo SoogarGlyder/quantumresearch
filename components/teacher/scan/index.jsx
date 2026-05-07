@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef } from "react"; // 🚀 Tambah useRef
+import { useState, useCallback, useMemo, useRef } from "react"; // Tambah useRef
 import { useRouter } from "next/navigation"; 
 
 import { absenPengajarAction } from "@/actions/scanAction"; 

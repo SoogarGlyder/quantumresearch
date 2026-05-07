@@ -45,7 +45,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
   const [pesan, setPesan] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
-  // 🚀 LOGIKA PINTAR: Hitung Batas Tanggal (Siswa 1 - 30/31)
+  // LOGIKA PINTAR: Hitung Batas Tanggal (Siswa 1 - 30/31)
   const { minDate, maxDate } = useMemo(() => {
     if (!bulanAktif) return { minDate: "", maxDate: "" };
     
@@ -61,7 +61,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  // FUNGSI BARU: Membersihkan parameter 'page' dari URL
   const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
@@ -70,7 +70,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
     }
   };
 
-  // 🚀 FIX UX: Auto-Reset filter lokal jika Admin mengganti Bulan di Header
+  // FIX UX: Auto-Reset filter lokal jika Admin mengganti Bulan di Header
   useEffect(() => {
     setFilterTglJurnal("");
     setFilterKelas("");
@@ -218,7 +218,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
         
         <div className={styles.wadahCari} style={{ minWidth: '180px' }}>
           <div className={styles.iconCari}><FaMagnifyingGlass color="#6b7280" /></div>
-          {/* 🚀 PERBAIKAN: Tambahkan resetHalamanKeSatu() saat ngetik pencarian */}
+          {/* PERBAIKAN: Tambahkan resetHalamanKeSatu() saat ngetik pencarian */}
           <input 
             type="text" 
             placeholder="Cari Bab / Materi..." 
@@ -231,7 +231,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
           />
         </div>
 
-        {/* 🚀 PERBAIKAN: Tambahkan resetHalamanKeSatu() saat ganti tanggal */}
+        {/* PERBAIKAN: Tambahkan resetHalamanKeSatu() saat ganti tanggal */}
         <FilterInput 
           type="date" 
           value={filterTglJurnal} 
@@ -243,7 +243,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
           max={maxDate}
         />
         
-        {/* 🚀 PERBAIKAN: Tambahkan resetHalamanKeSatu() saat pilih kelas */}
+        {/* PERBAIKAN: Tambahkan resetHalamanKeSatu() saat pilih kelas */}
         <select 
           value={filterKelas} 
           onChange={(e) => {
@@ -256,7 +256,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
           {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
         </select>
         
-        {/* 🚀 PERBAIKAN: Tambahkan resetHalamanKeSatu() di tombol reset */}
+        {/* PERBAIKAN: Tambahkan resetHalamanKeSatu() di tombol reset */}
         <button 
           onClick={() => { 
             setFilterTglJurnal(""); 

@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaPenToSquare, FaXmark } from "react-icons/fa6";
 
-// 🚀 PATH ABSOLUTE
+// PATH ABSOLUTE
 import { updateProfilSiswa } from "@/actions/profilAction"; 
 import { VALIDASI_SISTEM } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
-// 🚀 IMPORT TETANGGA (LOKAL)
+// IMPORT TETANGGA (LOKAL)
 import ProfilView from "./ProfilView";
 
 export default function ProfilCard({ siswa }) {

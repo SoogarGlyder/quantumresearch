@@ -9,7 +9,7 @@ import HeaderJurnal from "./HeaderJurnal";
 import RiwayatJurnal from "./RiwayatJurnal";
 import ModalJurnal from "./ModalJurnal"; 
 
-// 🚀 HELPER: Safari-Safe Date Normalizer (Copy dari Home)
+// HELPER: Safari-Safe Date Normalizer (Copy dari Home)
 const getNormalizeDate = (dateInput) => {
   if (!dateInput) return 0;
   try {

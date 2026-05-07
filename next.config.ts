@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
 
-// 🚀 KONFIGURASI MESIN PWA
+// KONFIGURASI MESIN PWA
 const withPWA = withPWAInit({
   dest: "public",
   // Matikan PWA saat mode development agar browser tidak menyimpan cache lama saat ngoding
@@ -14,13 +14,13 @@ const withPWA = withPWAInit({
   },
 });
 
-// 🚀 KONFIGURASI BAWAAN NEXT.JS ANDA
+// KONFIGURASI BAWAAN NEXT.JS ANDA
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true, // Biarkan ini tetap menyala, ini fitur bagus untuk performa!
 };
 
-// 🚀 BUNGKUS CONFIG DENGAN PWA
+// BUNGKUS CONFIG DENGAN PWA
 export default withPWA(nextConfig);
 
 // Ini versi lama, jangan dihapus.

@@ -15,7 +15,7 @@ export async function cekDanGenerateMisiHarian() {
     
     if (!userId || peran !== "siswa") return responseHelper.error("Bukan siswa.");
 
-    // 🚀 OPTIMASI: Hanya tarik kolom misiHarian
+    // OPTIMASI: Hanya tarik kolom misiHarian
     const siswa = await User.findById(userId).select("misiHarian").lean();
     if (!siswa) return responseHelper.error("Siswa tidak ditemukan.");
 
@@ -35,7 +35,7 @@ export async function cekDanGenerateMisiHarian() {
         expBonus: m.expBonus
       }));
 
-      // 🚀 OPTIMASI: updateOne langsung, tanpa memuat seluruh object mongoose
+      // OPTIMASI: updateOne langsung, tanpa memuat seluruh object mongoose
       await User.updateOne(
         { _id: userId },
         { $set: { "misiHarian.tanggal": hariIni, "misiHarian.daftar": daftarMisiBaru } }
@@ -70,7 +70,7 @@ export async function klaimHadiahMisi(idMisiDalamArray) {
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error("Sesi habis.");
 
-    // 🚀 OPTIMASI: Tarik secukupnya pakai .lean()
+    // OPTIMASI: Tarik secukupnya pakai .lean()
     const siswa = await User.findById(userId).select("misiHarian totalExp").lean();
     if (!siswa || !siswa.misiHarian || !siswa.misiHarian.daftar) {
       return responseHelper.error("Siswa/Misi tidak ditemukan.");
@@ -86,7 +86,7 @@ export async function klaimHadiahMisi(idMisiDalamArray) {
 
     const expBaru = (siswa.totalExp || 0) + misi.expBonus;
     
-    // 🚀 OPTIMASI: Atomic Update di Array (Hanya update Misi yang di-klaim)
+    // OPTIMASI: Atomic Update di Array (Hanya update Misi yang di-klaim)
     await User.updateOne(
       { _id: userId },
       { 

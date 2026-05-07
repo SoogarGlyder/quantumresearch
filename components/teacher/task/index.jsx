@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+// FIX: Import FaLock dan FaDesktop untuk UI Tembok Peringatan
+import { FaLock, FaDesktop } from "react-icons/fa6";
 
 // IMPOR API & KOMPONEN
 import { ambilSemuaLatihanSoal, prosesSimpanLatihanSoal, prosesHapusLatihanSoal, ambilDaftarSiswaDropdown } from "@/actions/soalAction";
@@ -11,7 +13,7 @@ import styles from "@/components/App.module.css";
 
 // IMPOR ANAK KOMPONEN
 import HeaderTugas from "./HeaderTugas";
-import TabSelector from "./TabSelector"; // 🚀 Import komponen baru kita
+import TabSelector from "./TabSelector"; 
 import DaftarTugas from "./DaftarTugas";
 import DaftarKuis from "./DaftarKuis"; 
 import ModalFormTugas from "./ModalFormTugas";
@@ -19,6 +21,21 @@ import ModalKuis from "@/components/admin/ModalKuis";
 
 export default function TabTugasPengajar({ pengajarId }) { 
   const [activeTab, setActiveTab] = useState("TUGAS"); 
+  
+  // FIX: State untuk mendeteksi layar kecil
+  const [isLayarKecil, setIsLayarKecil] = useState(false);
+
+  // =========================================================
+  // 0. DETEKSI UKURAN LAYAR (KHUSUS CBT)
+  // =========================================================
+  useEffect(() => {
+    const cekLayar = () => {
+      setIsLayarKecil(window.innerWidth < 1024);
+    };
+    cekLayar(); 
+    window.addEventListener("resize", cekLayar);
+    return () => window.removeEventListener("resize", cekLayar);
+  }, []);
 
   // =========================================================
   // 1. STATE & LOGIKA TUGAS & MATERI
@@ -118,8 +135,17 @@ export default function TabTugasPengajar({ pengajarId }) {
     }
   };
 
-  const bukaModalBuatCBT = () => { setKuisAktif(null); setIsModalKuisOpen(true); };
-  const bukaModalEditCBT = (item) => { setKuisAktif(item); setIsModalKuisOpen(true); };
+  const bukaModalBuatCBT = () => { 
+    if (isLayarKecil) return; // Mencegah pemaksaan buka jika layar kecil
+    setKuisAktif(null); 
+    setIsModalKuisOpen(true); 
+  };
+  
+  const bukaModalEditCBT = (item) => { 
+    if (isLayarKecil) return; 
+    setKuisAktif(item); 
+    setIsModalKuisOpen(true); 
+  };
   
   const tutupModalCBT = () => { 
     setIsModalKuisOpen(false); 
@@ -143,8 +169,37 @@ export default function TabTugasPengajar({ pengajarId }) {
         <DaftarTugas dataSoal={dataSoal} loading={loadingTugas} onEdit={klikEditTugas} onHapus={klikHapusTugas} onBukaForm={() => setIsFormOpen(true)} />
       )}
 
-      {activeTab === "BANK_SOAL" && (
-        <DaftarKuis dataBankSoal={dataBankSoal} loading={loadingBank} onBuatBaru={bukaModalBuatCBT} onEdit={bukaModalEditCBT} onHapus={klikHapusBankSoal} />
+      {/* FIX: Render kondisional untuk Bank Soal CBT berdasarkan lebar layar */}
+      {activeTab === "BANK_SOAL" && isLayarKecil ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center' }}>
+          <div style={{ backgroundColor: '#ef4444', padding: '30px', borderRadius: '24px', border: '6px solid #111827', boxShadow: '8px 8px 0 #111827', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+            <FaLock size={64} color="#111827" />
+            <h1 style={{ margin: 0, color: 'white', fontWeight: '900', fontSize: '24px', textTransform: 'uppercase', lineHeight: '1.2' }}>Layar Terlalu Kecil</h1>
+            <p style={{ margin: 0, color: '#fef08a', fontWeight: 'bold', fontSize: '15px', lineHeight: '1.5' }}>
+              Fitur Rakit Soal CBT sangat kompleks dan membutuhkan ruang layar yang luas.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#111827', padding: '12px 16px', borderRadius: '12px', marginTop: '10px' }}>
+              <FaDesktop color="#4ade80" size={24} />
+              <span style={{ color: 'white', fontWeight: '900', fontSize: '14px', textAlign: 'left' }}>
+                Silakan akses menu ini menggunakan PC, Laptop, atau Tablet (Landscape).
+              </span>
+            </div>
+            <button 
+              onClick={() => setActiveTab("TUGAS")} 
+              style={{ 
+                marginTop: '16px', padding: '14px 24px', backgroundColor: '#facc15', color: '#111827', 
+                border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', 
+                cursor: 'pointer', width: '100%', textTransform: 'uppercase' 
+              }}
+            >
+              Kembali ke Tugas
+            </button>
+          </div>
+        </div>
+      ) : (
+        activeTab === "BANK_SOAL" && (
+          <DaftarKuis dataBankSoal={dataBankSoal} loading={loadingBank} onBuatBaru={bukaModalBuatCBT} onEdit={bukaModalEditCBT} onHapus={klikHapusBankSoal} />
+        )
       )}
 
       {/* 4. AREA MODAL */}
@@ -152,7 +207,8 @@ export default function TabTugasPengajar({ pengajarId }) {
         <ModalFormTugas form={form} setForm={setForm} idEdit={idEdit} dataSiswa={dataSiswa} onSimpan={handleSimpanTugas} onBatal={batalEditTugas} loadingForm={loadingForm} />
       )}
 
-      {isModalKuisOpen && (
+      {/* FIX: Cegah render ModalKuis jika layar kecil, lapis pertahanan ekstra! */}
+      {isModalKuisOpen && !isLayarKecil && (
         <ModalKuis isOpen={isModalKuisOpen} onClose={tutupModalCBT} jadwal={{ _id: "MODE_BANK_SOAL", mapel: kuisAktif?.judul || "SOAL BARU", kelasTarget: "Gudang Soal" }} kuisLama={kuisAktif} adminId={pengajarId} muatData={muatBankSoal} />
       )}
 

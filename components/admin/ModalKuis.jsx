@@ -11,11 +11,11 @@ import {
   FaDownload
 } from "react-icons/fa6";
 import { CldUploadWidget } from "next-cloudinary";
-// 🚀 TAMBAHAN: Import simpanBankSoal
+// TAMBAHAN: Import simpanBankSoal
 import { simpanKuis, getRiwayatKuisPengajar, ambilKuisByJadwal, simpanBankSoal } from "../../actions/quizAction"; 
 import styles from "../../app/admin/AdminPage.module.css";
 
-// 🚀 IMPORT TIPTAP CORE & EXTENSIONS
+// IMPORT TIPTAP CORE & EXTENSIONS
 import { useEditor, EditorContent } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Underline } from '@tiptap/extension-underline';
@@ -120,14 +120,14 @@ const QuantumEditor = ({ value, onChange }) => {
 
 // --- 2. MODAL KUIS UTAMA ---
 export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, muatData }) {
-  // 🚀 DETEKTOR MODE: Apakah ini dipanggil dari Tab Bank Soal?
+  // DETEKTOR MODE: Apakah ini dipanggil dari Tab Bank Soal?
   const isModeBankSoal = jadwal?._id === "MODE_BANK_SOAL";
 
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [durasiUjian, setDurasiUjian] = useState(10);
   
-  // 🚀 STATE BARU: Khusus untuk Judul Paket di Bank Soal
+  // STATE BARU: Khusus untuk Judul Paket di Bank Soal
   const [judulBankSoal, setJudulBankSoal] = useState("");
 
   // STATE KHUSUS IMPORT KUIS
@@ -149,7 +149,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
 
   useEffect(() => {
     if (isOpen) {
-      // 🚀 Umpan judul jika sedang edit Bank Soal
+      // Umpan judul jika sedang edit Bank Soal
       if (isModeBankSoal && kuisLama?.judul) {
         setJudulBankSoal(kuisLama.judul);
       } else {
@@ -274,7 +274,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     e.preventDefault();
     if (!jadwal?._id) return alert("⚠️ Data jadwal tidak valid.");
     
-    // 🚀 VALIDASI JUDUL KHUSUS BANK SOAL
+    // VALIDASI JUDUL KHUSUS BANK SOAL
     if (isModeBankSoal && !judulBankSoal.trim()) {
       return alert("⚠️ Judul Master Soal wajib diisi!");
     }
@@ -291,7 +291,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     setLoading(true);
     try {
       let res;
-      // 🚀 LOGIKA BERCABANG: Simpan ke Koleksi yang Berbeda Tergantung Mode
+      // LOGIKA BERCABANG: Simpan ke Koleksi yang Berbeda Tergantung Mode
       if (isModeBankSoal) {
         res = await simpanBankSoal(kuisLama?._id || null, {
           judul: judulBankSoal,
@@ -323,7 +323,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
           <div style={{ flex: 1, paddingRight: '20px' }}>
             <h2 style={{ margin: 0, fontWeight: '900', textTransform: 'uppercase', color: '#111827', fontSize: '26px' }}>🧠 CBT Engine Pro</h2>
             
-            {/* 🚀 KONDISIONAL RENDER HEADER (JUDUL VS MAPEL) */}
+            {/* KONDISIONAL RENDER HEADER (JUDUL VS MAPEL) */}
             {isModeBankSoal ? (
               <input 
                 type="text" 

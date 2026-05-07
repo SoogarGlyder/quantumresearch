@@ -10,7 +10,7 @@ const StudentBottomNav = memo(({ tab, setTab }) => {
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // 🚀 FUNGSI KETUK TAB CERDAS (SMART REFRESH)
+  // FUNGSI KETUK TAB CERDAS (SMART REFRESH)
   const handleTabClick = (targetTab) => {
     // Jika pindah tab biasa
     if (tab !== targetTab) {

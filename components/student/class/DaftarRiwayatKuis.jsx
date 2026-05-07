@@ -5,7 +5,7 @@ import { FaCheckDouble, FaAward, FaBrain } from "react-icons/fa6";
 import { PERIODE_BELAJAR } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
-import PaginationBar from "@/components/ui/PaginationBar"; // 🚀 Import Pagination
+import PaginationBar from "@/components/ui/PaginationBar"; // Import Pagination
 
 const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, onBukaPembahasan }) => {
   return (
@@ -56,7 +56,7 @@ const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, onBukaPembahasan }
             ))}
           </div>
 
-          {/* 🚀 PAGINATION RENDERED HERE */}
+          {/* PAGINATION RENDERED HERE */}
           <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
             <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} />
           </div>

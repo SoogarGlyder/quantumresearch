@@ -14,7 +14,7 @@ import { PREFIX_BARCODE, STATUS_SESI, LABEL_SISTEM } from "@/utils/constants";
 import { formatTanggal } from "@/utils/formatHelper";
 import styles from "@/components/App.module.css";
 
-// 🚀 HELPER: Konverter Tanggal Anti-Bug iOS/Safari
+// HELPER: Konverter Tanggal Anti-Bug iOS/Safari
 const getSafeTanggalJakarta = (dateInput) => {
   if (!dateInput) return "";
   
@@ -288,7 +288,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                     <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                       <div style={{ background: 'white', padding: '16px', border: '4px solid #111827', borderRadius: '16px', display: 'inline-block', boxShadow: '8px 8px 0 #facc15' }}>
                         <div style={{ pointerEvents: 'none' }}>
-                           {/* 🚀 MENGGUNAKAN CANVAS AGAR TAMPIL DI SEMUA VERSI IPHONE */}
+                           {/* MENGGUNAKAN CANVAS AGAR TAMPIL DI SEMUA VERSI IPHONE */}
                            <QRCodeCanvas value={`${PREFIX_BARCODE.KELAS}${jadwalTerpilih._id}`} size={180} level="H" />
                         </div>
                       </div>
@@ -341,7 +341,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                               <p style={{ fontWeight: '900', margin: '0 0 8px 0', fontSize: '15px', color: '#111827', textTransform: 'uppercase' }}>{siswa.nama}</p>
                               
                               <div style={{ display: 'flex', gap: '8px', marginBottom: butuhCatatan ? '10px' : '0' }}>
-                                {/* 🚀 PERBAIKAN DROPDOWN iOS: Tambahkan WebkitAppearance */}
+                                {/* PERBAIKAN DROPDOWN iOS: Tambahkan WebkitAppearance */}
                                 <select 
                                   value={siswa.statusAbsen} 
                                   onChange={(e) => ubahStatusSiswa(idx, e.target.value)} 

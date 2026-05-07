@@ -4,13 +4,13 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation"; 
 import { FaBoxOpen } from "react-icons/fa6";
 
-// 🚀 PATH ABSOLUTE
+// PATH ABSOLUTE
 import PaginationBar from "@/components/ui/PaginationBar"; 
 import { potongDataPagination } from "@/utils/formatHelper"; 
 import { TIPE_SESI, STATUS_SESI, PERIODE_BELAJAR, LIMIT_DATA } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
-// 🚀 IMPORT TETANGGA LOKAL
+// IMPORT TETANGGA LOKAL
 import HeaderKonsul from "./HeaderKonsul";
 import FilterKonsul from "./FilterKonsul";
 import RecordCard from "./RecordCard";

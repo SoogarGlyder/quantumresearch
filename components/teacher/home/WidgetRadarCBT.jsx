@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { FaSatelliteDish, FaCircleCheck, FaChevronRight, FaClock } from "react-icons/fa6";
 import { ambilKuisByJadwal } from "@/actions/quizAction"; 
 
-// 🚀 IMPORT STYLES DAN MODAL
+// IMPORT STYLES DAN MODAL
 import styles from "@/components/App.module.css";
 import ModalMonitorCBT from "@/components/teacher/journal/ModalMonitorCBT";
 
@@ -75,12 +75,12 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
             <div 
               key={idx} 
               className={styles.scheduleCard}
-              onClick={() => setMonitorJadwalTerpilih(jadwal)} // 🚀 Pindah ke sini
+              onClick={() => setMonitorJadwalTerpilih(jadwal)} // Pindah ke sini
               style={{ 
                 backgroundColor: '#1e293b', 
                 border: '3px solid #ef4444', 
                 boxShadow: '4px 4px 0 #7f1d1d',
-                cursor: 'pointer' // 🚀 Ubah menjadi pointer
+                cursor: 'pointer' // Ubah menjadi pointer
               }}
             >
               <div className={styles.scheduleCardRow}>
@@ -99,7 +99,7 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
               </div>
 
               <div className={styles.scheduleCardRow}>
-                {/* 🚀 Ubah tag <button> menjadi <div> agar tidak bentrok interaksinya */}
+                {/* Ubah tag <button> menjadi <div> agar tidak bentrok interaksinya */}
                 <div className={styles.scheduleCount} style={{ backgroundColor: '#facc15', color: '#111827', border: 'none', fontWeight: '900' }}>
                   {jadwal.kelasTarget}
                 </div>
@@ -109,7 +109,7 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
         </div>
       )}
 
-      {/* 🚀 RENDER MODAL MONITORING JIKA DIKLIK */}
+      {/* RENDER MODAL MONITORING JIKA DIKLIK */}
       {monitorJadwalTerpilih && (
         <ModalMonitorCBT 
           jadwalId={monitorJadwalTerpilih._id} 

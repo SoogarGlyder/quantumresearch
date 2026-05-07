@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { FaTrophy, FaCrown, FaMedal } from "react-icons/fa6";
 
-// 🚀 FIX: Path Absolute
+// FIX: Path Absolute
 import { dapatkanKlasemenBulanIni } from "@/actions/klasemenAction";
 import styles from "@/components/App.module.css";
 

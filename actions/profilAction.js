@@ -117,7 +117,7 @@ export async function updateProfilSiswa(idSiswa, dataUpdate) {
     if (dataUpdate.username) {
       const cleanUser = validationHelper.sanitize(dataUpdate.username).toLowerCase();
       
-      // 🚀 OPTIMASI: Pengecekan ada dengan .exists()
+      // OPTIMASI: Pengecekan ada dengan .exists()
       const ada = await User.exists({ username: cleanUser, _id: { $ne: idSiswa } });
       if (ada) return responseHelper.error("Username dipakai pengguna lain.");
       
@@ -133,7 +133,7 @@ export async function updateProfilSiswa(idSiswa, dataUpdate) {
 
     if (Object.keys(payload).length === 0) return responseHelper.success("Tidak ada perubahan.");
 
-    // 🚀 OPTIMASI: updateOne
+    // OPTIMASI: updateOne
     await User.updateOne({ _id: idSiswa }, { $set: payload });
     
     revalidatePath(PERAN.SISWA.home);

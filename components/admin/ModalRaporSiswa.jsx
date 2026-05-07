@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FaXmark, FaDownload, FaSpinner } from "react-icons/fa6";
-import { toPng } from 'html-to-image'; // 🚀 Senjata Baru
+import { toPng } from 'html-to-image'; // Senjata Baru
 import { ambilLaporanBulananSiswa } from "../../actions/adminAction";
 import { formatJam } from "../../utils/formatHelper";
 import { STATUS_SESI } from "../../utils/constants";
@@ -38,7 +38,7 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
     try {
       const elemenLaporan = document.getElementById("wrapper-kertas-rapor");
       
-      // 🚀 PROSES HTML-TO-IMAGE (Lebih Akurat & Tajam)
+      // PROSES HTML-TO-IMAGE (Lebih Akurat & Tajam)
       const dataUrl = await toPng(elemenLaporan, { 
         quality: 1.0, 
         backgroundColor: "#fdfbf7",

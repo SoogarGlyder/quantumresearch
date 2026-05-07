@@ -74,7 +74,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
     }}>
       <div className={styles.containerGallery}>
         
-        {/* 🚀 HEADER MODAL */}
+        {/* HEADER MODAL */}
         <div className={styles.headerGallery}>
           <div className={styles.wrapperTitle}>
             <h3 className={styles.galleryTitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -96,7 +96,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
         </div>
 
         <div className={styles.areaGallery}>
-          {/* 🚀 STATISTIK TOP */}
+          {/* STATISTIK TOP */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '24px' }}>
             <div style={{ background: '#eff6ff', padding: '16px', borderRadius: '12px', border: '3px solid #111827', textAlign: 'center', boxShadow: '4px 4px 0 #111827' }}>
               <h4 style={{ margin: 0, color: '#111827', fontSize: '11px', fontWeight: '900' }}>TOTAL SISWA</h4>
@@ -116,7 +116,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
             </div>
           </div>
 
-          {/* 🚀 LIST SISWA */}
+          {/* LIST SISWA */}
           {loading ? (
              <div className={styles.messageLoading} style={{ padding: '40px 20px', textAlign: 'center', borderRadius: '12px' }}>
                <h3 style={{ margin: 0, fontWeight: '900', textTransform: 'uppercase' }}>Menyadap Data Kelas...</h3>
@@ -135,7 +135,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
                   statusIkon = <span style={{ color: '#166534', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '5px' }}><FaCheckDouble /> SKOR: {siswa.skor}</span>;
                 } else if (isMengerjakan) {
                   bgRow = '#fef08a'; 
-                  // 🚀 UBAH LABEL DI SINI MENJADI LEBIH RELEVAN
+                  // UBAH LABEL DI SINI MENJADI LEBIH RELEVAN
                   statusIkon = <span style={{ color: '#b45309', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '5px' }}><FaClock /> AKTIF (BISA UJIAN)</span>;
                 }
 

@@ -24,10 +24,19 @@ const studySessionSchema = new mongoose.Schema({
   nilaiTest: { type: Number, default: null, min: 0, max: 100 }
 }, { timestamps: true });
 
+// SINGLE INDEX LAMA
 studySessionSchema.index({ siswaId: 1, waktuMulai: -1 });
 studySessionSchema.index({ jenisSesi: 1 });
 studySessionSchema.index({ status: 1 });
 studySessionSchema.index({ waktuMulai: -1 });
+
+// COMPOUND INDEX BARU (The Performance Booster)
+// 1. Jalan Tol Dashboard Admin: Membantu query super berat $in arraySiswa + waktuMulai
+studySessionSchema.index({ waktuMulai: -1, siswaId: 1 }); 
+// 2. Jalan Tol Jurnal Absensi: Mengunci pencarian absensi kelas tertentu pada hari tertentu
+studySessionSchema.index({ jenisSesi: 1, namaMapel: 1, waktuMulai: -1 }); 
+// 3. Jalan Tol Rapor Bulanan Siswa: Mencari sesi selesai per siswa dalam rentang bulan
+studySessionSchema.index({ siswaId: 1, status: 1, waktuMulai: -1 }); 
 
 const StudySession = mongoose.models.StudySession || mongoose.model("StudySession", studySessionSchema);
 export default StudySession;

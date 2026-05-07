@@ -11,7 +11,7 @@ import JadwalMendatang from "./JadwalMendatang";
 import ModalJurnal from "@/components/teacher/journal/ModalJurnal"; 
 import WidgetRadarCBT from "./WidgetRadarCBT";
 
-// 🚀 HELPER: Safari-Safe Date Normalizer (Zona Waktu Jakarta)
+// HELPER: Safari-Safe Date Normalizer (Zona Waktu Jakarta)
 const getNormalizeDate = (dateInput) => {
   if (!dateInput) return 0;
   
@@ -42,7 +42,7 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = []
   const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
 
   // ===================================================================
-  // 🚀 PERBAIKAN BUG SAFARI: Filter menggunakan angka murni (getTime)
+  // PERBAIKAN BUG SAFARI: Filter menggunakan angka murni (getTime)
   // ===================================================================
   
   // 1. FILTER: Jadwal Hari Ini

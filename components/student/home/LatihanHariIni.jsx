@@ -24,8 +24,8 @@ const LatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
                 cursor: 'pointer', 
                 padding: '0', 
                 overflow: 'hidden',
-                border: '3px solid #111827', // 🚀 Sentuhan garis tegas
-                boxShadow: '4px 4px 0 #111827', // 🚀 Sentuhan hard-shadow
+                border: '3px solid #111827', // Sentuhan garis tegas
+                boxShadow: '4px 4px 0 #111827', // Sentuhan hard-shadow
                 borderRadius: '12px'
               }} 
               onClick={() => setUrlMitra(latihan.url)}

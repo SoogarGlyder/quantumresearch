@@ -3,12 +3,12 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-// 🚀 PATH ABSOLUTE
+// PATH ABSOLUTE
 import { prosesLogout } from "@/actions/authAction";
 import { KONFIGURASI_SISTEM } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
-// 🚀 IMPORT TETANGGA
+// IMPORT TETANGGA
 import HeaderProfil from "./HeaderProfil";
 import ProfilCard from "./ProfilCard";
 import LogoutSection from "./LogoutSection";

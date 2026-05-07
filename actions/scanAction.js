@@ -52,7 +52,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    // 🚀 DIBIARKAN UTUH KARENA BUTUH .save() UNTUK ARRAY LENCANA & MISI
+    // DIBIARKAN UTUH KARENA BUTUH .save() UNTUK ARRAY LENCANA & MISI
     const siswa = await User.findById(userId);
     if (!siswa || siswa.status !== STATUS_USER.AKTIF) {
       return responseHelper.error("Akun dinonaktifkan atau tidak ditemukan.");
@@ -112,7 +112,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
         }
 
         let menitExtra = 0;
-        // 🚀 OPTIMASI PROJECTION
+        // OPTIMASI PROJECTION
         const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tglHariIni })
           .select("jamSelesai")
           .lean();
@@ -166,7 +166,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
       if (sesiAktif.jenisSesi === TIPE_SESI.KONSUL) {
         const minKonsul = KONFIGURASI_SISTEM.MIN_DURASI_KONSUL_SAH;
         if (durasiMenit < minKonsul) {
-          await StudySession.deleteOne({ _id: sesiAktif._id }); // 🚀 OPTIMASI deleteOne
+          await StudySession.deleteOne({ _id: sesiAktif._id }); // OPTIMASI deleteOne
           revalidatePath("/", "layout");
           return responseHelper.success("Sesi Konsul dibatalkan (durasi < 5 menit).");
         }
@@ -204,10 +204,19 @@ export async function prosesHasilScan(teksQR, mapelPilihan, lokasi) {
 
     // --- LOGIKA MASUK SISWA (Check-In) ---
     if (jenisQR === TIPE_SESI.KELAS) {
-      // 🚀 OPTIMASI PROJECTION
-      const jadwal = await Jadwal.findById(jadwalIdDariQR).select("tanggal kelasTarget mapel jamMulai jamSelesai").lean();
+      // FIX: Populate pengajar untuk mengecek cabangnya
+      const jadwal = await Jadwal.findById(jadwalIdDariQR)
+        .select("tanggal kelasTarget mapel jamMulai jamSelesai pengajarId")
+        .populate("pengajarId", "kodeCabang")
+        .lean();
       
       if (!jadwal) return responseHelper.error("⚠️ Sesi kelas tidak ditemukan.");
+      
+      // FIX: Tolak jika cabang guru tidak sama dengan cabang siswa (Mencegah Scan Silang Cabang)
+      if (jadwal.pengajarId && jadwal.pengajarId.kodeCabang && siswa.kodeCabang && jadwal.pengajarId.kodeCabang !== siswa.kodeCabang) {
+         return responseHelper.error("⛔ Akses Ditolak! Ini adalah QR jadwal dari cabang lain.");
+      }
+
       if (jadwal.tanggal !== tglHariIni) return responseHelper.error("⚠️ Barcode kedaluwarsa.");
       if (jadwal.kelasTarget !== siswa.kelas) return responseHelper.error(`⚠️ Khusus kelas ${jadwal.kelasTarget}.`);
 
@@ -280,7 +289,7 @@ export async function absenPengajarAction(teksQR, lokasi) {
     const sekarang = new Date();
     const { awal, akhir } = timeHelper.getRentangHari(sekarang);
 
-    // 🚀 OPTIMASI: Cukup fetch dengan lean()
+    // OPTIMASI: Cukup fetch dengan lean()
     let absenHariIni = await AbsensiPengajar.findOne({
       pengajarId: userId, waktuMasuk: { $gte: awal, $lte: akhir }
     }).lean();
@@ -290,7 +299,7 @@ export async function absenPengajarAction(teksQR, lokasi) {
          return responseHelper.success("✅ Anda sudah melakukan Clock-Out hari ini.");
       }
 
-      // 🚀 OPTIMASI: updateOne (Satu operasi atomik)
+      // OPTIMASI: updateOne (Satu operasi atomik)
       const payloadOut = { waktuKeluar: sekarang };
       if (lokasi) payloadOut.lokasiScanKeluar = lokasi;
 

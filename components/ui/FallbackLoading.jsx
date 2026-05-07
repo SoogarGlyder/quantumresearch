@@ -1,7 +1,7 @@
 "use client";
 
 import { FaBolt } from "react-icons/fa6";
-// 🚀 IMPORT MODULE CSS YANG BARU DIBUAT
+// IMPORT MODULE CSS YANG BARU DIBUAT
 import styles from "./FallbackLoading.module.css"; 
 
 export default function FallbackLoading({ teks = "MEMUAT..." }) {

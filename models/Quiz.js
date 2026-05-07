@@ -6,13 +6,10 @@ const quizSchema = new mongoose.Schema({
     ref: "Jadwal", 
     required: true, unique: true, index: true 
   },
-  
   sumberBankSoalId: { type: mongoose.Schema.Types.ObjectId, ref: "BankSoal" },
-
   pembuatId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   isAktif: { type: Boolean, default: true },
   durasi: { type: Number, default: 10 },
-
   soal: [
     {
       tipeSoal: { type: String, default: "PG" }, 
@@ -25,8 +22,6 @@ const quizSchema = new mongoose.Schema({
       pembahasan: { type: String, default: "" } 
     }
   ],
-
-  // 🚀 NILAI SISWA (Tetap menempel di Jadwal ini, tidak akan bercampur dengan kelas lain)
   hasilPengerjaan: [
     {
       siswaId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -37,5 +32,9 @@ const quizSchema = new mongoose.Schema({
     }
   ]
 }, { timestamps: true });
+
+// COMPOUND INDEX BARU
+// Mempercepat fungsi getRiwayatKuisPengajar (Filter pembuatId + isAktif)
+quizSchema.index({ pembuatId: 1, isAktif: 1 });
 
 export default mongoose.models.Quiz || mongoose.model("Quiz", quizSchema);

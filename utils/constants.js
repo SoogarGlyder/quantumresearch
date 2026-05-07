@@ -48,6 +48,13 @@ export const PERAN = Object.freeze({
   PENGAJAR: { id: "pengajar", label: "Pengajar", home: "/" },
 });
 
+export const PANGKAT_PENGAJAR = Object.freeze({
+  FREELANCE: "FREELANCE",
+  TETAP: "TETAP",
+  KAKAK_ASUH: "KAKAK_ASUH",
+  STAFF_AKADEMIK: "STAFF_AKADEMIK"
+});
+
 export const STATUS_USER = Object.freeze({
   AKTIF: "aktif",
   NONAKTIF: "tidak aktif",
@@ -277,7 +284,7 @@ export const GAMIFIKASI = Object.freeze({
     { minJam: 30, gelar: "👑 Yang Punya Quantum" },
     { minJam: 20, gelar: "🔥 Sepuh Quantum" },
     { minJam: 10, gelar: "⚔️ Pejuang Ambis" },
-    { minJam: 5,  gelar: "🚀 Mulai Panas" },
+    { minJam: 5,  gelar: "Mulai Panas" },
     { minJam: 0,  gelar: "🐢 Masih Pemanasan" }
   ],
 
@@ -289,4 +296,15 @@ export const GAMIFIKASI = Object.freeze({
     { level: 40, hadiah: "Kaos Eksklusif Quantum" },            // 👈 belum diterapkan
     { level: 50, hadiah: "Tiket Nonton Bioskop Bareng Mentor" } // 👈 belum diterapkan
   ]
+});
+
+// ============================================================================
+// 13. MULTI-CABANG (MULTI-TENANT)
+// ============================================================================
+export const CABANG_QUANTUM = Object.freeze({
+  CPT: { id: "010101", nama: "Cempaka Putih" },
+  KBY: { id: "010401", nama: "Kebayoran Lama" },
+  PTK: { id: "010402", nama: "Petukangan Selatan" },
+  KYP: { id: "010501", nama: "Kayu Putih" },
+  PUSAT: { id: "000000", nama: "Super Admin Pusat" }
 });

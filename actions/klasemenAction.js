@@ -9,7 +9,8 @@ import {
   STATUS_SESI, 
   TIPE_SESI, 
   PESAN_SISTEM,
-  GAMIFIKASI 
+  GAMIFIKASI,
+  CABANG_QUANTUM // FIX: Import konstanta cabang
 } from "../utils/constants";
 
 // ============================================================================
@@ -27,8 +28,9 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
   try {
     await connectToDatabase();
 
-    const { userId } = await authHelper.ambilSesi();
-    if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
+    // FIX: Tarik sesi dan kodeCabang siswa yang sedang login
+    const sesi = await authHelper.ambilSesi();
+    if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
     const awalBulan = timeHelper.getAwalBulan();
     const kini = new Date();
@@ -78,6 +80,11 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
       { $unwind: "$siswa" }
     ];
 
+    // FILTER KUNCI: Pastikan saingan di klasemen hanya dari cabang yang sama
+    if (sesi.kodeCabang && sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
+      pipeline.push({ $match: { "siswa.kodeCabang": sesi.kodeCabang } });
+    }
+
     if (filterKelas && filterKelas !== "Semua Kelas") {
       pipeline.push({ $match: { "siswa.kelas": filterKelas } });
     }
@@ -94,7 +101,6 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
       }
     );
 
-    // 🚀 OPTIMASI: Aggregation di MongoDB otomatis me-return objek mentah, jadi aman.
     const klasemenMentah = await StudySession.aggregate(pipeline);
 
     const dataFinal = klasemenMentah.map((item, index) => {

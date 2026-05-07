@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FaRocket } from "react-icons/fa6";
-import styles from "@/components/App.module.css"; // 🚀 Sesuaikan jalurnya!
+import styles from "@/components/App.module.css"; // Sesuaikan jalurnya!
 
 export default function UpdatePrompt() {
   const [showPrompt, setShowPrompt] = useState(false);

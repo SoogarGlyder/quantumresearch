@@ -20,7 +20,8 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 // 2. MAIN COMPONENT (TAB SISWA)
 // ============================================================================
-export default function TabSiswa({ dataSiswa = [], muatData }) {
+// FIX: Menambahkan properti isKakakAsuh untuk memicu "Mode Bunglon"
+export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false }) {
   // --- HOOKS UNTUK URL STATE ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -60,7 +61,7 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   // ============================================================================
-  // 🚀 PERBAIKAN: HANDLER GANTI FILTER (PENGGANTI useEffect)
+  // PERBAIKAN: HANDLER GANTI FILTER
   // ============================================================================
   const handleGantiFilterKelas = (e) => {
     setFilterKelas(e.target.value);
@@ -223,119 +224,122 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
   return (
     <div className={`${styles.isiTab} ${styles.SembunyiPrint} ${styles.wadahSiswa}`}>
       
-      {/* PANEL KIRI: FORM SISWA */}
-      <div className={`${styles.formPanel} ${idEdit ? styles.formPanelEdit : styles.formPanelBiasa} ${styles.flexSatu}`}>
-        <h3 className={idEdit ? styles.judulFormEdit : styles.judulFormPanel}>
-          {idEdit ? "✏️ Edit Akun Siswa" : "➕ Tambah Akun Siswa"}
-        </h3>
-        
-        <form onSubmit={simpanSiswa}>
-          <input 
-            type="text" 
-            placeholder="Nama Lengkap" 
-            required 
-            value={formSiswa.nama} 
-            onChange={e => setFormSiswa({...formSiswa, nama: e.target.value})} 
-            className={styles.formInput} 
-          />
-          <input 
-            type="text" 
-            placeholder="No Peserta Resmi" 
-            required 
-            value={formSiswa.nomorPeserta} 
-            onChange={e => setFormSiswa({...formSiswa, nomorPeserta: e.target.value})} 
-            className={styles.formInput} 
-          />
-          <input 
-            type="text" 
-            placeholder="Username (Opsional, def: No Peserta)" 
-            value={formSiswa.username} 
-            onChange={e => setFormSiswa({...formSiswa, username: e.target.value})} 
-            className={styles.formInput} 
-          />
-          <input 
-            type="text" 
-            placeholder="Nomor WA" 
-            required 
-            value={formSiswa.noHp} 
-            onChange={e => setFormSiswa({...formSiswa, noHp: e.target.value})} 
-            className={styles.formInput} 
-          />
-          <input 
-            type="text" 
-            placeholder={idEdit ? "Kosongkan jika tak diubah" : `Sandi (Min ${VALIDASI_SISTEM.MIN_PASSWORD} char, Def: No HP)`} 
-            required={!idEdit} 
-            value={formSiswa.password} 
-            onChange={e => setFormSiswa({...formSiswa, password: e.target.value})} 
-            className={styles.formInput} 
-          />
-          <select 
-            value={formSiswa.kelas} 
-            onChange={e => setFormSiswa({...formSiswa, kelas: e.target.value})} 
-            className={styles.formInput}
-          >
-            <option value="">-- Pilih Kelas --</option>
-            {OPSI_KELAS.map((opsiKls) => (
-              <option key={opsiKls} value={opsiKls}>{opsiKls}</option>
-            ))}
-          </select>
-          <select 
-            value={formSiswa.status} 
-            onChange={e => setFormSiswa({...formSiswa, status: e.target.value})} 
-            className={styles.formInput} 
-            style={{ fontWeight: '900', color: formSiswa.status === STATUS_USER.NONAKTIF ? '#ef4444' : '#15803d' }}
-          >
-            <option value={STATUS_USER.AKTIF}>🟢 Status: Aktif</option>
-            <option value={STATUS_USER.NONAKTIF}>🔴 Status: Tidak Aktif (Blokir Login)</option>
-          </select>
-          <div className={styles.wadahTombolAksiForm}>
-            {idEdit && (
-              <button type="button" onClick={batalEdit} className={styles.tombolBatalForm}>Batal</button>
-            )}
-            <button type="submit" disabled={loadingForm} className={idEdit ? styles.tombolSimpanKuning : styles.tombolSimpanBiruBaru}>
-              {loadingForm ? "..." : "Simpan"}
-            </button>
-          </div>
-          {pesanForm && (
-            <p className={`${styles.teksPesanForm} ${pesanForm.includes("Berhasil") ? styles.teksPesanSukses : styles.teksPesanGagal}`}>
-              {pesanForm}
-            </p>
-          )}
-        </form>
-
-        {/* --- UI BULK ACTIONS --- */}
-        {!idEdit && (
-          <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px dashed #ccc' }}>
-            <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#111827', fontWeight: '900' }}>🚀 Pendaftaran Massal (CSV)</h4>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" onClick={unduhTemplate} className={styles.tombolBatalForm} style={{ fontSize: '12px', flex: 1 }}>
-                Unduh Template
+      {/* FIX: SEMBUNYIKAN PANEL FORM JIKA DIA KAKAK ASUH */}
+      {!isKakakAsuh && (
+        <div className={`${styles.formPanel} ${idEdit ? styles.formPanelEdit : styles.formPanelBiasa} ${styles.flexSatu}`}>
+          <h3 className={idEdit ? styles.judulFormEdit : styles.judulFormPanel}>
+            {idEdit ? "✏️ Edit Akun Siswa" : "➕ Tambah Akun Siswa"}
+          </h3>
+          
+          <form onSubmit={simpanSiswa}>
+            <input 
+              type="text" 
+              placeholder="Nama Lengkap" 
+              required 
+              value={formSiswa.nama} 
+              onChange={e => setFormSiswa({...formSiswa, nama: e.target.value})} 
+              className={styles.formInput} 
+            />
+            <input 
+              type="text" 
+              placeholder="No Peserta Resmi" 
+              required 
+              value={formSiswa.nomorPeserta} 
+              onChange={e => setFormSiswa({...formSiswa, nomorPeserta: e.target.value})} 
+              className={styles.formInput} 
+            />
+            <input 
+              type="text" 
+              placeholder="Username (Opsional, def: No Peserta)" 
+              value={formSiswa.username} 
+              onChange={e => setFormSiswa({...formSiswa, username: e.target.value})} 
+              className={styles.formInput} 
+            />
+            <input 
+              type="text" 
+              placeholder="Nomor WA" 
+              required 
+              value={formSiswa.noHp} 
+              onChange={e => setFormSiswa({...formSiswa, noHp: e.target.value})} 
+              className={styles.formInput} 
+            />
+            <input 
+              type="text" 
+              placeholder={idEdit ? "Kosongkan jika tak diubah" : `Sandi (Min ${VALIDASI_SISTEM.MIN_PASSWORD} char, Def: No HP)`} 
+              required={!idEdit} 
+              value={formSiswa.password} 
+              onChange={e => setFormSiswa({...formSiswa, password: e.target.value})} 
+              className={styles.formInput} 
+            />
+            <select 
+              value={formSiswa.kelas} 
+              onChange={e => setFormSiswa({...formSiswa, kelas: e.target.value})} 
+              className={styles.formInput}
+            >
+              <option value="">-- Pilih Kelas --</option>
+              {OPSI_KELAS.map((opsiKls) => (
+                <option key={opsiKls} value={opsiKls}>{opsiKls}</option>
+              ))}
+            </select>
+            <select 
+              value={formSiswa.status} 
+              onChange={e => setFormSiswa({...formSiswa, status: e.target.value})} 
+              className={styles.formInput} 
+              style={{ fontWeight: '900', color: formSiswa.status === STATUS_USER.NONAKTIF ? '#ef4444' : '#15803d' }}
+            >
+              <option value={STATUS_USER.AKTIF}>🟢 Status: Aktif</option>
+              <option value={STATUS_USER.NONAKTIF}>🔴 Status: Tidak Aktif (Blokir Login)</option>
+            </select>
+            <div className={styles.wadahTombolAksiForm}>
+              {idEdit && (
+                <button type="button" onClick={batalEdit} className={styles.tombolBatalForm}>Batal</button>
+              )}
+              <button type="submit" disabled={loadingForm} className={idEdit ? styles.tombolSimpanKuning : styles.tombolSimpanBiruBaru}>
+                {loadingForm ? "..." : "Simpan"}
               </button>
-              <label className={styles.tombolSimpanBiruBaru} style={{ fontSize: '12px', flex: 2, textAlign: 'center', cursor: 'pointer', backgroundColor: '#111827' }}>
-                {isBulkLoading ? "Memproses..." : "Upload CSV"}
-                <input type="file" ref={fileInputRef} accept=".csv" hidden onChange={handleFileUpload} disabled={isBulkLoading} />
-              </label>
             </div>
-            
-            {hasilBulk && (
-              <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '8px', border: '2px solid #111827' }}>
-                <p style={{ fontSize: '12px', fontWeight: '900', margin: 0 }}>{hasilBulk.pesan}</p>
-                {hasilBulk.laporan && hasilBulk.laporan.length > 0 && (
-                  <ul style={{ fontSize: '10px', marginTop: '8px', color: '#ef4444', paddingLeft: '15px', marginBottom: 0 }}>
-                    {hasilBulk.laporan.map((err, i) => <li key={i}>{err}</li>)}
-                  </ul>
-                )}
-              </div>
+            {pesanForm && (
+              <p className={`${styles.teksPesanForm} ${pesanForm.includes("Berhasil") ? styles.teksPesanSukses : styles.teksPesanGagal}`}>
+                {pesanForm}
+              </p>
             )}
-          </div>
-        )}
-      </div>
+          </form>
+
+          {/* --- UI BULK ACTIONS --- */}
+          {!idEdit && (
+            <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px dashed #ccc' }}>
+              <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#111827', fontWeight: '900' }}>Pendaftaran Massal (CSV)</h4>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" onClick={unduhTemplate} className={styles.tombolBatalForm} style={{ fontSize: '12px', flex: 1 }}>
+                  Unduh Template
+                </button>
+                <label className={styles.tombolSimpanBiruBaru} style={{ fontSize: '12px', flex: 2, textAlign: 'center', cursor: 'pointer', backgroundColor: '#111827' }}>
+                  {isBulkLoading ? "Memproses..." : "Upload CSV"}
+                  <input type="file" ref={fileInputRef} accept=".csv" hidden onChange={handleFileUpload} disabled={isBulkLoading} />
+                </label>
+              </div>
+              
+              {hasilBulk && (
+                <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '8px', border: '2px solid #111827' }}>
+                  <p style={{ fontSize: '12px', fontWeight: '900', margin: 0 }}>{hasilBulk.pesan}</p>
+                  {hasilBulk.laporan && hasilBulk.laporan.length > 0 && (
+                    <ul style={{ fontSize: '10px', marginTop: '8px', color: '#ef4444', paddingLeft: '15px', marginBottom: 0 }}>
+                      {hasilBulk.laporan.map((err, i) => <li key={i}>{err}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       
       {/* PANEL KANAN: TABEL SISWA */}
-      <div className={styles.flexDua}>
+      <div className={styles.flexDua} style={{ flex: isKakakAsuh ? '1 1 100%' : undefined }}> {/* FIX: Perlebar layar jika Kakak Asuh */}
         <div className={styles.headerTabSiswa}>
-          <h3 className={styles.judulTabelKanan}>Daftar Siswa ({siswaDitampilkan.length})</h3>
-          {/* 🚀 PERBAIKAN: Menggunakan handleGantiFilterKelas di sini */}
+          <h3 className={styles.judulTabelKanan}>
+            Daftar Siswa {isKakakAsuh ? "Asuh " : ""}({siswaDitampilkan.length})
+          </h3>
           <select value={filterKelas} onChange={handleGantiFilterKelas} className={styles.filterSelectMurni}>
             <option value="">Semua Kelas</option>
             {OPSI_KELAS.map((opsiKls) => (
@@ -374,8 +378,13 @@ export default function TabSiswa({ dataSiswa = [], muatData }) {
                       </td>
                       <td style={{textAlign:'center'}}>
                         <div className={styles.wadahAksiInlineHorizontal}>
-                          <button onClick={() => klikEditSiswa(s)} className={`${styles.tombolAksi} ${styles.btnEdit}`}>Edit</button> 
-                          <button onClick={() => klikHapusSiswa(s._id, s.nama)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>Hapus</button>
+                          {/* FIX: Sembunyikan Edit & Hapus untuk Kakak Asuh */}
+                          {!isKakakAsuh && (
+                            <>
+                              <button onClick={() => klikEditSiswa(s)} className={`${styles.tombolAksi} ${styles.btnEdit}`}>Edit</button> 
+                              <button onClick={() => klikHapusSiswa(s._id, s.nama)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>Hapus</button>
+                            </>
+                          )}
                           <button onClick={() => setSiswaCetak(s)} className={`${styles.tombolAksi} ${styles.btnCetak}`} style={{ backgroundColor: '#111827', color: 'white' }}>Cetak</button>
                         </div>
                       </td>

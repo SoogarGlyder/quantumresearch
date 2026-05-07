@@ -50,7 +50,7 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  // FUNGSI BARU: Membersihkan parameter 'page' dari URL
   const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
@@ -129,7 +129,7 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
 
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(riwayatKonsulDifilter, page, ITEMS_PER_PAGE);
 
-  // 🚀 HANDLER: PAKSA HENTIKAN SESI 
+  // HANDLER: PAKSA HENTIKAN SESI 
   const handlePaksaHenti = async (idSesi, namaSiswa) => {
     const pilihan = window.confirm(
       `Paksa hentikan sesi konsul ${namaSiswa}?\n\n[OK] = Beri 30 Menit (Kasian)\n[Cancel] = Set 0 Menit (HUKUMAN PINALTI)`
@@ -234,7 +234,7 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
               <tr><td colSpan="5" className={styles.selKosong}>Tidak ada data konsul di bulan ini.</td></tr>
             ) : (
               dataHalIni.map(sesi => {
-                // 🚀 CEK STATUS DENGAN LENGKAP
+                // CEK STATUS DENGAN LENGKAP
                 const isBerjalan = sesi.status === STATUS_SESI.BERJALAN.id;
                 const isPinalti = sesi.status === STATUS_SESI.PINALTI?.id;
                 const isExtra = sesi._id.toString().includes("_extra");
@@ -266,7 +266,7 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
                     <td style={{textAlign: 'center'}}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                         
-                        {/* 🚀 LOGIKA BADGE PINALTI vs SELESAI vs BERJALAN */}
+                        {/* LOGIKA BADGE PINALTI vs SELESAI vs BERJALAN */}
                         {isPinalti ? (
                            <span style={{
                              backgroundColor: '#111827', color: '#ef4444', 

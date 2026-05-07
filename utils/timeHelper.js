@@ -14,7 +14,7 @@ export const timeHelper = {
     );
   },
 
-  // 🚀 DI-UPGRADE: Sekarang kebal dari error! Bisa menerima String maupun Date Object.
+  // DI-UPGRADE: Sekarang kebal dari error! Bisa menerima String maupun Date Object.
   getRentangHari: (tglInput) => {
     // 1. Cek apakah yang dikirim itu objek Date? Kalau iya, ubah jadi string YYYY-MM-DD dulu.
     const tglString = (tglInput instanceof Date) 

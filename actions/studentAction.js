@@ -3,7 +3,7 @@
 import connectDB from "../lib/db"; 
 import Jadwal from "../models/Jadwal"; 
 import Quiz from "../models/Quiz";
-import StudySession from "../models/StudySession"; // 🚀 IMPORT MODEL JURNAL
+import StudySession from "../models/StudySession"; // IMPORT MODEL JURNAL
 import mongoose from "mongoose";
 
 const serialize = (data) => JSON.parse(JSON.stringify(data));
@@ -15,7 +15,7 @@ export const getKuisSiswa = async (jadwalId) => {
   try {
     await connectDB();
 
-    // 🚀 OPTIMASI: Ambil Jadwal dan Quiz secara PARALEL
+    // OPTIMASI: Ambil Jadwal dan Quiz secara PARALEL
     const [jadwalData, dataKuis] = await Promise.all([
       Jadwal.findById(jadwalId).select('mapel kelasTarget').lean(),
       Quiz.findOne({ jadwalId, isAktif: true }).select('-soal.kunciJawaban').lean()
@@ -47,7 +47,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
   try {
     await connectDB();
 
-    // 🚀 OPTIMASI: Cukup ambil data soal untuk grading
+    // OPTIMASI: Cukup ambil data soal untuk grading
     const dataKuis = await Quiz.findOne({ jadwalId }).select("soal hasilPengerjaan.siswaId").lean();
     if (!dataKuis) return { sukses: false, pesan: "Data Kuis tidak ditemukan." };
 
@@ -85,7 +85,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
 
     const skorAkhir = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
 
-    // 🚀 1. UPDATE KUIS: Atomic $push (Langsung simpan hasil ke array tanpa load seluruh kuis)
+    // 1. UPDATE KUIS: Atomic $push (Langsung simpan hasil ke array tanpa load seluruh kuis)
     const updateQuiz = Quiz.updateOne(
       { jadwalId },
       { 
@@ -101,7 +101,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
       }
     );
 
-    // 🚀 2. AUTO-SYNC JURNAL: Memasukkan nilaiTest ke absen siswa
+    // 2. AUTO-SYNC JURNAL: Memasukkan nilaiTest ke absen siswa
     const updateJurnal = StudySession.updateOne(
       { 
         siswaId: new mongoose.Types.ObjectId(siswaId), 
@@ -112,7 +112,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
       }
     );
 
-    // 🚀 EKSEKUSI PARALEL (Jauh lebih ngebut!)
+    // EKSEKUSI PARALEL (Jauh lebih ngebut!)
     await Promise.all([updateQuiz, updateJurnal]);
 
     return { sukses: true, skor: skorAkhir, exp: expDidapat };
@@ -128,7 +128,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
 export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
   try {
     await connectDB();
-    // 🚀 OPTIMASI: Projection (Jangan tarik isi soal, cukup jumlahnya saja)
+    // OPTIMASI: Projection (Jangan tarik isi soal, cukup jumlahnya saja)
     const kuis = await Quiz.findOne({ jadwalId, isAktif: true })
       .select("durasi hasilPengerjaan soal")
       .lean();
@@ -177,7 +177,7 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
     await connectDB();
     const oid = new mongoose.Types.ObjectId(siswaId);
 
-    // 🚀 OPTIMASI TOTAL: Gunakan Aggregation Pipeline (Menyatukan Quiz & Jadwal)
+    // OPTIMASI TOTAL: Gunakan Aggregation Pipeline (Menyatukan Quiz & Jadwal)
     const riwayat = await Quiz.aggregate([
       { $match: { "hasilPengerjaan.siswaId": oid } }, // Cari kuis yang pernah dikerjakan siswa
       {

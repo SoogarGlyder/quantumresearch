@@ -40,7 +40,7 @@ const ModalAbsenStaf = memo(({ isOpen, onClose, dataPengajar = [], muatData }) =
     
     setLoading(true);
     
-    // 🚀 FIX: Suntikkan jamMasuk dan jamKeluar ke payload sebelum dikirim
+    // FIX: Suntikkan jamMasuk dan jamKeluar ke payload sebelum dikirim
     const payloadAbsen = {
       ...form,
       jamMasuk: "12:00",
@@ -81,7 +81,7 @@ const ModalAbsenStaf = memo(({ isOpen, onClose, dataPengajar = [], muatData }) =
               style={{ width: '100%', border: '3px solid #111827', padding: '10px', textTransform: 'uppercase', fontWeight: 'bold' }}
             >
               <option value="">-- Pilih Kode Pengajar --</option>
-              {/* 🚀 Fallback aman untuk render daftar pengajar */}
+              {/* Fallback aman untuk render daftar pengajar */}
               {(dataPengajar || []).length > 0 ? (
                 dataPengajar.map(p => (
                   <option key={p._id} value={p._id}>{p.kodePengajar} - {p.nama}</option>
@@ -150,7 +150,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
   const [filterTglAbsen, setFilterTglAbsen] = useState("");
   const [filterNama, setFilterNama] = useState("");
   
-  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  // FUNGSI BARU: Membersihkan parameter 'page' dari URL
   const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
@@ -231,7 +231,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
       <div className={styles.headerTabWrapper}>
         <h2 className={styles.judulIsiTab} style={{margin: 0}}>Presensi Staff / Pengajar</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
-          {/* 🚀 TOMBOL SUNTIK ABSEN */}
+          {/* TOMBOL SUNTIK ABSEN */}
           <button 
             onClick={() => setIsModalOpen(true)}
             className={styles.tombolSimpanBiruBaru}
@@ -357,7 +357,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
         <PaginationBar totalPages={totalPage} />
       </div>
 
-      {/* 🚀 MODAL ABSEN DITAMPILKAN DI SINI */}
+      {/* MODAL ABSEN DITAMPILKAN DI SINI */}
       <ModalAbsenStaf 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 

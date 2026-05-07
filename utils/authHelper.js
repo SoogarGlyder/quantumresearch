@@ -35,9 +35,18 @@ export const authHelper = {
       maxAge: 60 * 60 * 24 * KONFIGURASI_SISTEM.SESSION_MAX_AGE_DAYS 
     };
     
-    // Set cookie menggunakan nama dari konstanta
+    // Set cookie utama menggunakan nama dari konstanta
     cookieStore.set(KONFIGURASI_SISTEM.COOKIE_NAME, user._id.toString(), opsi);
     cookieStore.set(KONFIGURASI_SISTEM.COOKIE_ROLE, user.peran, opsi);
+
+    // FIX: Penyelundupan Data Otorisasi Ekstra (RBAC & Cabang)
+    if (user.kodeCabang) cookieStore.set("cabang_quantum", user.kodeCabang, opsi);
+    if (user.pangkat) cookieStore.set("pangkat_quantum", user.pangkat, opsi);
+    
+    // Khusus kelas asuh (Array) kita ubah jadi string JSON
+    if (user.kelasAsuh && Array.isArray(user.kelasAsuh)) {
+      cookieStore.set("kelas_asuh_quantum", JSON.stringify(user.kelasAsuh), opsi);
+    }
   },
 
   /**
@@ -45,9 +54,24 @@ export const authHelper = {
    */
   ambilSesi: async () => {
     const cookieStore = await cookies();
+    
+    // FIX: Parsing Array Kelas Asuh secara aman
+    const kelasAsuhRaw = cookieStore.get("kelas_asuh_quantum")?.value;
+    let daftarKelasAsuh = [];
+    try {
+      if (kelasAsuhRaw) daftarKelasAsuh = JSON.parse(kelasAsuhRaw);
+    } catch (e) {
+      console.error("Gagal mem-parsing kelas_asuh_quantum:", e);
+    }
+
     return {
       userId: cookieStore.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value,
-      peran: cookieStore.get(KONFIGURASI_SISTEM.COOKIE_ROLE)?.value
+      peran: cookieStore.get(KONFIGURASI_SISTEM.COOKIE_ROLE)?.value,
+      
+      // FIX: Ekstraksi Data Otorisasi Ekstra
+      kodeCabang: cookieStore.get("cabang_quantum")?.value,
+      pangkat: cookieStore.get("pangkat_quantum")?.value,
+      kelasAsuh: daftarKelasAsuh
     };
   },
 
@@ -58,5 +82,10 @@ export const authHelper = {
     const cookieStore = await cookies();
     cookieStore.delete(KONFIGURASI_SISTEM.COOKIE_NAME);
     cookieStore.delete(KONFIGURASI_SISTEM.COOKIE_ROLE);
+    
+    // FIX: Bersihkan juga cookie ekstra
+    cookieStore.delete("cabang_quantum");
+    cookieStore.delete("pangkat_quantum");
+    cookieStore.delete("kelas_asuh_quantum");
   }
 };

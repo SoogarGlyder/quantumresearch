@@ -20,7 +20,7 @@ function cekApakahJadwalLewat(tanggalJadwal, jamSelesai) {
   if (tglJadwalStr < tglSekarangStr) return true;
   
   if (tglJadwalStr === tglSekarangStr) {
-    // 🚀 FIX: Gunakan offset agar pembanding "sekarang" akurat 
+    // FIX: Gunakan offset agar pembanding "sekarang" akurat 
     const waktuBatasSelesai = new Date(`${tglJadwalStr}T${jamSelesai}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
     return sekarang > waktuBatasSelesai;
   }
@@ -47,7 +47,7 @@ export function kalkulasiAbsensiLengkap(dataRiwayat = [], dataJadwal = [], dataS
     mapFallback.add(`${idSiswa}|${mapelLower}|${tgl}`);
   });
 
-  // 🚀 OPTIMASI PERFORMA: Kelompokkan siswa berdasarkan kelas terlebih dahulu (O(N))
+  // OPTIMASI PERFORMA: Kelompokkan siswa berdasarkan kelas terlebih dahulu (O(N))
   // Agar tidak perlu .filter() di dalam loop jadwal (mencegah lag di browser)
   const siswaPerKelas = dataSiswa.reduce((acc, s) => {
     if (!acc[s.kelas]) acc[s.kelas] = [];
@@ -79,7 +79,7 @@ export function kalkulasiAbsensiLengkap(dataRiwayat = [], dataJadwal = [], dataS
           namaMapel: jadwal.mapel,
           siswaId: siswa,
           jadwalId: jadwal._id,
-          // 🚀 FIX: Tambahkan ISO_OFFSET agar jam tidak bergeser di server Vercel
+          // FIX: Tambahkan ISO_OFFSET agar jam tidak bergeser di server Vercel
           waktuMulai: new Date(`${jadwal.tanggal}T${jadwal.jamMulai}:00${PERIODE_BELAJAR.ISO_OFFSET}`),
           status: STATUS_SESI.ALPA.id, 
           terlambatMenit: 0,

@@ -6,7 +6,7 @@ import { PERIODE_BELAJAR } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
 import BadgeKehadiran from "./BadgeKehadiran";
-import PaginationBar from "@/components/ui/PaginationBar"; // 🚀 Import Pagination
+import PaginationBar from "@/components/ui/PaginationBar"; // Import Pagination
 
 const DaftarRiwayatKelas = memo(({ dataHalIni, totalPage, onBukaCatatan }) => (
   <div className={styles.contentContainer}>
@@ -49,7 +49,7 @@ const DaftarRiwayatKelas = memo(({ dataHalIni, totalPage, onBukaCatatan }) => (
           ))}
         </div>
 
-        {/* 🚀 PAGINATION RENDERED HERE */}
+        {/* PAGINATION RENDERED HERE */}
         <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
           <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} />
         </div>

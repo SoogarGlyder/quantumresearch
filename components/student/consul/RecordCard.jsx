@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { FaChevronDown, FaChevronUp, FaSkullCrossbones } from "react-icons/fa6";
 
-// 🚀 PATH ABSOLUTE
+// PATH ABSOLUTE
 import { STATUS_SESI, PERIODE_BELAJAR } from "@/utils/constants";
 import { hitungDurasiMenit, formatJam } from "@/utils/formatHelper";
 import styles from "@/components/App.module.css";

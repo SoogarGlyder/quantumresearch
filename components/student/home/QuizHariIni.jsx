@@ -6,7 +6,7 @@ import styles from "@/components/App.module.css";
 
 const QuizHariIni = memo(({ kuisHariIni, riwayatSesiIni, onBukaKuis }) => {
   
-  // 🚀 JIKA KOSONG ATAU SUDAH SELESAI, TAMPILKAN EMPTY STATE DI HOME
+  // JIKA KOSONG ATAU SUDAH SELESAI, TAMPILKAN EMPTY STATE DI HOME
   if (!kuisHariIni || kuisHariIni.isSudahDikerjakan) {
     return (
       <div className={styles.contentContainer}>
@@ -18,7 +18,7 @@ const QuizHariIni = memo(({ kuisHariIni, riwayatSesiIni, onBukaKuis }) => {
 
   const isSudahScanIn = riwayatSesiIni && riwayatSesiIni.waktuMulai;
 
-  // 🚀 TAMPILAN AKTIF (BELUM DIKERJAKAN), STYLE MENGIKUTI LATIHAN HARI INI
+  // TAMPILAN AKTIF (BELUM DIKERJAKAN), STYLE MENGIKUTI LATIHAN HARI INI
   return (
     <div className={styles.contentContainer}>
       <h3 className={styles.contentTitle}><FaGamepad color="#2563eb" /> Pre-Test Aktif</h3>

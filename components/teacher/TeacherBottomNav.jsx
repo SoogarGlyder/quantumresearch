@@ -9,7 +9,7 @@ const TeacherBottomNav = memo(({ tab, setTab }) => {
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // 🚀 FUNGSI KETUK TAB CERDAS (SMART REFRESH)
+  // FUNGSI KETUK TAB CERDAS (SMART REFRESH)
   const handleTabClick = (targetTab) => {
     if (tab !== targetTab) {
       setTab(targetTab);

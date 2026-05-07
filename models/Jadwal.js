@@ -28,7 +28,12 @@ const jadwalSchema = new mongoose.Schema({
   fotoBersama: { type: String, default: "", trim: true }
 }, { timestamps: true });
 
+// Index lama
 jadwalSchema.index({ kelasTarget: 1, tanggal: 1 });
+
+// COMPOUND INDEX BARU
+// Mempercepat Admin Cabang menarik jadwal guru-gurunya pada rentang semester tertentu
+jadwalSchema.index({ tanggal: 1, pengajarId: 1 });
 
 const Jadwal = mongoose.models.Jadwal || mongoose.model("Jadwal", jadwalSchema);
 export default Jadwal;

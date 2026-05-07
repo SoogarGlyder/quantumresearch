@@ -147,7 +147,7 @@
   color: #111827;
   font-size: 18px;
   transition: all 0.2s ease;
-  z-index: 20; /* 🚀 KUNCI: Harus di atas inputField */
+  z-index: 20; /* KUNCI: Harus di atas inputField */
 }
 
 .inputField {
@@ -155,7 +155,7 @@
   background-color: #e5e7eb;
   border: 3px solid #111827;
   border-radius: 12px; 
-  padding: 16px 45px 16px 52px; /* 🚀 Padding kanan ditambah untuk ikon intip */
+  padding: 16px 45px 16px 52px; /* Padding kanan ditambah untuk ikon intip */
   font-size: 16px;
   font-weight: 900;
   color: #111827;
@@ -173,7 +173,7 @@
 
 .inputField:focus {
   background-color: #dbeafe;
-  /* 🚀 Menghilangkan transform agar ikon tidak tertinggal */
+  /* Menghilangkan transform agar ikon tidak tertinggal */
   transform: none; 
   border-color: #2563eb;
   box-shadow: 6px 6px 0 #111827;

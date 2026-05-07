@@ -31,7 +31,7 @@
   border: 4px solid #111827; 
   border-radius: 12px;
   box-sizing: border-box;
-  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  /* BOX SHADOW DIKEMBALIKAN */
   box-shadow: 8px 8px 0 #111827;
 }
 
@@ -116,7 +116,7 @@
   background-color: white;
   border: 3px solid #111827;
   border-radius: 12px;
-  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  /* BOX SHADOW DIKEMBALIKAN */
   box-shadow: 4px 4px 0 #111827;
 }
 
@@ -140,7 +140,7 @@
 /* Foto Jurnal */
 .wadahFoto {
   background-color: #e5e7eb; border: 3px solid #111827; border-radius: 12px; overflow: hidden; margin-bottom: 32px;
-  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  /* BOX SHADOW DIKEMBALIKAN */
   box-shadow: 4px 4px 0 #111827;
 }
 .fotoBersama { width: 100%; max-height: 450px; object-fit: cover; display: block; border-bottom: 3px solid #111827; }
@@ -166,7 +166,7 @@
 /* Box Prestasi / Info Tambahan Rapor */
 .boxPrestasi { 
   background: #facc15; border: 3px solid #111827; padding: 12px 24px; border-radius: 12px; display: inline-block; text-align: right; 
-  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  /* BOX SHADOW DIKEMBALIKAN */
   box-shadow: 6px 6px 0 #111827;
 }
 .boxPrestasi p { margin: 0; font-weight: 900; font-size: 16px; }
@@ -182,7 +182,7 @@
 .summaryItem {
   background: white; border: 3px solid #111827; border-radius: 10px; padding: 12px; text-align: center;
   font-weight: 900; font-size: 13px; display: flex; flex-direction: column; gap: 4px;
-  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  /* BOX SHADOW DIKEMBALIKAN */
   box-shadow: 3px 3px 0 #111827;
 }
 
@@ -193,7 +193,7 @@
 /* Tabel (Digunakan oleh Jurnal & Rapor dengan layout fix) */
 .tabelLaporan, .tabelRapor {
   width: 100%; background-color: white; border: 3px solid #111827; border-radius: 12px; 
-  /* 🚀 BOX SHADOW DIKEMBALIKAN */
+  /* BOX SHADOW DIKEMBALIKAN */
   box-shadow: 4px 4px 0 #111827;
 }
 

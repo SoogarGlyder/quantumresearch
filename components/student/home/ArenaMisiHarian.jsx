@@ -19,7 +19,7 @@ const ArenaMisiHarian = memo(({ misiHarian, loadingMisi, onKlaim }) => (
               <span className={styles.missionCardTitle} style={{ color: misi.diklaim ? '#64748b' : '#111827', textDecoration: misi.diklaim ? 'line-through' : 'none' }}>{misi.judul}</span>
               <span style={{ color: '#facc15', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}><FaGift /> +{misi.expBonus} EXP</span>
             </div>
-            {/* 🚀 FIX: justifyContent dan alignItems sudah menggunakan camelCase! */}
+            {/* FIX: justifyContent dan alignItems sudah menggunakan camelCase! */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
               <span className={styles.missionCardProgress}>{misi.progress}/{misi.target}</span>
               {misi.diklaim ? (

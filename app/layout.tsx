@@ -79,7 +79,7 @@ export default function RootLayout({
 }>) {
   return (
     /**
-     * 🚀 FIX HYDRATION ERROR:
+     * FIX HYDRATION ERROR:
      * suppressHydrationWarning ditambahkan pada <html> dan <body> 
      * untuk mengabaikan atribut ekstra yang disuntikkan oleh 
      * ekstensi browser (seperti Grammarly, Google Translate, dll).
@@ -91,7 +91,7 @@ export default function RootLayout({
         
         {children}
 
-        {/* 🚀 RADAR VERCEL DIPASANG DI SINI (Paling Bawah Body) */}
+        {/* RADAR VERCEL DIPASANG DI SINI (Paling Bawah Body) */}
         <SpeedInsights />
         <Analytics />
       </body>

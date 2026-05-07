@@ -65,7 +65,7 @@ const siapkanDataKonsul = (data) => {
   });
 };
 
-// 🚀 TAMBAHAN: Mapper Khusus Absen Staf / Pengajar
+// TAMBAHAN: Mapper Khusus Absen Staf / Pengajar
 const siapkanDataAbsenStaf = (data) => {
   return data.map(a => {
     return {
@@ -95,7 +95,7 @@ export const unduhExcel = (data, tipe) => {
     let dataFormat = [];
     let namaSheet = "Laporan";
 
-    // 🚀 PERBAIKAN: Routing data berdasarkan tipe menggunakan if-else
+    // PERBAIKAN: Routing data berdasarkan tipe menggunakan if-else
     if (tipe === TIPE_SESI.KELAS || tipe === "kelas") {
       dataFormat = siapkanDataKelas(data);
       namaSheet = "Laporan_Kelas";

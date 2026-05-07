@@ -9,18 +9,17 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { 
   ambilDataDashboard, 
   ambilSemuaJadwal, 
-  ambilAbsensiPengajar 
+  ambilAbsensiPengajar,
+  ambilSemuaAdmin,
+  ambilPengajarCabang 
 } from "../../actions/adminAction";
-import { ambilSemuaPengajar } from "../../actions/teacherAction";
 
-// 🚀 MENGIMPOR JEMBATAN SESI YANG BARU KITA BUAT
 import { prosesLogout, dapatkanSesiAktif } from "../../actions/authAction"; 
-
-import { KONFIGURASI_SISTEM, PERIODE_BELAJAR } from "../../utils/constants";
+import { KONFIGURASI_SISTEM, PERIODE_BELAJAR, PANGKAT_PENGAJAR, CABANG_QUANTUM } from "../../utils/constants"; 
 
 import styles from "./AdminPage.module.css"; 
 
-import { FaArrowRightFromBracket, FaQrcode, FaCalendarDays } from "react-icons/fa6";
+import { FaArrowRightFromBracket, FaQrcode, FaCalendarDays, FaDesktop, FaLock, FaArrowsRotate } from "react-icons/fa6"; 
 
 import TabMonitoring from "../../components/admin/TabMonitoring";
 import TabUser from "../../components/admin/TabUser";
@@ -28,7 +27,6 @@ import TabJurnal from "../../components/admin/TabJurnal";
 import TabJadwal from "../../components/admin/TabJadwal";
 import ModalQr from "../../components/admin/ModalQr"; 
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
-
 import TabSoal from "../../components/admin/TabSoal"; 
 import TabKuis from "../../components/admin/TabKuis"; 
 
@@ -73,10 +71,37 @@ function AdminContent() {
   const [dataPengajar, setDataPengajar] = useState([]); 
   const [dataJadwal, setDataJadwal] = useState([]); 
   const [dataAbsenStaf, setDataAbsenStaf] = useState([]); 
+  const [dataAdmin, setDataAdmin] = useState([]); 
   const [loadingData, setLoadingData] = useState(true);
 
-  // 🚀 STATE UNTUK MENYIMPAN ID ADMIN ASLI
   const [adminIdAktif, setAdminIdAktif] = useState("000000000000000000000000");
+  const [pangkatAktif, setPangkatAktif] = useState("");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false); 
+
+  const [judulAdmin, setJudulAdmin] = useState("Memuat...");
+  const [subJudulAdmin, setSubJudulAdmin] = useState("Pusat Kendali Quantum Research");
+
+  const [isLayarKecil, setIsLayarKecil] = useState(false);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    const cekLayar = () => {
+      setIsLayarKecil(window.innerWidth < 1024);
+    };
+
+    cekLayar();
+    window.addEventListener("resize", cekLayar);
+    return () => window.removeEventListener("resize", cekLayar);
+  }, []);
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
 
   const gantiTab = (namaTabBaru) => {
     const params = new URLSearchParams();
@@ -95,36 +120,100 @@ function AdminContent() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const muatData = useCallback(async () => {
+  // 🚀 FUNGSI PINTAR: Menerima argumen "targetTab"
+  const muatData = useCallback(async (targetTab = "SEMUA") => {
     setLoadingData(true);
     try {
-      // 🚀 SEDOT ID ADMIN DARI SESI COOKIE SECARA AMAN
       const sesi = await dapatkanSesiAktif();
-      if (sesi && sesi.userId) {
-        setAdminIdAktif(sesi.userId);
-      } else {
+      if (!sesi || !sesi.userId) {
         router.push(KONFIGURASI_SISTEM.PATH_LOGIN);
         return;
       }
+      
+      const peranAktif = sesi.peran;
+      const pangkatAktifUser = sesi.pangkat || "";
 
-      const [hasilDashboard, hasilJadwal, hasilPengajar, hasilAbsenStaf] = await Promise.all([
-        ambilDataDashboard(),
-        ambilSemuaJadwal(),
-        ambilSemuaPengajar(),
-        ambilAbsensiPengajar()
-      ]);
-
-      if (hasilDashboard.sukses && hasilDashboard.data) { 
-        setDataRiwayat(hasilDashboard.data.riwayat || []); 
-        setDataSiswa(hasilDashboard.data.siswa || []); 
-      } else { 
-        router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
-        return; 
+      if (peranAktif === "pengajar" && pangkatAktifUser !== PANGKAT_PENGAJAR.STAFF_AKADEMIK && pangkatAktifUser !== PANGKAT_PENGAJAR.KAKAK_ASUH) {
+        router.push("/"); 
+        return;
       }
 
-      if (hasilJadwal.sukses) setDataJadwal(hasilJadwal.data || []);
-      if (hasilPengajar.sukses) setDataPengajar(hasilPengajar.data || []);
-      if (hasilAbsenStaf.sukses) setDataAbsenStaf(hasilAbsenStaf.data || []);
+      setAdminIdAktif(sesi.userId);
+      setPangkatAktif(pangkatAktifUser);
+      
+      const modeSuper = sesi.kodeCabang === CABANG_QUANTUM.PUSAT.id;
+      setIsSuperAdmin(modeSuper);
+      const isModeKakakAsuh = pangkatAktifUser === PANGKAT_PENGAJAR.KAKAK_ASUH;
+
+      const objekCabang = Object.values(CABANG_QUANTUM).find(c => c.id === sesi.kodeCabang);
+      const namaCabang = objekCabang ? (objekCabang.label || objekCabang.nama || "Cabang") : "Cabang";
+
+      if (modeSuper) {
+        setJudulAdmin("Super Admin");
+        setSubJudulAdmin("Pusat Kendali Quantum Research");
+      } else {
+        let suffix = "";
+        if (pangkatAktifUser === PANGKAT_PENGAJAR.KAKAK_ASUH) suffix = " (Kakak Asuh)";
+        else if (pangkatAktifUser === PANGKAT_PENGAJAR.STAFF_AKADEMIK) suffix = " (Staff)";
+        
+        setJudulAdmin(`Admin ${namaCabang}${suffix}`);
+        setSubJudulAdmin(`Pusat Kendali Quantum Research ${namaCabang}`);
+      }
+
+      // 🚀 ALGORITMA TARGETED REFRESH (Peta Kebutuhan Data)
+      let butuhDashboard = false;
+      let butuhJadwal = false;
+      let butuhPengajar = false;
+      let butuhAbsen = false;
+      let butuhAdmin = false;
+
+      if (targetTab === "SEMUA" || targetTab === "monitoring") {
+        butuhDashboard = true; butuhJadwal = true; butuhPengajar = true;
+        if (!isModeKakakAsuh) butuhAbsen = true;
+      } else if (targetTab === "jurnal") {
+        butuhJadwal = true; 
+      } else if (targetTab === "jadwal") {
+        butuhJadwal = true; butuhPengajar = true;
+      } else if (targetTab === "user") {
+        butuhDashboard = true; butuhPengajar = true;
+        if (modeSuper) butuhAdmin = true;
+      } else if (targetTab === "soal") {
+        butuhDashboard = true; // Untuk data siswa di tab soal
+      }
+
+      // 🚀 ANTRIAN API DINAMIS (Hanya memanggil yang dibutuhkan)
+      const namaKunci = [];
+      const antrianPanggilan = [];
+
+      if (butuhDashboard) { antrianPanggilan.push(ambilDataDashboard()); namaKunci.push("dashboard"); }
+      if (butuhJadwal)    { antrianPanggilan.push(ambilSemuaJadwal()); namaKunci.push("jadwal"); }
+      if (butuhPengajar)  { antrianPanggilan.push(ambilPengajarCabang()); namaKunci.push("pengajar"); }
+      if (butuhAbsen)     { antrianPanggilan.push(ambilAbsensiPengajar()); namaKunci.push("absen"); }
+      if (butuhAdmin)     { antrianPanggilan.push(ambilSemuaAdmin()); namaKunci.push("admin"); }
+
+      // Jalankan semua permintaan secara bersamaan (Parallel)
+      const hasilApi = await Promise.all(antrianPanggilan);
+      
+      // Susun kembali hasil API ke dalam bentuk Object yang mudah dibaca
+      const hasil = {};
+      namaKunci.forEach((kunci, index) => {
+        hasil[kunci] = hasilApi[index];
+      });
+
+      // 🚀 INJEKSI DATA KE DALAM STATE (Sesuai yang berhasil ditarik)
+      if (hasil.dashboard?.sukses) { 
+        setDataRiwayat(hasil.dashboard.data.riwayat || []); 
+        setDataSiswa(hasil.dashboard.data.siswa || []); 
+      }
+      if (hasil.jadwal?.sukses)   setDataJadwal(hasil.jadwal.data || []);
+      if (hasil.pengajar?.sukses) setDataPengajar(hasil.pengajar.data || []);
+      if (hasil.absen?.sukses)    setDataAbsenStaf(hasil.absen.data || []);
+      if (hasil.admin?.sukses)    setDataAdmin(hasil.admin.data || []);
+
+      // Cegat jika dashboard gagal saat pertama kali load (User Ilegal)
+      if (targetTab === "SEMUA" && !hasil.dashboard?.sukses) {
+        router.push(KONFIGURASI_SISTEM.PATH_LOGIN);
+      }
 
     } catch (error) {
       console.error("[ERROR muatData Admin]:", error);
@@ -133,35 +222,86 @@ function AdminContent() {
     }
   }, [router]);
 
+  // Saat pertama kali komponen dimuat, tarik "SEMUA" data
   useEffect(() => { 
-    muatData(); 
+    muatData("SEMUA"); 
   }, [muatData]);
+
+  // 🚀 FUNGSI REFRESH YANG DIPERBARUI: Hanya menarik data di Tab Aktif
+  const handleRefresh = async () => {
+    if (isRefreshing || cooldown > 0) return; 
+    
+    setIsRefreshing(true);
+    // Kirimkan 'tab' aktif ke fungsi muatData (contoh: muatData("jurnal"))
+    await muatData(tab); 
+    setIsRefreshing(false);
+    
+    setCooldown(3); 
+  };
 
   const klikLogout = async () => { 
     await prosesLogout(); 
     router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
   };
 
-  if (loadingData) {
+  if (isLayarKecil) {
     return (
-      <div className={styles.layarLoadingPenuh}>
-        <div className={styles.kotakLoadingBrutal}>
-          <h2 className={styles.judulLoading}>MEMUAT SISTEM...</h2>
-          <div className={styles.pitaLoadingKecil}></div>
+      <div style={{ 
+        height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', 
+        alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827', 
+        padding: '24px', textAlign: 'center', overflow: 'hidden'
+      }}>
+        <div style={{ 
+          backgroundColor: '#ef4444', padding: '30px', borderRadius: '24px', 
+          border: '6px solid #facc15', boxShadow: '8px 8px 0 #facc15',
+          maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' 
+        }}>
+          <FaLock size={64} color="#111827" />
+          <h1 style={{ margin: 0, color: 'white', fontWeight: '900', fontSize: '24px', textTransform: 'uppercase', lineHeight: '1.2' }}>Akses <br/> Diblokir</h1>
+          <p style={{ margin: 0, color: '#fef08a', fontWeight: 'bold', fontSize: '15px', lineHeight: '1.5' }}>
+            Ruang Super Admin memuat tabel data besar dan Papan Catur <i>Drag & Drop</i>.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#111827', padding: '12px 16px', borderRadius: '12px', marginTop: '10px' }}>
+            <FaDesktop color="#4ade80" size={24} />
+            <span style={{ color: 'white', fontWeight: '900', fontSize: '14px', textAlign: 'left' }}>
+              Silakan akses halaman ini menggunakan PC, Laptop, atau Tablet (Landscape).
+            </span>
+          </div>
+          <button 
+            onClick={() => router.push('/')} 
+            style={{ 
+              marginTop: '16px', padding: '14px 24px', backgroundColor: '#facc15', color: '#111827', 
+              border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', 
+              cursor: 'pointer', width: '100%', textTransform: 'uppercase' 
+            }}
+          >
+            Kembali ke Beranda
+          </button>
         </div>
       </div>
     );
   }
 
+  const isModeKakakAsuh = pangkatAktif === PANGKAT_PENGAJAR.KAKAK_ASUH;
+
   return (
     <div className={styles.mainContainer}>
+      <style>{`
+        .spin-icon {
+          animation: putar-refresh 1s linear infinite;
+        }
+        @keyframes putar-refresh {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       <div className={styles.wadahKonten}>
         
-        {/* HEADER ADMIN */}
         <div className={`${styles.headerAdmin} ${styles.SembunyiPrint}`}>
           <div>
-            <h1 className={styles.judulHeader}>Super Admin</h1>
-            <p className={styles.subJudulHeader}>Pusat Kendali Quantum Research</p>
+            <h1 className={styles.judulHeader}>{judulAdmin}</h1>
+            <p className={styles.subJudulHeader}>{subJudulAdmin}</p>
           </div>
           
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -185,40 +325,66 @@ function AdminContent() {
               </select>
             </div>
 
-            <button onClick={() => setIsModalQrOpen(true)} className={styles.tombolKeluar} style={{ backgroundColor: '#facc15', color: '#111827' }}>
-              <FaQrcode /> CETAK QR
+            {/* Tombol Cetak QR disembunyikan
+            {!isModeKakakAsuh && (
+              <button onClick={() => setIsModalQrOpen(true)} className={styles.tombolKeluar} style={{ backgroundColor: '#facc15', color: '#111827' }}>
+                <FaQrcode /> CETAK QR
+              </button>
+            )} */}
+
+            <button 
+              onClick={handleRefresh} 
+              disabled={isRefreshing || cooldown > 0}
+              className={styles.tombolKeluar} 
+              style={{ 
+                backgroundColor: (isRefreshing || cooldown > 0) ? '#e5e7eb' : '#facc15', 
+                color: (isRefreshing || cooldown > 0) ? '#9ca3af' : 'black',
+                cursor: (isRefreshing || cooldown > 0) ? 'not-allowed' : 'pointer',
+                minWidth: '130px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaArrowsRotate className={isRefreshing ? "spin-icon" : ""} /> 
+              {isRefreshing ? "MEMUAT..." : cooldown > 0 ? `TUNGGU (${cooldown}s)` : "REFRESH"}
             </button>
+
             <button onClick={klikLogout} className={styles.tombolKeluar}>
               <FaArrowRightFromBracket /> KELUAR
             </button>
           </div>
         </div>
 
-        {/* NAVIGASI TAB UTAMA */}
         <div className={`${styles.wadahTabs} ${styles.SembunyiPrint}`} role="tablist">
           <button onClick={() => gantiTab("monitoring")} className={`${styles.tombolTab} ${tab === "monitoring" ? styles.tombolTabAktif : ""}`}>📟 MONITORING</button>
           <button onClick={() => gantiTab("jurnal")} className={`${styles.tombolTab} ${tab === "jurnal" ? styles.tombolTabAktif : ""}`}>📓 JURNAL</button>
           <button onClick={() => gantiTab("jadwal")} className={`${styles.tombolTab} ${tab === "jadwal" ? styles.tombolTabAktif : ""}`}>📅 JADWAL</button>
           <button onClick={() => gantiTab("user")} className={`${styles.tombolTab} ${tab === "user" ? styles.tombolTabAktif : ""}`}>👥 USER</button>
-          <button onClick={() => gantiTab("soal")} className={`${styles.tombolTab} ${tab === "soal" ? styles.tombolTabAktif : ""}`}>📚 TUGAS</button>
-          <button onClick={() => gantiTab("kuis")} className={`${styles.tombolTab} ${tab === "kuis" ? styles.tombolTabAktif : ""}`}>🧠 CBT</button>
+          
+          {!isModeKakakAsuh && (
+            <>
+              <button onClick={() => gantiTab("soal")} className={`${styles.tombolTab} ${tab === "soal" ? styles.tombolTabAktif : ""}`}>📚 TUGAS</button>
+              <button onClick={() => gantiTab("kuis")} className={`${styles.tombolTab} ${tab === "kuis" ? styles.tombolTabAktif : ""}`}>🧠 CBT</button>
+            </>
+          )}
         </div>
 
-        {/* AREA KONTEN AKTIF */}
         <div className={styles.areaKontenTab} role="tabpanel">
           <ErrorBoundary>
-            {tab === "monitoring" && <TabMonitoring dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} dataAbsenStaf={dataAbsenStaf} dataPengajar={dataPengajar} muatData={muatData} bulanAktif={bulanAktif} />}
-            {tab === "jurnal" && <TabJurnal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} />}
+            {/* 🚀 PROPS OPTIMASI: muatData kini bisa dipakai dari dalam Tab (misal: setelah tambah Jadwal) */}
+            {tab === "monitoring" && <TabMonitoring dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} dataAbsenStaf={dataAbsenStaf} dataPengajar={dataPengajar} muatData={() => muatData("monitoring")} bulanAktif={bulanAktif} isKakakAsuh={isModeKakakAsuh} />}
+            {tab === "jurnal" && <TabJurnal dataJadwal={dataJadwal} muatData={() => muatData("jurnal")} bulanAktif={bulanAktif} />}
+            {tab === "jadwal" && <TabJadwal dataJadwal={dataJadwal} muatData={() => muatData("jadwal")} bulanAktif={bulanAktif} adminId={adminIdAktif} isKakakAsuh={isModeKakakAsuh} isSuperAdmin={isSuperAdmin} />}
             
-            {/* 🚀 TAB JADWAL & KUIS KINI DIKIRIMI ID ASLI */}
-            {tab === "jadwal" && <TabJadwal dataJadwal={dataJadwal} muatData={muatData} bulanAktif={bulanAktif} adminId={adminIdAktif} />}
-            {tab === "user" && <TabUser dataSiswa={dataSiswa} dataPengajar={dataPengajar} muatData={muatData} />}
-            {tab === "soal" && <TabSoal dataSiswa={dataSiswa} />}
-            {tab === "kuis" && <TabKuis adminId={adminIdAktif} />}
+            {tab === "user" && <TabUser dataSiswa={dataSiswa} dataPengajar={dataPengajar} dataAdmin={dataAdmin} muatData={() => muatData("user")} isKakakAsuh={isModeKakakAsuh} isSuperAdmin={isSuperAdmin} />}
+            
+            {tab === "soal" && !isModeKakakAsuh && <TabSoal dataSiswa={dataSiswa} />}
+            {tab === "kuis" && !isModeKakakAsuh && <TabKuis adminId={adminIdAktif} />}
           </ErrorBoundary>
         </div>
 
-        {/* MODAL QR */}
         <ModalQr isOpen={isModalQrOpen} onClose={() => setIsModalQrOpen(false)} />
       </div>
     </div>

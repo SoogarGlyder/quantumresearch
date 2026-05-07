@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, memo, useCallback } from "react";
-import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare, FaFileSignature, FaListUl } from "react-icons/fa6"; // 🚀 Tambah FaListUl
+import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare, FaFileSignature, FaListUl } from "react-icons/fa6"; 
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 import { DndContext, useDraggable, useDroppable, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
@@ -9,17 +9,17 @@ import { DndContext, useDraggable, useDroppable, MouseSensor, TouchSensor, useSe
 import PaginationBar from "../ui/PaginationBar";
 import { DAFTAR_KELAS_BIMBEL, generateDuaMingguKerja, KAMUS_JAM_SESI } from "../../utils/jadwalHelper";
 
-import { OPSI_MAPEL_KELAS, OPSI_KELAS, LIMIT_DATA } from "../../utils/constants";
+// FIX: Import CABANG_QUANTUM ditambahkan
+import { OPSI_MAPEL_KELAS, OPSI_KELAS, LIMIT_DATA, CABANG_QUANTUM } from "../../utils/constants";
 import { tambahJadwal, hapusJadwal, editJadwal } from "../../actions/adminAction";
 
-// 🚀 IMPORT BARU: Menggunakan ekosistem Bank Soal
 import { ambilKuisByJadwal, ambilSemuaBankSoal, terapkanBankSoalKeJadwal, hapusQuizDariJadwal } from "../../actions/quizAction"; 
 
 import { formatTanggal, potongDataPagination } from "../../utils/formatHelper";
 import styles from "../../app/admin/AdminPage.module.css";
 
 // ============================================================================
-// --- KOMPONEN BANTUAN DND (Telah Dioptimasi dengan React.memo) ---
+// --- KOMPONEN BANTUAN DND ---
 // ============================================================================
 
 const DraggableMapel = memo(({ mapel }) => {
@@ -46,7 +46,6 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
           <div key={j._id} onClick={() => klikKartuJadwal(j, "permanen")} className={styles.kartuJadwalPermanen} style={{ cursor: 'pointer', transition: 'transform 0.1s', position: 'relative' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
             <div className={styles.labelTersimpan}><FaDatabase /> TERSIMPAN</div>
             
-            {/* INDIKATOR KUIS DI KARTU PAPAN CATUR */}
             {j.statusKuis === 'siap' && (
               <div style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: '#facc15', color: '#111827', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '4px', border: '1px solid #111827' }}>
                 📝 KUIS SIAP
@@ -88,7 +87,8 @@ DroppableSel.displayName = "DroppableSel";
 // ============================================================================
 // KOMPONEN UTAMA
 // ============================================================================
-export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, adminId = "admin-sistem" }) { 
+// FIX: Prop isSuperAdmin ditambahkan
+export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, adminId = "admin-sistem", isKakakAsuh = false, isSuperAdmin = false }) { 
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
@@ -114,6 +114,9 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   const [tanggalMulai, setTanggalMulai] = useState(minDate || "");
   const [jadwalLokal, setJadwalLokal] = useState([]); 
   
+  // FIX: State Khusus Filter Cabang (Hanya Berguna Untuk Super Admin)
+  const [filterCabang, setFilterCabang] = useState("");
+
   useEffect(() => {
     if (minDate && minDate !== tanggalMulai) {
       setTanggalMulai(minDate);
@@ -135,7 +138,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   const [formEdit, setFormEdit] = useState({ pengajar: "", pertemuan: "", jamMulai: "", jamSelesai: "" });
   const [isProsesEdit, setIsProsesEdit] = useState(false);
 
-  // 🚀 STATE BANK SOAL (PENGGANTI MODAL KUIS BUILDER)
   const [isModalBankOpen, setIsModalBankOpen] = useState(false);
   const [listBankSoal, setListBankSoal] = useState([]);
   const [loadingBank, setLoadingBank] = useState(false);
@@ -151,7 +153,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // 🚀 FUNGSI BARU: Membersihkan parameter 'page' dari URL
   const resetHalamanKeSatu = () => {
     const params = new URLSearchParams(searchParams);
     if (params.has("page")) {
@@ -160,13 +161,11 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     }
   };
 
-  // ❌ PERBAIKAN: useEffect yang membuat pagination macet sudah DIHAPUS
-
   useEffect(() => {
     setFilterTglMulai("");
     setFilterTglAkhir("");
     setFilterKelas("");
-    resetHalamanKeSatu(); // Reset halaman ke 1 saat ganti bulan
+    resetHalamanKeSatu();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulanAktif]);
 
@@ -226,6 +225,8 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   };
 
   const klikKartuJadwal = useCallback(async (jadwal, tipe) => {
+    if (isKakakAsuh) return;
+
     setJadwalEdit(jadwal);
     setTipeEdit(tipe);
     setFormEdit({
@@ -247,20 +248,17 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     }
 
     setModalEditTerbuka(true);
-  }, []);
+  }, [isKakakAsuh]);
 
-  // 🚀 LOGIKA BARU: BUKA PANEL PILIH BANK SOAL
   const bukaPanelBankSoal = async () => {
-    setModalEditTerbuka(false); // Tutup modal edit jadwal
+    setModalEditTerbuka(false); 
     setIsModalBankOpen(true);
     setLoadingBank(true);
-    // Ambil data Bank Soal (Bisa difilter per adminId atau ditarik semua tergantung rules nanti)
     const data = await ambilSemuaBankSoal(adminId);
     setListBankSoal(data || []);
     setLoadingBank(false);
   };
 
-  // 🚀 LOGIKA BARU: TERAPKAN KUIS
   const handlePilihBankSoal = async (idBankSoal) => {
     if (!window.confirm("Yakin ingin menerapkan paket soal ini ke jadwal kelas ini?")) return;
     
@@ -277,7 +275,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     setIsMemprosesKuis(false);
   };
 
-  // 🚀 LOGIKA BARU: LEPAS KUIS
   const handleLepasKuis = async () => {
     if (!window.confirm("Yakin ingin membatalkan/melepas kuis dari kelas ini?")) return;
     
@@ -386,9 +383,16 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     } 
   };
 
+  // FIX: Memo Filter Khusus Cabang (Menyaring Seluruh Papan & Tabel)
+  const jadwalCabangAktif = useMemo(() => {
+    if (!isSuperAdmin || !filterCabang) return dataJadwal;
+    return dataJadwal.filter(j => j.pengajarId && j.pengajarId.kodeCabang === filterCabang);
+  }, [dataJadwal, isSuperAdmin, filterCabang]);
+
   const jadwalBulanIni = useMemo(() => {
-    return dataJadwal.filter(j => j.tanggal >= minDate && j.tanggal <= maxDate);
-  }, [dataJadwal, minDate, maxDate]);
+    // Gunakan jadwalCabangAktif, BUKAN dataJadwal mentah
+    return jadwalCabangAktif.filter(j => j.tanggal >= minDate && j.tanggal <= maxDate);
+  }, [jadwalCabangAktif, minDate, maxDate]);
 
   const jadwalDitampilkan = useMemo(() => {
     let jadwal = [...jadwalBulanIni];
@@ -403,8 +407,9 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   const cariDraftLokal = (kelasId, tanggalPenuh) => jadwalLokal.filter(j => j.kelasId === kelasId && j.tanggal === tanggalPenuh);
   
   const cariPermanenDB = (kelasNama, tanggalPenuh) => {
-    if (!dataJadwal) return [];
-    const jadwalHariItu = dataJadwal.filter(j => j.kelasTarget === kelasNama && j.tanggal === tanggalPenuh);
+    if (!jadwalCabangAktif) return [];
+    // Gunakan jadwalCabangAktif, BUKAN dataJadwal mentah
+    const jadwalHariItu = jadwalCabangAktif.filter(j => j.kelasTarget === kelasNama && j.tanggal === tanggalPenuh);
     return jadwalHariItu.map(j => ({ ...j, statusKuis: daftarStatusKuis[j._id] }));
   };
 
@@ -414,107 +419,135 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   return (
     <div className={`${styles.isiTab} ${styles.wadahJadwalAllInOne}`}>
       
-      {/* ==================== PANEL ATAS: PAPAN CATUR ==================== */}
-      <div className={styles.panelPapanCatur}>
-        <div className={styles.headerPapanCatur}>
-          <div>
-            <h2 className={styles.judulHeaderPapan}>📅 Builder Jadwal</h2>
-            <p className={styles.subJudulHeaderPapan}>Tarik mapel ke kotak kelas & tanggal.</p>
-          </div>
-          
-          <div className={styles.wadahKontrolKanan}>
-            <div className={styles.wadahInputTanggal}>
-              <label className={styles.labelTanggal}>Tanggal Mulai:</label>
-              <input 
-                type="date" 
-                value={tanggalMulai} 
-                min={minDate}
-                max={maxDate}
-                onChange={(e) => { 
-                  setTanggalMulai(e.target.value); 
-                  if (jadwalLokal.length > 0) { 
-                    if(confirm("Ganti tanggal mereset draft. Lanjut?")) setJadwalLokal([]); 
-                  } 
-                }} 
-                className={styles.inputTanggalNeo} 
-              />
+      {/* ==================== PANEL ATAS: PAPAN CATUR (Disembunyikan dari Kakak Asuh) ==================== */}
+      {!isKakakAsuh && (
+        <div className={styles.panelPapanCatur}>
+          <div className={styles.headerPapanCatur}>
+            <div>
+              <h2 className={styles.judulHeaderPapan}>📅 Builder Jadwal</h2>
+              <p className={styles.subJudulHeaderPapan}>Tarik mapel ke kotak kelas & tanggal.</p>
             </div>
-            <button onClick={simpanSemuaKeDatabase} disabled={isMenyimpan || jadwalLokal.length === 0} className={`${styles.tombolSimpanServer} ${(isMenyimpan || jadwalLokal.length === 0) ? styles.nonaktif : styles.aktif}`}>
-              {isMenyimpan ? <span>⏳ Menyimpan...</span> : <><FaCloudArrowUp size={18} /> Simpan {jadwalLokal.length > 0 ? `(${jadwalLokal.length})` : ''} Ke Server</>}
-            </button>
-          </div>
-        </div>
+            
+            <div className={styles.wadahKontrolKanan}>
+              
+              {/* FIX: DROPDOWN CABANG KHUSUS SUPER ADMIN */}
+              {isSuperAdmin && (
+                <div className={styles.wadahInputTanggal} style={{ marginRight: '8px' }}>
+                  <label className={styles.labelTanggal}>Cabang:</label>
+                  <select 
+                    value={filterCabang} 
+                    onChange={e => {
+                      setFilterCabang(e.target.value);
+                      if (jadwalLokal.length > 0) { 
+                        if(confirm("Ganti cabang akan mereset jadwal draft. Lanjut?")) setJadwalLokal([]); 
+                      }
+                    }} 
+                    className={styles.inputTanggalNeo} 
+                    style={{ backgroundColor: '#fef08a', color: '#111827', fontWeight: '900', border: '3px solid #111827' }}
+                  >
+                    <option value="">🌍 Semua Cabang</option>
+                    <option value={CABANG_QUANTUM.CPT.id}>🏢 Cempaka Putih</option>
+                    <option value={CABANG_QUANTUM.KBY.id}>🏢 Kebayoran Lama</option>
+                    <option value={CABANG_QUANTUM.PTK.id}>🏢 Petukangan Selatan</option>
+                    <option value={CABANG_QUANTUM.KYP.id}>🏢 Kayu Putih</option>                    
+                  </select>
+                </div>
+              )}
 
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div className={styles.panelAmunisi}>
-              <h3 className={styles.judulAmunisi}>📚 Amunisi Mapel <span className={styles.hintAmunisi}>(Geser Kanan-Kiri, Tarik ke Bawah)</span></h3>
-              <div className={styles.wadahScrollMapel}>
-                {OPSI_MAPEL_KELAS.map(mapel => <DraggableMapel key={mapel} mapel={mapel} />)}
+              <div className={styles.wadahInputTanggal}>
+                <label className={styles.labelTanggal}>Tanggal Mulai:</label>
+                <input 
+                  type="date" 
+                  value={tanggalMulai} 
+                  min={minDate}
+                  max={maxDate}
+                  onChange={(e) => { 
+                    setTanggalMulai(e.target.value); 
+                    if (jadwalLokal.length > 0) { 
+                      if(confirm("Ganti tanggal mereset draft. Lanjut?")) setJadwalLokal([]); 
+                    } 
+                  }} 
+                  className={styles.inputTanggalNeo} 
+                />
               </div>
+              <button onClick={simpanSemuaKeDatabase} disabled={isMenyimpan || jadwalLokal.length === 0} className={`${styles.tombolSimpanServer} ${(isMenyimpan || jadwalLokal.length === 0) ? styles.nonaktif : styles.aktif}`}>
+                {isMenyimpan ? <span>⏳ Menyimpan...</span> : <><FaCloudArrowUp size={18} /> Simpan {jadwalLokal.length > 0 ? `(${jadwalLokal.length})` : ''} Ke Server</>}
+              </button>
             </div>
+          </div>
 
-            <div className={styles.wadahPapanCatur}>
-              <div className={styles.kotakScrollPapan}>
-                <table className={styles.tabelPapanCatur}>
-                  <thead>
-                    <tr>
-                      <th className={styles.thPojok}>KELAS / SESI</th>
-                      {kolomHari.map(hari => (
-                        <th key={hari.tanggalPenuh} className={`${styles.thTanggal} ${hari.isSabtu ? styles.sabtu : styles.normal}`}>
-                          <div className={styles.teksHari}>{hari.namaHari}</div>
-                          <div className={styles.teksTglCatur}>{hari.tanggalTampil}</div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {DAFTAR_KELAS_BIMBEL.map((kelas, index) => (
-                      <tr key={kelas.id} className={styles.trKelas}>
-                        <td className={styles.tdNamaKelas}>
-                          <div className={styles.namaKelasTebal}>{kelas.nama}</div>
-                          <div className={styles.badgeSesi}>Sesi {kelas.sesi}</div>
-                        </td>
-                        {kolomHari.map(hari => {
-                          const idKordinatSel = `${kelas.id}|${hari.tanggalPenuh}`;
-                          const draftLokal = cariDraftLokal(kelas.id, hari.tanggalPenuh);
-                          const permanenDB = cariPermanenDB(kelas.nama, hari.tanggalPenuh);
-                          
-                          return (
-                            <DroppableSel 
-                              key={idKordinatSel} 
-                              idSel={idKordinatSel} 
-                              isSabtu={hari.isSabtu}
-                              permanenDB={permanenDB}
-                              draftLokal={draftLokal}
-                              klikKartuJadwal={klikKartuJadwal}
-                            />
-                          );
-                        })}
+          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div className={styles.panelAmunisi}>
+                <h3 className={styles.judulAmunisi}>📚 Amunisi Mapel <span className={styles.hintAmunisi}>(Geser Kanan-Kiri, Tarik ke Bawah)</span></h3>
+                <div className={styles.wadahScrollMapel}>
+                  {OPSI_MAPEL_KELAS.map(mapel => <DraggableMapel key={mapel} mapel={mapel} />)}
+                </div>
+              </div>
+
+              <div className={styles.wadahPapanCatur}>
+                <div className={styles.kotakScrollPapan}>
+                  <table className={styles.tabelPapanCatur}>
+                    <thead>
+                      <tr>
+                        <th className={styles.thPojok}>KELAS / SESI</th>
+                        {kolomHari.map(hari => (
+                          <th key={hari.tanggalPenuh} className={`${styles.thTanggal} ${hari.isSabtu ? styles.sabtu : styles.normal}`}>
+                            <div className={styles.teksHari}>{hari.namaHari}</div>
+                            <div className={styles.teksTglCatur}>{hari.tanggalTampil}</div>
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {DAFTAR_KELAS_BIMBEL.map((kelas, index) => (
+                        <tr key={kelas.id} className={styles.trKelas}>
+                          <td className={styles.tdNamaKelas}>
+                            <div className={styles.namaKelasTebal}>{kelas.nama}</div>
+                            <div className={styles.badgeSesi}>Sesi {kelas.sesi}</div>
+                          </td>
+                          {kolomHari.map(hari => {
+                            const idKordinatSel = `${kelas.id}|${hari.tanggalPenuh}`;
+                            const draftLokal = cariDraftLokal(kelas.id, hari.tanggalPenuh);
+                            const permanenDB = cariPermanenDB(kelas.nama, hari.tanggalPenuh);
+                            
+                            return (
+                              <DroppableSel 
+                                key={idKordinatSel} 
+                                idSel={idKordinatSel} 
+                                isSabtu={hari.isSabtu}
+                                permanenDB={permanenDB}
+                                draftLokal={draftLokal}
+                                klikKartuJadwal={klikKartuJadwal}
+                              />
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <DragOverlay dropAnimation={{ duration: 150 }}>
-            {mapelAktifMelayang && <div className={styles.kartuMapelOverlay}><FaGripVertical color="#111827" /> {mapelAktifMelayang}</div>}
-          </DragOverlay>
-        </DndContext>
-      </div>
+            
+            <DragOverlay dropAnimation={{ duration: 150 }}>
+              {mapelAktifMelayang && <div className={styles.kartuMapelOverlay}><FaGripVertical color="#111827" /> {mapelAktifMelayang}</div>}
+            </DragOverlay>
+          </DndContext>
+        </div>
+      )}
 
       {/* ==================== PANEL BAWAH: TABEL MANAJEMEN ==================== */}
       <div className={styles.panelTabelBawah}>
         <div className={styles.headerTabelBawah}>
           <div>
-            <h3 className={styles.judulTabelBawah}>🗄️ Database Jadwal Permanen</h3>
+            <h3 className={styles.judulTabelBawah}>
+              {isKakakAsuh ? "🗄️ Jadwal Kelas Asuh" : "🗄️ Database Jadwal Permanen"}
+            </h3>
             <p className={styles.subJudulTabelBawah}>Total: {jadwalBulanIni.length} Jadwal di Bulan Ini</p>
           </div>
           <div className={styles.wadahFilterBawah}>
             <span style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}>Filter:</span>
-            {/* 🚀 PERBAIKAN: Pasang resetHalamanKeSatu() di trigger filter */}
             <input 
               type="date" 
               value={filterTglMulai} 
@@ -573,12 +606,12 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                 <th className={styles.thTabelData}>Kelas</th>
                 <th className={styles.thTabelData}>Mapel</th>
                 <th className={styles.thTabelData}>Pengajar</th>
-                <th className={styles.thTabelData} style={{ textAlign: 'center' }}>Aksi</th>
+                {!isKakakAsuh && <th className={styles.thTabelData} style={{ textAlign: 'center' }}>Aksi</th>}
               </tr>
             </thead>
             <tbody>
               {dataJadwalHalIni.length === 0 ? (
-                <tr><td colSpan="5" className={styles.selKosong}>Tidak ada jadwal tersimpan.</td></tr>
+                <tr><td colSpan={isKakakAsuh ? "4" : "5"} className={styles.selKosong}>Tidak ada jadwal tersimpan.</td></tr>
               ) : (
                 dataJadwalHalIni.map(j => (
                   <tr key={j._id} className={styles.trDataTabel}>
@@ -591,17 +624,26 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                     <td className={styles.tdDataTabel}>
                       <div style={{ fontWeight: '900' }}>👨‍🏫 {j.kodePengajar || 'Belum diatur'}</div>
                       <div style={{ fontSize: '12px', fontWeight: '800', color: '#6b7280' }}>Pertemuan ke-{j.pertemuan || '?'}</div>
+                      {/* Tampilkan info cabang jika Super Admin sedang tidak memfilter spesifik cabang */}
+                      {isSuperAdmin && !filterCabang && j.pengajarId?.kodeCabang && (
+                        <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold', marginTop: '4px' }}>
+                          Cabang: {j.pengajarId.kodeCabang}
+                        </div>
+                      )}
                     </td>
-                    <td className={styles.tdDataTabel} style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button onClick={() => klikKartuJadwal(j, "permanen")} className={`${styles.tombolAksi} ${styles.btnEdit}`}>
-                          Edit
-                        </button>
-                        <button onClick={() => klikHapusJadwalBawah(j._id, j.mapel, j.kelasTarget)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>
-                           Hapus
-                        </button>
-                      </div>
-                    </td>
+                    
+                    {!isKakakAsuh && (
+                      <td className={styles.tdDataTabel} style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          <button onClick={() => klikKartuJadwal(j, "permanen")} className={`${styles.tombolAksi} ${styles.btnEdit}`}>
+                            Edit
+                          </button>
+                          <button onClick={() => klikHapusJadwalBawah(j._id, j.mapel, j.kelasTarget)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>
+                             Hapus
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -650,7 +692,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
               <div>Kelas: <span>{jadwalEdit.kelasTarget}</span></div>
             </div>
 
-            {/* 🚀 PANEL KUIS BARU DI MODAL EDIT JADWAL */}
             {tipeEdit === 'permanen' && (
               <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f8fafc', border: '2px dashed #94a3b8', borderRadius: '8px', textAlign: 'center' }}>
                 <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>
@@ -717,7 +758,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
         </div>
       )}
 
-      {/* 🚀 OVERLAY MODAL PILIH BANK SOAL (UNTUK ADMIN) */}
+      {/* OVERLAY MODAL PILIH BANK SOAL */}
       {isModalBankOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '4px solid #111827', width: '100%', maxWidth: '600px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '8px 8px 0 #111827' }}>
