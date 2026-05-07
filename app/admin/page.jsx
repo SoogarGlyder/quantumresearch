@@ -19,7 +19,7 @@ import { KONFIGURASI_SISTEM, PERIODE_BELAJAR, PANGKAT_PENGAJAR, CABANG_QUANTUM }
 
 import styles from "./AdminPage.module.css"; 
 
-import { FaArrowRightFromBracket, FaQrcode, FaCalendarDays, FaDesktop, FaLock, FaArrowsRotate } from "react-icons/fa6"; 
+import { FaArrowRightFromBracket, FaCalendarDays, FaDesktop, FaLock, FaArrowsRotate, FaHouse } from "react-icons/fa6"; 
 
 import TabMonitoring from "../../components/admin/TabMonitoring";
 import TabUser from "../../components/admin/TabUser";
@@ -78,6 +78,8 @@ function AdminContent() {
   const [pangkatAktif, setPangkatAktif] = useState("");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false); 
 
+  const [peranUser, setPeranUser] = useState("");
+
   const [judulAdmin, setJudulAdmin] = useState("Memuat...");
   const [subJudulAdmin, setSubJudulAdmin] = useState("Pusat Kendali Quantum Research");
 
@@ -120,7 +122,6 @@ function AdminContent() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  // 🚀 FUNGSI PINTAR: Menerima argumen "targetTab"
   const muatData = useCallback(async (targetTab = "SEMUA") => {
     setLoadingData(true);
     try {
@@ -140,6 +141,7 @@ function AdminContent() {
 
       setAdminIdAktif(sesi.userId);
       setPangkatAktif(pangkatAktifUser);
+      setPeranUser(peranAktif);
       
       const modeSuper = sesi.kodeCabang === CABANG_QUANTUM.PUSAT.id;
       setIsSuperAdmin(modeSuper);
@@ -160,7 +162,6 @@ function AdminContent() {
         setSubJudulAdmin(`Pusat Kendali Quantum Research ${namaCabang}`);
       }
 
-      // 🚀 ALGORITMA TARGETED REFRESH (Peta Kebutuhan Data)
       let butuhDashboard = false;
       let butuhJadwal = false;
       let butuhPengajar = false;
@@ -178,10 +179,9 @@ function AdminContent() {
         butuhDashboard = true; butuhPengajar = true;
         if (modeSuper) butuhAdmin = true;
       } else if (targetTab === "soal") {
-        butuhDashboard = true; // Untuk data siswa di tab soal
+        butuhDashboard = true; 
       }
 
-      // 🚀 ANTRIAN API DINAMIS (Hanya memanggil yang dibutuhkan)
       const namaKunci = [];
       const antrianPanggilan = [];
 
@@ -191,16 +191,13 @@ function AdminContent() {
       if (butuhAbsen)     { antrianPanggilan.push(ambilAbsensiPengajar()); namaKunci.push("absen"); }
       if (butuhAdmin)     { antrianPanggilan.push(ambilSemuaAdmin()); namaKunci.push("admin"); }
 
-      // Jalankan semua permintaan secara bersamaan (Parallel)
       const hasilApi = await Promise.all(antrianPanggilan);
       
-      // Susun kembali hasil API ke dalam bentuk Object yang mudah dibaca
       const hasil = {};
       namaKunci.forEach((kunci, index) => {
         hasil[kunci] = hasilApi[index];
       });
 
-      // 🚀 INJEKSI DATA KE DALAM STATE (Sesuai yang berhasil ditarik)
       if (hasil.dashboard?.sukses) { 
         setDataRiwayat(hasil.dashboard.data.riwayat || []); 
         setDataSiswa(hasil.dashboard.data.siswa || []); 
@@ -210,7 +207,6 @@ function AdminContent() {
       if (hasil.absen?.sukses)    setDataAbsenStaf(hasil.absen.data || []);
       if (hasil.admin?.sukses)    setDataAdmin(hasil.admin.data || []);
 
-      // Cegat jika dashboard gagal saat pertama kali load (User Ilegal)
       if (targetTab === "SEMUA" && !hasil.dashboard?.sukses) {
         router.push(KONFIGURASI_SISTEM.PATH_LOGIN);
       }
@@ -222,17 +218,14 @@ function AdminContent() {
     }
   }, [router]);
 
-  // Saat pertama kali komponen dimuat, tarik "SEMUA" data
   useEffect(() => { 
     muatData("SEMUA"); 
   }, [muatData]);
 
-  // 🚀 FUNGSI REFRESH YANG DIPERBARUI: Hanya menarik data di Tab Aktif
   const handleRefresh = async () => {
     if (isRefreshing || cooldown > 0) return; 
     
     setIsRefreshing(true);
-    // Kirimkan 'tab' aktif ke fungsi muatData (contoh: muatData("jurnal"))
     await muatData(tab); 
     setIsRefreshing(false);
     
@@ -325,13 +318,6 @@ function AdminContent() {
               </select>
             </div>
 
-            {/* Tombol Cetak QR disembunyikan
-            {!isModeKakakAsuh && (
-              <button onClick={() => setIsModalQrOpen(true)} className={styles.tombolKeluar} style={{ backgroundColor: '#facc15', color: '#111827' }}>
-                <FaQrcode /> CETAK QR
-              </button>
-            )} */}
-
             <button 
               onClick={handleRefresh} 
               disabled={isRefreshing || cooldown > 0}
@@ -351,9 +337,17 @@ function AdminContent() {
               {isRefreshing ? "MEMUAT..." : cooldown > 0 ? `TUNGGU (${cooldown}s)` : "REFRESH"}
             </button>
 
-            <button onClick={klikLogout} className={styles.tombolKeluar}>
-              <FaArrowRightFromBracket /> KELUAR
-            </button>
+            {/* 🚀 LOGIKA TOMBOL BERANDA VS KELUAR */}
+            {peranUser === "pengajar" ? (
+              <button onClick={() => router.push('/')} className={styles.tombolKeluar}>
+                <FaHouse /> BERANDA
+              </button>
+            ) : (
+              <button onClick={klikLogout} className={styles.tombolKeluar}>
+                <FaArrowRightFromBracket /> KELUAR
+              </button>
+            )}
+
           </div>
         </div>
 
@@ -373,7 +367,6 @@ function AdminContent() {
 
         <div className={styles.areaKontenTab} role="tabpanel">
           <ErrorBoundary>
-            {/* 🚀 PROPS OPTIMASI: muatData kini bisa dipakai dari dalam Tab (misal: setelah tambah Jadwal) */}
             {tab === "monitoring" && <TabMonitoring dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} dataAbsenStaf={dataAbsenStaf} dataPengajar={dataPengajar} muatData={() => muatData("monitoring")} bulanAktif={bulanAktif} isKakakAsuh={isModeKakakAsuh} />}
             {tab === "jurnal" && <TabJurnal dataJadwal={dataJadwal} muatData={() => muatData("jurnal")} bulanAktif={bulanAktif} />}
             {tab === "jadwal" && <TabJadwal dataJadwal={dataJadwal} muatData={() => muatData("jadwal")} bulanAktif={bulanAktif} adminId={adminIdAktif} isKakakAsuh={isModeKakakAsuh} isSuperAdmin={isSuperAdmin} />}
