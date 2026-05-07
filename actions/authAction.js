@@ -10,7 +10,8 @@ import {
   STATUS_USER, 
   KONFIGURASI_SISTEM, 
   PESAN_SISTEM,
-  PANGKAT_PENGAJAR // FIX: Import Pangkat Pengajar
+  PANGKAT_PENGAJAR,
+  CABANG_QUANTUM
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 
@@ -18,28 +19,27 @@ import { revalidatePath } from "next/cache";
 // 1. INTERNAL SECURITY & HELPERS
 // ============================================================================
 
-// FUNGSI BARU: Ekstraktor Cabang Otomatis
+// FUNGSI BARU: Ekstraktor Cabang Otomatis (Hanya untuk Super Admin)
 function ekstrakKodeCabang(nomorPeserta) {
-  if (!nomorPeserta || nomorPeserta.length < 6) return "010101"; // Default aman ke CPT jika format salah
-  return nomorPeserta.substring(0, 6);
+  if (!nomorPeserta || nomorPeserta.length < 6) return CABANG_QUANTUM.PUSAT.id; 
+  const potongan = nomorPeserta.substring(0, 6);
+  // Validasi apakah potongan 6 digit itu benar-benar ada di daftar cabang kita
+  const cabangValid = Object.values(CABANG_QUANTUM).find(c => c.id === potongan);
+  return cabangValid ? cabangValid.id : CABANG_QUANTUM.PUSAT.id;
 }
 
-// FIX: Gerbang Penjaga (RBAC) - Izinkan Admin Utama ATAU Staff Akademik
+// 🚀 FIX: Gerbang Penjaga (Sekarang hanya mereturn boolean murni)
 async function pastikanAdmin() {
   const sesi = await authHelper.ambilSesi();
   if (!sesi || !sesi.userId) return false;
 
-  // Izinkan jika dia Admin Mutlak
-  const isStaffAkademik = sesi.peran === PERAN.PENGAJAR.id && sesi.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK;
-  
-  if (sesi.peran !== PERAN.ADMIN.id && !isStaffAkademik) {
-    return responseHelper.error("Akses Ditolak. Khusus Admin atau Staff Akademik.");
-  }
+  // Izinkan jika dia Admin Cabang / Pusat
+  if (sesi.peran === PERAN.ADMIN.id) return true;
   
   // Izinkan jika dia Pengajar tapi berpangkat Staff Akademik
   if (sesi.peran === PERAN.PENGAJAR.id && sesi.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK) return true;
 
-  // Selain itu (Siswa, Freelance, Tetap, Kakak Asuh) -> TOLAK!
+  // Selain itu -> TOLAK
   return false;
 }
 
@@ -64,7 +64,6 @@ export async function prosesLogin(dataFormulir) {
       return responseHelper.error("ID dan Kata Sandi wajib diisi.");
     }
 
-    // OPTIMASI: Gunakan .lean() karena kita hanya butuh data mentah untuk validasi
     const user = await User.findOne({
       $or: [
         { peran: PERAN.ADMIN.id, username: idInputLower },
@@ -86,7 +85,7 @@ export async function prosesLogin(dataFormulir) {
       ]
     })
     .select("+password")
-    .lean(); // 👈 Mematikan instansiasi objek Mongoose yang memakan RAM
+    .lean(); 
 
     if (!user) return responseHelper.error("Akun tidak ditemukan atau ID tidak diizinkan untuk peran tersebut!");
     if (!user.password) return responseHelper.error("Data password di server kosong. Hubungi Admin.");
@@ -94,11 +93,9 @@ export async function prosesLogin(dataFormulir) {
 
     const passwordCocok = await authHelper.bandingkanPassword(passwordInput, user.password);
     
-    console.log(`[AUTH] Login Attempt: ${idInputRaw} | Role: ${user.peran} | Success: ${passwordCocok}`);
-    
     if (!passwordCocok) return responseHelper.error("Kata sandi salah!");
 
-    await authHelper.setSesi(user); // ⚠️ CATATAN: Pastikan fungsi ini di authHelper.js menyimpan pangkat & kodeCabang
+    await authHelper.setSesi(user); 
     
     return responseHelper.success("Login Berhasil! Memuat portal...");
   } catch (error) {
@@ -119,7 +116,9 @@ export async function prosesLogout() {
 export async function prosesTambahSiswa(dataFormulir) {
   try {
     await connectToDatabase();
-    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak: Khusus Admin & Staff Akademik.");
+    
+    const sesi = await authHelper.ambilSesi();
 
     const username = validationHelper.sanitize(dataFormulir.username || dataFormulir.nomorPeserta).toLowerCase();
     const noHp = validationHelper.sanitize(dataFormulir.noHp || dataFormulir.whatsapp || "");
@@ -132,8 +131,13 @@ export async function prosesTambahSiswa(dataFormulir) {
 
     const passwordHashed = await authHelper.buatHash(passPolos);
     
-    // FIX: Ekstrak kode cabang dari nomor peserta
-    const kodeCabangSiswa = ekstrakKodeCabang(dataFormulir.nomorPeserta);
+    // 🚀 FIX: ALGORITMA KODE CABANG AMAN
+    let kodeCabangSiswa = sesi.kodeCabang; // Secara default, kunci ke cabang si pembuat
+    
+    // Jika Super Admin yang buat, baru boleh baca dari nomor peserta
+    if (sesi.kodeCabang === CABANG_QUANTUM.PUSAT.id) {
+      kodeCabangSiswa = ekstrakKodeCabang(dataFormulir.nomorPeserta);
+    }
 
     await User.create({
       ...dataFormulir, 
@@ -142,7 +146,7 @@ export async function prosesTambahSiswa(dataFormulir) {
       password: passwordHashed,
       peran: PERAN.SISWA.id, 
       status: STATUS_USER.AKTIF,
-      kodeCabang: kodeCabangSiswa // Masukkan cabang otomatis
+      kodeCabang: kodeCabangSiswa // Cabang disuntik secara otomatis dan aman
     });
 
     revalidatePath(PERAN.ADMIN.home);
@@ -155,7 +159,9 @@ export async function prosesTambahSiswa(dataFormulir) {
 export async function prosesTambahPengajar(dataFormulir) {
   try {
     await connectToDatabase();
-    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak: Khusus Admin & Staff Akademik.");
+    
+    const sesi = await authHelper.ambilSesi();
 
     const username = validationHelper.sanitize(dataFormulir.username).toLowerCase();
     const kodePengajar = validationHelper.sanitize(dataFormulir.kodePengajar).toUpperCase();
@@ -166,11 +172,14 @@ export async function prosesTambahPengajar(dataFormulir) {
 
     const passwordHashed = await authHelper.buatHash(passPolos);
 
-    // Atomic hapus data lama jika ada, lalu buat baru
     await User.deleteOne({ $or: [{ username }, { kodePengajar }] });
 
-    // FIX: Ekstrak kode cabang dari nomor peserta
-    const kodeCabangPengajar = ekstrakKodeCabang(dataFormulir.nomorPeserta);
+    // 🚀 FIX: ALGORITMA KODE CABANG AMAN
+    let kodeCabangPengajar = sesi.kodeCabang; 
+    
+    if (sesi.kodeCabang === CABANG_QUANTUM.PUSAT.id) {
+      kodeCabangPengajar = ekstrakKodeCabang(dataFormulir.nomorPeserta);
+    }
 
     await User.create({
       ...dataFormulir, 
@@ -180,7 +189,7 @@ export async function prosesTambahPengajar(dataFormulir) {
       password: passwordHashed, 
       peran: PERAN.PENGAJAR.id, 
       status: STATUS_USER.AKTIF,
-      kodeCabang: kodeCabangPengajar // Masukkan cabang otomatis
+      kodeCabang: kodeCabangPengajar 
     });
 
     revalidatePath(PERAN.ADMIN.home);
@@ -193,7 +202,9 @@ export async function prosesTambahPengajar(dataFormulir) {
 export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
   try {
     await connectToDatabase();
-    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak: Khusus Admin & Staff Akademik.");
+    
+    const sesi = await authHelper.ambilSesi();
     
     const barisUsername = daftarSiswaRaw.map(s => validationHelper.sanitize(s.username || s.nomorPeserta).toLowerCase());
     const barisNomor = daftarSiswaRaw.map(s => validationHelper.sanitize(s.nomorPeserta));
@@ -220,8 +231,12 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
       let pRaw = (s.password || s.kataSandi || "").toString().trim();
       if (!pRaw) pRaw = noHp || KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
 
-      // FIX: Ekstrak kode cabang dari setiap baris Excel
-      const kodeCabangSiswa = ekstrakKodeCabang(id);
+      // 🚀 FIX: ALGORITMA KODE CABANG AMAN UNTUK BULK EXCEL
+      let kodeCabangSiswa = sesi.kodeCabang; 
+      
+      if (sesi.kodeCabang === CABANG_QUANTUM.PUSAT.id) {
+        kodeCabangSiswa = ekstrakKodeCabang(id);
+      }
 
       dataSiap.push({
         ...s, 
@@ -231,7 +246,7 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
         password: await authHelper.buatHash(pRaw),
         peran: PERAN.SISWA.id, 
         status: STATUS_USER.AKTIF,
-        kodeCabang: kodeCabangSiswa // Masukkan cabang otomatis
+        kodeCabang: kodeCabangSiswa 
       });
     }
 
