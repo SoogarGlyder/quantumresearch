@@ -1,4 +1,4 @@
-// 🚀 FIX: Hapus import statis "import * as XLSX from 'xlsx';" dari sini!
+//FIX: Hapus import statis "import * as XLSX from 'xlsx';" dari sini!
 import { STATUS_SESI, TIPE_SESI, PERIODE_BELAJAR } from "./constants"; 
 
 const TZ = PERIODE_BELAJAR.TIMEZONE;
@@ -82,7 +82,7 @@ const siapkanDataAbsenStaf = (data) => {
 // ============================================================================
 // 3. FUNGSI UTAMA (DOWNLOADER)
 // ============================================================================
-export const unduhExcel = async (data, tipe) => { // 🚀 FIX: Jadikan fungsi async
+export const unduhExcel = async (data, tipe) => { //FIX: Jadikan fungsi async
   if (typeof window === "undefined") return;
 
   try {
@@ -91,7 +91,7 @@ export const unduhExcel = async (data, tipe) => { // 🚀 FIX: Jadikan fungsi as
       return false;
     }
 
-    // 🚀 FIX: DYNAMIC IMPORT (Browser hanya download library ini saat tombol dieksekusi)
+    //FIX: DYNAMIC IMPORT (Browser hanya download library ini saat tombol dieksekusi)
     const XLSX = await import("xlsx");
 
     let dataFormat = [];

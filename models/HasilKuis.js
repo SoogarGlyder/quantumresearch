@@ -19,7 +19,7 @@ const hasilKuisSchema = new mongoose.Schema({
   dikumpulkanPada: { type: Date, default: Date.now }
 }, { timestamps: true });
 
-// 🚀 JALAN TOL (COMPOUND INDEX)
+//JALAN TOL (COMPOUND INDEX)
 hasilKuisSchema.index({ jadwalId: 1, skorAkhir: -1 }); // Mempercepat guru melihat ranking nilai per kelas
 hasilKuisSchema.index({ siswaId: 1, createdAt: -1 }); // Mempercepat tarikan data rapor per siswa
 

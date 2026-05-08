@@ -1,6 +1,6 @@
 "use client";
 
-// 🚀 FIX: Tambahkan useEffect di import
+//FIX: Tambahkan useEffect di import
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import PaginationBar from "../ui/PaginationBar";
@@ -35,7 +35,7 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
   const [pesanForm, setPesanForm] = useState("");
 
   // ==========================================================================
-  // 🚀 FIX: ALARM PEMANGGIL DATA OTOMATIS
+  //FIX: ALARM PEMANGGIL DATA OTOMATIS
   // Begitu tab ini diklik/dibuka, langsung paksa tarik data jika tabelnya kosong
   // ==========================================================================
   useEffect(() => {

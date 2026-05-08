@@ -45,7 +45,7 @@ export default function ProfilCard({ dataUser }) {
     setPesan({ teks: "Sedang memproses...", tipe: "info" });
 
     try {
-      // 🚀 FIX: Bungkus parameter kedua ke dalam format Object { username, password }
+      //FIX: Bungkus parameter kedua ke dalam format Object { username, password }
       const hasil = await updateProfilSiswa(dataUser._id, {
         username: usernameEdit,
         password: passwordEdit

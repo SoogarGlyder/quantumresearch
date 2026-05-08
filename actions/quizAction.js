@@ -40,7 +40,7 @@ export async function ambilSemuaBankSoal(pembuatId) {
       query = {
         $or: [
           { pembuatId: { $in: daftarIdGuru } }, // Akses soal buatan lokal cabangnya
-          { isOfficial: true }                  // 🚀 KUNCI MASTER: Akses soal resmi dari Pusat
+          { isOfficial: true }                  //KUNCI MASTER: Akses soal resmi dari Pusat
         ]
       };
     } 
@@ -50,16 +50,16 @@ export async function ambilSemuaBankSoal(pembuatId) {
       query = {
         $or: [
           { pembuatId: userLogin._id },
-          { isOfficial: true } // 🚀 Guru juga berhak memakai soal Pusat untuk kuisnya
+          { isOfficial: true } //Guru juga berhak memakai soal Pusat untuk kuisnya
         ]
       };
     }
 
     const data = await BankSoal.find(query)
-      // 🚀 Pastikan isOfficial ikut di-select agar UI bisa memberikan badge (Pusat/Lokal)
+      //Pastikan isOfficial ikut di-select agar UI bisa memberikan badge (Pusat/Lokal)
       .select("judul durasi pembuatId isOfficial createdAt soal") 
       .populate("pembuatId", "nama kodeCabang") 
-      // 🚀 Urutkan: Soal Official dari Pusat muncul paling atas, baru soal terbaru
+      //Urutkan: Soal Official dari Pusat muncul paling atas, baru soal terbaru
       .sort({ isOfficial: -1, createdAt: -1 }) 
       .lean(); 
 

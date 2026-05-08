@@ -782,7 +782,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                         <h4 style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '16px' }}>{bank.judul || "Tanpa Judul"}</h4>
                         
-                        {/* 🚀 INDIKATOR CABANG / PUSAT */}
+                        {/*INDIKATOR CABANG / PUSAT */}
                         {bank.isOfficial ? (
                           <span style={{ background: '#facc15', color: '#713f12', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #713f12' }}>👑 PUSAT</span>
                         ) : (

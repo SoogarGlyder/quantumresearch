@@ -23,7 +23,7 @@ export const authHelper = {
    * 3. SET SESSION: Membuat cookie login
    */
   setSesi: async (user) => {
-    // 🚀 FIX 1: Guard Clause (Anti Crash jika data user kosong/rusak)
+    //FIX 1: Guard Clause (Anti Crash jika data user kosong/rusak)
     if (!user || !user._id) {
       console.warn("authHelper: Gagal set sesi, objek user tidak valid.");
       return false;
@@ -38,7 +38,7 @@ export const authHelper = {
       maxAge: 60 * 60 * 24 * KONFIGURASI_SISTEM.SESSION_MAX_AGE_DAYS 
     };
     
-    // 🚀 FIX 2: Optional Chaining (Lebih aman)
+    //FIX 2: Optional Chaining (Lebih aman)
     cookieStore.set(KONFIGURASI_SISTEM.COOKIE_NAME, user?._id?.toString(), opsi);
     cookieStore.set(KONFIGURASI_SISTEM.COOKIE_ROLE, user?.peran || "siswa", opsi);
 

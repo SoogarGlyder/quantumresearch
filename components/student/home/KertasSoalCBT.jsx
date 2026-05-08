@@ -15,7 +15,7 @@ const renderLaTeX = (htmlString) => {
   return { __html: rendered };
 };
 
-// 🚀 HELPER BARU: Mendeteksi apakah teks opsi benar-benar kosong
+//HELPER BARU: Mendeteksi apakah teks opsi benar-benar kosong
 // (Menangani kasus editor teks yang kadang menyisakan <p></p> kosong)
 const isOpsiKosong = (teks) => {
   if (!teks) return true;
@@ -61,7 +61,7 @@ const KertasSoalCBT = memo(({
         
         {/* 1. PILIHAN GANDA BIASA */}
         {tipeSoalAktif === "PG" && daftarOpsi.map((item, index) => {
-          // 🚀 FIX: Jika teks kosong, jangan tampilkan opsinya
+          //FIX: Jika teks kosong, jangan tampilkan opsinya
           if (isOpsiKosong(item.teks)) return null;
 
           const abjad = item.label;
@@ -91,7 +91,7 @@ const KertasSoalCBT = memo(({
 
         {/* 2. PILIHAN GANDA KOMPLEKS */}
         {tipeSoalAktif === "PG_KOMPLEKS" && daftarOpsi.map((item, index) => {
-          // 🚀 FIX: Jika teks kosong, jangan tampilkan opsinya
+          //FIX: Jika teks kosong, jangan tampilkan opsinya
           if (isOpsiKosong(item.teks)) return null;
 
           const abjad = item.label;

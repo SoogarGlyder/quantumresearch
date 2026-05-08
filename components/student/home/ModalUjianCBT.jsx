@@ -21,7 +21,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     handlePilihJawaban, handleToggleKompleks, handleInputIsian, handleKumpulJawaban, eksekusiSubmit
   } = useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast, onClose });
 
-  // 🚀 HELPER: Cek kebenaran jawaban untuk Palet Warna
+  //HELPER: Cek kebenaran jawaban untuk Palet Warna
   const cekJawabanBenar = (index) => {
     const soal = daftarSoal[index];
     const jwb = jawabanSiswa[index];
@@ -173,7 +173,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
                 const isAktif = soalAktif === index;
                 let bgWarna = 'white'; let textWarna = '#111827'; let bayangan = '2px 2px 0 #111827';
 
-                // 🚀 FIX: Penentuan warna menggunakan fungsi helper yang tangguh
+                //FIX: Penentuan warna menggunakan fungsi helper yang tangguh
                 if (isReviewMode) {
                   const isBenar = cekJawabanBenar(index);
                   if (isBenar) bgWarna = '#4ade80';

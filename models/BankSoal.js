@@ -12,14 +12,14 @@ const bankSoalSchema = new mongoose.Schema({
       pertanyaan: { type: String, required: true },
       gambar: { type: String, default: "" }, 
       
-      // 🚀 FIX: Opsi kini berupa Array of Objects yang ketat
+      //FIX: Opsi kini berupa Array of Objects yang ketat
       opsi: [{
         _id: false, // Mematikan auto-ID agar database tidak bengkak
         label: { type: String }, // "A", "B", dsb
         teks: { type: String }
       }],
       
-      // 🚀 FIX: Kunci Jawaban dipaksa menjadi Array of Strings (Cocok untuk semua tipe soal)
+      //FIX: Kunci Jawaban dipaksa menjadi Array of Strings (Cocok untuk semua tipe soal)
       kunciJawaban: { type: [String], required: true }, 
       
       bobotExp: { type: Number, default: 20 },

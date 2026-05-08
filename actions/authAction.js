@@ -48,7 +48,7 @@ export async function prosesLogin(dataFormulir) {
       dataFormulir.identifier || dataFormulir.username || dataFormulir.noHp || ""
     ).trim();
     
-    // 🚀 FIX: Keamanan Regex (Mencegah serangan ReDoS)
+    //FIX: Keamanan Regex (Mencegah serangan ReDoS)
     const amanInputRaw = validationHelper.escapeRegex(idInputRaw);
     
     const idInputLower = idInputRaw.toLowerCase();

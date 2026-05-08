@@ -31,14 +31,33 @@ const HeaderPengajar = memo(({ dataUser, statsPengajar }) => {
         <h1 className={styles.userName}>{dataUser?.nama || "Pengajar Quantum"}</h1>
         <div className={styles.containerIdNumber}>
            <span className={styles.IdNumber}>
-             Kode: {dataUser?.kodePengajar} | ID: {dataUser?.nomorPeserta}
-             {/* Indikator Pangkat Kecil di sebelah ID */}
+             {dataUser?.kodePengajar} | {dataUser?.nomorPeserta}
              {dataUser?.pangkat && dataUser.pangkat !== PANGKAT_PENGAJAR.FREELANCE && (
-               <span style={{ marginLeft: '6px', color: '#facc15' }}>• {dataUser.pangkat.replace('_', ' ')}</span>
+               <span style={{ marginLeft: '6px',}}>| {dataUser.pangkat.replace('_', ' ')}</span>
              )}
            </span>
         </div>
+      </div>
 
+      <div className={styles.infoContainer} style={{ marginBottom: '0', marginTop: '12px' }}>
+         <h2 className={styles.infoHeader}>Ringkasan Mengajar Bulan Ini</h2>
+         <div className={styles.statGridContainer} style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className={styles.statContainer}>
+              <span className={styles.statLabel} style={{fontSize: '11px'}}>Total Sesi</span>
+              <span className={`${styles.statValue} ${styles.nilaiStatBiru}`}>{statsPengajar.totalKelas}</span>
+            </div>
+            <div className={styles.statContainer}>        
+              <span className={styles.statLabel} style={{fontSize: '11px'}}>Jurnal OK</span>
+              <span className={`${styles.statValue} ${styles.nilaiStatHijau}`}>{statsPengajar.jurnalSelesai}</span>
+            </div>
+            <div className={styles.statContainer}>        
+              <span className={styles.statLabel} style={{fontSize: '11px'}}>Presensi</span>
+              <span className={`${styles.statValue} ${styles.nilaiStatMerah}`}>{statsPengajar.totalAbsensi}</span>
+            </div>
+         </div>
+      </div>
+
+      <div>
         {/* TOMBOL RAHASIA (Hanya Muncul untuk Staff Akademik & Kakak Asuh) */}
         {isBisaMasukAdmin && (
           <button
@@ -69,24 +88,6 @@ const HeaderPengajar = memo(({ dataUser, statsPengajar }) => {
             <FaBuildingShield size={18} /> Masuk Ruang Admin
           </button>
         )}
-      </div>
-
-      <div className={styles.infoContainer} style={{ marginBottom: '0', marginTop: '24px' }}>
-         <h2 className={styles.infoHeader}>Ringkasan Mengajar Bulan Ini</h2>
-         <div className={styles.statGridContainer} style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-            <div className={styles.statContainer}>
-              <span className={styles.statLabel} style={{fontSize: '11px'}}>Total Sesi</span>
-              <span className={`${styles.statValue} ${styles.nilaiStatBiru}`}>{statsPengajar.totalKelas}</span>
-            </div>
-            <div className={styles.statContainer}>        
-              <span className={styles.statLabel} style={{fontSize: '11px'}}>Jurnal OK</span>
-              <span className={`${styles.statValue} ${styles.nilaiStatHijau}`}>{statsPengajar.jurnalSelesai}</span>
-            </div>
-            <div className={styles.statContainer}>        
-              <span className={styles.statLabel} style={{fontSize: '11px'}}>Presensi</span>
-              <span className={`${styles.statValue} ${styles.nilaiStatMerah}`}>{statsPengajar.totalAbsensi}</span>
-            </div>
-         </div>
       </div>
     </div>
   );

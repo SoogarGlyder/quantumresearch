@@ -21,7 +21,7 @@ export default function ModalAbsen({ isOpen, onClose, dataPengajar = [], muatDat
     
     setLoading(true);
     
-    // 🚀 FIX: Suntikkan jamMasuk dan jamKeluar ke dalam payload
+    //FIX: Suntikkan jamMasuk dan jamKeluar ke dalam payload
     const payloadAbsen = {
       ...form,
       jamMasuk: "12:00",

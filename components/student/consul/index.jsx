@@ -73,15 +73,49 @@ export default function TabKonsulSiswa({ riwayat = [] }) {
   }, [riwayat]);
 
   const opsiBulan = useMemo(() => [...new Set(riwayatKonsul.map(r => dapatkanLabelBulan(r.waktuMulai)))], [riwayatKonsul]);
-  const opsiMapel = useMemo(() => [...new Set(riwayatKonsul.map(r => r.namaMapel || "Umum"))], [riwayatKonsul]);
+  
+  //FIX: Bersihkan imbuhan " (Extra)" saat menyusun daftar Mapel di Dropdown
+  const opsiMapel = useMemo(() => {
+    const mapelBersih = riwayatKonsul.map(r => {
+      const nama = r.namaMapel || "Umum";
+      return nama.replace(" (Extra)", "");
+    });
+    // Gunakan Set untuk membuang duplikat, lalu sort agar urut abjad
+    return [...new Set(mapelBersih)].sort(); 
+  }, [riwayatKonsul]);
 
   const konsulDitampilkan = useMemo(() => {
     return riwayatKonsul.filter(r => {
       const matchBulan = filterBulan ? dapatkanLabelBulan(r.waktuMulai) === filterBulan : true;
-      const matchMapel = filterMapel ? (r.namaMapel || "Umum") === filterMapel : true;
+      
+      //FIX: Hapus teks " (Extra)" hanya saat melakukan pencocokan filter
+      const namaMapelMurni = (r.namaMapel || "Umum").replace(" (Extra)", "");
+      const matchMapel = filterMapel ? namaMapelMurni === filterMapel : true;
+      
       return matchBulan && matchMapel;
     });
   }, [riwayatKonsul, filterBulan, filterMapel]);
+
+  const ringkasanFilter = useMemo(() => {
+    let totalMenit = 0;
+    let totalSesiSelesai = 0;
+
+    konsulDitampilkan.forEach(sesi => {
+      if (sesi.status === STATUS_SESI.SELESAI.id && sesi.waktuMulai && sesi.waktuSelesai) {
+        const mulai = new Date(sesi.waktuMulai).getTime();
+        const selesai = new Date(sesi.waktuSelesai).getTime();
+        const durasiMenit = Math.max(0, Math.round((selesai - mulai) / 60000));
+        
+        totalMenit += durasiMenit;
+        totalSesiSelesai += 1;
+      }
+    });
+
+    const jam = Math.floor(totalMenit / 60);
+    const menit = totalMenit % 60;
+
+    return { totalMenit, jam, menit, totalSesiSelesai };
+  }, [konsulDitampilkan]);
 
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(konsulDitampilkan, page, ITEMS_PER_PAGE);
 
@@ -97,6 +131,7 @@ export default function TabKonsulSiswa({ riwayat = [] }) {
         filterMapel={filterMapel} 
         setFilterMapel={setFilterMapel} 
         opsiMapel={opsiMapel} 
+        ringkasanFilter={ringkasanFilter}
       />
 
       <div className={styles.containerRecord}>

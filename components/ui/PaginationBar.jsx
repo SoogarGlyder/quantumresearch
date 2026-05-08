@@ -42,7 +42,7 @@ export default function PaginationBar({ totalPages, className = "", style = {} }
       </button>
 
       <span className={styles.teksHalaman}>
-        Hal <b>{currentPage}</b> / {safeTotal}
+        <b>{currentPage}</b> / {safeTotal}
       </span>
 
       <button 

@@ -50,7 +50,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
   try {
     await connectDB();
     
-    // 🚀 MULAI TRANSAKSI: Semua Berhasil atau Semua Batal (All or Nothing)
+    //MULAI TRANSAKSI: Semua Berhasil atau Semua Batal (All or Nothing)
     session = await mongoose.startSession();
     session.startTransaction();
 
@@ -108,7 +108,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
 
     const skorAkhir = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
 
-    // 🚀 SIMPAN KE DATABASE SECARA PARALEL (Di Dalam Transaksi)
+    //SIMPAN KE DATABASE SECARA PARALEL (Di Dalam Transaksi)
     // Perhatikan penambahan argumen { session }
     await Promise.all([
       HasilKuis.create([{
@@ -127,7 +127,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
       )
     ]);
 
-    // 🚀 TRANSAKSI BERHASIL: Kunci dan simpan perubahan permanen!
+    //TRANSAKSI BERHASIL: Kunci dan simpan perubahan permanen!
     await session.commitTransaction();
     session.endSession();
 

@@ -16,14 +16,14 @@ const quizSchema = new mongoose.Schema({
       pertanyaan: { type: String, required: true },
       gambar: { type: String, default: "" }, 
       
-      // 🚀 FIX FASE 2: Opsi ketat (Array of Objects)
+      //FIX FASE 2: Opsi ketat (Array of Objects)
       opsi: [{
         _id: false, // Mematikan auto-ID Mongoose agar hemat memori
         label: { type: String }, 
         teks: { type: String }
       }],
       
-      // 🚀 FIX FASE 2: Kunci Jawaban ketat (Array of Strings)
+      //FIX FASE 2: Kunci Jawaban ketat (Array of Strings)
       kunciJawaban: { type: [String], required: true }, 
       
       bobotExp: { type: Number, default: 20 },
@@ -31,7 +31,7 @@ const quizSchema = new mongoose.Schema({
       pembahasan: { type: String, default: "" } 
     }
   ]
-  // 🚀 FIX FASE 3: Array hasilPengerjaan RESMI DIHAPUS dari sini!
+  //FIX FASE 3: Array hasilPengerjaan RESMI DIHAPUS dari sini!
 }, { timestamps: true });
 
 // COMPOUND INDEX

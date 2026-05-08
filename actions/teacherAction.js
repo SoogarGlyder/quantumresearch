@@ -5,7 +5,7 @@ import User from "../models/User";
 import Jadwal from "../models/Jadwal";
 import StudySession from "../models/StudySession"; 
 import Quiz from "../models/Quiz"; 
-import HasilKuis from "../models/HasilKuis"; // 🚀 FIX: Import tabel baru!
+import HasilKuis from "../models/HasilKuis"; //FIX: Import tabel baru!
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { validationHelper } from "../utils/validationHelper";
@@ -165,7 +165,7 @@ export async function getStatusKuisLive(idJadwal) {
     const jadwal = await Jadwal.findById(idJadwal).select("mapel tanggal kelasTarget pengajarId").populate("pengajarId", "kodeCabang").lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
-    // 🚀 FIX: Tarik data dari koleksi HasilKuis, bukan Quiz
+    //FIX: Tarik data dari koleksi HasilKuis, bukan Quiz
     const riwayatKuis = await HasilKuis.find({ jadwalId: idJadwal }).select("siswaId skorAkhir").lean();
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
@@ -184,7 +184,7 @@ export async function getStatusKuisLive(idJadwal) {
     const dataLive = siswaKelas.map(siswa => {
       const idSiswaStr = siswa._id.toString();
       
-      // 🚀 Cek di hasil kuis baru
+      //Cek di hasil kuis baru
       const hasil = riwayatKuis.find(h => h.siswaId.toString() === idSiswaStr);
       if (hasil) return { id: idSiswaStr, nama: siswa.nama, status: "SELESAI", skor: hasil.skorAkhir, pelanggaran: 0 };
       
@@ -368,7 +368,7 @@ export async function resetUjianSiswa(idJadwal, idSiswa) {
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 🚀 FIX: Hapus dokumen dari HasilKuis
+    //FIX: Hapus dokumen dari HasilKuis
     const hasil = await HasilKuis.deleteOne({ jadwalId: idJadwal, siswaId: idSiswa });
 
     if (hasil.deletedCount === 0) return responseHelper.error("Siswa ini belum mengumpulkan ujian.");

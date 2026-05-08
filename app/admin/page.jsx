@@ -29,6 +29,7 @@ import ModalQr from "../../components/admin/ModalQr";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
 import TabSoal from "../../components/admin/TabSoal"; 
 import TabKuis from "../../components/admin/TabKuis"; 
+import ModalLogout from "../../components/ui/ModalLogout"; //FIX: Import Komponen Pop-up
 
 // ============================================================================
 // 1.5 HELPER: GENERATOR BULAN
@@ -66,6 +67,8 @@ function AdminContent() {
   const bulanAktif = searchParams.get("bulan") || defaultBulan;
   
   const [isModalQrOpen, setIsModalQrOpen] = useState(false); 
+  const [isModalLogoutOpen, setIsModalLogoutOpen] = useState(false); //FIX: State untuk Modal Logout
+  
   const [dataRiwayat, setDataRiwayat] = useState([]);
   const [dataSiswa, setDataSiswa] = useState([]);
   const [dataPengajar, setDataPengajar] = useState([]); 
@@ -233,6 +236,7 @@ function AdminContent() {
   };
 
   const klikLogout = async () => { 
+    setIsModalLogoutOpen(false); // Tutup modal saat loading
     await prosesLogout(); 
     router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
   };
@@ -337,13 +341,13 @@ function AdminContent() {
               {isRefreshing ? "MEMUAT..." : cooldown > 0 ? `TUNGGU (${cooldown}s)` : "REFRESH"}
             </button>
 
-            {/* 🚀 LOGIKA TOMBOL BERANDA VS KELUAR */}
             {peranUser === "pengajar" ? (
               <button onClick={() => router.push('/')} className={styles.tombolKeluar}>
                 <FaHouse /> BERANDA
               </button>
             ) : (
-              <button onClick={klikLogout} className={styles.tombolKeluar}>
+              //FIX: Ubah trigger dari logout langsung menjadi buka Modal
+              <button onClick={() => setIsModalLogoutOpen(true)} className={styles.tombolKeluar}>
                 <FaArrowRightFromBracket /> KELUAR
               </button>
             )}
@@ -379,6 +383,13 @@ function AdminContent() {
         </div>
 
         <ModalQr isOpen={isModalQrOpen} onClose={() => setIsModalQrOpen(false)} />
+        
+        {/*FIX: Pasang Modal Logout di Dasar Komponen Admin */}
+        <ModalLogout 
+          isOpen={isModalLogoutOpen} 
+          onClose={() => setIsModalLogoutOpen(false)} 
+          onConfirm={klikLogout} 
+        />
       </div>
     </div>
   );

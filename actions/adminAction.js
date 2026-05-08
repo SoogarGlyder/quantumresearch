@@ -94,7 +94,7 @@ export async function ambilDataDashboard() {
     const arrayIdSiswaStr = siswa.map(s => s._id.toString());
     const arrayPencarianAman = [...arrayIdSiswaObj, ...arrayIdSiswaStr];
 
-    // 🚀 FIX: Diet Memori. Membatasi penarikan riwayat hanya 150 terbaru
+    //FIX: Diet Memori. Membatasi penarikan riwayat hanya 150 terbaru
     const riwayat = await StudySession.find({ 
       waktuMulai: { $gte: mulai, $lte: akhir },
       siswaId: { $in: arrayPencarianAman } 
@@ -121,7 +121,7 @@ export async function ambilDataDashboard() {
     return responseHelper.success("Data dashboard dimuat.", { riwayat: riwayatBersih, siswa: siswaBersih });
 
   } catch (error) {
-    // 🚀 FIX: Sensor Pesan Error
+    //FIX: Sensor Pesan Error
     console.error("[CRITICAL ERROR Dashboard]:", error);
     return responseHelper.error("Gagal memuat data dashboard.");
   }
@@ -242,7 +242,7 @@ export async function tambahJadwal(dataForm) {
     const sesi = await authHelper.ambilSesi();
 
     const kodeCari = dataForm.pengajar?.trim();
-    // 🚀 FIX: Cegah ReDoS
+    //FIX: Cegah ReDoS
     const kodeCariAman = validationHelper.escapeRegex(kodeCari);
     
     let queryPengajar = { 

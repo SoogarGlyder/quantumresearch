@@ -27,7 +27,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     jawabanSiswaRef.current = jawabanSiswa;
   }, [jawabanSiswa]);
 
-  // 🚀 PERBAIKAN KRUSIAL: Muat Data Review / Lokal
+  //PERBAIKAN KRUSIAL: Muat Data Review / Lokal
   useEffect(() => {
     if (isReviewMode && jawabanPast) {
       const pastObj = {};

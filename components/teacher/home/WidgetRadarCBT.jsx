@@ -21,7 +21,7 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
       setLoading(true);
       
       try {
-        // 🚀 FIX: OPTIMASI PARALEL (Mencegah antrean loading yang lama)
+        //FIX: OPTIMASI PARALEL (Mencegah antrean loading yang lama)
         const janjiPengecekan = jadwalHariIni.map(async (jadwal) => {
           const resKuis = await ambilKuisByJadwal(jadwal._id);
           if (resKuis) {

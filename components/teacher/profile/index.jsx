@@ -16,12 +16,11 @@ import LogoutSection from "./LogoutSection";
 export default function TabProfilPengajar({ dataUser }) {
   const router = useRouter();
 
+  //FIX: Hapus "confirm()" bawaan browser. 
+  // Biarkan modal kustom Brutalist kita yang menjadi penjaga gerbangnya.
   const handleLogout = useCallback(async () => {
-    const konfirmasi = confirm("Apakah Anda yakin ingin keluar?");
-    if (konfirmasi) {
-      await prosesLogout();
-      router.push(KONFIGURASI_SISTEM.PATH_LOGIN);
-    }
+    await prosesLogout();
+    router.push(KONFIGURASI_SISTEM.PATH_LOGIN);
   }, [router]);
 
   return (

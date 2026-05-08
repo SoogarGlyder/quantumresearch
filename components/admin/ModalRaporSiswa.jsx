@@ -15,7 +15,7 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
   const [loadingData, setLoadingData] = useState(false);
   const [sedangMencetak, setSedangMencetak] = useState(false);
   
-  // 🚀 FIX: State agar input Tagihan terikat kuat (Controlled Component)
+  //FIX: State agar input Tagihan terikat kuat (Controlled Component)
   const [tagihan, setTagihan] = useState("");
 
   const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -218,7 +218,7 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
             </div>
             <div style={{ borderBottom: '5px solid #111827', marginBottom: '15px' }}></div>
             
-            {/* 🚀 FIX: Elemen Sisa Tagihan dengan State React */}
+            {/*FIX: Elemen Sisa Tagihan dengan State React */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
               <p style={{ fontSize: '20px', color: 'red', fontWeight: '700', margin: 0 }}>
                 Sisa Tagihan:

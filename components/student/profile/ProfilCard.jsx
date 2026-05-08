@@ -44,7 +44,7 @@ export default function ProfilCard({ siswa }) {
     setPesan({ teks: "Menyimpan perubahan...", tipe: "info" });
 
     try {
-      // 🚀 FIX: Bungkus username & password dalam satu objek kurung kurawal
+      //FIX: Bungkus username & password dalam satu objek kurung kurawal
       const hasil = await updateProfilSiswa(siswa._id, { 
         username: usernameEdit, 
         password: passwordEdit 
