@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+// 🚀 FIX: Tambahkan useEffect di import
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import PaginationBar from "../ui/PaginationBar";
 
@@ -33,6 +34,17 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
   const [loadingForm, setLoadingForm] = useState(false);
   const [pesanForm, setPesanForm] = useState("");
 
+  // ==========================================================================
+  // 🚀 FIX: ALARM PEMANGGIL DATA OTOMATIS
+  // Begitu tab ini diklik/dibuka, langsung paksa tarik data jika tabelnya kosong
+  // ==========================================================================
+  useEffect(() => {
+    if (dataAdmin.length === 0 && typeof muatData === 'function') {
+      muatData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
+
   const simpanAdmin = async (e) => { 
     e.preventDefault(); 
     if (formAdmin.password && formAdmin.password.length < VALIDASI_SISTEM.MIN_PASSWORD) {
@@ -43,7 +55,6 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
     setLoadingForm(true); 
     setPesanForm("Menyimpan..."); 
 
-    // MURNI ADMIN: Semua akun yang dibuat di sini memiliki hak akses langsung ke /admin
     const payload = {
       ...formAdmin,
       peran: PERAN.ADMIN.id 
@@ -67,7 +78,6 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
 
   const klikEditAdmin = (admin) => { 
     setIdEdit(admin._id); 
-    // DETEKSI OTORITAS: Jika kodenya Pusat (000000), maka dia Super Admin
     const tipeAkunAktif = admin.kodeCabang === CABANG_QUANTUM.PUSAT.id ? "SUPER_ADMIN" : "STAFF_CABANG";
     
     setFormAdmin({ 
@@ -155,7 +165,6 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
             value={formAdmin.tipeAkun} 
             onChange={e => {
               const val = e.target.value;
-              // Jika dipilih SUPER_ADMIN, paksa cabang ke PUSAT
               setFormAdmin({
                 ...formAdmin, 
                 tipeAkun: val,

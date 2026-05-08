@@ -22,13 +22,22 @@ import ModalIframeTugas from "./ModalIframeTugas";
 import QuizHariIni from "./QuizHariIni"; 
 import ModalUjianCBT from "./ModalUjianCBT";
 
-// --- HELPER WAKTU JAKARTA ---
+// 🚀 FIX: HELPER WAKTU JAKARTA (DIUPGRADE UNTUK SAFARI/IOS)
 const getTglJakarta = () => {
-  const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  const formatter = new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  
+  // Format id-ID biasanya menghasilkan DD/MM/YYYY. Kita ekstrak agar aman menjadi YYYY-MM-DD
+  const parts = formatter.formatToParts(new Date());
+  const year = parts.find(p => p.type === 'year').value;
+  const month = parts.find(p => p.type === 'month').value;
+  const day = parts.find(p => p.type === 'day').value;
+  
+  return `${year}-${month}-${day}`;
 };
 
 export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setModeScan, resetScanner, latihanHariIni }) {

@@ -4,12 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaPenToSquare, FaXmark } from "react-icons/fa6";
 
-// PATH ABSOLUTE
 import { updateProfilSiswa } from "@/actions/profilAction"; 
 import { VALIDASI_SISTEM } from "@/utils/constants";
 import styles from "@/components/App.module.css";
-
-// IMPORT TETANGGA (LOKAL)
 import ProfilView from "./ProfilView";
 
 export default function ProfilCard({ siswa }) {
@@ -47,7 +44,11 @@ export default function ProfilCard({ siswa }) {
     setPesan({ teks: "Menyimpan perubahan...", tipe: "info" });
 
     try {
-      const hasil = await updateProfilSiswa(siswa._id, usernameEdit, passwordEdit);
+      // 🚀 FIX: Bungkus username & password dalam satu objek kurung kurawal
+      const hasil = await updateProfilSiswa(siswa._id, { 
+        username: usernameEdit, 
+        password: passwordEdit 
+      });
 
       if (hasil.sukses) {
         setPesan({ teks: `✅ ${hasil.pesan}`, tipe: "sukses" });

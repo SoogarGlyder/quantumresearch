@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation"; 
 
 import { potongDataPagination } from "@/utils/formatHelper"; 
@@ -17,7 +17,8 @@ import DaftarRiwayatKuis from "./DaftarRiwayatKuis";
 import ModalUjianCBT from "../home/ModalUjianCBT"; 
 import { getRiwayatKuisSiswa, getPembahasanKuis } from "@/actions/studentAction";
 
-export default function TabKelas({ jadwal = [], riwayat = [], siswa }) {
+// 🚀 FIX: Komponen Inti dipisah agar bisa dibungkus Suspense
+function InnerTabKelas({ jadwal, riwayat, siswa }) {
   const [activeTab, setActiveTab] = useState("KELAS"); 
   const [galeriAktif, setGaleriAktif] = useState(null);
   
@@ -37,13 +38,11 @@ export default function TabKelas({ jadwal = [], riwayat = [], siswa }) {
     }
   }, [siswa]);
 
-  // LOGIKA PEMOTONGAN DATA KELAS
   const { jadwalSelesai } = useMemo(() => {
     return pilahJadwalSiswa(jadwal, riwayat, PERIODE_BELAJAR.MULAI, PERIODE_BELAJAR.AKHIR);
   }, [jadwal, riwayat]);
+  
   const { totalPage: totalPageKelas, dataTerpotong: dataKelasHalIni } = potongDataPagination(jadwalSelesai, page, ITEMS_PER_PAGE);
-
-  // LOGIKA PEMOTONGAN DATA KUIS (BARU)
   const { totalPage: totalPageKuis, dataTerpotong: dataKuisHalIni } = potongDataPagination(riwayatKuis, page, ITEMS_PER_PAGE);
 
   const klikBukaCatatan = (jadwalItem) => {
@@ -62,22 +61,22 @@ export default function TabKelas({ jadwal = [], riwayat = [], siswa }) {
   };
 
   return (
-    <div className={styles.contentArea}>
+    <>
       <HeaderKelas />
       <TabSelector activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {activeTab === "KELAS" && (
         <DaftarRiwayatKelas 
           dataHalIni={dataKelasHalIni} 
-          totalPage={totalPageKelas} // 👈 Melempar total page ke komponen anak
+          totalPage={totalPageKelas}
           onBukaCatatan={klikBukaCatatan} 
         />
       )}
 
       {activeTab === "KUIS" && (
         <DaftarRiwayatKuis 
-          dataRiwayatKuis={dataKuisHalIni} // 👈 Sekarang melempar data yang sudah dipotong
-          totalPage={totalPageKuis}        // 👈 Melempar total page ke komponen anak
+          dataRiwayatKuis={dataKuisHalIni} 
+          totalPage={totalPageKuis}
           onBukaPembahasan={handleBukaPembahasan} 
         />
       )}
@@ -91,6 +90,19 @@ export default function TabKelas({ jadwal = [], riwayat = [], siswa }) {
           onClose={() => { setKuisAktifReview(null); setJawabanPastReview([]); }} 
         />
       )}
+    </>
+  );
+}
+
+// 🚀 FIX: Komponen Utama berfungsi sebagai penangkap Loading Vercel
+export default function TabKelas({ jadwal = [], riwayat = [], siswa }) {
+  return (
+    <div className={styles.contentArea}>
+      <Suspense fallback={
+        <div style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold' }}>Memuat Riwayat...</div>
+      }>
+        <InnerTabKelas jadwal={jadwal} riwayat={riwayat} siswa={siswa} />
+      </Suspense>
     </div>
   );
 }

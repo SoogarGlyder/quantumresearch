@@ -1,15 +1,33 @@
-import { VALIDASI_SISTEM } from "./constants"; // 👈 Import Konstanta
+import { VALIDASI_SISTEM } from "./constants"; 
 
 export const validationHelper = {
-  // Hanya huruf kecil, angka, titik, minus, dan underscore (Ditarik dari constants)
-  isValidUsername: (username) => VALIDASI_SISTEM.REGEX_USERNAME.test(username),
+  // 🚀 FITUR BARU: Pembersih karakter berbahaya untuk Regex (Anti ReDoS)
+  escapeRegex: (string) => {
+    if (typeof string !== "string") return "";
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  },
+
+  isValidUsername: (username) => {
+    // 🚀 FIX: Tolak jika tipe data bukan String
+    if (!username || typeof username !== "string") return false;
+    return VALIDASI_SISTEM.REGEX_USERNAME.test(username.trim());
+  },
   
-  // Minimal karakter berdasarkan aturan di constants
-  isValidPassword: (password) => password && password.length >= VALIDASI_SISTEM.MIN_PASSWORD,
+  isValidPassword: (password) => {
+    if (!password || typeof password !== "string") return false;
+    return password.length >= VALIDASI_SISTEM.MIN_PASSWORD;
+  },
   
-  // Format nomor WA Indonesia (Ditarik dari constants)
-  isValidPhone: (phone) => VALIDASI_SISTEM.REGEX_PHONE.test(phone),
+  isValidPhone: (phone) => {
+    // 🚀 FIX: Paksa konversi ke String sebelum ditest (mencegah Number crash)
+    if (!phone) return false;
+    const phoneStr = String(phone).trim();
+    return VALIDASI_SISTEM.REGEX_PHONE.test(phoneStr);
+  },
   
-  // Membersihkan teks dari spasi berlebih atau karakter aneh (tetap dinamis)
-  sanitize: (text) => text?.trim() || ""
+  // 🚀 FIX: Type checking sebelum di trim()
+  sanitize: (text) => {
+    if (!text || typeof text !== "string") return "";
+    return text.trim();
+  }
 };

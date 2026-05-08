@@ -11,7 +11,6 @@ import TeacherApp from "../components/TeacherApp";
 
 import { dapatkanLatihanSiswa } from "../actions/soalAction";
 
-// FIX: Tambahkan import CABANG_QUANTUM
 import { 
   PERAN, 
   STATUS_SESI, 
@@ -51,15 +50,24 @@ export default async function Home() {
   }
 
   // ==========================================================================
-  // LOGIKA WAKTU "DIET DATA" BERDASARKAN BULAN BERJALAN
+  // 🚀 PERBAIKAN: LOGIKA WAKTU "DIET DATA" KEBAL ZONA WAKTU VERCEL (UTC)
   // ==========================================================================
-  const sekarang = new Date();
+  
+  // 1. Ambil waktu saat ini, lalu paksa konversi ke string berformat waktu Jakarta
+  const waktuJakartaStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
+  
+  // 2. Buat objek Date baru yang murni membaca angka dari waktu Jakarta tersebut
+  const sekarang = new Date(waktuJakartaStr);
+  
   const y = sekarang.getFullYear();
   const m = sekarang.getMonth();
   const d = sekarang.getDate();
 
   let minDateStafObj, maxDateStafObj;
 
+  // --------------------------------------------------------------------------
+  // Pagar Staf (Cut-off Dinamis: 29 s/d 28)
+  // --------------------------------------------------------------------------
   if (d >= 29) {
     minDateStafObj = new Date(y, m, 29);
     maxDateStafObj = new Date(y, m + 1, 28, 23, 59, 59);
@@ -71,6 +79,9 @@ export default async function Home() {
   const strMinStaf = formatYMD(minDateStafObj);
   const strMaxStaf = formatYMD(maxDateStafObj);
 
+  // --------------------------------------------------------------------------
+  // Pagar Siswa (Bulan Berjalan 1 - 30/31)
+  // --------------------------------------------------------------------------
   const minDateSiswaObj = new Date(y, m, 1);
   const maxDateSiswaObj = new Date(y, m + 1, 0, 23, 59, 59);
   const strMinSiswa = formatYMD(minDateSiswaObj);
@@ -139,7 +150,6 @@ export default async function Home() {
     })
       .sort({ waktuMulai: -1 })
       .lean(),
-    // FIX: Intip pengajarnya dari cabang mana
     Jadwal.find({ 
       kelasTarget: userLogin.kelas,
       tanggal: { $gte: strMinSiswa, $lte: strMaxSiswa }
@@ -151,7 +161,6 @@ export default async function Home() {
     dapatkanLatihanSiswa(userLogin.username, userLogin.kelas, userLogin.kodeCabang)
   ]);
 
-  // FIX: Saring agar jadwal yang masuk murni milik guru yang secabang dengan murid
   let jadwalBersih = jadwalMentah as any[];
   if (userLogin.kodeCabang && userLogin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
     jadwalBersih = jadwalBersih.filter((j: any) => 
@@ -159,7 +168,6 @@ export default async function Home() {
     );
   }
 
-  // FIX: Normalisasi object ID kembali ke String agar UI (Client Component) tidak error
   const jadwalFinal = jadwalBersih.map(j => ({
     ...j,
     pengajarId: j.pengajarId ? j.pengajarId._id.toString() : null
@@ -171,7 +179,7 @@ export default async function Home() {
     <StudentApp 
       siswa={serialize(userLogin)} 
       riwayat={serialize(riwayatRaw)} 
-      jadwal={serialize(jadwalFinal)} // 👈 Gunakan jadwal yang sudah difilter
+      jadwal={serialize(jadwalFinal)} 
       statistik={serialize(statistik)}
       latihanHariIni={serialize(latihanHariIniRaw)} 
     />

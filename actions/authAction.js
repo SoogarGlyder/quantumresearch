@@ -19,27 +19,20 @@ import { revalidatePath } from "next/cache";
 // 1. INTERNAL SECURITY & HELPERS
 // ============================================================================
 
-// FUNGSI BARU: Ekstraktor Cabang Otomatis (Hanya untuk Super Admin)
 function ekstrakKodeCabang(nomorPeserta) {
   if (!nomorPeserta || nomorPeserta.length < 6) return CABANG_QUANTUM.PUSAT.id; 
   const potongan = nomorPeserta.substring(0, 6);
-  // Validasi apakah potongan 6 digit itu benar-benar ada di daftar cabang kita
   const cabangValid = Object.values(CABANG_QUANTUM).find(c => c.id === potongan);
   return cabangValid ? cabangValid.id : CABANG_QUANTUM.PUSAT.id;
 }
 
-// 🚀 FIX: Gerbang Penjaga (Sekarang hanya mereturn boolean murni)
 async function pastikanAdmin() {
   const sesi = await authHelper.ambilSesi();
   if (!sesi || !sesi.userId) return false;
 
-  // Izinkan jika dia Admin Cabang / Pusat
   if (sesi.peran === PERAN.ADMIN.id) return true;
-  
-  // Izinkan jika dia Pengajar tapi berpangkat Staff Akademik
   if (sesi.peran === PERAN.PENGAJAR.id && sesi.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK) return true;
 
-  // Selain itu -> TOLAK
   return false;
 }
 
@@ -54,6 +47,9 @@ export async function prosesLogin(dataFormulir) {
     const idInputRaw = validationHelper.sanitize(
       dataFormulir.identifier || dataFormulir.username || dataFormulir.noHp || ""
     ).trim();
+    
+    // 🚀 FIX: Keamanan Regex (Mencegah serangan ReDoS)
+    const amanInputRaw = validationHelper.escapeRegex(idInputRaw);
     
     const idInputLower = idInputRaw.toLowerCase();
     const idInputUpper = idInputRaw.toUpperCase(); 
@@ -70,14 +66,14 @@ export async function prosesLogin(dataFormulir) {
         { peran: PERAN.SISWA.id, 
           $or: [
             { username: idInputLower }, 
-            { nomorPeserta: { $regex: new RegExp(`^${idInputRaw}$`, "i") } },
+            { nomorPeserta: { $regex: new RegExp(`^${amanInputRaw}$`, "i") } }, // 👈 Regex aman
             { noHp: idInputRaw }
           ] 
         },
         { peran: PERAN.PENGAJAR.id, 
           $or: [
             { username: idInputLower }, 
-            { nomorPeserta: { $regex: new RegExp(`^${idInputRaw}$`, "i") } }, 
+            { nomorPeserta: { $regex: new RegExp(`^${amanInputRaw}$`, "i") } }, // 👈 Regex aman
             { noHp: idInputRaw },
             { kodePengajar: idInputUpper } 
           ] 
@@ -131,10 +127,8 @@ export async function prosesTambahSiswa(dataFormulir) {
 
     const passwordHashed = await authHelper.buatHash(passPolos);
     
-    // 🚀 FIX: ALGORITMA KODE CABANG AMAN
-    let kodeCabangSiswa = sesi.kodeCabang; // Secara default, kunci ke cabang si pembuat
+    let kodeCabangSiswa = sesi.kodeCabang; 
     
-    // Jika Super Admin yang buat, baru boleh baca dari nomor peserta
     if (sesi.kodeCabang === CABANG_QUANTUM.PUSAT.id) {
       kodeCabangSiswa = ekstrakKodeCabang(dataFormulir.nomorPeserta);
     }
@@ -146,12 +140,13 @@ export async function prosesTambahSiswa(dataFormulir) {
       password: passwordHashed,
       peran: PERAN.SISWA.id, 
       status: STATUS_USER.AKTIF,
-      kodeCabang: kodeCabangSiswa // Cabang disuntik secara otomatis dan aman
+      kodeCabang: kodeCabangSiswa 
     });
 
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success(`Siswa didaftarkan! Password: ${passPolos}`);
   } catch (error) {
+    console.error("[ERROR prosesTambahSiswa]:", error);
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
@@ -174,7 +169,6 @@ export async function prosesTambahPengajar(dataFormulir) {
 
     await User.deleteOne({ $or: [{ username }, { kodePengajar }] });
 
-    // 🚀 FIX: ALGORITMA KODE CABANG AMAN
     let kodeCabangPengajar = sesi.kodeCabang; 
     
     if (sesi.kodeCabang === CABANG_QUANTUM.PUSAT.id) {
@@ -195,6 +189,7 @@ export async function prosesTambahPengajar(dataFormulir) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success(`Pengajar aktif! Password login: ${passPolos}`);
   } catch (error) {
+    console.error("[ERROR prosesTambahPengajar]:", error);
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
@@ -231,7 +226,6 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
       let pRaw = (s.password || s.kataSandi || "").toString().trim();
       if (!pRaw) pRaw = noHp || KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
 
-      // 🚀 FIX: ALGORITMA KODE CABANG AMAN UNTUK BULK EXCEL
       let kodeCabangSiswa = sesi.kodeCabang; 
       
       if (sesi.kodeCabang === CABANG_QUANTUM.PUSAT.id) {
@@ -255,13 +249,11 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success(`${dataSiap.length} Siswa berhasil di-upload.`);
   } catch (error) {
+    console.error("[ERROR prosesBulkTambahSiswa]:", error);
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
 
-// ============================================================================
-// 4. SESSION EXTRACTOR (Untuk Client Component)
-// ============================================================================
 export async function dapatkanSesiAktif() {
   const sesi = await authHelper.ambilSesi();
   return sesi; 

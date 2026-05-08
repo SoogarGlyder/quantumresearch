@@ -12,7 +12,6 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
   const [kuisAktif, setKuisAktif] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // State untuk membuka modal radar
   const [monitorJadwalTerpilih, setMonitorJadwalTerpilih] = useState(null);
 
   useEffect(() => {
@@ -20,22 +19,27 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
     
     const scanKuisHariIni = async () => {
       setLoading(true);
-      const jadwalDenganKuis = [];
       
-      for (const jadwal of jadwalHariIni) {
-        try {
+      try {
+        // 🚀 FIX: OPTIMASI PARALEL (Mencegah antrean loading yang lama)
+        const janjiPengecekan = jadwalHariIni.map(async (jadwal) => {
           const resKuis = await ambilKuisByJadwal(jadwal._id);
           if (resKuis) {
-            jadwalDenganKuis.push({ ...jadwal, kuis: resKuis });
+            return { ...jadwal, kuis: resKuis };
           }
-        } catch (err) {
-          console.error("Gagal scan kuis:", err);
+          return null;
+        });
+
+        const hasilPengecekan = await Promise.all(janjiPengecekan);
+        const jadwalDenganKuis = hasilPengecekan.filter(item => item !== null);
+
+        if (isMounted) {
+          setKuisAktif(jadwalDenganKuis);
         }
-      }
-      
-      if (isMounted) {
-        setKuisAktif(jadwalDenganKuis);
-        setLoading(false);
+      } catch (err) {
+        console.error("Gagal scan kuis secara paralel:", err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -55,12 +59,10 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
       </h3>
 
       {loading ? (
-        // ⏳ STATE LOADING
         <p className={styles.emptySchedule} style={{ backgroundColor: '#f8fafc', border: '2px dashed #cbd5e1', color: '#64748b' }}>
           📡 Memindai gelombang ujian kelas hari ini...
         </p>
       ) : kuisAktif.length === 0 ? (
-        // ⚪ STATE KOSONG (TIDAK ADA UJIAN)
         <div className={styles.emptySchedule} style={{ backgroundColor: '#f0fdf4', border: '2px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', padding: '16px' }}>
           <FaCircleCheck size={28} color="#22c55e" />
           <div>
@@ -69,18 +71,17 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
           </div>
         </div>
       ) : (
-        // 🔴 STATE AKTIF (ADA UJIAN)
         <div className={styles.scheduleList}>
           {kuisAktif.map((jadwal, idx) => (
             <div 
               key={idx} 
               className={styles.scheduleCard}
-              onClick={() => setMonitorJadwalTerpilih(jadwal)} // Pindah ke sini
+              onClick={() => setMonitorJadwalTerpilih(jadwal)} 
               style={{ 
                 backgroundColor: '#1e293b', 
                 border: '3px solid #ef4444', 
                 boxShadow: '4px 4px 0 #7f1d1d',
-                cursor: 'pointer' // Ubah menjadi pointer
+                cursor: 'pointer' 
               }}
             >
               <div className={styles.scheduleCardRow}>
@@ -99,7 +100,6 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
               </div>
 
               <div className={styles.scheduleCardRow}>
-                {/* Ubah tag <button> menjadi <div> agar tidak bentrok interaksinya */}
                 <div className={styles.scheduleCount} style={{ backgroundColor: '#facc15', color: '#111827', border: 'none', fontWeight: '900' }}>
                   {jadwal.kelasTarget}
                 </div>
@@ -109,7 +109,6 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
         </div>
       )}
 
-      {/* RENDER MODAL MONITORING JIKA DIKLIK */}
       {monitorJadwalTerpilih && (
         <ModalMonitorCBT 
           jadwalId={monitorJadwalTerpilih._id} 
@@ -118,7 +117,6 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
         />
       )}
 
-      {/* Animasi Radar Denyut */}
       <style>{`
         @keyframes pulseRadar {
           0% { transform: scale(0.8); opacity: 1; }

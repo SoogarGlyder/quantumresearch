@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+// 🚀 FIX: Hapus import statis "import * as XLSX from 'xlsx';" dari sini!
 import { STATUS_SESI, TIPE_SESI, PERIODE_BELAJAR } from "./constants"; 
 
 const TZ = PERIODE_BELAJAR.TIMEZONE;
@@ -65,7 +65,6 @@ const siapkanDataKonsul = (data) => {
   });
 };
 
-// TAMBAHAN: Mapper Khusus Absen Staf / Pengajar
 const siapkanDataAbsenStaf = (data) => {
   return data.map(a => {
     return {
@@ -83,7 +82,7 @@ const siapkanDataAbsenStaf = (data) => {
 // ============================================================================
 // 3. FUNGSI UTAMA (DOWNLOADER)
 // ============================================================================
-export const unduhExcel = (data, tipe) => {
+export const unduhExcel = async (data, tipe) => { // 🚀 FIX: Jadikan fungsi async
   if (typeof window === "undefined") return;
 
   try {
@@ -92,10 +91,12 @@ export const unduhExcel = (data, tipe) => {
       return false;
     }
 
+    // 🚀 FIX: DYNAMIC IMPORT (Browser hanya download library ini saat tombol dieksekusi)
+    const XLSX = await import("xlsx");
+
     let dataFormat = [];
     let namaSheet = "Laporan";
 
-    // PERBAIKAN: Routing data berdasarkan tipe menggunakan if-else
     if (tipe === TIPE_SESI.KELAS || tipe === "kelas") {
       dataFormat = siapkanDataKelas(data);
       namaSheet = "Laporan_Kelas";
@@ -106,7 +107,6 @@ export const unduhExcel = (data, tipe) => {
       dataFormat = siapkanDataAbsenStaf(data);
       namaSheet = "Laporan_Staf";
     } else {
-      // Fallback jika tipe tidak dikenali (Export data mentah)
       dataFormat = data;
       namaSheet = "Data_Mentah";
     }
@@ -114,13 +114,11 @@ export const unduhExcel = (data, tipe) => {
     const worksheet = XLSX.utils.json_to_sheet(dataFormat);
     const workbook = XLSX.utils.book_new();
     
-    // Auto-width kolom (Kode Bos yang sangat keren)
     const maxWidths = Object.keys(dataFormat[0] || {}).map(key => ({ wch: key.length + 12 }));
     worksheet["!cols"] = maxWidths;
 
     XLSX.utils.book_append_sheet(workbook, worksheet, namaSheet);
     
-    // Format nama file
     const tglCetak = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
     const namaFileLabel = tipe.replace("-", "_").toUpperCase();
     

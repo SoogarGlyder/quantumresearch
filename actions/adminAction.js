@@ -12,7 +12,6 @@ import { validationHelper } from "../utils/validationHelper";
 import { 
   PERAN, 
   TIPE_SESI, 
-  LIMIT_DATA, 
   STATUS_USER, 
   LABEL_SISTEM,
   PESAN_SISTEM,
@@ -28,7 +27,6 @@ import { revalidatePath } from "next/cache";
 // 0. INTERNAL HELPERS
 // ============================================================================
 
-// 🟢 Gerbang Level 1: Untuk MELIHAT data (Admin, Kakak Asuh, Staff Akademik)
 async function pastikanAdmin() {
   const sesi = await authHelper.ambilSesi();
   if (!sesi || !sesi.userId) return false;
@@ -37,7 +35,6 @@ async function pastikanAdmin() {
   return false;
 }
 
-// 🟠 Gerbang Level 2: Untuk MENGUBAH data (Admin, Staff Akademik) - KAKAK ASUH DIBLOKIR!
 async function pastikanAdminBisaEdit() {
   const sesi = await authHelper.ambilSesi();
   if (!sesi || !sesi.userId) return false;
@@ -46,7 +43,6 @@ async function pastikanAdminBisaEdit() {
   return false;
 }
 
-// 🔴 Gerbang Level 3: Khusus Super Admin Pusat
 async function pastikanSuperAdmin() {
   const sesi = await authHelper.ambilSesi();
   if (!sesi || !sesi.userId) return false;
@@ -56,7 +52,7 @@ async function pastikanSuperAdmin() {
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 1. DASHBOARD & DATA FETCHING (ISOLASI CABANG + WAKTU FULL SEMESTER)
+// 1. DASHBOARD & DATA FETCHING
 // ============================================================================
 export async function ambilDataDashboard() {
   try {
@@ -98,6 +94,7 @@ export async function ambilDataDashboard() {
     const arrayIdSiswaStr = siswa.map(s => s._id.toString());
     const arrayPencarianAman = [...arrayIdSiswaObj, ...arrayIdSiswaStr];
 
+    // 🚀 FIX: Diet Memori. Membatasi penarikan riwayat hanya 150 terbaru
     const riwayat = await StudySession.find({ 
       waktuMulai: { $gte: mulai, $lte: akhir },
       siswaId: { $in: arrayPencarianAman } 
@@ -105,6 +102,7 @@ export async function ambilDataDashboard() {
       .select("_id siswaId jenisSesi namaMapel waktuMulai waktuSelesai status terlambatMenit konsulExtraMenit jadwalId tanggalAsli")
       .populate("siswaId", "nama username nomorPeserta kelas status") 
       .sort({ waktuMulai: -1 })
+      .limit(150) // 👈 Limitasi pengamanan memori serverless
       .lean();
 
     const riwayatBersih = riwayat
@@ -123,8 +121,9 @@ export async function ambilDataDashboard() {
     return responseHelper.success("Data dashboard dimuat.", { riwayat: riwayatBersih, siswa: siswaBersih });
 
   } catch (error) {
+    // 🚀 FIX: Sensor Pesan Error
     console.error("[CRITICAL ERROR Dashboard]:", error);
-    return responseHelper.error(`Gagal memuat dashboard: ${error.message}`);
+    return responseHelper.error("Gagal memuat data dashboard.");
   }
 }
 
@@ -158,7 +157,8 @@ export async function ambilAbsensiPengajar() {
 
     return responseHelper.success("Data absen staf dimuat.", serialize(dataBersih));
   } catch (error) {
-    return responseHelper.error("Gagal mengambil absen staf.", error.message);
+    console.error("[ERROR ambilAbsensiPengajar]:", error);
+    return responseHelper.error("Gagal mengambil absen staf.");
   }
 }
 
@@ -172,7 +172,6 @@ export async function ambilSemuaJadwal() {
 
     const sesi = await authHelper.ambilSesi();
     
-    // PERTAHANKAN FILTER WAKTU (Bug 1 Aman)
     let queryJadwal = {
       tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR }
     };
@@ -231,7 +230,8 @@ export async function ambilPengajarCabang() {
 
     return responseHelper.success("Data pengajar dimuat.", serialize(pengajar));
   } catch (error) {
-    return responseHelper.error("Gagal mengambil data pengajar.", error.message);
+    console.error("[ERROR ambilPengajarCabang]:", error);
+    return responseHelper.error("Gagal mengambil data pengajar.");
   }
 }
 
@@ -242,10 +242,12 @@ export async function tambahJadwal(dataForm) {
     const sesi = await authHelper.ambilSesi();
 
     const kodeCari = dataForm.pengajar?.trim();
+    // 🚀 FIX: Cegah ReDoS
+    const kodeCariAman = validationHelper.escapeRegex(kodeCari);
     
     let queryPengajar = { 
       peran: PERAN.PENGAJAR.id, 
-      kodePengajar: { $regex: new RegExp(`^${kodeCari}$`, "i") } 
+      kodePengajar: { $regex: new RegExp(`^${kodeCariAman}$`, "i") } 
     };
     if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       queryPengajar.kodeCabang = sesi.kodeCabang;
@@ -263,7 +265,8 @@ export async function tambahJadwal(dataForm) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
   } catch (error) {
-    return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN, error.message);
+    console.error("[ERROR tambahJadwal]:", error);
+    return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
 
@@ -273,7 +276,6 @@ export async function editJadwal(id, dataBaru) {
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak: Anda tidak memiliki otoritas.");
     const sesi = await authHelper.ambilSesi();
 
-    // FIX KEAMANAN (IDOR): Pastikan jadwal yg diedit milik cabang sendiri
     if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       const targetJadwal = await Jadwal.findById(id).populate("pengajarId", "kodeCabang").lean();
       if (!targetJadwal) return responseHelper.error("Jadwal tidak ditemukan.");
@@ -303,7 +305,8 @@ export async function editJadwal(id, dataBaru) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Jadwal diperbarui.");
   } catch (error) {
-    return responseHelper.error("Gagal edit jadwal.", error.message);
+    console.error("[ERROR editJadwal]:", error);
+    return responseHelper.error("Gagal mengedit jadwal.");
   }
 }
 
@@ -313,12 +316,11 @@ export async function hapusJadwal(idJadwal) {
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak: Anda tidak memiliki otoritas.");
     const sesi = await authHelper.ambilSesi();
 
-    // FIX KEAMANAN (IDOR): Pastikan jadwal yg dihapus milik cabang sendiri
     if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       const targetJadwal = await Jadwal.findById(idJadwal).populate("pengajarId", "kodeCabang").lean();
       if (!targetJadwal) return responseHelper.error("Jadwal tidak ditemukan.");
       if (targetJadwal.pengajarId?.kodeCabang !== sesi.kodeCabang) {
-        return responseHelper.error("Akses Ditolak: Mencoba menghapus jadwal lintas cabang (IDOR Terdeteksi).");
+        return responseHelper.error("Akses Ditolak: Mencoba menghapus jadwal lintas cabang.");
       }
     }
 
@@ -326,12 +328,13 @@ export async function hapusJadwal(idJadwal) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Jadwal dihapus.");
   } catch (error) {
-    return responseHelper.error("Gagal menghapus jadwal.", error);
+    console.error("[ERROR hapusJadwal]:", error);
+    return responseHelper.error("Gagal menghapus jadwal.");
   }
 }
 
 // ============================================================================
-// 4. MANAJEMEN AKUN USER (DILARANG UNTUK KAKAK ASUH)
+// 4. MANAJEMEN AKUN USER
 // ============================================================================
 export async function editAkunSiswa(idSiswa, dataBaru) {
   try {
@@ -339,7 +342,6 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak.");
     const sesi = await authHelper.ambilSesi();
 
-    // FIX KEAMANAN (IDOR): Mencegah edit akun siswa cabang lain
     let queryFilter = { _id: idSiswa };
     if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       queryFilter.kodeCabang = sesi.kodeCabang;
@@ -363,7 +365,8 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Data berhasil diperbarui.");
   } catch (error) {
-    return responseHelper.error("Gagal update user.", error);
+    console.error("[ERROR editAkunSiswa]:", error);
+    return responseHelper.error("Gagal update user.");
   }
 }
 
@@ -373,7 +376,6 @@ export async function hapusAkunSiswa(idSiswa) {
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak.");
     const sesi = await authHelper.ambilSesi();
 
-    // FIX KEAMANAN (IDOR): Mencegah penghapusan akun siswa cabang lain
     let queryFilter = { _id: idSiswa };
     if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       queryFilter.kodeCabang = sesi.kodeCabang;
@@ -385,13 +387,13 @@ export async function hapusAkunSiswa(idSiswa) {
       return responseHelper.error("Gagal! Siswa tidak ditemukan atau berasal dari cabang lain.");
     }
 
-    // Jika berhasil dihapus, hapus juga riwayat sesinya
     await StudySession.deleteMany({ siswaId: idSiswa });
 
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Akun & riwayat dihapus.");
   } catch (error) {
-    return responseHelper.error("Gagal hapus user.", error);
+    console.error("[ERROR hapusAkunSiswa]:", error);
+    return responseHelper.error("Gagal hapus user.");
   }
 }
 
@@ -405,7 +407,6 @@ export async function inputAbsenManual(data) {
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak.");
     const sesi = await authHelper.ambilSesi();
 
-    // FIX KEAMANAN (IDOR): Validasi siswa
     if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       const validasiSiswa = await User.findOne({ _id: data.siswaId, kodeCabang: sesi.kodeCabang });
       if (!validasiSiswa) return responseHelper.error("Akses Ditolak: Siswa bukan dari cabang Anda.");
@@ -426,7 +427,8 @@ export async function inputAbsenManual(data) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Absen manual berhasil.");
   } catch (error) {
-    return responseHelper.error("Gagal absen manual.", error);
+    console.error("[ERROR inputAbsenManual]:", error);
+    return responseHelper.error("Gagal absen manual.");
   }
 }
 
@@ -467,7 +469,8 @@ export async function ambilDetailJurnal(idJadwal) {
 
     return responseHelper.success("Detail jurnal dimuat.", { jadwal: serialize(jadwal), dataSiswa: dataSiswaJurnal });
   } catch (error) {
-    return responseHelper.error("Gagal detail jurnal.", error);
+    console.error("[ERROR ambilDetailJurnal]:", error);
+    return responseHelper.error("Gagal mengambil detail jurnal.");
   }
 }
 
@@ -477,7 +480,6 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak.");
     const sesi = await authHelper.ambilSesi();
 
-    // FIX KEAMANAN (IDOR):
     if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       const targetJadwal = await Jadwal.findById(idJadwal).populate("pengajarId", "kodeCabang").lean();
       if (!targetJadwal || targetJadwal.pengajarId?.kodeCabang !== sesi.kodeCabang) {
@@ -509,7 +511,8 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
   } catch (error) {
-    return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN, error);
+    console.error("[ERROR simpanJurnal]:", error);
+    return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
 
@@ -522,7 +525,6 @@ export async function paksaHentikanSesi(idSesi, durasiPilihan) {
     const sesiMongoose = await StudySession.findById(idSesi).populate("siswaId", "kodeCabang").lean();
     if (!sesiMongoose) return responseHelper.error("Sesi tidak ditemukan.");
 
-    // FIX KEAMANAN (IDOR):
     if (sesiUser.kodeCabang !== CABANG_QUANTUM.PUSAT.id && sesiMongoose.siswaId?.kodeCabang !== sesiUser.kodeCabang) {
        return responseHelper.error("Akses Ditolak: Sesi ini milik siswa dari cabang lain.");
     }
@@ -547,7 +549,8 @@ export async function paksaHentikanSesi(idSesi, durasiPilihan) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success(`Sesi dihentikan (${durasiPilihan === 0 ? "PINALTI" : durasiPilihan + " Menit"}).`);
   } catch (error) {
-    return responseHelper.error("Gagal menghentikan sesi.", error.message);
+    console.error("[ERROR paksaHentikanSesi]:", error);
+    return responseHelper.error("Gagal menghentikan sesi.");
   }
 }
 
@@ -567,7 +570,8 @@ export async function prosesSimpanAbsenManual(data) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Absensi staf berhasil disimpan!");
   } catch (error) {
-    return responseHelper.error("Gagal simpan absen manual.", error.message);
+    console.error("[ERROR prosesSimpanAbsenManual]:", error);
+    return responseHelper.error("Gagal simpan absen manual.");
   }
 }
 
@@ -577,7 +581,6 @@ export async function prosesHapusAbsenStaf(idAbsen) {
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak.");
     const sesi = await authHelper.ambilSesi();
 
-    // FIX KEAMANAN (IDOR):
     if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
        const targetAbsen = await AbsensiPengajar.findById(idAbsen).populate("pengajarId", "kodeCabang").lean();
        if (!targetAbsen || targetAbsen.pengajarId?.kodeCabang !== sesi.kodeCabang) {
@@ -589,7 +592,8 @@ export async function prosesHapusAbsenStaf(idAbsen) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Data absensi staf dihapus.");
   } catch (error) {
-    return responseHelper.error("Gagal menghapus absensi.", error.message);
+    console.error("[ERROR prosesHapusAbsenStaf]:", error);
+    return responseHelper.error("Gagal menghapus absensi.");
   }
 }
 
@@ -635,7 +639,8 @@ export async function ambilLaporanBulananSiswa(siswaId, bulan, tahun) {
 
     return responseHelper.success("Data rapor berhasil ditarik.", dataRapor);
   } catch (error) {
-    return responseHelper.error("Gagal mengambil data rapor.", error.message);
+    console.error("[ERROR ambilLaporanBulananSiswa]:", error);
+    return responseHelper.error("Gagal mengambil data rapor.");
   }
 }
 
@@ -654,7 +659,8 @@ export async function ambilSemuaAdmin() {
     
     return responseHelper.success("Data admin ditarik", serialize(admins));
   } catch (err) { 
-    return responseHelper.error("Gagal menarik data admin.", err); 
+    console.error("[ERROR ambilSemuaAdmin]:", err);
+    return responseHelper.error("Gagal menarik data admin."); 
   }
 }
 
@@ -700,7 +706,7 @@ export async function simpanAkunAdmin(idEdit, payload) {
     }
   } catch (error) {
     console.error("[CRITICAL ERROR SIMPAN ADMIN]:", error);
-    return responseHelper.error(`Gagal menyimpan: ${error.message}`);
+    return responseHelper.error("Gagal menyimpan data admin.");
   }
 }
 
@@ -713,7 +719,8 @@ export async function hapusAkunAdmin(id) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Akses admin berhasil dicabut (dihapus).");
   } catch (err) { 
-    return responseHelper.error("Gagal menghapus admin.", err); 
+    console.error("[ERROR hapusAkunAdmin]:", err);
+    return responseHelper.error("Gagal menghapus admin."); 
   }
 }
 
@@ -758,6 +765,6 @@ export async function prosesMigrasiDataLama() {
     return responseHelper.success(`Selesai! ${jumlahDiperbarui} akun berhasil disinkronisasi.`);
   } catch (error) {
     console.error("[ERROR MIGRASI]:", error);
-    return responseHelper.error("Gagal melakukan migrasi data.", error.message);
+    return responseHelper.error("Gagal melakukan migrasi data.");
   }
 }

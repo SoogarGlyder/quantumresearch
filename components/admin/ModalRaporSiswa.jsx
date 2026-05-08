@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FaXmark, FaDownload, FaSpinner } from "react-icons/fa6";
-import { toPng } from 'html-to-image'; // Senjata Baru
+import { toPng } from 'html-to-image'; 
 import { ambilLaporanBulananSiswa } from "../../actions/adminAction";
 import { formatJam } from "../../utils/formatHelper";
 import { STATUS_SESI } from "../../utils/constants";
@@ -14,6 +14,9 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
   const [dataRapor, setDataRapor] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
   const [sedangMencetak, setSedangMencetak] = useState(false);
+  
+  // 🚀 FIX: State agar input Tagihan terikat kuat (Controlled Component)
+  const [tagihan, setTagihan] = useState("");
 
   const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
@@ -38,11 +41,10 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
     try {
       const elemenLaporan = document.getElementById("wrapper-kertas-rapor");
       
-      // PROSES HTML-TO-IMAGE (Lebih Akurat & Tajam)
       const dataUrl = await toPng(elemenLaporan, { 
         quality: 1.0, 
         backgroundColor: "#fdfbf7",
-        pixelRatio: 2 // Kualitas High Definition
+        pixelRatio: 2 
       });
       
       const link = document.createElement("a");
@@ -116,7 +118,6 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
             {/* CONTAINER 2: DATA SISWA (DI BAWAH LOGO) */}
             <div style={{ marginBottom: '20px' }}>
                 <div style={{ margin: 0, fontSize: '28px', fontWeight: 900, color: '#111827', display: 'flex', flexWrap: 'wrap' }}>
-                  {/* 🛡️ Taktik Jembatan Spasi Fisik */}
                   {dataRapor.profil.nama.toUpperCase().split(/\s+/).map((kata, idx, arr) => (
                     <span key={idx} style={{ display: 'inline-block' }}>
                       {kata}{idx < arr.length - 1 && <span style={{ display: 'inline-block', width: '10px' }} />}
@@ -216,12 +217,16 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
               </table>
             </div>
             <div style={{ borderBottom: '5px solid #111827', marginBottom: '15px' }}></div>
+            
+            {/* 🚀 FIX: Elemen Sisa Tagihan dengan State React */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
               <p style={{ fontSize: '20px', color: 'red', fontWeight: '700', margin: 0 }}>
                 Sisa Tagihan:
               </p>
               <input
                 type="text"
+                value={tagihan}
+                onChange={(e) => setTagihan(e.target.value)}
                 placeholder="Ketik nominal..."
                 style={{
                   fontSize: '20px',
@@ -235,6 +240,7 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
                 }}
               />
             </div>
+            
             <div className={cetakStyles.footerDoc}>
               <p>Dicetak otomatis oleh Sistem Akademik QuRi Bimbingan Belajar Quantum Research pada {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
               <br></br>

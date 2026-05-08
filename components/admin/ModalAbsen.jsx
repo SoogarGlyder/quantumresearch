@@ -20,7 +20,17 @@ export default function ModalAbsen({ isOpen, onClose, dataPengajar = [], muatDat
     if (!form.pengajarId) return alert("Pilih Pengajar!");
     
     setLoading(true);
-    const res = await prosesSimpanAbsenManual(form);
+    
+    // 🚀 FIX: Suntikkan jamMasuk dan jamKeluar ke dalam payload
+    const payloadAbsen = {
+      ...form,
+      jamMasuk: "12:00",
+      jamKeluar: "20:00"
+    };
+
+    // Kirim payload yang sudah disuntik ke Backend
+    const res = await prosesSimpanAbsenManual(payloadAbsen);
+    
     if (res.sukses) {
       alert(res.pesan);
       muatData(); // Refresh tabel setelah simpan
