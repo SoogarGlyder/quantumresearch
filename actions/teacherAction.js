@@ -5,6 +5,7 @@ import User from "../models/User";
 import Jadwal from "../models/Jadwal";
 import StudySession from "../models/StudySession"; 
 import Quiz from "../models/Quiz"; 
+import HasilKuis from "../models/HasilKuis"; // 🚀 FIX: Import tabel baru!
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { validationHelper } from "../utils/validationHelper";
@@ -19,7 +20,7 @@ import {
   PANGKAT_PENGAJAR,
   STATUS_SESI,
   KONFIGURASI_SISTEM,
-  CABANG_QUANTUM // FIX: Import untuk filter cabang
+  CABANG_QUANTUM 
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
@@ -31,12 +32,10 @@ async function pastikanOtoritas(roleWajib = [PERAN.PENGAJAR.id, PERAN.ADMIN.id])
   const sesi = await authHelper.ambilSesi();
   if (!sesi || !sesi.userId) return null;
 
-  // FIX: Jika fungsi ini mewajibkan peran Admin, cek apakah dia Staff Akademik!
   if (roleWajib.includes(PERAN.ADMIN.id) && sesi.peran === PERAN.PENGAJAR.id && sesi.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK) {
-    return { userId: sesi.userId, peran: sesi.peran }; // Izinkan masuk!
+    return { userId: sesi.userId, peran: sesi.peran }; 
   }
 
-  // Pengecekan normal
   if (!roleWajib.includes(sesi.peran)) return null;
   return { userId: sesi.userId, peran: sesi.peran };
 }
@@ -58,7 +57,6 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // FIX: Intip pengajarnya dari cabang mana
     const jadwal = await Jadwal.findById(idJadwal).populate("pengajarId", "kodeCabang").lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
@@ -68,7 +66,6 @@ export async function ambilDetailJurnalPengajar(idJadwal) {
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
-    // FIX: Saring murid berdasarkan cabang guru yang mengajar
     let querySiswa = { peran: PERAN.SISWA.id, kelas: jadwal.kelasTarget, status: STATUS_USER.AKTIF };
     if (jadwal.pengajarId && jadwal.pengajarId.kodeCabang) {
       querySiswa.kodeCabang = jadwal.pengajarId.kodeCabang;
@@ -156,7 +153,7 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
 }
 
 // ============================================================================
-// FUNGSI BARU: RADAR CBT (HEAVILY OPTIMIZED)
+// FUNGSI: RADAR CBT (MENYESUAIKAN DENGAN HASILKUIS BARU)
 // ============================================================================
 export async function getStatusKuisLive(idJadwal) {
   try {
@@ -165,16 +162,14 @@ export async function getStatusKuisLive(idJadwal) {
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // FIX: Intip pengajarnya dari cabang mana
     const jadwal = await Jadwal.findById(idJadwal).select("mapel tanggal kelasTarget pengajarId").populate("pengajarId", "kodeCabang").lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
-    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).select("hasilPengerjaan.siswaId hasilPengerjaan.skor").lean();
-    const hasilPengerjaan = kuis?.hasilPengerjaan || [];
+    // 🚀 FIX: Tarik data dari koleksi HasilKuis, bukan Quiz
+    const riwayatKuis = await HasilKuis.find({ jadwalId: idJadwal }).select("siswaId skorAkhir").lean();
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
-    // FIX: Saring murid di radar CBT berdasarkan cabang guru
     let querySiswa = { peran: PERAN.SISWA.id, kelas: jadwal.kelasTarget, status: STATUS_USER.AKTIF };
     if (jadwal.pengajarId && jadwal.pengajarId.kodeCabang) {
       querySiswa.kodeCabang = jadwal.pengajarId.kodeCabang;
@@ -188,9 +183,10 @@ export async function getStatusKuisLive(idJadwal) {
 
     const dataLive = siswaKelas.map(siswa => {
       const idSiswaStr = siswa._id.toString();
-      const hasil = hasilPengerjaan.find(h => h.siswaId.toString() === idSiswaStr);
       
-      if (hasil) return { id: idSiswaStr, nama: siswa.nama, status: "SELESAI", skor: hasil.skor, pelanggaran: 0 };
+      // 🚀 Cek di hasil kuis baru
+      const hasil = riwayatKuis.find(h => h.siswaId.toString() === idSiswaStr);
+      if (hasil) return { id: idSiswaStr, nama: siswa.nama, status: "SELESAI", skor: hasil.skorAkhir, pelanggaran: 0 };
       
       const sudahAbsen = sesiHariIni.some(s => s.siswaId.toString() === idSiswaStr);
       if (sudahAbsen) return { id: idSiswaStr, nama: siswa.nama, status: "MENGERJAKAN", skor: null, pelanggaran: 0 };
@@ -225,7 +221,6 @@ export async function ambilSemuaPengajar() {
 export async function tambahPengajarBaru(formData) {
   try {
     await connectToDatabase();
-    // FIX: Tarik sesi admin pembuat untuk menyuntikkan kodeCabang
     const sesiAdmin = await authHelper.ambilSesi(); 
     if (!sesiAdmin || sesiAdmin.peran !== PERAN.ADMIN.id) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
@@ -241,7 +236,6 @@ export async function tambahPengajarBaru(formData) {
       ...formData, username, kodePengajar, password: hashed, peran: PERAN.PENGAJAR.id, status: STATUS_USER.AKTIF
     };
 
-    // FIX: Suntik kodeCabang! (Jika bukan Super Admin, paksa ikuti cabang si pembuat)
     if (sesiAdmin.kodeCabang && sesiAdmin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       payloadBaru.kodeCabang = sesiAdmin.kodeCabang;
     }
@@ -271,63 +265,32 @@ export async function hapusPengajar(idPengajar) {
 export async function editPengajar(idPengajar, dataBaru) {
   try {
     await connectToDatabase();
-    
-    // 1. OTORITAS: Pastikan hanya Admin atau Staff Akademik yang bisa mengedit
     const auth = await pastikanOtoritas([PERAN.ADMIN.id]);
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 2. DATA CLONING: Salin data baru ke objek update
     const dataUpdate = { ...dataBaru };
-
-    /**
-     * SYNC LOGIC: isKakakAsuh & kelasAsuh
-     * Kita tidak mengandalkan data isKakakAsuh dari Frontend (kita delete jika ada).
-     * Kita paksa nilainya berdasarkan perbandingan Pangkat.
-     */
     delete dataUpdate.isKakakAsuh; 
     
     if (dataUpdate.pangkat) {
       const statusWaliKelas = dataUpdate.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH;
-      
       dataUpdate.isKakakAsuh = statusWaliKelas;
-
-      // Jika pangkat bukan Kakak Asuh, paksa array kelasAsuh menjadi kosong di DB
-      if (!statusWaliKelas) {
-        dataUpdate.kelasAsuh = [];
-      }
+      if (!statusWaliKelas) dataUpdate.kelasAsuh = [];
     }
 
-    // 3. KEAMANAN PASSWORD: Hanya hash jika password diisi (untuk fitur Reset Password)
     if (dataBaru.password?.trim()) {
       dataUpdate.password = await authHelper.buatHash(dataBaru.password);
     } else {
-      // Hapus dari payload agar password lama di DB tidak tertimpa string kosong
       delete dataUpdate.password;
     }
 
-    // 4. SANITISASI DATA: Standarisasi format teks
-    if (dataUpdate.username) {
-      dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
-    }
-    if (dataUpdate.kodePengajar) {
-      dataUpdate.kodePengajar = validationHelper.sanitize(dataUpdate.kodePengajar).toUpperCase();
-    }
+    if (dataUpdate.username) dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
+    if (dataUpdate.kodePengajar) dataUpdate.kodePengajar = validationHelper.sanitize(dataUpdate.kodePengajar).toUpperCase();
 
-    // 5. EKSEKUSI: Update secara atomik menggunakan $set
-    const hasil = await User.updateOne(
-      { _id: idPengajar }, 
-      { $set: dataUpdate }
-    );
+    const hasil = await User.updateOne({ _id: idPengajar }, { $set: dataUpdate });
+    if (hasil.matchedCount === 0) return responseHelper.error("Data pengajar tidak ditemukan.");
 
-    if (hasil.matchedCount === 0) {
-      return responseHelper.error("Data pengajar tidak ditemukan.");
-    }
-
-    // 6. CACHE REVALIDATION: Agar UI Admin langsung sinkron
     revalidatePath(PERAN.ADMIN.home);
-    
     return responseHelper.success("✅ Data pengajar berhasil diperbarui.");
-
   } catch (error) {
     console.error("[CRITICAL ERROR editPengajar]:", error);
     return responseHelper.error("Gagal mengupdate data pengajar. Silakan cek koneksi database.");
@@ -337,8 +300,6 @@ export async function editPengajar(idPengajar, dataBaru) {
 export async function prosesBulkTambahPengajar(dataArray) {
   try {
     await connectToDatabase();
-    
-    // FIX: Ambil sesi admin untuk menyuntikkan kodeCabang ke pembuatan massal
     const sesiAdmin = await authHelper.ambilSesi(); 
     if (!sesiAdmin || sesiAdmin.peran !== PERAN.ADMIN.id) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
@@ -379,13 +340,11 @@ export async function prosesBulkTambahPengajar(dataArray) {
           noHp: item.noHp || "", password: hashed, peran: PERAN.PENGAJAR.id, status: STATUS_USER.AKTIF
         };
 
-        // FIX: Suntik kodeCabang!
         if (sesiAdmin.kodeCabang && sesiAdmin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
           payloadBaru.kodeCabang = sesiAdmin.kodeCabang;
         }
 
         await User.create(payloadBaru);
-
         suksesCount++;
       } catch (err) {
         laporan.push(`Baris ${index + 1} (${item.nama}): Gagal menyimpan (${err.message}).`);
@@ -400,7 +359,7 @@ export async function prosesBulkTambahPengajar(dataArray) {
 }
 
 // ============================================================================
-// GOD MODE - RESET UJIAN SISWA (ATOMIC $pull)
+// GOD MODE - RESET UJIAN SISWA (MENGHAPUS DARI HASILKUIS)
 // ============================================================================
 export async function resetUjianSiswa(idJadwal, idSiswa) {
   try {
@@ -409,12 +368,13 @@ export async function resetUjianSiswa(idJadwal, idSiswa) {
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const hasil = await Quiz.updateOne(
-      { jadwalId: idJadwal },
-      { $pull: { hasilPengerjaan: { siswaId: new mongoose.Types.ObjectId(idSiswa) } } }
-    );
+    // 🚀 FIX: Hapus dokumen dari HasilKuis
+    const hasil = await HasilKuis.deleteOne({ jadwalId: idJadwal, siswaId: idSiswa });
 
-    if (hasil.modifiedCount === 0) return responseHelper.error("Siswa ini belum mengumpulkan ujian.");
+    if (hasil.deletedCount === 0) return responseHelper.error("Siswa ini belum mengumpulkan ujian.");
+
+    // Sinkronkan Jurnal: Kosongkan nilai absennya
+    await StudySession.updateOne({ jadwalId: idJadwal, siswaId: idSiswa }, { $set: { nilaiTest: null } });
 
     return responseHelper.success("Riwayat ujian berhasil dihapus. Siswa dapat mengulang dari awal.");
   } catch (error) {
@@ -424,7 +384,7 @@ export async function resetUjianSiswa(idJadwal, idSiswa) {
 }
 
 // ============================================================================
-// GOD MODE - FORCE SUBMIT (ATOMIC $push)
+// GOD MODE - FORCE SUBMIT (MEMBUAT DOKUMEN HASILKUIS BARU)
 // ============================================================================
 export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
   try {
@@ -433,30 +393,39 @@ export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).select("soal").lean();
+    // 1. Pastikan siswa belum mengumpulkan
+    const sudahPernah = await HasilKuis.exists({ jadwalId: idJadwal, siswaId: idSiswa });
+    if (sudahPernah) return responseHelper.error("Siswa sudah mengumpulkan ujian.");
+
+    // 2. Tarik soal untuk menduplikasi kerangkanya
+    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).select("_id soal").lean();
     if (!kuis) return responseHelper.error("Kuis tidak ditemukan.");
 
-    const arrayKosong = new Array(kuis.soal?.length || 0).fill("");
-    
-    const updateResult = await Quiz.updateOne(
-      { 
-        jadwalId: idJadwal,
-        "hasilPengerjaan.siswaId": { $ne: new mongoose.Types.ObjectId(idSiswa) } 
-      },
-      { 
-        $push: { 
-          hasilPengerjaan: {
-            siswaId: new mongoose.Types.ObjectId(idSiswa),
-            nama: namaSiswa,
-            skor: 0,
-            jawabanSiswa: arrayKosong,
-            dikumpulkanPada: new Date()
-          } 
-        } 
-      }
-    );
+    // 3. Buat kerangka jawaban kosong (Agar fitur Review tidak error)
+    const emptyDetail = (kuis.soal || []).map(s => {
+      const kunciArr = Array.isArray(s.kunciJawaban) ? s.kunciJawaban.map(String) : [String(s.kunciJawaban || "")];
+      return {
+        kunciJawaban: kunciArr,
+        jawabanSiswa: [""], // Kosong
+        isBenar: false
+      };
+    });
 
-    if (updateResult.modifiedCount === 0) return responseHelper.error("Siswa sudah mengumpulkan ujian.");
+    // 4. Eksekusi Paksa (Tulis ke DB secara paralel)
+    await Promise.all([
+      HasilKuis.create({
+        jadwalId: idJadwal,
+        quizId: kuis._id,
+        siswaId: idSiswa,
+        namaSiswa: namaSiswa,
+        skorAkhir: 0,
+        detailJawaban: emptyDetail
+      }),
+      StudySession.updateOne(
+        { jadwalId: idJadwal, siswaId: idSiswa },
+        { $set: { nilaiTest: 0 } }
+      )
+    ]);
 
     return responseHelper.success("Ujian ditutup paksa. Siswa diberi nilai 0.");
   } catch (error) {

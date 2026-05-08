@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { kumpulkanUjianSiswa } from "@/actions/studentAction";
 
 export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast, onClose }) {
-  const storageKey = `q_cbt_${jadwalId}_${siswa._id}`;
+  const storageKey = `q_cbt_${jadwalId}_${siswa?._id}`;
   const durasiMenit = kuis?.durasi || 10;
   const daftarSoal = kuis?.soal || [];
   
@@ -22,20 +22,24 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   
   const timerRef = useRef(null);
 
+  // Sinkronisasi Ref agar fungsi submit selalu mendapat data terbaru dari state
   useEffect(() => {
     jawabanSiswaRef.current = jawabanSiswa;
   }, [jawabanSiswa]);
 
+  // 🚀 PERBAIKAN KRUSIAL: Muat Data Review / Lokal
   useEffect(() => {
-    if (isReviewMode) {
+    if (isReviewMode && jawabanPast) {
       const pastObj = {};
+      // FIX: Jangan pernah memfilter jawaban kosong (""). 
+      // Jika dihilangkan, index soal akan bergeser dan merusak pewarnaan Merah/Hijau!
       jawabanPast.forEach((jawaban, index) => {
-        if (jawaban !== undefined && jawaban !== null && jawaban !== "") pastObj[index] = jawaban;
+        pastObj[index] = jawaban !== undefined && jawaban !== null ? jawaban : "";
       });
       setJawabanSiswa(pastObj);
       setIsUjianMulai(true);
       setIsDataLoaded(true);
-    } else {
+    } else if (!isReviewMode) {
       const savedState = localStorage.getItem(storageKey);
       if (savedState) {
         try {
@@ -43,36 +47,51 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
           if (parsed.jawaban) setJawabanSiswa(parsed.jawaban);
           if (parsed.waktu > 0) setSisaDetik(parsed.waktu);
           if (parsed.pelanggaran) setPelanggaran(parsed.pelanggaran);
-        } catch (error) { console.error("Gagal membaca memori CBT"); }
+        } catch (error) { 
+          console.error("Gagal membaca memori CBT"); 
+        }
       }
       setIsDataLoaded(true);
     }
   }, [isReviewMode, storageKey, jawabanPast]);
 
+  // Auto-Save ke Local Storage (Hanya saat ujian aktif)
   useEffect(() => {
-    if (isDataLoaded && !isReviewMode) {
+    if (isDataLoaded && !isReviewMode && isUjianMulai) {
       const stateToSave = { jawaban: jawabanSiswa, waktu: sisaDetik, pelanggaran };
       localStorage.setItem(storageKey, JSON.stringify(stateToSave));
     }
-  }, [jawabanSiswa, sisaDetik, isDataLoaded, pelanggaran, storageKey, isReviewMode]);
+  }, [jawabanSiswa, sisaDetik, isDataLoaded, pelanggaran, storageKey, isReviewMode, isUjianMulai]);
 
+  // Sistem Anti-Cheat
   useEffect(() => {
-    if (isReviewMode) return;
+    if (isReviewMode || !isUjianMulai || isSubmitting) return;
+    
     const handleContextMenu = (e) => e.preventDefault();
-    const handleCopy = (e) => { e.preventDefault(); alert("⚠️ Tindakan menyalin dilarang!"); };
+    const handleCopy = (e) => { 
+      e.preventDefault(); 
+      alert("⚠️ Tindakan menyalin dilarang selama ujian!"); 
+    };
+    
     const handleVisibilityChange = () => {
-      if (document.hidden && isUjianMulai && !isSubmitting && !koneksiTerputus) {
+      if (document.hidden && !koneksiTerputus) {
         setPelanggaran((prev) => {
           const pBaru = prev + 1;
-          if (pBaru >= 3) { alert("❌ PELANGGARAN MAKSIMAL!"); eksekusiSubmit(); } 
-          else { setShowPeringatan(true); }
+          if (pBaru >= 3) { 
+            alert("❌ PELANGGARAN MAKSIMAL! Ujian otomatis dihentikan."); 
+            eksekusiSubmit(); 
+          } else { 
+            setShowPeringatan(true); 
+          }
           return pBaru;
         });
       }
     };
+    
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("copy", handleCopy);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    
     return () => {
       document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("copy", handleCopy);
@@ -81,6 +100,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isUjianMulai, isSubmitting, koneksiTerputus, isReviewMode]);
 
+  // Deteksi Koneksi Internet Terputus
   useEffect(() => {
     const handleOnline = () => {
       if (koneksiTerputus && isSubmitting && !isReviewMode) {
@@ -92,13 +112,14 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [koneksiTerputus, isSubmitting, isReviewMode]);
 
+  // Countdown Timer
   useEffect(() => {
     if (isDataLoaded && isUjianMulai && !koneksiTerputus && !isReviewMode) {
       timerRef.current = setInterval(() => {
         setSisaDetik((prev) => {
           if (prev <= 1) { 
             clearInterval(timerRef.current); 
-            alert("WAKTU HABIS!"); 
+            alert("WAKTU HABIS! Jawaban otomatis dikumpulkan."); 
             eksekusiSubmit(); 
             return 0; 
           }
@@ -110,6 +131,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDataLoaded, isUjianMulai, koneksiTerputus, isReviewMode]);
 
+  // Handler Pilihan Jawaban
   const handlePilihJawaban = useCallback((nomorSoal, opsiPilihan) => {
     if (isReviewMode) return; 
     setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: opsiPilihan }));
@@ -132,30 +154,44 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: text }));
   }, [isReviewMode]);
 
+  // Eksekusi Submit Jawaban ke Database
   const eksekusiSubmit = async () => {
     setIsSubmitting(true); setKoneksiTerputus(false); clearInterval(timerRef.current);
     if (document.fullscreenElement) document.exitFullscreen().catch(e=>e);
 
     const jawabanFinal = jawabanSiswaRef.current;
+    
+    // Pastikan panjang arrayJawaban selalu sama persis dengan jumlah daftarSoal
     const arrayJawaban = daftarSoal.map((_, index) => 
       jawabanFinal[index] !== undefined ? jawabanFinal[index] : ""
     );
     
     try {
       if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error("Offline");
-      const res = await kumpulkanUjianSiswa({ jadwalId, siswaId: siswa._id, nama: siswa.nama, jawabanSiswa: arrayJawaban });
+      
+      const res = await kumpulkanUjianSiswa({ 
+        jadwalId, 
+        siswaId: siswa._id, 
+        nama: siswa.nama, 
+        jawabanSiswa: arrayJawaban 
+      });
       
       if (res.sukses) {
         localStorage.removeItem(storageKey);
         alert(`✅ UJIAN SELESAI!\n🎯 Nilai Anda: ${res.skor}\n🌟 Anda mendapatkan +${res.exp} EXP!`);
         onClose(); 
-      } else { alert("❌ Gagal: " + res.pesan); setIsSubmitting(false); }
-    } catch (err) { setKoneksiTerputus(true); }
+      } else { 
+        alert("❌ Gagal: " + res.pesan); 
+        setIsSubmitting(false); 
+      }
+    } catch (err) { 
+      setKoneksiTerputus(true); 
+    }
   };
 
   const handleKumpulJawaban = () => {
     if (isReviewMode) return;
-    if (window.confirm("Yakin ingin menyelesaikan ujian?")) eksekusiSubmit();
+    if (window.confirm("Yakin ingin menyelesaikan ujian sekarang?")) eksekusiSubmit();
   };
 
   return {

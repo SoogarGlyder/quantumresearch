@@ -779,8 +779,19 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                 listBankSoal.map((bank) => (
                   <div key={bank._id} style={{ background: 'white', border: '3px solid #111827', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', boxShadow: '4px 4px 0 #cbd5e1' }}>
                     <div>
-                      <h4 style={{ margin: '0 0 6px 0', fontWeight: '900', color: '#111827', fontSize: '16px' }}>{bank.judul || "Tanpa Judul"}</h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <h4 style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '16px' }}>{bank.judul || "Tanpa Judul"}</h4>
+                        
+                        {/* 🚀 INDIKATOR CABANG / PUSAT */}
+                        {bank.isOfficial ? (
+                          <span style={{ background: '#facc15', color: '#713f12', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #713f12' }}>👑 PUSAT</span>
+                        ) : (
+                          <span style={{ background: '#e2e8f0', color: '#334155', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #334155' }}>🏠 LOKAL</span>
+                        )}
+                      </div>
+                      
                       <p style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>{bank.soal?.length || 0} Soal • {bank.durasi || 10} Menit</p>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#94a3b8' }}>Dibuat oleh: {bank.pembuatId?.nama || "Sistem"}</p>
                     </div>
                     <button 
                       onClick={() => handlePilihBankSoal(bank._id)} 

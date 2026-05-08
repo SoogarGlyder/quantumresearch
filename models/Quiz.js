@@ -15,26 +15,26 @@ const quizSchema = new mongoose.Schema({
       tipeSoal: { type: String, default: "PG" }, 
       pertanyaan: { type: String, required: true },
       gambar: { type: String, default: "" }, 
-      opsi: { type: mongoose.Schema.Types.Mixed, default: {} },
-      kunciJawaban: { type: mongoose.Schema.Types.Mixed, required: true }, 
+      
+      // 🚀 FIX FASE 2: Opsi ketat (Array of Objects)
+      opsi: [{
+        _id: false, // Mematikan auto-ID Mongoose agar hemat memori
+        label: { type: String }, 
+        teks: { type: String }
+      }],
+      
+      // 🚀 FIX FASE 2: Kunci Jawaban ketat (Array of Strings)
+      kunciJawaban: { type: [String], required: true }, 
+      
       bobotExp: { type: Number, default: 20 },
       jumlahOpsi: { type: Number, default: 5 }, 
       pembahasan: { type: String, default: "" } 
     }
-  ],
-  hasilPengerjaan: [
-    {
-      siswaId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      nama: String,
-      skor: Number,
-      jawabanSiswa: { type: [mongoose.Schema.Types.Mixed], default: [] },
-      dikumpulkanPada: { type: Date, default: Date.now }
-    }
   ]
+  // 🚀 FIX FASE 3: Array hasilPengerjaan RESMI DIHAPUS dari sini!
 }, { timestamps: true });
 
-// COMPOUND INDEX BARU
-// Mempercepat fungsi getRiwayatKuisPengajar (Filter pembuatId + isAktif)
+// COMPOUND INDEX
 quizSchema.index({ pembuatId: 1, isAktif: 1 });
 
 export default mongoose.models.Quiz || mongoose.model("Quiz", quizSchema);

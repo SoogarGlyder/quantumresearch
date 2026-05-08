@@ -6,7 +6,12 @@ const LatihanSoalSchema = new mongoose.Schema({
   tipeTarget: { type: String, enum: ["KELAS", "SISWA"], required: true },
   target: { type: String, required: true }, 
   isAktif: { type: Boolean, default: true },
-  pembuatId: { type: String, default: null },
+  pembuatId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "User", 
+    default: null 
+  },
+  
   namaPembuat: { type: String, default: "Admin Quantum" }, 
   dibuatPada: { type: Date, default: Date.now }
 });

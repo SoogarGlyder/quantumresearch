@@ -11,8 +11,17 @@ const bankSoalSchema = new mongoose.Schema({
       tipeSoal: { type: String, default: "PG" }, 
       pertanyaan: { type: String, required: true },
       gambar: { type: String, default: "" }, 
-      opsi: { type: mongoose.Schema.Types.Mixed, default: {} },
-      kunciJawaban: { type: mongoose.Schema.Types.Mixed, required: true }, 
+      
+      // 🚀 FIX: Opsi kini berupa Array of Objects yang ketat
+      opsi: [{
+        _id: false, // Mematikan auto-ID agar database tidak bengkak
+        label: { type: String }, // "A", "B", dsb
+        teks: { type: String }
+      }],
+      
+      // 🚀 FIX: Kunci Jawaban dipaksa menjadi Array of Strings (Cocok untuk semua tipe soal)
+      kunciJawaban: { type: [String], required: true }, 
+      
       bobotExp: { type: Number, default: 20 },
       jumlahOpsi: { type: Number, default: 5 }, 
       pembahasan: { type: String, default: "" } 
@@ -20,8 +29,7 @@ const bankSoalSchema = new mongoose.Schema({
   ]
 }, { timestamps: true });
 
-// COMPOUND INDEX BARU
-// Sangat krusial untuk RBAC: Mempercepat query { pembuatId: { $in: [...] } } + Sortir Terbaru
+// COMPOUND INDEX
 bankSoalSchema.index({ pembuatId: 1, createdAt: -1 });
 
 export default mongoose.models.BankSoal || mongoose.model("BankSoal", bankSoalSchema);

@@ -3,16 +3,16 @@
 import connectToDatabase from "../lib/db"; 
 import Quiz from "../models/Quiz";
 import BankSoal from "../models/BankSoal";
-import User from "../models/User"; // DITAMBAHKAN: Untuk mengecek data cabang user
+import User from "../models/User"; 
 import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
 import { authHelper } from "../utils/authHelper";
-import { PERAN, CABANG_QUANTUM, PANGKAT_PENGAJAR } from "../utils/constants"; // DITAMBAHKAN: Konstanta Cabang & Pangkat
+import { PERAN, CABANG_QUANTUM, PANGKAT_PENGAJAR } from "../utils/constants"; 
 
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// BAGIAN 1: MANAJEMEN BANK SOAL (MASTER TEMPLATE)
+// BAGIAN 1: MANAJEMEN BANK SOAL (MASTER TEMPLATE) - MULTI-TENANT FIX!
 // ============================================================================
 
 export async function ambilSemuaBankSoal(pembuatId) {
@@ -27,40 +27,41 @@ export async function ambilSemuaBankSoal(pembuatId) {
     let query = {};
     
     // 1. SUPER ADMIN PUSAT (GOD MODE MUTLAK)
+    // Bisa melihat SEMUA soal dari seluruh cabang di muka bumi.
     if (userLogin.peran === PERAN.ADMIN.id && userLogin.kodeCabang === CABANG_QUANTUM.PUSAT.id) {
-      // THE ULTIMATE FIX: Kita abaikan pembuatId dari Frontend.
-      // Super Admin dipaksa menarik seluruh data tanpa filter apapun.
       query = {}; 
     } 
     // 2. ADMIN CABANG / STAFF AKADEMIK / KAKAK ASUH
+    // Bisa melihat soal buatan cabang sendiri ATAU soal resmi dari Pusat.
     else if (userLogin.peran === PERAN.ADMIN.id || (userLogin.peran === PERAN.PENGAJAR.id && (userLogin.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK || userLogin.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH))) {
       const guruCabang = await User.find({ kodeCabang: userLogin.kodeCabang }).select("_id").lean();
       const daftarIdGuru = guruCabang.map(g => g._id);
       
-      if (pembuatId && mongoose.Types.ObjectId.isValid(pembuatId)) {
-        const isGuruCabangIni = daftarIdGuru.some(id => id.toString() === pembuatId.toString());
-        query.pembuatId = isGuruCabangIni ? pembuatId : { $in: daftarIdGuru }; 
-      } else {
-        query.pembuatId = { $in: daftarIdGuru };
-      }
+      query = {
+        $or: [
+          { pembuatId: { $in: daftarIdGuru } }, // Akses soal buatan lokal cabangnya
+          { isOfficial: true }                  // 🚀 KUNCI MASTER: Akses soal resmi dari Pusat
+        ]
+      };
     } 
     // 3. GURU BIASA
+    // Hanya bisa melihat soal buatannya sendiri ATAU soal resmi dari Pusat
     else {
-      query.pembuatId = userLogin._id;
+      query = {
+        $or: [
+          { pembuatId: userLogin._id },
+          { isOfficial: true } // 🚀 Guru juga berhak memakai soal Pusat untuk kuisnya
+        ]
+      };
     }
 
     const data = await BankSoal.find(query)
-      .select("judul durasi pembuatId createdAt soal") 
+      // 🚀 Pastikan isOfficial ikut di-select agar UI bisa memberikan badge (Pusat/Lokal)
+      .select("judul durasi pembuatId isOfficial createdAt soal") 
       .populate("pembuatId", "nama kodeCabang") 
-      .sort({ createdAt: -1 })
+      // 🚀 Urutkan: Soal Official dari Pusat muncul paling atas, baru soal terbaru
+      .sort({ isOfficial: -1, createdAt: -1 }) 
       .lean(); 
-      
-    // // 📡 RADAR DEBUGGING (Cek di Terminal VSCode!)
-    // console.log("=== DEBUG BANK SOAL ===");
-    // console.log(`Peran User: ${userLogin.peran} | Cabang: ${userLogin.kodeCabang}`);
-    // console.log(`Query MongoDB:`, query);
-    // console.log(`Jumlah Soal Dikirim ke UI Frontend: ${data.length} buah`);
-    // console.log("=======================");
 
     return serialize(data);
   } catch (error) {
@@ -80,15 +81,12 @@ export async function simpanBankSoal(idBankSoal, data) {
     }
 
     if (idBankSoal) {
-      // IDOR PROTECTION: Mencegah Admin Cabang mengedit soal milik Cabang Lain
       if (userLogin.peran === PERAN.ADMIN.id && userLogin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
         const targetMaster = await BankSoal.findById(idBankSoal).populate("pembuatId", "kodeCabang").lean();
         if (targetMaster && targetMaster.pembuatId && targetMaster.pembuatId.kodeCabang !== userLogin.kodeCabang) {
            return { sukses: false, pesan: "Akses Ditolak: Anda tidak bisa mengedit Bank Soal milik cabang lain." };
         }
       }
-
-      // OPTIMASI: updateOne (Tanpa load data ke RAM)
       await BankSoal.updateOne({ _id: idBankSoal }, { $set: data });
     } else {
       await BankSoal.create(data);
@@ -108,7 +106,6 @@ export async function hapusBankSoal(idBankSoal) {
     const sesi = await authHelper.ambilSesi();
     const userLogin = await User.findById(sesi.userId).select("kodeCabang peran").lean();
 
-    // IDOR PROTECTION: Mencegah Admin Cabang menghapus soal milik Cabang Lain
     if (userLogin.peran === PERAN.ADMIN.id && userLogin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       const targetMaster = await BankSoal.findById(idBankSoal).populate("pembuatId", "kodeCabang").lean();
       if (targetMaster && targetMaster.pembuatId && targetMaster.pembuatId.kodeCabang !== userLogin.kodeCabang) {
@@ -116,7 +113,6 @@ export async function hapusBankSoal(idBankSoal) {
       }
     }
 
-    // OPTIMASI: deleteOne
     await BankSoal.deleteOne({ _id: idBankSoal });
     revalidatePath("/admin");
     revalidatePath("/teacher/task");
@@ -134,7 +130,6 @@ export async function terapkanBankSoalKeJadwal(idBankSoal, idJadwal, idPengajar)
   try {
     await connectToDatabase();
 
-    // OPTIMASI: Select soal dan durasi saja
     const master = await BankSoal.findById(idBankSoal).select("soal durasi").lean();
     if (!master) throw new Error("Master soal tidak ditemukan.");
 
@@ -147,7 +142,6 @@ export async function terapkanBankSoalKeJadwal(idBankSoal, idJadwal, idPengajar)
       isAktif: true
     };
 
-    // OPTIMASI: findOneAndUpdate dengan upsert (Atomic)
     await Quiz.findOneAndUpdate(
       { jadwalId: idJadwal },
       { $set: dataCopy },
@@ -165,9 +159,11 @@ export async function hapusQuizDariJadwal(idJadwal) {
   try {
     await connectToDatabase();
     
-    // Cek keberadaan hasil pengerjaan (Hanya field ini saja)
-    const kuis = await Quiz.findOne({ jadwalId: idJadwal }).select("hasilPengerjaan").lean();
-    if (kuis?.hasilPengerjaan?.length > 0) {
+    // Perbaikan ke model HasilKuis sesuai migrasi kita!
+    const ModelHasilKuis = mongoose.models.HasilKuis || mongoose.model("HasilKuis");
+    const adaHasil = await ModelHasilKuis.exists({ jadwalId: idJadwal });
+    
+    if (adaHasil) {
       return { sukses: false, pesan: "DITOLAK: Sudah ada siswa yang mengerjakan!" };
     }
 
@@ -179,16 +175,11 @@ export async function hapusQuizDariJadwal(idJadwal) {
   }
 }
 
-// ============================================================================
-// BAGIAN 3: FUNGSI EKSISTING
-// ============================================================================
-
 export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
   try {
     await connectToDatabase();
     const pId = mongoose.Types.ObjectId.isValid(pembuatId) ? new mongoose.Types.ObjectId(pembuatId) : null;
 
-    // OPTIMASI: findOneAndUpdate (Satu kali tembak ke DB)
     await Quiz.findOneAndUpdate(
       { jadwalId },
       { 

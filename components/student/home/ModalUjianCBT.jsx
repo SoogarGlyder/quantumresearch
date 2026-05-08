@@ -21,6 +21,25 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     handlePilihJawaban, handleToggleKompleks, handleInputIsian, handleKumpulJawaban, eksekusiSubmit
   } = useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast, onClose });
 
+  // 🚀 HELPER: Cek kebenaran jawaban untuk Palet Warna
+  const cekJawabanBenar = (index) => {
+    const soal = daftarSoal[index];
+    const jwb = jawabanSiswa[index];
+    if (!soal || jwb === undefined || jwb === null || jwb === "") return false;
+
+    const tipe = soal.tipeSoal || "PG";
+    const kunciDbArr = Array.isArray(soal.kunciJawaban) ? soal.kunciJawaban : [String(soal.kunciJawaban || "")];
+    const jwbArr = Array.isArray(jwb) ? jwb : [String(jwb)];
+
+    if (tipe === "PG_KOMPLEKS") {
+      const a = [...jwbArr].sort().join(",").toLowerCase().trim();
+      const b = [...kunciDbArr].sort().join(",").toLowerCase().trim();
+      return (a === b) && (a !== "");
+    } else {
+      return String(jwbArr[0]).trim().toLowerCase() === String(kunciDbArr[0]).trim().toLowerCase();
+    }
+  };
+
   useEffect(() => {
     if (scrollAreaRef.current) scrollAreaRef.current.scrollTo({ top: 0, behavior: "smooth" });
   }, [soalAktif]);
@@ -154,14 +173,11 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
                 const isAktif = soalAktif === index;
                 let bgWarna = 'white'; let textWarna = '#111827'; let bayangan = '2px 2px 0 #111827';
 
+                // 🚀 FIX: Penentuan warna menggunakan fungsi helper yang tangguh
                 if (isReviewMode) {
-                  let isBenar = false;
-                  if (tipe === "PG" || tipe === "BENAR_SALAH") isBenar = String(jwb) === String(soal.kunciJawaban);
-                  else if (tipe === "PG_KOMPLEKS") isBenar = JSON.stringify(Array.isArray(jwb)?jwb.sort():[]) === JSON.stringify(Array.isArray(soal.kunciJawaban)?soal.kunciJawaban.sort():[]);
-                  else if (tipe === "ISIAN") isBenar = String(jwb||"").trim().toLowerCase() === String(soal.kunciJawaban||"").trim().toLowerCase();
-
+                  const isBenar = cekJawabanBenar(index);
                   if (isBenar) bgWarna = '#4ade80';
-                  else if (isTerjawab) bgWarna = '#f87171';
+                  else if (isTerjawab) { bgWarna = '#f87171'; textWarna = 'white'; }
                 } else if (isTerjawab) {
                   bgWarna = '#3b82f6'; textWarna = 'white';
                 }
