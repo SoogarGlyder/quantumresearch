@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+// 🚀 FIX: Import Next Navigation dihapus bersih
+
 import { FaPlus, FaBrain, FaPenToSquare, FaTrashCan, FaUserTie, FaMagnifyingGlass } from "react-icons/fa6"; 
 
 import { ambilSemuaBankSoal, hapusBankSoal } from "../../actions/quizAction";
@@ -12,9 +13,7 @@ import PaginationBar from "../ui/PaginationBar";
 import ModalKuis from "./ModalKuis"; 
 
 export default function TabKuis({ adminId }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  // 🚀 FIX: useRouter, usePathname, useSearchParams sudah diamputasi
 
   const [dataBankSoal, setDataBankSoal] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,16 +24,13 @@ export default function TabKuis({ adminId }) {
   // STATE FILTER LOKAL PENCARIAN 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const currentPage = Number(searchParams.get("page")) || 1;
+  // 🚀 FIX: Jantung Pagination beralih ke Local State RAM
+  const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5; 
 
-  // FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  // 🚀 FIX: Fungsi mereset halaman kembali ke 1 kini secepat kilat
   const resetHalamanKeSatu = () => {
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -206,9 +202,9 @@ export default function TabKuis({ adminId }) {
             </table>
           </div>
 
-          {/* RENDER PAGINATION BAR */}
+          {/* 🚀 FIX: Pasang kabel Pagination RAM */}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <PaginationBar totalPages={totalPages} />
+            <PaginationBar totalPages={totalPages} currentPage={currentPage} onPageChange={setCurrentPage} />
           </div>
         </>
       )}

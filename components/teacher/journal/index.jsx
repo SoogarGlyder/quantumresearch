@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+// 🚀 FIX: Bye-bye lag! Navigation hooks dari Next.js sudah dihapus
 
 import { timeHelper } from "@/utils/timeHelper";
 import { PERIODE_BELAJAR, LIMIT_DATA } from "@/utils/constants";
@@ -13,7 +13,6 @@ import FilterJurnal from "./FilterJurnal";
 import RiwayatJurnal from "./RiwayatJurnal";
 import ModalJurnal from "./ModalJurnal"; 
 
-// HELPER: Safari-Safe Date Normalizer
 const getNormalizeDate = (dateInput) => {
   if (!dateInput) return 0;
   try {
@@ -25,35 +24,24 @@ const getNormalizeDate = (dateInput) => {
   } catch (error) { return 0; }
 };
 
-// Komponen Inti dipisah untuk Suspense
 function InnerTabJurnalKelas({ dataUser, jadwal = [] }) {
   const hariIniMurni = getNormalizeDate(new Date());
   const hariIniString = timeHelper.getTglJakarta(); 
   
   const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
   
-  // State Pencarian dan Pagination
   const [searchQuery, setSearchQuery] = useState("");
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
-
-  const page = Number(searchParams.get("page")) || 1;
+  
+  // 🚀 FIX: Jantung Pagination sekarang menggunakan Local State
+  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KELAS || 10;
 
-  // Reset ke halaman 1 saat mengetik pencarian
+  // 🚀 FIX: Reset memori ke halaman 1 murni saat mengetik pencarian
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setPage(1);
   }, [searchQuery]);
 
-  // LOGIKA FILTER: Arsip Murni + Multi-Keyword AND
   const jadwalDitampilkan = useMemo(() => {
-    // 1. Saring Arsip (Hanya masa lalu / hari ini yang sudah ada bab)
     let arsip = (jadwal || []).filter(j => {
       const tglJadwalMurni = getNormalizeDate(j.tanggal);
       const awalPeriodeMurni = getNormalizeDate(PERIODE_BELAJAR.MULAI);
@@ -66,10 +54,8 @@ function InnerTabJurnalKelas({ dataUser, jadwal = [] }) {
       return masukPeriode && (isMasaLalu || isHariIniSudahSelesai);
     });
 
-    // 2. Terapkan Mesin Pencari
     if (searchQuery.trim()) {
       const keywords = searchQuery.toLowerCase().split(',').map(k => k.trim()).filter(k => k.length > 0);
-      
       arsip = arsip.filter(j => {
         const isTerisi = !!j.bab;
         const statusTeks = isTerisi ? "jurnal terisi" : "belum isi jurnal";
@@ -87,38 +73,30 @@ function InnerTabJurnalKelas({ dataUser, jadwal = [] }) {
       });
     }
 
-    // 3. Urutkan dari yang terbaru ke terlama
     return arsip.sort((a, b) => getNormalizeDate(b.tanggal) - getNormalizeDate(a.tanggal));
 
   }, [jadwal, hariIniMurni, searchQuery]);
 
-  // 4. Potong Data sesuai Pagination
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
 
   return (
     <>
       <HeaderJurnal totalArsip={jadwalDitampilkan.length} />
-      
       <FilterJurnal searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-
       <RiwayatJurnal 
         dataHalIni={dataHalIni} 
         totalPage={totalPage}
+        currentPage={page}        // 👈 Tembakkan Prop Baru
+        onPageChange={setPage}    // 👈 Tembakkan Prop Baru
         onPilihJadwal={setJadwalTerpilih} 
       />
-
       {jadwalTerpilih && (
-        <ModalJurnal 
-          jadwalTerpilih={jadwalTerpilih} 
-          hariIni={hariIniString} 
-          onClose={() => setJadwalTerpilih(null)} 
-        />
+        <ModalJurnal jadwalTerpilih={jadwalTerpilih} hariIni={hariIniString} onClose={() => setJadwalTerpilih(null)} />
       )}
     </>
   );
 }
 
-// Komponen Utama dibungkus Suspense agar aman di Vercel
 export default function TabJurnalKelas({ dataUser, jadwal = [] }) {
   return (
     <div className={styles.contentArea}>

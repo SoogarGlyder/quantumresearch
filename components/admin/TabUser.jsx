@@ -1,6 +1,8 @@
 "use client";
 
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useState } from "react"; // 🚀 FIX: Menggunakan memori RAM murni
+// FIX: useSearchParams, usePathname, useRouter sudah dihapus
+
 import TabSiswa from "./TabSiswa";
 import TabPengajar from "./TabPengajar";
 import TabAdmin from "./TabAdmin"; 
@@ -13,17 +15,12 @@ import { FaUserGraduate, FaChalkboardUser, FaUserTie } from "react-icons/fa6";
 import { prosesMigrasiDataLama } from "../../actions/adminAction"; 
 
 export default function TabUser({ dataSiswa, dataPengajar, dataAdmin, muatData, isKakakAsuh = false, isSuperAdmin = false }) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
-
-  const subView = searchParams.get("sub") || PERAN.SISWA.id;
+  
+  // 🚀 FIX: Sub-View sekarang dikendalikan oleh Local State (0 Lag)
+  const [subView, setSubView] = useState(PERAN.SISWA.id);
 
   const gantiSubView = (idBaru) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("sub", idBaru);
-    params.delete("page"); 
-    replace(`${pathname}?${params.toString()}`, { scroll: false });
+    setSubView(idBaru);
   };
 
   return (

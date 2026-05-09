@@ -5,7 +5,7 @@ import { FaBrain, FaPlus, FaUserTie, FaPenToSquare, FaTrashCan } from "react-ico
 import PaginationBar from "@/components/ui/PaginationBar"; // 🚀 FIX: Impor Pagination
 import styles from "@/components/App.module.css";
 
-const DaftarKuis = memo(({ dataHalIni, totalPage, loading, onBuatBaru, onEdit, onHapus }) => (
+const DaftarKuis = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loading, onBuatBaru, onEdit, onHapus }) => (
   <div style={{ padding: '24px 16px' }}>
     
     <button 
@@ -53,7 +53,12 @@ const DaftarKuis = memo(({ dataHalIni, totalPage, loading, onBuatBaru, onEdit, o
 
         {/* 🚀 FIX: Render Pagination */}
         <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-          <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly', width: '100%' }} />
+          <PaginationBar 
+            currentPage={currentPage} 
+            totalPages={totalPage} 
+            onPageChange={onPageChange} 
+            style={{ justifyContent: 'space-evenly', width: '100%' }} 
+          />
         </div>
       </>
     )}

@@ -121,7 +121,6 @@ function AdminContent() {
     const val = e.target.value;
     const params = new URLSearchParams(searchParams.toString());
     params.set("bulan", val);
-    params.delete("page"); 
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 

@@ -3,8 +3,8 @@
 // ============================================================================
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
-import { useState, useEffect, useMemo } from "react"; // 👈 useEffect masih dipakai untuk auto-reset saat bulan berubah
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useState, useEffect, useMemo } from "react"; 
+// 🚀 FIX: Bye-bye useSearchParams dan Next Router!
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -22,11 +22,9 @@ import styles from "../../app/admin/AdminPage.module.css";
 // 2. MAIN COMPONENT (DAFTAR JURNAL)
 // ============================================================================
 export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
-
-  const page = Number(searchParams.get("page")) || 1;
+  
+  // 🚀 FIX: State Memori untuk Pagination
+  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   // --- FILTER & PENCARIAN ---
@@ -45,41 +43,29 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
   const [pesan, setPesan] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
-  // LOGIKA PINTAR: Hitung Batas Tanggal (Siswa 1 - 30/31)
   const { minDate, maxDate } = useMemo(() => {
     if (!bulanAktif) return { minDate: "", maxDate: "" };
-    
     const [tahunStr, bulanStr] = bulanAktif.split("-");
     const y = Number(tahunStr);
     const m = Number(bulanStr) - 1; 
-    
     const endDay = new Date(y, m + 1, 0).getDate();
-    
     const min = `${tahunStr}-${bulanStr}-01`;
     const max = `${tahunStr}-${bulanStr}-${String(endDay).padStart(2, '0')}`;
-    
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  // 🚀 FIX: Reset Instan!
   const resetHalamanKeSatu = () => {
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
+    setPage(1);
   };
 
-  // FIX UX: Auto-Reset filter lokal jika Admin mengganti Bulan di Header
   useEffect(() => {
     setFilterTglJurnal("");
     setFilterKelas("");
     setCariTopik("");
-    resetHalamanKeSatu(); // Pastikan kembali ke halaman 1 saat ganti bulan
+    resetHalamanKeSatu();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulanAktif]);
-
-  // ❌ PERBAIKAN: useEffect yang membuat pagination macet sudah DIHAPUS dari sini.
 
   // --- HANDLER BUKA JURNAL ---
   const bukaJurnal = async (idJadwal) => {
@@ -89,10 +75,8 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
 
     const hasil = await ambilDetailJurnal(idJadwal);
     
-    // 🛡️ Masuk ke .data dulu baru ambil jadwal & dataSiswa
     if (hasil.sukses && hasil.data) {
       const { jadwal, dataSiswa: listSiswa } = hasil.data;
-
       setDetailJadwal(jadwal);
       setDataSiswa(listSiswa);
       setFormJurnal({
@@ -134,18 +118,12 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
     setLoadingJurnal(false);
   };
 
-  // --- MEMILAH DATA JADWAL UNTUK TABEL (DIET DATA + FILTER) ---
   const jadwalTersedia = useMemo(() => {
     const hariIni = formatYYYYMMDD(new Date());
-    
-    // 1. Filter dasar: Harus di dalam rentang bulan ini, dan tidak boleh melebihi hari ini
     let jadwal = (dataJadwal || []).filter(j => 
-      j.tanggal >= minDate && 
-      j.tanggal <= maxDate &&
-      j.tanggal <= hariIni
+      j.tanggal >= minDate && j.tanggal <= maxDate && j.tanggal <= hariIni
     ); 
     
-    // 2. Filter Lokal
     if (filterTglJurnal) jadwal = jadwal.filter(j => j.tanggal === filterTglJurnal);
     if (filterKelas) jadwal = jadwal.filter(j => j.kelasTarget === filterKelas);
     if (cariTopik) {
@@ -169,16 +147,12 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
         <BrutalToast 
           pesan={toastMsg} 
           tipe="sukses" 
-          onClose={() => {
-            setToastMsg("");
-            tutupJurnal();
-          }} 
+          onClose={() => { setToastMsg(""); tutupJurnal(); }} 
         />
       )}
     </>
   );
 
-  // --- RENDER JIKA ADA JURNAL TERPILIH (DETAIL) ---
   if (selectedJadwalId) {
     if (loadingJurnal && !detailJadwal) {
       return renderDenganToast(
@@ -190,20 +164,14 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
 
     return renderDenganToast(
       <DetailJurnal 
-        detailJadwal={detailJadwal} 
-        dataSiswa={dataSiswa} 
-        setDataSiswa={setDataSiswa}
-        formJurnal={formJurnal}
-        setFormJurnal={setFormJurnal}
-        tutupJurnal={tutupJurnal}
-        prosesSimpanJurnal={prosesSimpanJurnal}
-        loadingJurnal={loadingJurnal}
-        pesan={pesan}
+        detailJadwal={detailJadwal} dataSiswa={dataSiswa} setDataSiswa={setDataSiswa}
+        formJurnal={formJurnal} setFormJurnal={setFormJurnal}
+        tutupJurnal={tutupJurnal} prosesSimpanJurnal={prosesSimpanJurnal}
+        loadingJurnal={loadingJurnal} pesan={pesan}
       />
     );
   }
 
-  // --- RENDER TABEL UTAMA ---
   return renderDenganToast(
     <div className={`${styles.isiTab} ${styles.SembunyiPrint}`}>
       <div className={styles.headerTabWrapper}>
@@ -218,56 +186,18 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
         
         <div className={styles.wadahCari} style={{ minWidth: '180px' }}>
           <div className={styles.iconCari}><FaMagnifyingGlass color="#6b7280" /></div>
-          {/* PERBAIKAN: Tambahkan resetHalamanKeSatu() saat ngetik pencarian */}
           <input 
-            type="text" 
-            placeholder="Cari Bab / Materi..." 
-            value={cariTopik} 
-            onChange={(e) => {
-              setCariTopik(e.target.value);
-              resetHalamanKeSatu();
-            }} 
-            className={styles.inputCari}
+            type="text" placeholder="Cari Bab / Materi..." value={cariTopik} 
+            onChange={(e) => { setCariTopik(e.target.value); resetHalamanKeSatu(); }} className={styles.inputCari}
           />
         </div>
 
-        {/* PERBAIKAN: Tambahkan resetHalamanKeSatu() saat ganti tanggal */}
-        <FilterInput 
-          type="date" 
-          value={filterTglJurnal} 
-          onChange={(e) => {
-            setFilterTglJurnal(e.target.value);
-            resetHalamanKeSatu();
-          }} 
-          min={minDate}
-          max={maxDate}
-        />
-        
-        {/* PERBAIKAN: Tambahkan resetHalamanKeSatu() saat pilih kelas */}
-        <select 
-          value={filterKelas} 
-          onChange={(e) => {
-            setFilterKelas(e.target.value);
-            resetHalamanKeSatu();
-          }} 
-          className={styles.filterSelectMurni}
-        >
+        <FilterInput type="date" value={filterTglJurnal} onChange={(e) => { setFilterTglJurnal(e.target.value); resetHalamanKeSatu(); }} min={minDate} max={maxDate} />
+        <select value={filterKelas} onChange={(e) => { setFilterKelas(e.target.value); resetHalamanKeSatu(); }} className={styles.filterSelectMurni}>
           <option value="">Semua Kelas</option>
           {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
         </select>
-        
-        {/* PERBAIKAN: Tambahkan resetHalamanKeSatu() di tombol reset */}
-        <button 
-          onClick={() => { 
-            setFilterTglJurnal(""); 
-            setFilterKelas(""); 
-            setCariTopik(""); 
-            resetHalamanKeSatu();
-          }} 
-          className={styles.btnReset}
-        >
-          Reset
-        </button>
+        <button onClick={() => { setFilterTglJurnal(""); setFilterKelas(""); setCariTopik(""); resetHalamanKeSatu(); }} className={styles.btnReset}>Reset</button>
       </div>
 
       <div className={styles.wadahTabel}>
@@ -312,7 +242,8 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
       </div>
 
       <div style={{ marginTop: '24px' }}>
-        <PaginationBar totalPages={totalPage} />
+        {/* 🚀 FIX: Pasang kabel PaginationBar */}
+        <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
       
     </div>

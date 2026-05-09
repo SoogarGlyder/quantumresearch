@@ -2,7 +2,7 @@
 
 //FIX: Tambahkan useEffect di import
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+// 🚀 FIX: Import Next Navigation dihapus total
 import PaginationBar from "../ui/PaginationBar";
 
 import { simpanAkunAdmin, hapusAkunAdmin } from "../../actions/adminAction"; 
@@ -12,11 +12,9 @@ import { STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, CABANG_QUANTUM, PERAN } from 
 import styles from "../../app/admin/AdminPage.module.css";
 
 export default function TabAdmin({ dataAdmin = [], muatData }) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
-
-  const page = Number(searchParams.get("page")) || 1;
+  
+  // 🚀 FIX: Jantung Pagination beralih ke RAM memori
+  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   const initialFormState = { 
@@ -254,7 +252,8 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
             </tbody>
           </table>
         </div>
-        <PaginationBar totalPages={totalPage} />
+        {/* 🚀 FIX: Pasang kabel Pagination RAM */}
+        <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
       
     </div>

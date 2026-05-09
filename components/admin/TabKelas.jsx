@@ -4,7 +4,7 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react"; 
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+// 🚀 FIX: Import next/navigation dihapus bersih!
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -24,11 +24,8 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa = [], muatData, bulanAktif }) {
   
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
-
-  const page = Number(searchParams.get("page")) || 1;
+  // 🚀 FIX: Jantung Pagination sekarang menggunakan State RAM Murni
+  const [page, setPage] = useState(1);
 
   // State Filter
   const [filterTglKelas, setFilterTglKelas] = useState("");
@@ -59,13 +56,9 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // Fungsi untuk mengembalikan ke halaman 1
+  // 🚀 FIX: Fungsi untuk mengembalikan ke halaman 1 menjadi secepat kilat
   const resetHalamanKeSatu = () => {
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
+    setPage(1);
   };
 
   useEffect(() => {
@@ -338,7 +331,8 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
       </div>
       
       <div style={{ marginTop: '24px' }}>
-        <PaginationBar totalPages={totalPage} />
+        {/* 🚀 FIX: Kabel Pagination Tersambung ke RAM! */}
+        <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
 
     </div>

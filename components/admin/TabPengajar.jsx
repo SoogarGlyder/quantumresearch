@@ -4,8 +4,6 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useMemo, useRef } from "react"; 
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
-
 import PaginationBar from "../ui/PaginationBar";
 import FilterInput from "../ui/FilterInput";
 import { FaMagnifyingGlass } from "react-icons/fa6";
@@ -21,13 +19,11 @@ import styles from "../../app/admin/AdminPage.module.css";
 // 2. MAIN COMPONENT (TAB PENGAJAR)
 // ============================================================================
 export default function TabPengajar({ dataPengajar = [], muatData }) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
+  
+  // 🚀 FIX: Jantung Pagination beralih ke Local State RAM
+  const [page, setPage] = useState(1);
   
   const fileInputRef = useRef(null);
-
-  const page = Number(searchParams.get("page")) || 1;
   const [searchQuery, setSearchQuery] = useState("");
 
   const initialFormState = { 
@@ -52,12 +48,9 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
 
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
+  // 🚀 FIX: Reset halaman ke-1 jadi instan tanpa loading URL
   const resetHalamanKeSatu = () => {
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
+    setPage(1);
   };
 
   const unduhTemplate = () => {
@@ -131,7 +124,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
     
     let payloadPengajar = { ...formPengajar };
     
-    // Jika pangkat diubah dari Kakak Asuh ke yang lain, kosongkan kelas asuhnya
     if (payloadPengajar.pangkat !== PANGKAT_PENGAJAR.KAKAK_ASUH) {
       payloadPengajar.kelasAsuh = [];
     }
@@ -263,7 +255,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
             className={styles.formInput} 
           />
 
-          {/* DROPDOWN PANGKAT PENGAJAR */}
           <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginTop: '12px' }}>Pangkat / Peran:</label>
           <select 
             value={formPengajar.pangkat} 
@@ -277,11 +268,9 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
             <option value={PANGKAT_PENGAJAR.FREELANCE}>👨‍🏫 Pengajar Freelance</option>
             <option value={PANGKAT_PENGAJAR.TETAP}>👨‍🏫 Pengajar Tetap</option>
             <option value={PANGKAT_PENGAJAR.KAKAK_ASUH}>🦸‍♂️ Kakak Asuh (Wali Kelas)</option>
-            {/* FIX: Opsi Staff Akademik diaktifkan kembali */}
             <option value={PANGKAT_PENGAJAR.STAFF_AKADEMIK}>🛡️ Staff Akademik (Admin Cabang)</option>
           </select>
 
-          {/* CHECKBOX GRID KELAS ASUH (Hanya Muncul Jika Pangkat = KAKAK_ASUH) */}
           {formPengajar.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH && (
             <div style={{ marginTop: '10px', marginBottom: '16px', padding: '12px', border: '3px solid #111827', borderRadius: '12px', backgroundColor: '#fdf4ff', boxShadow: '4px 4px 0 #111827' }}>
               <label style={{ fontSize: '13px', fontWeight: '900', display: 'block', marginBottom: '10px', color: '#111827' }}>Pilih Kelas Tanggung Jawab:</label>
@@ -329,7 +318,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
           )}
         </form>
 
-        {/* --- UI BULK ACTIONS --- */}
         {!idEdit && (
           <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px dashed #ccc' }}>
             <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#111827', fontWeight: '900' }}>Pendaftaran Massal (CSV)</h4>
@@ -360,7 +348,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
       {/* PANEL KANAN: TABEL PENGAJAR */}
       <div className={styles.flexDua}>
         
-        {/* HEADER & PENCARIAN */}
         <div className={styles.headerTabSiswa} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
           <h3 className={styles.judulTabelKanan} style={{ margin: 0 }}>Daftar Pengajar ({pengajarDitampilkan.length})</h3>
           
@@ -398,7 +385,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
                 dataPengajarHalIni.map(g => {
                   const isNonaktif = g.status === STATUS_USER.NONAKTIF;
                   
-                  // Pewarnaan baris dan badge berdasarkan pangkat
                   let bgBaris = 'transparent';
                   let bgBadge = '#e5e7eb';
                   let colorBadge = '#111827';
@@ -427,7 +413,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
                             {g.pangkat?.replace('_', ' ') || "FREELANCE"}
                           </span>
                         </div>
-                        {/* Jika dia Kakak Asuh, Tampilkan daftar kelas asuhnya */}
                         {g.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH && g.kelasAsuh?.length > 0 && (
                           <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#9333ea', margin: '6px 0 0 0', lineHeight: '1.4' }}>
                             Asuh: {g.kelasAsuh.join(", ")}
@@ -452,7 +437,7 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
         </div>
         
         <div style={{ marginTop: '24px' }}>
-          <PaginationBar totalPages={totalPage} />
+          <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
         </div>
         
       </div>

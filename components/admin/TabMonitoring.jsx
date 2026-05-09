@@ -1,33 +1,22 @@
 "use client";
 
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import TabKelas from "./TabKelas";
 import TabKonsul from "./TabKonsul";
 import TabAbsenStaf from "./TabAbsenStaf";
-
 import { TIPE_SESI } from "../../utils/constants";
 import styles from "../../app/admin/AdminPage.module.css";
 import { FaChalkboardUser, FaLightbulb, FaUserShield } from "react-icons/fa6";
 
-// FIX: Menambahkan isKakakAsuh ke dalam parameter props
 export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, dataAbsenStaf, dataPengajar, muatData, bulanAktif, isKakakAsuh }) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
+  
+  const [subView, setSubView] = useState(TIPE_SESI.KELAS);
 
-  let subView = searchParams.get("sub") || TIPE_SESI.KELAS;
-
-  // FIX: Jika Kakak Asuh iseng mengetik ?sub=staf di URL, paksa kembali ke tab Kelas
-  if (isKakakAsuh && subView === "staf") {
-    subView = TIPE_SESI.KELAS;
-  }
-
-  const gantiSubView = (idBaru) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("sub", idBaru);
-    params.delete("page"); 
-    replace(`${pathname}?${params.toString()}`, { scroll: false });
-  };
+  useEffect(() => {
+    if (isKakakAsuh && subView === "staf") {
+      setSubView(TIPE_SESI.KELAS);
+    }
+  }, [isKakakAsuh, subView]);
 
   return (
     <div className={styles.isiTab} style={{ padding: '24px' }}>
@@ -48,7 +37,7 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
       }}>
         {/* BUTTON: ABSENSI KELAS */}
         <button 
-          onClick={() => gantiSubView(TIPE_SESI.KELAS)}
+          onClick={() => setSubView(TIPE_SESI.KELAS)}
           style={{
             padding: '12px 24px',
             borderRadius: '10px',
@@ -69,7 +58,7 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
 
         {/* BUTTON: KONSUL SISWA */}
         <button 
-          onClick={() => gantiSubView(TIPE_SESI.KONSUL)}
+          onClick={() => setSubView(TIPE_SESI.KONSUL)}
           style={{
             padding: '12px 24px',
             borderRadius: '10px',
@@ -88,10 +77,10 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
           <FaLightbulb size={20} /> KONSUL SISWA
         </button>
 
-        {/* BUTTON: MONITORING STAF (FIX: Disembunyikan dari Kakak Asuh) */}
+        {/* BUTTON: MONITORING STAF (Sembunyi dari Kakak Asuh) */}
         {!isKakakAsuh && (
           <button 
-            onClick={() => gantiSubView("staf")}
+            onClick={() => setSubView("staf")}
             style={{
               padding: '12px 24px',
               borderRadius: '10px',

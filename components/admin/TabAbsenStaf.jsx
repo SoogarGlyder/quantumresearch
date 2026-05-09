@@ -4,7 +4,7 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo, memo } from "react";
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+// 🚀 FIX: Import Next Navigation dihapus!
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -138,11 +138,9 @@ ModalAbsenStaf.displayName = "ModalAbsenStaf";
 // 3. MAIN COMPONENT (TAB ABSEN STAF)
 // ============================================================================
 export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bulanAktif, muatData }) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
-
-  const page = Number(searchParams.get("page")) || 1;
+  
+  // 🚀 FIX: State Memori untuk Pagination
+  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -150,13 +148,9 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
   const [filterTglAbsen, setFilterTglAbsen] = useState("");
   const [filterNama, setFilterNama] = useState("");
   
-  // FUNGSI BARU: Membersihkan parameter 'page' dari URL
+  // 🚀 FIX: Fungsi Reset Halaman kini sangat ringan
   const resetHalamanKeSatu = () => {
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
+    setPage(1);
   };
 
   useEffect(() => {
@@ -354,7 +348,8 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
       </div>
 
       <div style={{ marginTop: '24px' }}>
-        <PaginationBar totalPages={totalPage} />
+        {/* 🚀 FIX: Pasang kabel PaginationBar */}
+        <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
 
       {/* MODAL ABSEN DITAMPILKAN DI SINI */}

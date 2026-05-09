@@ -4,7 +4,7 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useMemo, useRef } from "react";
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+// 🚀 FIX: useSearchParams dan router Next.js dihapus
 
 import PaginationBar from "../ui/PaginationBar";
 import ModalRaporSiswa from "./ModalRaporSiswa";
@@ -20,17 +20,12 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 // 2. MAIN COMPONENT (TAB SISWA)
 // ============================================================================
-// FIX: Menambahkan properti isKakakAsuh untuk memicu "Mode Bunglon"
 export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false }) {
-  // --- HOOKS UNTUK URL STATE ---
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
+  
+  // 🚀 FIX: Pagination pakai State RAM (0 Lag)
+  const [page, setPage] = useState(1);
   
   const fileInputRef = useRef(null);
-
-  // Ambil halaman aktif langsung dari URL (Default ke 1)
-  const page = Number(searchParams.get("page")) || 1;
   
   // --- STATE: FORM SISWA ---
   const initialFormState = { 
@@ -66,12 +61,8 @@ export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false
   const handleGantiFilterKelas = (e) => {
     setFilterKelas(e.target.value);
     
-    // Setiap kali filter diubah, bersihkan parameter 'page' dari URL agar kembali ke halaman 1
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
+    // 🚀 FIX: Reset halaman ke-1 jadi sangat cepat
+    setPage(1);
   };
 
   // --- LOGIKA BULK UPLOAD ---
@@ -396,7 +387,8 @@ export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false
           </table>
         </div>
         
-        <PaginationBar totalPages={totalPage} />
+        {/* 🚀 FIX: Pasang kabel Pagination */}
+        <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
 
       {siswaCetak && (

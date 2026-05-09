@@ -1,34 +1,26 @@
 "use client";
 
 import { useState, useMemo, useEffect, memo, useCallback } from "react";
-import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare, FaFileSignature, FaListUl } from "react-icons/fa6"; 
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCan, FaPenToSquare, FaListUl } from "react-icons/fa6"; 
 
 import { DndContext, useDraggable, useDroppable, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
 
 import PaginationBar from "../ui/PaginationBar";
 import { DAFTAR_KELAS_BIMBEL, generateDuaMingguKerja, KAMUS_JAM_SESI } from "../../utils/jadwalHelper";
 
-// FIX: Import CABANG_QUANTUM ditambahkan
 import { OPSI_MAPEL_KELAS, OPSI_KELAS, LIMIT_DATA, CABANG_QUANTUM } from "../../utils/constants";
 import { tambahJadwal, hapusJadwal, editJadwal } from "../../actions/adminAction";
-
 import { ambilKuisByJadwal, ambilSemuaBankSoal, terapkanBankSoalKeJadwal, hapusQuizDariJadwal } from "../../actions/quizAction"; 
-
 import { formatTanggal, potongDataPagination } from "../../utils/formatHelper";
 import styles from "../../app/admin/AdminPage.module.css";
 
 // ============================================================================
 // --- KOMPONEN BANTUAN DND ---
 // ============================================================================
-
 const DraggableMapel = memo(({ mapel }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: mapel });
   return (
-    <div 
-      ref={setNodeRef} {...listeners} {...attributes} 
-      className={`${styles.kartuMapelDraggable} ${isDragging ? styles.dragging : ''}`}
-    >
+    <div ref={setNodeRef} {...listeners} {...attributes} className={`${styles.kartuMapelDraggable} ${isDragging ? styles.dragging : ''}`}>
       <FaGripVertical color="#9ca3af" /> {mapel}
     </div>
   );
@@ -45,13 +37,11 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
         {permanenDB.map(j => (
           <div key={j._id} onClick={() => klikKartuJadwal(j, "permanen")} className={styles.kartuJadwalPermanen} style={{ cursor: 'pointer', transition: 'transform 0.1s', position: 'relative' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.02)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
             <div className={styles.labelTersimpan}><FaDatabase /> TERSIMPAN</div>
-            
             {j.statusKuis === 'siap' && (
               <div style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: '#facc15', color: '#111827', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '4px', border: '1px solid #111827' }}>
                 📝 KUIS SIAP
               </div>
             )}
-
             <div className={styles.teksMapelKartu}>{j.mapel}</div>
             <div className={styles.teksInfoPengajar}><span>👨‍🏫 {j.kodePengajar || '?'}</span><span>P-{j.pertemuan || '?'}</span></div>
             <div className={styles.teksJamKartu}>{j.jamMulai} - {j.jamSelesai}</div>
@@ -76,10 +66,8 @@ const DroppableSel = memo(({ idSel, isSabtu, permanenDB, draftLokal, klikKartuJa
   if (prevProps.isSabtu !== nextProps.isSabtu) return false;
   if (prevProps.permanenDB.length !== nextProps.permanenDB.length) return false;
   if (prevProps.draftLokal.length !== nextProps.draftLokal.length) return false;
-
   const isPermanenSama = prevProps.permanenDB.every((j, i) => j._id === nextProps.permanenDB[i]._id && j.statusKuis === nextProps.permanenDB[i].statusKuis);
   const isDraftSama = prevProps.draftLokal.every((j, i) => j.idUnik === nextProps.draftLokal[i].idUnik);
-
   return isPermanenSama && isDraftSama;
 });
 DroppableSel.displayName = "DroppableSel";
@@ -87,42 +75,30 @@ DroppableSel.displayName = "DroppableSel";
 // ============================================================================
 // KOMPONEN UTAMA
 // ============================================================================
-// FIX: Prop isSuperAdmin ditambahkan
 export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, adminId = "admin-sistem", isKakakAsuh = false, isSuperAdmin = false }) { 
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
-
-  const page = Number(searchParams.get("page")) || 1;
+  
+  const [page, setPage] = useState(1);
   const [daftarStatusKuis, setDaftarStatusKuis] = useState({});
 
   const { minDate, maxDate } = useMemo(() => {
     if (!bulanAktif) return { minDate: "", maxDate: "" };
-    
     const [tahunStr, bulanStr] = bulanAktif.split("-");
     const y = Number(tahunStr);
     const m = Number(bulanStr) - 1; 
-    
     const endDay = new Date(y, m + 1, 0).getDate();
-    
     const min = `${tahunStr}-${bulanStr}-01`;
     const max = `${tahunStr}-${bulanStr}-${String(endDay).padStart(2, '0')}`;
-    
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
   const [tanggalMulai, setTanggalMulai] = useState(minDate || "");
   const [jadwalLokal, setJadwalLokal] = useState([]); 
-  
-  // FIX: State Khusus Filter Cabang (Hanya Berguna Untuk Super Admin)
   const [filterCabang, setFilterCabang] = useState("");
 
   useEffect(() => {
     if (minDate && minDate !== tanggalMulai) {
       setTanggalMulai(minDate);
-      if (jadwalLokal.length > 0) {
-        setJadwalLokal([]);
-      }
+      if (jadwalLokal.length > 0) setJadwalLokal([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minDate]);
@@ -153,19 +129,8 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  const resetHalamanKeSatu = () => {
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
-  };
-
   useEffect(() => {
-    setFilterTglMulai("");
-    setFilterTglAkhir("");
-    setFilterKelas("");
-    resetHalamanKeSatu();
+    setFilterTglMulai(""); setFilterTglAkhir(""); setFilterKelas(""); setPage(1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulanAktif]);
 
@@ -194,145 +159,88 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
 
     if (kelasInfo && hariInfo) {
       setDataDraft({ mapel: mapelYangDilempar, kelas: kelasInfo, hari: hariInfo });
-      setInputPengajar("");
-      setInputPertemuan("");
-      setModalTerbuka(true);
+      setInputPengajar(""); setInputPertemuan(""); setModalTerbuka(true);
     }
   };
 
   const masukkanKePapan = () => {
-    if (!inputPengajar || !inputPertemuan) {
-      alert("⚠️ Nama pengajar dan pertemuan harus diisi!");
-      return;
-    }
+    if (!inputPengajar || !inputPertemuan) { alert("⚠️ Nama pengajar dan pertemuan harus diisi!"); return; }
     const tipeHari = dataDraft.hari.isSabtu ? "sabtu" : "normal";
     const jamKelas = KAMUS_JAM_SESI[tipeHari][dataDraft.kelas.sesi];
 
     const jadwalBaru = {
-      idUnik: Date.now().toString(),
-      mapel: dataDraft.mapel,
-      kelasTarget: dataDraft.kelas.nama, 
-      kelasId: dataDraft.kelas.id,
-      tanggal: dataDraft.hari.tanggalPenuh, 
-      pengajar: inputPengajar,
-      pertemuan: inputPertemuan,
-      jamMulai: jamKelas.mulai,
-      jamSelesai: jamKelas.selesai
+      idUnik: Date.now().toString(), mapel: dataDraft.mapel, kelasTarget: dataDraft.kelas.nama, kelasId: dataDraft.kelas.id,
+      tanggal: dataDraft.hari.tanggalPenuh, pengajar: inputPengajar, pertemuan: inputPertemuan,
+      jamMulai: jamKelas.mulai, jamSelesai: jamKelas.selesai
     };
-    setJadwalLokal([...jadwalLokal, jadwalBaru]);
-    setModalTerbuka(false);
-    setDataDraft(null);
+    setJadwalLokal([...jadwalLokal, jadwalBaru]); setModalTerbuka(false); setDataDraft(null);
   };
 
   const klikKartuJadwal = useCallback(async (jadwal, tipe) => {
     if (isKakakAsuh) return;
-
-    setJadwalEdit(jadwal);
-    setTipeEdit(tipe);
-    setFormEdit({
-      pengajar: jadwal.pengajar || "",
-      pertemuan: jadwal.pertemuan || "",
-      jamMulai: jadwal.jamMulai || "",
-      jamSelesai: jadwal.jamSelesai || ""
-    });
+    setJadwalEdit(jadwal); setTipeEdit(tipe);
+    setFormEdit({ pengajar: jadwal.pengajar || "", pertemuan: jadwal.pertemuan || "", jamMulai: jadwal.jamMulai || "", jamSelesai: jadwal.jamSelesai || "" });
 
     if (tipe === "permanen") {
         setIsMemuatKuis(true);
         const kuisLama = await ambilKuisByJadwal(jadwal._id);
-        if (kuisLama) {
-            setDaftarStatusKuis(prev => ({...prev, [jadwal._id]: 'siap'}));
-        } else {
-            setDaftarStatusKuis(prev => ({...prev, [jadwal._id]: 'kosong'}));
-        }
+        if (kuisLama) { setDaftarStatusKuis(prev => ({...prev, [jadwal._id]: 'siap'})); } 
+        else { setDaftarStatusKuis(prev => ({...prev, [jadwal._id]: 'kosong'})); }
         setIsMemuatKuis(false);
     }
-
     setModalEditTerbuka(true);
   }, [isKakakAsuh]);
 
   const bukaPanelBankSoal = async () => {
-    setModalEditTerbuka(false); 
-    setIsModalBankOpen(true);
-    setLoadingBank(true);
+    setModalEditTerbuka(false); setIsModalBankOpen(true); setLoadingBank(true);
     const data = await ambilSemuaBankSoal(adminId);
-    setListBankSoal(data || []);
-    setLoadingBank(false);
+    setListBankSoal(data || []); setLoadingBank(false);
   };
 
   const handlePilihBankSoal = async (idBankSoal) => {
     if (!window.confirm("Yakin ingin menerapkan paket soal ini ke jadwal kelas ini?")) return;
-    
     setIsMemprosesKuis(true);
     const res = await terapkanBankSoalKeJadwal(idBankSoal, jadwalEdit._id, adminId);
-    
-    if (res.sukses) {
-      alert("✅ " + res.pesan);
-      setIsModalBankOpen(false);
-      setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'siap'}));
-    } else {
-      alert("❌ " + res.pesan);
-    }
+    if (res.sukses) { alert("✅ " + res.pesan); setIsModalBankOpen(false); setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'siap'})); } 
+    else { alert("❌ " + res.pesan); }
     setIsMemprosesKuis(false);
   };
 
   const handleLepasKuis = async () => {
     if (!window.confirm("Yakin ingin membatalkan/melepas kuis dari kelas ini?")) return;
-    
     setIsMemprosesKuis(true);
     const res = await hapusQuizDariJadwal(jadwalEdit._id);
-    if (res.sukses) {
-      alert("✅ " + res.pesan);
-      setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'kosong'}));
-    } else {
-      alert("❌ " + res.pesan);
-    }
+    if (res.sukses) { alert("✅ " + res.pesan); setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'kosong'})); } 
+    else { alert("❌ " + res.pesan); }
     setIsMemprosesKuis(false);
   };
 
   const simpanPerubahanJadwal = async () => {
-    if (!formEdit.pengajar || !formEdit.pertemuan) {
-      alert("⚠️ Nama pengajar dan pertemuan tidak boleh kosong!");
-      return;
-    }
+    if (!formEdit.pengajar || !formEdit.pertemuan) { alert("⚠️ Nama pengajar dan pertemuan tidak boleh kosong!"); return; }
 
     if (tipeEdit === "draft") {
       const index = jadwalLokal.findIndex(j => j.idUnik === jadwalEdit.idUnik);
       const jadwalLokalBaru = [...jadwalLokal];
       jadwalLokalBaru[index] = { ...jadwalLokalBaru[index], ...formEdit };
-      setJadwalLokal(jadwalLokalBaru);
-      setModalEditTerbuka(false);
+      setJadwalLokal(jadwalLokalBaru); setModalEditTerbuka(false);
     } else {
       setIsProsesEdit(true);
       const hasil = await editJadwal(jadwalEdit._id, formEdit);
       setIsProsesEdit(false);
-      
-      if (hasil.sukses) {
-        if (muatData) muatData();
-        setModalEditTerbuka(false);
-      } else {
-        alert(hasil.pesan);
-      }
+      if (hasil.sukses) { if (muatData) muatData(); setModalEditTerbuka(false); } else { alert(hasil.pesan); }
     }
   };
 
   const hapusDariPapan = async () => {
     if (tipeEdit === "draft") {
-      setJadwalLokal(jadwalLokal.filter(j => j.idUnik !== jadwalEdit.idUnik));
-      setModalEditTerbuka(false);
+      setJadwalLokal(jadwalLokal.filter(j => j.idUnik !== jadwalEdit.idUnik)); setModalEditTerbuka(false);
     } else {
       const yakin = window.confirm(`Yakin ingin menghapus permanen jadwal ${jadwalEdit.mapel} ini?`);
       if (!yakin) return;
-      
       setIsProsesEdit(true);
       const hasil = await hapusJadwal(jadwalEdit._id);
       setIsProsesEdit(false);
-      
-      if (hasil.sukses) {
-        if (muatData) muatData();
-        setModalEditTerbuka(false);
-      } else {
-        alert(hasil.pesan);
-      }
+      if (hasil.sukses) { if (muatData) muatData(); setModalEditTerbuka(false); } else { alert(hasil.pesan); }
     }
   };
 
@@ -344,12 +252,8 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     setIsMenyimpan(true);
     try {
       const tembakanServer = jadwalLokal.map(jadwal => {
-        return tambahJadwal({
-          tanggal: jadwal.tanggal, mapel: jadwal.mapel, kelasTarget: jadwal.kelasTarget,
-          jamMulai: jadwal.jamMulai, jamSelesai: jadwal.jamSelesai, pengajar: jadwal.pengajar, pertemuan: jadwal.pertemuan
-        });
+        return tambahJadwal({ tanggal: jadwal.tanggal, mapel: jadwal.mapel, kelasTarget: jadwal.kelasTarget, jamMulai: jadwal.jamMulai, jamSelesai: jadwal.jamSelesai, pengajar: jadwal.pengajar, pertemuan: jadwal.pertemuan });
       });
-
       const hasilEksekusi = await Promise.all(tembakanServer);
       const adaYangGagal = hasilEksekusi.some(res => res.sukses === false);
 
@@ -357,9 +261,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
         const errorPertama = hasilEksekusi.find(res => res.sukses === false);
         alert(`❌ GAGAL SIMPAN: ${errorPertama?.pesan || "Terjadi kesalahan sistem"}`);
       } else {
-        setJadwalLokal([]); 
-        if(muatData) await muatData(); 
-        alert("✅ Jadwal berhasil mengudara!");
+        setJadwalLokal([]); if(muatData) await muatData(); alert("✅ Jadwal berhasil mengudara!");
       }
     } catch (error) {
       alert("❌ Terjadi kesalahan server.");
@@ -372,25 +274,17 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     if (window.confirm(`Yakin ingin menghapus jadwal ${mapel} untuk kelas ${kelas}? (Jika dihapus, jadwal akan hilang dari papan catur juga)`)) { 
       try {
         const hasil = await hapusJadwal(id); 
-        if(hasil.sukses) {
-          if (typeof muatData === 'function') muatData(); 
-        } else {
-          alert("Gagal menghapus: " + hasil.pesan);
-        }
-      } catch (error) {
-        console.error("ERROR Hapus:", error);
-      }
+        if(hasil.sukses) { if (typeof muatData === 'function') muatData(); } else { alert("Gagal menghapus: " + hasil.pesan); }
+      } catch (error) { console.error("ERROR Hapus:", error); }
     } 
   };
 
-  // FIX: Memo Filter Khusus Cabang (Menyaring Seluruh Papan & Tabel)
   const jadwalCabangAktif = useMemo(() => {
     if (!isSuperAdmin || !filterCabang) return dataJadwal;
     return dataJadwal.filter(j => j.pengajarId && j.pengajarId.kodeCabang === filterCabang);
   }, [dataJadwal, isSuperAdmin, filterCabang]);
 
   const jadwalBulanIni = useMemo(() => {
-    // Gunakan jadwalCabangAktif, BUKAN dataJadwal mentah
     return jadwalCabangAktif.filter(j => j.tanggal >= minDate && j.tanggal <= maxDate);
   }, [jadwalCabangAktif, minDate, maxDate]);
 
@@ -408,18 +302,18 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   
   const cariPermanenDB = (kelasNama, tanggalPenuh) => {
     if (!jadwalCabangAktif) return [];
-    // Gunakan jadwalCabangAktif, BUKAN dataJadwal mentah
     const jadwalHariItu = jadwalCabangAktif.filter(j => j.kelasTarget === kelasNama && j.tanggal === tanggalPenuh);
     return jadwalHariItu.map(j => ({ ...j, statusKuis: daftarStatusKuis[j._id] }));
   };
 
+// ==================== BAGIAN 2 (Sambungkan persis di bawah Bagian 1) ====================
   // ============================================================================
   // RENDER UI
   // ============================================================================
   return (
     <div className={`${styles.isiTab} ${styles.wadahJadwalAllInOne}`}>
       
-      {/* ==================== PANEL ATAS: PAPAN CATUR (Disembunyikan dari Kakak Asuh) ==================== */}
+      {/* ==================== PANEL ATAS: PAPAN CATUR ==================== */}
       {!isKakakAsuh && (
         <div className={styles.panelPapanCatur}>
           <div className={styles.headerPapanCatur}>
@@ -429,8 +323,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
             </div>
             
             <div className={styles.wadahKontrolKanan}>
-              
-              {/* FIX: DROPDOWN CABANG KHUSUS SUPER ADMIN */}
               {isSuperAdmin && (
                 <div className={styles.wadahInputTanggal} style={{ marginRight: '8px' }}>
                   <label className={styles.labelTanggal}>Cabang:</label>
@@ -438,9 +330,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                     value={filterCabang} 
                     onChange={e => {
                       setFilterCabang(e.target.value);
-                      if (jadwalLokal.length > 0) { 
-                        if(confirm("Ganti cabang akan mereset jadwal draft. Lanjut?")) setJadwalLokal([]); 
-                      }
+                      if (jadwalLokal.length > 0) { if(confirm("Ganti cabang mereset draft. Lanjut?")) setJadwalLokal([]); }
                     }} 
                     className={styles.inputTanggalNeo} 
                     style={{ backgroundColor: '#fef08a', color: '#111827', fontWeight: '900', border: '3px solid #111827' }}
@@ -456,18 +346,11 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
 
               <div className={styles.wadahInputTanggal}>
                 <label className={styles.labelTanggal}>Tanggal Mulai:</label>
-                <input 
-                  type="date" 
-                  value={tanggalMulai} 
-                  min={minDate}
-                  max={maxDate}
+                <input type="date" value={tanggalMulai} min={minDate} max={maxDate}
                   onChange={(e) => { 
                     setTanggalMulai(e.target.value); 
-                    if (jadwalLokal.length > 0) { 
-                      if(confirm("Ganti tanggal mereset draft. Lanjut?")) setJadwalLokal([]); 
-                    } 
-                  }} 
-                  className={styles.inputTanggalNeo} 
+                    if (jadwalLokal.length > 0) { if(confirm("Ganti tanggal mereset draft. Lanjut?")) setJadwalLokal([]); } 
+                  }} className={styles.inputTanggalNeo} 
                 />
               </div>
               <button onClick={simpanSemuaKeDatabase} disabled={isMenyimpan || jadwalLokal.length === 0} className={`${styles.tombolSimpanServer} ${(isMenyimpan || jadwalLokal.length === 0) ? styles.nonaktif : styles.aktif}`}>
@@ -500,7 +383,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                       </tr>
                     </thead>
                     <tbody>
-                      {DAFTAR_KELAS_BIMBEL.map((kelas, index) => (
+                      {DAFTAR_KELAS_BIMBEL.map((kelas) => (
                         <tr key={kelas.id} className={styles.trKelas}>
                           <td className={styles.tdNamaKelas}>
                             <div className={styles.namaKelasTebal}>{kelas.nama}</div>
@@ -513,12 +396,8 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                             
                             return (
                               <DroppableSel 
-                                key={idKordinatSel} 
-                                idSel={idKordinatSel} 
-                                isSabtu={hari.isSabtu}
-                                permanenDB={permanenDB}
-                                draftLokal={draftLokal}
-                                klikKartuJadwal={klikKartuJadwal}
+                                key={idKordinatSel} idSel={idKordinatSel} isSabtu={hari.isSabtu} permanenDB={permanenDB}
+                                draftLokal={draftLokal} klikKartuJadwal={klikKartuJadwal}
                               />
                             );
                           })}
@@ -541,60 +420,20 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
       <div className={styles.panelTabelBawah}>
         <div className={styles.headerTabelBawah}>
           <div>
-            <h3 className={styles.judulTabelBawah}>
-              {isKakakAsuh ? "🗄️ Jadwal Kelas Asuh" : "🗄️ Database Jadwal Permanen"}
-            </h3>
+            <h3 className={styles.judulTabelBawah}>{isKakakAsuh ? "🗄️ Jadwal Kelas Asuh" : "🗄️ Database Jadwal Permanen"}</h3>
             <p className={styles.subJudulTabelBawah}>Total: {jadwalBulanIni.length} Jadwal di Bulan Ini</p>
           </div>
           <div className={styles.wadahFilterBawah}>
             <span style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}>Filter:</span>
-            <input 
-              type="date" 
-              value={filterTglMulai} 
-              min={minDate} 
-              max={maxDate} 
-              onChange={(e) => {
-                setFilterTglMulai(e.target.value);
-                resetHalamanKeSatu();
-              }} 
-              className={styles.inputTanggalNeo} 
-            />
+            <input type="date" value={filterTglMulai} min={minDate} max={maxDate} onChange={(e) => { setFilterTglMulai(e.target.value); setPage(1); }} className={styles.inputTanggalNeo} />
             <span style={{ fontWeight: '900' }}>-</span>
-            <input 
-              type="date" 
-              value={filterTglAkhir} 
-              min={minDate} 
-              max={maxDate} 
-              onChange={(e) => {
-                setFilterTglAkhir(e.target.value);
-                resetHalamanKeSatu();
-              }} 
-              className={styles.inputTanggalNeo} 
-            />
+            <input type="date" value={filterTglAkhir} min={minDate} max={maxDate} onChange={(e) => { setFilterTglAkhir(e.target.value); setPage(1); }} className={styles.inputTanggalNeo} />
             
-            <select 
-              value={filterKelas} 
-              onChange={(e) => {
-                setFilterKelas(e.target.value);
-                resetHalamanKeSatu();
-              }} 
-              className={styles.inputTanggalNeo} 
-              style={{ backgroundColor: 'white' }}
-            >
+            <select value={filterKelas} onChange={(e) => { setFilterKelas(e.target.value); setPage(1); }} className={styles.inputTanggalNeo} style={{ backgroundColor: 'white' }}>
               <option value="">Semua Kelas</option>
               {OPSI_KELAS.map(opsi => <option key={opsi} value={opsi}>{opsi}</option>)}
             </select>
-            <button 
-              onClick={() => { 
-                setFilterTglMulai(""); 
-                setFilterTglAkhir(""); 
-                setFilterKelas(""); 
-                resetHalamanKeSatu();
-              }} 
-              className={styles.btnReset}
-            >
-              Reset
-            </button>
+            <button onClick={() => { setFilterTglMulai(""); setFilterTglAkhir(""); setFilterKelas(""); setPage(1); }} className={styles.btnReset}>Reset</button>
           </div>
         </div>
 
@@ -602,10 +441,8 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
           <table className={styles.tabelDataBawah}>
             <thead>
               <tr className={styles.trHeaderTabel}>
-                <th className={styles.thTabelData}>Tanggal & Waktu</th>
-                <th className={styles.thTabelData}>Kelas</th>
-                <th className={styles.thTabelData}>Mapel</th>
-                <th className={styles.thTabelData}>Pengajar</th>
+                <th className={styles.thTabelData}>Tanggal & Waktu</th><th className={styles.thTabelData}>Kelas</th>
+                <th className={styles.thTabelData}>Mapel</th><th className={styles.thTabelData}>Pengajar</th>
                 {!isKakakAsuh && <th className={styles.thTabelData} style={{ textAlign: 'center' }}>Aksi</th>}
               </tr>
             </thead>
@@ -624,23 +461,16 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                     <td className={styles.tdDataTabel}>
                       <div style={{ fontWeight: '900' }}>👨‍🏫 {j.kodePengajar || 'Belum diatur'}</div>
                       <div style={{ fontSize: '12px', fontWeight: '800', color: '#6b7280' }}>Pertemuan ke-{j.pertemuan || '?'}</div>
-                      {/* Tampilkan info cabang jika Super Admin sedang tidak memfilter spesifik cabang */}
                       {isSuperAdmin && !filterCabang && j.pengajarId?.kodeCabang && (
-                        <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold', marginTop: '4px' }}>
-                          Cabang: {j.pengajarId.kodeCabang}
-                        </div>
+                        <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold', marginTop: '4px' }}>Cabang: {j.pengajarId.kodeCabang}</div>
                       )}
                     </td>
                     
                     {!isKakakAsuh && (
                       <td className={styles.tdDataTabel} style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                          <button onClick={() => klikKartuJadwal(j, "permanen")} className={`${styles.tombolAksi} ${styles.btnEdit}`}>
-                            Edit
-                          </button>
-                          <button onClick={() => klikHapusJadwalBawah(j._id, j.mapel, j.kelasTarget)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>
-                             Hapus
-                          </button>
+                          <button onClick={() => klikKartuJadwal(j, "permanen")} className={`${styles.tombolAksi} ${styles.btnEdit}`}>Edit</button>
+                          <button onClick={() => klikHapusJadwalBawah(j._id, j.mapel, j.kelasTarget)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>Hapus</button>
                         </div>
                       </td>
                     )}
@@ -650,7 +480,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
             </tbody>
           </table>
         </div>
-        <PaginationBar totalPages={totalPage} />
+        <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
 
       {/* ==================== MODAL TAMBAH (DROP) ==================== */}
@@ -680,14 +510,9 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
       {modalEditTerbuka && jadwalEdit && (
         <div className={styles.overlayModal}>
           <div className={styles.kotakModal}>
-            <h3 className={styles.headerModal}>
-              ✏️ Aksi Jadwal <FaXmark cursor="pointer" onClick={() => setModalEditTerbuka(false)} />
-            </h3>
-            
+            <h3 className={styles.headerModal}>✏️ Aksi Jadwal <FaXmark cursor="pointer" onClick={() => setModalEditTerbuka(false)} /></h3>
             <div className={styles.infoModalWadah} style={{ backgroundColor: tipeEdit === 'draft' ? '#dbeafe' : '#f3f4f6' }}>
-              <div style={{ color: tipeEdit === 'draft' ? '#2563eb' : '#4b5563', fontWeight: '900', marginBottom: '8px' }}>
-                {tipeEdit === 'draft' ? '✨ Mode Draft' : '💾 Database Permanen'}
-              </div>
+              <div style={{ color: tipeEdit === 'draft' ? '#2563eb' : '#4b5563', fontWeight: '900', marginBottom: '8px' }}>{tipeEdit === 'draft' ? '✨ Mode Draft' : '💾 Database Permanen'}</div>
               <div>Mapel: <span style={{ color: '#111827' }}>{jadwalEdit.mapel}</span></div>
               <div>Kelas: <span>{jadwalEdit.kelasTarget}</span></div>
             </div>
@@ -697,21 +522,12 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                 <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>
                   {isMemuatKuis ? "⏳ Memeriksa status kuis..." : (daftarStatusKuis[jadwalEdit._id] === 'siap' ? "✅ Kuis untuk kelas ini sudah disiapkan." : "⚠️ Kuis untuk kelas ini belum ada.")}
                 </p>
-
                 {daftarStatusKuis[jadwalEdit._id] === 'siap' ? (
-                  <button 
-                    onClick={handleLepasKuis}
-                    disabled={isMemprosesKuis || isMemuatKuis}
-                    style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', color: 'white', border: '3px solid #7f1d1d', borderRadius: '8px', fontWeight: '900', fontSize: '14px', cursor: (isMemprosesKuis || isMemuatKuis) ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '3px 3px 0 #7f1d1d' }}
-                  >
+                  <button onClick={handleLepasKuis} disabled={isMemprosesKuis || isMemuatKuis} style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', color: 'white', border: '3px solid #7f1d1d', borderRadius: '8px', fontWeight: '900', fontSize: '14px', cursor: (isMemprosesKuis || isMemuatKuis) ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '3px 3px 0 #7f1d1d' }}>
                     <FaTrashCan size={16} /> {isMemprosesKuis ? "MEMPROSES..." : "BATALKAN / LEPAS KUIS"}
                   </button>
                 ) : (
-                  <button 
-                    onClick={bukaPanelBankSoal}
-                    disabled={isMemprosesKuis || isMemuatKuis}
-                    style={{ width: '100%', padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: '3px solid #1e3a8a', borderRadius: '8px', fontWeight: '900', fontSize: '14px', cursor: (isMemprosesKuis || isMemuatKuis) ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '3px 3px 0 #1e3a8a' }}
-                  >
+                  <button onClick={bukaPanelBankSoal} disabled={isMemprosesKuis || isMemuatKuis} style={{ width: '100%', padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: '3px solid #1e3a8a', borderRadius: '8px', fontWeight: '900', fontSize: '14px', cursor: (isMemprosesKuis || isMemuatKuis) ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '3px 3px 0 #1e3a8a' }}>
                     <FaListUl size={16} /> {isMemprosesKuis ? "MEMPROSES..." : "PILIH DARI BANK SOAL"}
                   </button>
                 )}
@@ -719,40 +535,15 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
             )}
 
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ flex: 1 }}>
-                <label className={styles.labelModal}>Jam Mulai</label>
-                <input type="time" value={formEdit.jamMulai} onChange={e => setFormEdit({...formEdit, jamMulai: e.target.value})} className={styles.inputModal} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label className={styles.labelModal}>Jam Selesai</label>
-                <input type="time" value={formEdit.jamSelesai} onChange={e => setFormEdit({...formEdit, jamSelesai: e.target.value})} className={styles.inputModal} />
-              </div>
+              <div style={{ flex: 1 }}><label className={styles.labelModal}>Jam Mulai</label><input type="time" value={formEdit.jamMulai} onChange={e => setFormEdit({...formEdit, jamMulai: e.target.value})} className={styles.inputModal} /></div>
+              <div style={{ flex: 1 }}><label className={styles.labelModal}>Jam Selesai</label><input type="time" value={formEdit.jamSelesai} onChange={e => setFormEdit({...formEdit, jamSelesai: e.target.value})} className={styles.inputModal} /></div>
             </div>
-
-            <div className={styles.wadahInputModal}>
-              <label className={styles.labelModal}>Nama Pengajar</label>
-              <input type="text" value={formEdit.pengajar} onChange={e => setFormEdit({...formEdit, pengajar: e.target.value})} className={styles.inputModal} />
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <label className={styles.labelModal}>Pertemuan Ke-</label>
-              <input type="number" value={formEdit.pertemuan} onChange={e => setFormEdit({...formEdit, pertemuan: e.target.value})} className={styles.inputModal} />
-            </div>
+            <div className={styles.wadahInputModal}><label className={styles.labelModal}>Nama Pengajar</label><input type="text" value={formEdit.pengajar} onChange={e => setFormEdit({...formEdit, pengajar: e.target.value})} className={styles.inputModal} /></div>
+            <div style={{ marginBottom: '24px' }}><label className={styles.labelModal}>Pertemuan Ke-</label><input type="number" value={formEdit.pertemuan} onChange={e => setFormEdit({...formEdit, pertemuan: e.target.value})} className={styles.inputModal} /></div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button 
-                onClick={hapusDariPapan} disabled={isProsesEdit}
-                style={{ flex: 1, backgroundColor: '#ef4444', color: 'white', border: '3px solid #111827', padding: '12px', borderRadius: '8px', fontWeight: '900', fontSize: '14px', textTransform: 'uppercase', cursor: isProsesEdit ? 'not-allowed' : 'pointer', boxShadow: '4px 4px 0 #111827', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
-              >
-                <FaTrashCan /> Hapus
-              </button>
-              
-              <button 
-                onClick={simpanPerubahanJadwal} disabled={isProsesEdit}
-                style={{ flex: 2, backgroundColor: '#facc15', color: '#111827', border: '3px solid #111827', padding: '12px', borderRadius: '8px', fontWeight: '900', fontSize: '14px', textTransform: 'uppercase', cursor: isProsesEdit ? 'not-allowed' : 'pointer', boxShadow: '4px 4px 0 #111827', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
-              >
-                {isProsesEdit ? 'Memproses...' : <><FaPenToSquare /> Simpan Edit</>}
-              </button>
+              <button onClick={hapusDariPapan} disabled={isProsesEdit} style={{ flex: 1, backgroundColor: '#ef4444', color: 'white', border: '3px solid #111827', padding: '12px', borderRadius: '8px', fontWeight: '900', fontSize: '14px', textTransform: 'uppercase', cursor: isProsesEdit ? 'not-allowed' : 'pointer', boxShadow: '4px 4px 0 #111827', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}><FaTrashCan /> Hapus</button>
+              <button onClick={simpanPerubahanJadwal} disabled={isProsesEdit} style={{ flex: 2, backgroundColor: '#facc15', color: '#111827', border: '3px solid #111827', padding: '12px', borderRadius: '8px', fontWeight: '900', fontSize: '14px', textTransform: 'uppercase', cursor: isProsesEdit ? 'not-allowed' : 'pointer', boxShadow: '4px 4px 0 #111827', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>{isProsesEdit ? 'Memproses...' : <><FaPenToSquare /> Simpan Edit</>}</button>
             </div>
           </div>
         </div>
@@ -762,14 +553,10 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
       {isModalBankOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '4px solid #111827', width: '100%', maxWidth: '600px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '8px 8px 0 #111827' }}>
-            
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #111827', paddingBottom: '16px', marginBottom: '16px' }}>
               <h2 style={{ margin: '0 0 12px 0', fontWeight: '900', color: '#111827' }}>PILIH PAKET SOAL</h2>
-              <button onClick={() => setIsModalBankOpen(false)} style={{ background: 'white', border: '3px solid #111827', borderRadius: '8px', padding: '6px', cursor: 'pointer', boxShadow: '2px 2px 0 #ef4444' }}>
-                <FaXmark size={20} color="#ef4444" />
-              </button>
+              <button onClick={() => setIsModalBankOpen(false)} style={{ background: 'white', border: '3px solid #111827', borderRadius: '8px', padding: '6px', cursor: 'pointer', boxShadow: '2px 2px 0 #ef4444' }}><FaXmark size={20} color="#ef4444" /></button>
             </div>
-
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {loadingBank ? (
                 <p style={{ textAlign: 'center', fontWeight: 'bold' }}>Memuat Bank Soal...</p>
@@ -781,30 +568,16 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                         <h4 style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '16px' }}>{bank.judul || "Tanpa Judul"}</h4>
-                        
-                        {/*INDIKATOR CABANG / PUSAT */}
-                        {bank.isOfficial ? (
-                          <span style={{ background: '#facc15', color: '#713f12', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #713f12' }}>👑 PUSAT</span>
-                        ) : (
-                          <span style={{ background: '#e2e8f0', color: '#334155', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #334155' }}>🏠 LOKAL</span>
-                        )}
+                        {bank.isOfficial ? (<span style={{ background: '#facc15', color: '#713f12', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #713f12' }}>👑 PUSAT</span>) : (<span style={{ background: '#e2e8f0', color: '#334155', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #334155' }}>🏠 LOKAL</span>)}
                       </div>
-                      
                       <p style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>{bank.soal?.length || 0} Soal • {bank.durasi || 10} Menit</p>
                       <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#94a3b8' }}>Dibuat oleh: {bank.pembuatId?.nama || "Sistem"}</p>
                     </div>
-                    <button 
-                      onClick={() => handlePilihBankSoal(bank._id)} 
-                      disabled={isMemprosesKuis}
-                      style={{ padding: '10px 16px', background: '#22c55e', color: '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMemprosesKuis ? 'wait' : 'pointer' }}
-                    >
-                      {isMemprosesKuis ? "..." : "TERAPKAN"}
-                    </button>
+                    <button onClick={() => handlePilihBankSoal(bank._id)} disabled={isMemprosesKuis} style={{ padding: '10px 16px', background: '#22c55e', color: '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMemprosesKuis ? 'wait' : 'pointer' }}>{isMemprosesKuis ? "..." : "TERAPKAN"}</button>
                   </div>
                 ))
               )}
             </div>
-
           </div>
         </div>
       )}

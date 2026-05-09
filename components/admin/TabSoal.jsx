@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-// FIX: Import navigasi Next.js untuk Pagination
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+// 🚀 FIX: Import navigasi Next.js (useSearchParams dll) dihapus total
 
 import { 
   ambilSemuaLatihanSoal, 
@@ -19,10 +18,6 @@ import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
 export default function TabSoal({ dataSiswa = [] }) {
-  // SETUP URL-DRIVEN STATE
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   const [dataSoal, setDataSoal] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +27,9 @@ export default function TabSoal({ dataSiswa = [] }) {
   
   // STATE FILTER PENCARIAN
   const [searchQuery, setSearchQuery] = useState("");
-  const currentPage = Number(searchParams.get("page")) || 1;
+  
+  // 🚀 FIX: Pagination pindah ke RAM memori!
+  const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5; // Batas data per halaman
 
   const initialForm = {
@@ -44,13 +41,9 @@ export default function TabSoal({ dataSiswa = [] }) {
   };
   const [form, setForm] = useState(initialForm);
 
-  // FUNGSI PENAWAR BUG PAGINATION
+  // 🚀 FIX: Fungsi Reset Halaman kini secepat kilat (0 lag)
   const resetHalamanKeSatu = () => {
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -273,9 +266,9 @@ export default function TabSoal({ dataSiswa = [] }) {
           </table>
         </div>
 
-        {/* RENDER PAGINATION BAR */}
+        {/* 🚀 FIX: Pasang kabel Pagination RAM */}
         <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-          <PaginationBar totalPages={totalPages} />
+          <PaginationBar totalPages={totalPages} currentPage={currentPage} onPageChange={setCurrentPage} />
         </div>
         
       </div>

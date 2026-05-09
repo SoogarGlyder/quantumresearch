@@ -4,7 +4,7 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react"; 
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"; // 🚀 FIX: Hanya sisakan useRouter untuk refresh data
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -21,12 +21,10 @@ import styles from "../../app/admin/AdminPage.module.css";
 // 2. MAIN COMPONENT (TAB KONSUL)
 // ============================================================================
 export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
   const router = useRouter(); 
-  const { replace } = router;
 
-  const page = Number(searchParams.get("page")) || 1;
+  // 🚀 FIX: Pagination pindah ke Memory RAM!
+  const [page, setPage] = useState(1);
   
   const [filterTglKonsul, setFilterTglKonsul] = useState(""); 
   const [filterMapel, setFilterMapel] = useState("");
@@ -50,13 +48,8 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // FUNGSI BARU: Membersihkan parameter 'page' dari URL
   const resetHalamanKeSatu = () => {
-    const params = new URLSearchParams(searchParams);
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
+    setPage(1);
   };
 
   useEffect(() => {
@@ -64,18 +57,16 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
     setFilterNama("");
     setFilterKelasKonsul("");
     setFilterMapel("");
-    resetHalamanKeSatu(); // Pastikan kembali ke halaman 1 saat ganti bulan
+    resetHalamanKeSatu();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulanAktif]);
-
-  // ❌ PERBAIKAN: useEffect yang membuat pagination macet sudah DIHAPUS
 
   const resetFilter = () => {
     setFilterTglKonsul("");
     setFilterMapel("");
     setFilterNama("");
     setFilterKelasKonsul(""); 
-    resetHalamanKeSatu(); // Reset halaman ke 1 saat tombol reset ditekan
+    resetHalamanKeSatu(); 
   };
 
   const riwayatBulanIni = useMemo(() => {
@@ -144,7 +135,7 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
     const hasil = await paksaHentikanSesi(idSesi, durasi);
     if (hasil.sukses) {
       alert(hasil.pesan);
-      router.refresh();
+      router.refresh(); // Ini aman dan instan untuk refresh data server
     } else {
       alert(hasil.pesan);
     }
@@ -308,7 +299,8 @@ export default function TabKonsul({ dataRiwayat = [], bulanAktif }) {
       </div>
       
       <div style={{ marginTop: '24px' }}>
-        <PaginationBar totalPages={totalPage} />
+        {/* 🚀 FIX: Pasang kabel PaginationBar */}
+        <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
     </div>
   );

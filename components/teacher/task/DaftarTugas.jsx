@@ -5,7 +5,7 @@ import { FaBookOpen, FaBullseye, FaPenToSquare, FaTrash, FaLink, FaPlus } from "
 import PaginationBar from "@/components/ui/PaginationBar"; // 🚀 FIX: Impor Pagination
 import styles from "@/components/App.module.css";
 
-const DaftarTugas = memo(({ dataHalIni, totalPage, loading, onEdit, onHapus, onBukaForm }) => (
+const DaftarTugas = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loading, onEdit, onHapus, onBukaForm }) => (
   <div className={styles.contentContainer}>
     
     <div style={{ padding: '0 16px', marginBottom: '24px' }}>
@@ -47,7 +47,12 @@ const DaftarTugas = memo(({ dataHalIni, totalPage, loading, onEdit, onHapus, onB
 
         {/* 🚀 FIX: Render Pagination */}
         <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-          <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} />
+          <PaginationBar 
+            currentPage={currentPage} 
+            totalPages={totalPage} 
+            onPageChange={onPageChange} 
+            style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} 
+          />
         </div>
       </>
     )}
