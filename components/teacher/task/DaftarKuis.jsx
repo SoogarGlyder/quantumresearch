@@ -2,9 +2,10 @@
 
 import { memo } from "react";
 import { FaBrain, FaPlus, FaUserTie, FaPenToSquare, FaTrashCan } from "react-icons/fa6";
+import PaginationBar from "@/components/ui/PaginationBar"; // 🚀 FIX: Impor Pagination
 import styles from "@/components/App.module.css";
 
-const DaftarKuis = memo(({ dataBankSoal, loading, onBuatBaru, onEdit, onHapus }) => (
+const DaftarKuis = memo(({ dataHalIni, totalPage, loading, onBuatBaru, onEdit, onHapus }) => (
   <div style={{ padding: '24px 16px' }}>
     
     <button 
@@ -16,38 +17,45 @@ const DaftarKuis = memo(({ dataBankSoal, loading, onBuatBaru, onEdit, onHapus })
 
     {loading ? (
       <div style={{ textAlign: 'center', padding: '40px', fontWeight: '900', color: '#111827' }}>MEMUAT BANK SOAL...</div>
-    ) : (!dataBankSoal || dataBankSoal.length === 0) ? (
+    ) : (!dataHalIni || dataHalIni.length === 0) ? (
       <div style={{ textAlign: 'center', padding: '40px', border: '3px dashed #cbd5e1', borderRadius: '15px', color: '#64748b', fontWeight: 'bold' }}>
         Belum ada master soal CBT. Silakan buat baru.
       </div>
     ) : (
-      <div style={{ display: 'grid', gap: '16px' }}>
-        {dataBankSoal.map((bank) => (
-          <div key={bank._id} style={{ background: 'white', border: '4px solid #111827', borderRadius: '15px', padding: '16px', boxShadow: '4px 4px 0 #cbd5e1', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1 }}>
-              <h4 style={{ margin: '0 0 6px 0', fontWeight: '900', fontSize: '18px', color: '#111827', textTransform: 'uppercase', lineHeight: '1.3' }}>
-                {bank.judul || "Tanpa Judul"}
-              </h4>
-              <p style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 'bold', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <FaUserTie /> Oleh: {bank.pembuatId?.nama || "Admin Sistem"}
-              </p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                <span style={{ background: '#fef08a', color: '#854d0e', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: '2px solid #a16207' }}>📝 {bank.soal?.length || 0} SOAL</span>
-                <span style={{ background: '#e2e8f0', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: '2px solid #475569' }}>⏱ {bank.durasi || 10} MENIT</span>
+      <>
+        <div style={{ display: 'grid', gap: '16px' }}>
+          {dataHalIni.map((bank) => (
+            <div key={bank._id} style={{ background: 'white', border: '4px solid #111827', borderRadius: '15px', padding: '16px', boxShadow: '4px 4px 0 #cbd5e1', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: '0 0 6px 0', fontWeight: '900', fontSize: '18px', color: '#111827', textTransform: 'uppercase', lineHeight: '1.3' }}>
+                  {bank.judul || "Tanpa Judul"}
+                </h4>
+                <p style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 'bold', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FaUserTie /> Oleh: {bank.pembuatId?.nama || "Admin Sistem"}
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                  <span style={{ background: '#fef08a', color: '#854d0e', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: '2px solid #a16207' }}>📝 {bank.soal?.length || 0} SOAL</span>
+                  <span style={{ background: '#e2e8f0', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: '2px solid #475569' }}>⏱ {bank.durasi || 10} MENIT</span>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                <button onClick={() => onEdit(bank)} style={{ flex: 1, padding: '10px', background: '#facc15', color: '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <FaPenToSquare /> EDIT
+                </button>
+                <button onClick={() => onHapus(bank._id, bank.judul)} style={{ padding: '10px 15px', background: '#ef4444', color: 'white', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>
+                  <FaTrashCan />
+                </button>
               </div>
             </div>
-            
-            <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-              <button onClick={() => onEdit(bank)} style={{ flex: 1, padding: '10px', background: '#facc15', color: '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <FaPenToSquare /> EDIT
-              </button>
-              <button onClick={() => onHapus(bank._id, bank.judul)} style={{ padding: '10px 15px', background: '#ef4444', color: 'white', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>
-                <FaTrashCan />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+
+        {/* 🚀 FIX: Render Pagination */}
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+          <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly', width: '100%' }} />
+        </div>
+      </>
     )}
   </div>
 ));

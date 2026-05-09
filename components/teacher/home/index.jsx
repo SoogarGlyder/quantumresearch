@@ -11,40 +11,50 @@ import JadwalMendatang from "./JadwalMendatang";
 import ModalJurnal from "@/components/teacher/journal/ModalJurnal"; 
 import WidgetRadarCBT from "./WidgetRadarCBT";
 
-// HELPER: Safari-Safe Date Normalizer (Zona Waktu Jakarta)
+// 🚀 FIX: HELPER: Ultimate Safari & Old iOS Safe Date Normalizer
 const getNormalizeDate = (dateInput) => {
   if (!dateInput) return 0;
   
   try {
-    // Tangani jika input berupa string atau object Date
-    const dateObj = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    // 1. SAFARI STRING HACK: Ubah "-" jadi "/" karena iOS benci format YYYY-MM-DD
+    let dateObj;
+    if (typeof dateInput === 'string') {
+      let cleanStr = dateInput;
+      if (!cleanStr.includes('T')) {
+         cleanStr = cleanStr.replace(/-/g, '/'); 
+      }
+      dateObj = new Date(cleanStr);
+    } else {
+      dateObj = new Date(dateInput);
+    }
+
+    // Jika format benar-benar hancur, amankan
+    if (isNaN(dateObj.getTime())) return 0;
     
-    // Konversi ke format string spesifik timezone Jakarta, lalu buat Date object baru darinya
-    // Ini menghilangkan semua bias timezone lokal dari perangkat user/safari
+    // 2. Dapatkan string waktu Jakarta (MM/DD/YYYY, hh:mm:ss AM)
     const jktString = dateObj.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
-    const jktDate = new Date(jktString);
     
-    // Reset jam, menit, detik agar kita hanya membandingkan "Hari"-nya saja
-    jktDate.setHours(0, 0, 0, 0);
+    // 3. iOS KILLER FIX: Jangan parse ulang stringnya pakai new Date(jktString)!
+    // Kita "Culik" paksa angkanya saja menggunakan Regex
+    const datePart = jktString.split(',')[0]; // Ambil "MM/DD/YYYY" nya saja
+    const [month, day, year] = datePart.match(/\d+/g); // Ekstrak 3 angka murninya
+    
+    // 4. Rakit ulang Date menggunakan Angka (100% didukung semua browser)
+    // Perhatian: Di Javascript, bulan dimulai dari 0 (Januari = 0)
+    const jktDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    
     return jktDate.getTime();
   } catch (error) {
-    return 0; // Jika format benar-benar hancur, abaikan
+    return 0; 
   }
 };
 
 export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = [], absenAktif }) {
-  // Ambil hari ini murni (jam 00:00:00 di Jakarta)
   const hariIniMurni = getNormalizeDate(new Date());
-  
-  // Karena Modal Jurnal butuh format YYYY-MM-DD
   const hariIniString = timeHelper.getTglJakarta(); 
   
   const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
 
-  // ===================================================================
-  // PERBAIKAN BUG SAFARI: Filter menggunakan angka murni (getTime)
-  // ===================================================================
-  
   // 1. FILTER: Jadwal Hari Ini
   const jadwalHariIni = useMemo(() => (jadwal || [])
     .filter(j => {
@@ -80,16 +90,13 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = []
       
       <WidgetRadarCBT jadwalHariIni={jadwalHariIni} />
       
-      {/* SECTION 1: Agenda Hari Ini */}
       <AgendaHariIni jadwalHariIni={jadwalHariIni} onPilihJadwal={setJadwalTerpilih} />
       
-      {/* SECTION 2: Jadwal Mendatang */}
       <JadwalMendatang 
         jadwalMendatang={jadwalMendatang} 
         onPilihJadwal={setJadwalTerpilih} 
       />
 
-      {/* MODAL JURNAL */}
       {jadwalTerpilih && (
         <ModalJurnal jadwalTerpilih={jadwalTerpilih} hariIni={hariIniString} onClose={() => setJadwalTerpilih(null)} />
       )}

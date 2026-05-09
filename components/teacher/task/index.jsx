@@ -1,33 +1,40 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-// FIX: Import FaLock dan FaDesktop untuk UI Tembok Peringatan
+import { useState, useEffect, useRef, useMemo, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { FaLock, FaDesktop } from "react-icons/fa6";
 
 // IMPOR API & KOMPONEN
 import { ambilSemuaLatihanSoal, prosesSimpanLatihanSoal, prosesHapusLatihanSoal, ambilDaftarSiswaDropdown } from "@/actions/soalAction";
 import { ambilSemuaBankSoal, hapusBankSoal } from "@/actions/quizAction";
+import { potongDataPagination } from "@/utils/formatHelper"; // 🚀 FIX: Alat potong data
 
-import { OPSI_KELAS } from "@/utils/constants";
+import { OPSI_KELAS, LIMIT_DATA } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
 // IMPOR ANAK KOMPONEN
 import HeaderTugas from "./HeaderTugas";
 import TabSelector from "./TabSelector"; 
+import FilterTugas from "./FilterTugas"; // 🚀 FIX: Komponen pencari
 import DaftarTugas from "./DaftarTugas";
 import DaftarKuis from "./DaftarKuis"; 
 import ModalFormTugas from "./ModalFormTugas";
 import ModalKuis from "@/components/admin/ModalKuis"; 
 
-export default function TabTugasPengajar({ pengajarId }) { 
+// 🚀 FIX: Komponen Inti dipisah agar bisa dibungkus Suspense
+function InnerTabTugas({ pengajarId }) { 
   const [activeTab, setActiveTab] = useState("TUGAS"); 
-  
-  // FIX: State untuk mendeteksi layar kecil
   const [isLayarKecil, setIsLayarKecil] = useState(false);
+  
+  // State untuk kotak pencarian & pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
 
-  // =========================================================
-  // 0. DETEKSI UKURAN LAYAR (KHUSUS CBT)
-  // =========================================================
+  const page = Number(searchParams.get("page")) || 1;
+  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_BAHAN || 3;
+
   useEffect(() => {
     const cekLayar = () => {
       setIsLayarKecil(window.innerWidth < 1024);
@@ -37,9 +44,16 @@ export default function TabTugasPengajar({ pengajarId }) {
     return () => window.removeEventListener("resize", cekLayar);
   }, []);
 
-  // =========================================================
-  // 1. STATE & LOGIKA TUGAS & MATERI
-  // =========================================================
+  // Reset halaman saat ngetik atau pindah tab
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (params.has("page")) {
+      params.delete("page");
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, activeTab]);
+
   const [dataSoal, setDataSoal] = useState([]);
   const [dataSiswa, setDataSiswa] = useState([]);
   const [loadingTugas, setLoadingTugas] = useState(true);
@@ -103,9 +117,6 @@ export default function TabTugasPengajar({ pengajarId }) {
     }
   };
 
-  // =========================================================
-  // 2. STATE & LOGIKA BANK SOAL CBT
-  // =========================================================
   const [dataBankSoal, setDataBankSoal] = useState([]);
   const [loadingBank, setLoadingBank] = useState(false);
   
@@ -136,7 +147,7 @@ export default function TabTugasPengajar({ pengajarId }) {
   };
 
   const bukaModalBuatCBT = () => { 
-    if (isLayarKecil) return; // Mencegah pemaksaan buka jika layar kecil
+    if (isLayarKecil) return; 
     setKuisAktif(null); 
     setIsModalKuisOpen(true); 
   };
@@ -152,26 +163,51 @@ export default function TabTugasPengajar({ pengajarId }) {
     muatBankSoal();
   };
 
-  // =========================================================
-  // RENDER UI
-  // =========================================================
-  return (
-    <div className={styles.contentArea}>
-      
-      {/* 1. HEADER */}
-      <HeaderTugas totalTugas={dataSoal?.length || 0} totalKuis={dataBankSoal?.length || 0} mode={activeTab} />
+  // 🚀 FITUR BARU: MESIN PENCARI TUGAS (AND Koma)
+  const tugasDitampilkan = useMemo(() => {
+    if (!searchQuery.trim()) return dataSoal;
+    const keywords = searchQuery.toLowerCase().split(',').map(k => k.trim()).filter(k => k.length > 0);
+    return dataSoal.filter(item => {
+      return keywords.every(kw => (
+        (item?.judul?.toLowerCase() || "").includes(kw) ||
+        (item?.tipeTarget?.toLowerCase() || "").includes(kw) ||
+        (item?.target?.toLowerCase() || "").includes(kw)
+      ));
+    });
+  }, [dataSoal, searchQuery]);
 
-      {/* 2. TAB SWITCHER (Sudah jadi 1 baris bersih) */}
+  // 🚀 FITUR BARU: MESIN PENCARI BANK SOAL CBT (AND Koma)
+  const kuisDitampilkan = useMemo(() => {
+    if (!searchQuery.trim()) return dataBankSoal;
+    const keywords = searchQuery.toLowerCase().split(',').map(k => k.trim()).filter(k => k.length > 0);
+    return dataBankSoal.filter(bank => {
+      return keywords.every(kw => (
+        (bank?.judul?.toLowerCase() || "").includes(kw) ||
+        (bank?.pembuatId?.nama?.toLowerCase() || "").includes(kw)
+      ));
+    });
+  }, [dataBankSoal, searchQuery]);
+
+  // 🚀 FIX: Potong data yang sudah difilter
+  const { totalPage: totalPageTugas, dataTerpotong: dataTugasHalIni } = potongDataPagination(tugasDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage: totalPageKuis, dataTerpotong: dataKuisHalIni } = potongDataPagination(kuisDitampilkan, page, ITEMS_PER_PAGE);
+
+  return (
+    <>
+      <HeaderTugas totalTugas={dataSoal?.length || 0} totalKuis={dataBankSoal?.length || 0} mode={activeTab} />
       <TabSelector activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* 3. AREA KONTEN */}
-      {activeTab === "TUGAS" && (
-        <DaftarTugas dataSoal={dataSoal} loading={loadingTugas} onEdit={klikEditTugas} onHapus={klikHapusTugas} onBukaForm={() => setIsFormOpen(true)} />
+      {/* Sembunyikan pencarian jika CBT terkunci karena layar kecil */}
+      {!(activeTab === "BANK_SOAL" && isLayarKecil) && (
+        <FilterTugas searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       )}
 
-      {/* FIX: Render kondisional untuk Bank Soal CBT berdasarkan lebar layar */}
+      {activeTab === "TUGAS" && (
+        <DaftarTugas dataHalIni={dataTugasHalIni} totalPage={totalPageTugas} loading={loadingTugas} onEdit={klikEditTugas} onHapus={klikHapusTugas} onBukaForm={() => setIsFormOpen(true)} />
+      )}
+
       {activeTab === "BANK_SOAL" && isLayarKecil ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 20px 40px', textAlign: 'center' }}>
           <div style={{ backgroundColor: '#ef4444', padding: '30px', borderRadius: '24px', border: '6px solid #111827', boxShadow: '8px 8px 0 #111827', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
             <FaLock size={64} color="#111827" />
             <h1 style={{ margin: 0, color: 'white', fontWeight: '900', fontSize: '24px', textTransform: 'uppercase', lineHeight: '1.2' }}>Layar Terlalu Kecil</h1>
@@ -198,20 +234,28 @@ export default function TabTugasPengajar({ pengajarId }) {
         </div>
       ) : (
         activeTab === "BANK_SOAL" && (
-          <DaftarKuis dataBankSoal={dataBankSoal} loading={loadingBank} onBuatBaru={bukaModalBuatCBT} onEdit={bukaModalEditCBT} onHapus={klikHapusBankSoal} />
+          <DaftarKuis dataHalIni={dataKuisHalIni} totalPage={totalPageKuis} loading={loadingBank} onBuatBaru={bukaModalBuatCBT} onEdit={bukaModalEditCBT} onHapus={klikHapusBankSoal} />
         )
       )}
 
-      {/* 4. AREA MODAL */}
       {isFormOpen && (
         <ModalFormTugas form={form} setForm={setForm} idEdit={idEdit} dataSiswa={dataSiswa} onSimpan={handleSimpanTugas} onBatal={batalEditTugas} loadingForm={loadingForm} />
       )}
 
-      {/* FIX: Cegah render ModalKuis jika layar kecil, lapis pertahanan ekstra! */}
       {isModalKuisOpen && !isLayarKecil && (
         <ModalKuis isOpen={isModalKuisOpen} onClose={tutupModalCBT} jadwal={{ _id: "MODE_BANK_SOAL", mapel: kuisAktif?.judul || "SOAL BARU", kelasTarget: "Gudang Soal" }} kuisLama={kuisAktif} adminId={pengajarId} muatData={muatBankSoal} />
       )}
+    </>
+  );
+}
 
+// 🚀 FIX: Komponen Utama berfungsi sebagai penangkap Loading Vercel
+export default function TabTugasPengajar({ pengajarId }) {
+  return (
+    <div className={styles.contentArea}>
+      <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold' }}>Memuat Ruang Tugas...</div>}>
+        <InnerTabTugas pengajarId={pengajarId} />
+      </Suspense>
     </div>
   );
 }
