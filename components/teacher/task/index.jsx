@@ -171,8 +171,30 @@ function InnerTabTugas({ pengajarId }) {
       )}
 
       {activeTab === "BANK_SOAL" && isLayarKecil ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 20px 40px', textAlign: 'center' }}>
-          {/* ... UI Layar Kecil sama persis ... */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center' }}>
+          <div style={{ backgroundColor: '#ef4444', padding: '30px', borderRadius: '24px', border: '6px solid #111827', boxShadow: '8px 8px 0 #111827', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+            <FaLock size={64} color="#111827" />
+            <h1 style={{ margin: 0, color: 'white', fontWeight: '900', fontSize: '24px', textTransform: 'uppercase', lineHeight: '1.2' }}>Layar Terlalu Kecil</h1>
+            <p style={{ margin: 0, color: '#fef08a', fontWeight: 'bold', fontSize: '15px', lineHeight: '1.5' }}>
+              Fitur Rakit Soal CBT sangat kompleks dan membutuhkan ruang layar yang luas.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#111827', padding: '12px 16px', borderRadius: '12px', marginTop: '10px' }}>
+              <FaDesktop color="#4ade80" size={24} />
+              <span style={{ color: 'white', fontWeight: '900', fontSize: '14px', textAlign: 'left' }}>
+                Silakan akses menu ini menggunakan PC, Laptop, atau Tablet (Landscape).
+              </span>
+            </div>
+            <button 
+              onClick={() => setActiveTab("TUGAS")} 
+              style={{ 
+                marginTop: '16px', padding: '14px 24px', backgroundColor: '#facc15', color: '#111827', 
+                border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', 
+                cursor: 'pointer', width: '100%', textTransform: 'uppercase' 
+              }}
+            >
+              Kembali ke Tugas
+            </button>
+          </div>
         </div>
       ) : (
         activeTab === "BANK_SOAL" && (
