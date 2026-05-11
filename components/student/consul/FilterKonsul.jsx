@@ -5,7 +5,7 @@ import styles from "@/components/App.module.css";
 
 //FIX: Tangkap prop ringkasanFilter
 const FilterKonsul = memo(({ filterBulan, setFilterBulan, opsiBulan, filterMapel, setFilterMapel, opsiMapel, ringkasanFilter }) => (
-  <div className={styles.filterContainer}>
+  <div className={styles.filterContainer} style={{ padding: '20px 20px' }}>
     <div className={styles.containerDropdownFilter}>
       <select value={filterBulan} onChange={(e) => setFilterBulan(e.target.value)} className={styles.filterOption}>
         <option value="">Semua Bulan</option>

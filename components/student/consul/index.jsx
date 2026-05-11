@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react"; 
-import { useSearchParams, usePathname, useRouter } from "next/navigation"; 
+// 🚀 FIX: useSearchParams, usePathname, useRouter DIHAPUS TOTAL
 import { FaBoxOpen } from "react-icons/fa6";
 
 // PATH ABSOLUTE
@@ -16,24 +16,18 @@ import FilterKonsul from "./FilterKonsul";
 import RecordCard from "./RecordCard";
 
 export default function TabKonsulSiswa({ riwayat = [] }) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
 
-  const page = Number(searchParams.get("page")) || 1;
+  // 🚀 FIX: Jantung Pagination beralih ke RAM (0 Lag)
+  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KONSUL || 10;
 
   const [filterBulan, setFilterBulan] = useState("");
   const [filterMapel, setFilterMapel] = useState("");
   const [idTerbuka, setIdTerbuka] = useState(null);
 
+  // 🚀 FIX: Mereset halaman ke-1 secepat kilat saat filter berubah
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (params.has("page")) {
-      params.delete("page");
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setPage(1);
   }, [filterBulan, filterMapel]);
 
   const dapatkanLabelBulan = (tanggalStr) => {
@@ -151,8 +145,14 @@ export default function TabKonsulSiswa({ riwayat = [] }) {
           ))
         )}
 
+        {/* 🚀 FIX: Sambungkan kabel RAM ke PaginationBar */}
         <div style={{ marginTop: '24px'}}>
-          <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly'}}/>
+          <PaginationBar 
+            totalPages={totalPage} 
+            currentPage={page} 
+            onPageChange={setPage} 
+            style={{ justifyContent: 'space-evenly'}}
+          />
         </div>
 
       </div>

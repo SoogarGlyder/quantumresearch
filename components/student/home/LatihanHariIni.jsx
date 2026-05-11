@@ -1,20 +1,20 @@
 "use client";
 
-import { memo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { memo, Suspense, useState } from "react";
+// 🚀 FIX: useSearchParams dihapus dan diganti dengan useState dari React
 import { FaBookOpen, FaPen, FaUserTie } from "react-icons/fa6";
 
 // PATH ABSOLUTE
 import { potongDataPagination } from "@/utils/formatHelper";
 import PaginationBar from "@/components/ui/PaginationBar";
-import { LIMIT_DATA } from "@/utils/constants"; // 🚀 FIX: Import Limit Data
+import { LIMIT_DATA } from "@/utils/constants"; 
 import styles from "@/components/App.module.css";
 
 const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
-  const searchParams = useSearchParams();
-  const page = Number(searchParams.get("page")) || 1;
   
-  // 🚀 FIX: Gunakan variabel konstan yang sudah Anda tambahkan
+  // 🚀 FIX: Jantung Pagination kini murni pakai RAM (0 Lag)
+  const [page, setPage] = useState(1);
+  
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_BAHAN || 3; 
 
   // Pastikan data selalu berupa array
@@ -66,9 +66,14 @@ const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
               </div>
             ))}
 
-            {/* Pemasangan Pagination Bar */}
+            {/* 🚀 FIX: Pemasangan kabel currentPage dan onPageChange */}
             <div style={{ marginTop: '-12px', display: 'flex', justifyContent: 'center' }}>
-               <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly', width: '100%' }} />
+               <PaginationBar 
+                 totalPages={totalPage} 
+                 currentPage={page} 
+                 onPageChange={setPage} 
+                 style={{ justifyContent: 'space-evenly', width: '100%' }} 
+               />
             </div>
           </>
         ) : (

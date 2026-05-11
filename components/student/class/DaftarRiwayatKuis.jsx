@@ -5,9 +5,10 @@ import { FaCheckDouble, FaAward, FaBrain } from "react-icons/fa6";
 import { PERIODE_BELAJAR } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
-import PaginationBar from "@/components/ui/PaginationBar"; // Import Pagination
+import PaginationBar from "@/components/ui/PaginationBar";
 
-const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, onBukaPembahasan }) => {
+// 🚀 FIX: Tambahkan penerima kabel currentPage dan onPageChange
+const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, currentPage, onPageChange, onBukaPembahasan }) => {
   return (
     <div className={styles.contentContainer}>
       <h3 className={styles.contentTitle}>
@@ -56,9 +57,14 @@ const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, onBukaPembahasan }
             ))}
           </div>
 
-          {/* PAGINATION RENDERED HERE */}
+          {/* 🚀 FIX: Sambungkan kabel ke PaginationBar */}
           <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-            <PaginationBar totalPages={totalPage} style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} />
+            <PaginationBar 
+              totalPages={totalPage} 
+              currentPage={currentPage}
+              onPageChange={onPageChange}
+              style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} 
+            />
           </div>
         </>
       )}
