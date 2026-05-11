@@ -10,10 +10,12 @@ const DaftarKuis = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loa
     
     <button 
       onClick={onBuatBaru} 
-      style={{ width: '100%', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: '#22c55e', color: 'white', border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '4px 4px 0 #111827', marginBottom: '30px' }}
+      style={{ width: '100%', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: '#22c55e', color: 'white', border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '6px 6px 0 #111827', marginBottom: '24px' }}
     >
       <FaPlus size={18} /> RAKIT SOAL CBT BARU
     </button>
+
+    <h3 className={styles.contentTitle} style={{ marginLeft: '0'}}><FaBrain color="rgb(34, 197, 94)" /> Daftar Materi Buatanku</h3>
 
     {loading ? (
       <div style={{ textAlign: 'center', padding: '40px', fontWeight: '900', color: '#111827' }}>MEMUAT BANK SOAL...</div>
@@ -52,7 +54,7 @@ const DaftarKuis = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loa
         </div>
 
         {/* 🚀 FIX: Render Pagination */}
-        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <PaginationBar 
             currentPage={currentPage} 
             totalPages={totalPage} 
