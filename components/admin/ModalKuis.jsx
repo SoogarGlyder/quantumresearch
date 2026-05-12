@@ -11,7 +11,6 @@ import {
   FaDownload
 } from "react-icons/fa6";
 import { CldUploadWidget } from "next-cloudinary";
-// TAMBAHAN: Import simpanBankSoal
 import { simpanKuis, getRiwayatKuisPengajar, ambilKuisByJadwal, simpanBankSoal } from "../../actions/quizAction"; 
 import styles from "../../app/admin/AdminPage.module.css";
 
@@ -30,6 +29,70 @@ import { Highlight } from '@tiptap/extension-highlight';
 
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+
+// ============================================================================
+// 🚀 THE FIX: TRANSLATOR DATABASE <--> REACT STATE
+// ============================================================================
+const konversiSoalKeState = (dataSoalDB) => {
+  return dataSoalDB.map(s => {
+    // 1. Ubah Opsi Array DB [{label: "A", teks: "..."}] -> Object State { A: "...", B: "..." }
+    let opsiObj = { A: "", B: "", C: "", D: "", E: "" };
+    if (Array.isArray(s.opsi)) {
+      s.opsi.forEach(opt => {
+        if (opt.label) opsiObj[opt.label] = opt.teks;
+      });
+    } else if (s.opsi && typeof s.opsi === "object") {
+      opsiObj = { ...opsiObj, ...s.opsi };
+    }
+
+    // 2. Ubah Kunci Jawaban Array DB ["A"] -> String State "A" (Kecuali PG Kompleks)
+    let kunci = s.kunciJawaban;
+    if (s.tipeSoal !== "PG_KOMPLEKS" && Array.isArray(kunci)) {
+      kunci = kunci[0] || "";
+    }
+
+    return {
+      ...s,
+      tipeSoal: s.tipeSoal || "PG",
+      bobotExp: s.bobotExp || 20,
+      jumlahOpsi: s.jumlahOpsi || (Array.isArray(s.opsi) ? s.opsi.length : Object.keys(opsiObj).length) || 5,
+      opsi: opsiObj,
+      kunciJawaban: kunci
+    };
+  });
+};
+
+const konversiStateKeDB = (dataFormState) => {
+  return dataFormState.map(s => {
+    // 1. Kembalikan Object State { A: "..." } -> Array DB [{label: "A", teks: "..."}]
+    let opsiArray = [];
+    if (s.tipeSoal === "PG" || s.tipeSoal === "PG_KOMPLEKS") {
+      const abjads = s.jumlahOpsi === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
+      opsiArray = abjads.map(abj => ({
+        label: abj,
+        teks: s.opsi[abj] || ""
+      }));
+    } else if (s.tipeSoal === "BENAR_SALAH") {
+      opsiArray = [
+        { label: "A", teks: "Benar" },
+        { label: "B", teks: "Salah" }
+      ];
+    }
+
+    // 2. Pastikan Kunci Jawaban selalu masuk ke DB sebagai Array
+    let kunciDB = s.kunciJawaban;
+    if (s.tipeSoal !== "PG_KOMPLEKS") {
+      if (!Array.isArray(kunciDB)) kunciDB = [kunciDB];
+    }
+
+    return {
+      ...s,
+      opsi: opsiArray,
+      kunciJawaban: kunciDB
+    };
+  });
+};
+// ============================================================================
 
 const renderLaTeX = (htmlString) => {
   if (!htmlString) return { __html: "" };
@@ -120,17 +183,13 @@ const QuantumEditor = ({ value, onChange }) => {
 
 // --- 2. MODAL KUIS UTAMA ---
 export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, muatData }) {
-  // DETEKTOR MODE: Apakah ini dipanggil dari Tab Bank Soal?
   const isModeBankSoal = jadwal?._id === "MODE_BANK_SOAL";
 
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [durasiUjian, setDurasiUjian] = useState(10);
-  
-  // STATE BARU: Khusus untuk Judul Paket di Bank Soal
   const [judulBankSoal, setJudulBankSoal] = useState("");
 
-  // STATE KHUSUS IMPORT KUIS
   const [showImportPanel, setShowImportPanel] = useState(false);
   const [listRiwayatKuis, setListRiwayatKuis] = useState([]);
   const [isMengambil, setIsMengambil] = useState(false);
@@ -149,7 +208,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
 
   useEffect(() => {
     if (isOpen) {
-      // Umpan judul jika sedang edit Bank Soal
       if (isModeBankSoal && kuisLama?.judul) {
         setJudulBankSoal(kuisLama.judul);
       } else {
@@ -157,13 +215,8 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
       }
 
       if (kuisLama?.soal?.length > 0) {
-        const mappedSoal = kuisLama.soal.map(s => ({
-          ...s,
-          tipeSoal: s.tipeSoal || "PG",
-          bobotExp: s.bobotExp || 20,
-          jumlahOpsi: s.jumlahOpsi || Object.keys(s.opsi || {}).length || 5
-        }));
-        setFormSoal(mappedSoal);
+        // 🚀 THE FIX: Konversi data saat ditarik dari Database
+        setFormSoal(konversiSoalKeState(kuisLama.soal));
         setDurasiUjian(kuisLama.durasi || 10);
       } else {
         setFormSoal([buatTemplateSoalBaru()]);
@@ -254,13 +307,8 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     setIsMengambil(true);
     const kuisLamaCoy = await ambilKuisByJadwal(jadwalIdLama);
     if (kuisLamaCoy && kuisLamaCoy.soal) {
-       const mappedSoal = kuisLamaCoy.soal.map(s => ({
-         ...s,
-         tipeSoal: s.tipeSoal || "PG",
-         bobotExp: s.bobotExp || 20,
-         jumlahOpsi: s.jumlahOpsi || Object.keys(s.opsi || {}).length || 5
-       }));
-       setFormSoal(mappedSoal);
+       // 🚀 THE FIX: Konversi data saat di-import
+       setFormSoal(konversiSoalKeState(kuisLamaCoy.soal));
        setDurasiUjian(kuisLamaCoy.durasi || 10);
        setShowImportPanel(false);
        alert("✅ Berhasil meng-copy soal! Silakan edit atau langsung klik Publikasikan.");
@@ -274,7 +322,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     e.preventDefault();
     if (!jadwal?._id) return alert("⚠️ Data jadwal tidak valid.");
     
-    // VALIDASI JUDUL KHUSUS BANK SOAL
     if (isModeBankSoal && !judulBankSoal.trim()) {
       return alert("⚠️ Judul Master Soal wajib diisi!");
     }
@@ -290,22 +337,24 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
 
     setLoading(true);
     try {
+      // 🚀 THE FIX: Konversi data ke format Database sebelum dikirim
+      const formSoalSiapSimpan = konversiStateKeDB(formSoal);
+
       let res;
-      // LOGIKA BERCABANG: Simpan ke Koleksi yang Berbeda Tergantung Mode
       if (isModeBankSoal) {
         res = await simpanBankSoal(kuisLama?._id || null, {
           judul: judulBankSoal,
           pembuatId: adminId,
           durasi: durasiUjian,
-          soal: formSoal
+          soal: formSoalSiapSimpan // Gunakan data hasil konversi
         });
       } else {
-        res = await simpanKuis(jadwal._id, adminId, formSoal, durasiUjian);
+        res = await simpanKuis(jadwal._id, adminId, formSoalSiapSimpan, durasiUjian); // Gunakan data hasil konversi
       }
 
       if (res.sukses) {
         alert(isModeBankSoal ? "✅ Master Soal Berhasil Disimpan di Bank!" : "✅ Kuis CBT Berhasil Dipublikasikan!");
-        if (muatData) muatData(); // Refresh list jika ada
+        if (muatData) muatData(); 
         onClose();
       } else { alert("❌ " + res.pesan); }
     } catch (err) { alert("Terjadi kesalahan jaringan."); } 
@@ -323,7 +372,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
           <div style={{ flex: 1, paddingRight: '20px' }}>
             <h2 style={{ margin: 0, fontWeight: '900', textTransform: 'uppercase', color: '#111827', fontSize: '26px' }}>🧠 CBT Engine Pro</h2>
             
-            {/* KONDISIONAL RENDER HEADER (JUDUL VS MAPEL) */}
             {isModeBankSoal ? (
               <input 
                 type="text" 
@@ -348,7 +396,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
         {/* FORM UTAMA */}
         <form onSubmit={handleSimpan} style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
           
-          {/* PANEL IMPORT SOAL DARI KELAS LAIN (Hanya tampil jika BUKAN mode Bank Soal) */}
+          {/* PANEL IMPORT SOAL */}
           {!isModeBankSoal && (
             <div style={{ marginBottom: '5px' }}>
               <button 
@@ -391,7 +439,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
           {/* PENGATURAN GLOBAL (DURASI & PREVIEW TOGGLE) */}
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
             
-            {/* BOX DURASI */}
             <div style={{ flex: 1, minWidth: '280px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fef08a', border: '4px solid #111827', padding: '15px 20px', borderRadius: '15px', boxShadow: '6px 6px 0 #111827' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ background: '#111827', padding: '10px', borderRadius: '50%', display: 'flex' }}>
@@ -408,7 +455,6 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
               </div>
             </div>
 
-            {/* BOX TOGGLE PREVIEW ON/OFF */}
             <div 
               onClick={() => setShowPreview(!showPreview)}
               style={{ flex: 1, minWidth: '280px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: showPreview ? '#dcfce3' : '#f1f5f9', border: '4px solid #111827', padding: '15px 20px', borderRadius: '15px', boxShadow: '6px 6px 0 #111827', cursor: 'pointer', transition: '0.2s' }}
@@ -563,7 +609,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
                   </div>
                 )}
 
-                {/* LIVE PREVIEW (DIKONTROL OLEH TOGGLE ON/OFF) */}
+                {/* LIVE PREVIEW */}
                 {showPreview && (
                   <div style={{ marginTop: '30px', padding: '20px', background: '#eff6ff', border: '4px dashed #3b82f6', borderRadius: '15px' }}>
                     <div style={{ fontSize: '14px', fontWeight: '900', color: '#1d4ed8', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
