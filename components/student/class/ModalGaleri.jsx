@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import dynamic from 'next/dynamic';
-import { FaXmark, FaBookBookmark, FaTriangleExclamation } from "react-icons/fa6";
+import { FaXmark, FaBookBookmark, FaTriangleExclamation, FaMagnifyingGlassPlus } from "react-icons/fa6";
 import 'react-medium-image-zoom/dist/styles.css';
 
 // FIX: Path Absolute
@@ -53,11 +53,31 @@ const ModalGaleri = memo(({ galeriAktif, onClose }) => {
           ) : (
             <div className={styles.containerPhoto}>
               {galeriAktif.foto.map((urlFoto, idx) => (
-                <div className={styles.wrapperPhoto} key={idx}>
+                <div className={styles.wrapperPhoto} key={idx} style={{ position: 'relative' }}>
+                  
+                  {/* 🚀 FITUR BARU: Tombol bypass untuk Pinch-to-Zoom murni di HP */}
+                  <a 
+                    href={urlFoto} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    style={{ 
+                      position: 'absolute', top: '12px', right: '12px', 
+                      background: 'rgba(37, 99, 235, 0.95)', color: 'white', 
+                      padding: '8px 12px', borderRadius: '8px', 
+                      fontSize: '11px', fontWeight: '900', textDecoration: 'none', 
+                      display: 'flex', alignItems: 'center', gap: '6px', 
+                      zIndex: 10, boxShadow: '2px 2px 0 rgba(17, 24, 39, 0.8)',
+                      backdropFilter: 'blur(4px)'
+                    }}
+                  >
+                    <FaMagnifyingGlassPlus size={14} /> BUKA HD (ZOOM)
+                  </a>
+
                   <Zoom>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img className={styles.galleryPhoto} src={urlFoto} alt={`Catatan Papan ${idx + 1}`} style={{ cursor: 'zoom-in', width: '100%', display: 'block' }} />
                   </Zoom>
+                  
                   <div className={styles.countPhoto}>{idx + 1} / {galeriAktif.foto.length}</div>
                 </div>
               ))}
