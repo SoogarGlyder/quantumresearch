@@ -159,11 +159,14 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
           .select("jamSelesai pengajarId")
           .lean();
 
-        if (jadwal) {
+        if (jadwal && jadwal.jamSelesai) {
           const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
-          if (sekarang > waktuSelesaiJadwal) {
-            const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
-            if (hitungExtra > 15) menitExtra = hitungExtra;
+          // Sabuk pengaman agar tidak NaN jika jam di database kosong/salah format
+          if (!isNaN(waktuSelesaiJadwal.getTime())) {
+             if (sekarang > waktuSelesaiJadwal) {
+               const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
+               if (hitungExtra > 15) menitExtra = hitungExtra;
+             }
           }
         }
 
@@ -310,9 +313,10 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
       let telat = sekarang > waktuMulaiJadwal ? Math.floor((sekarang - waktuMulaiJadwal) / 60000) : 0;
 
+      // 🚀 FIX: Kata 'Thermal' diubah menjadi 'sekarang'
       await StudySession.create({
         siswaId: userId, jenisSesi: TIPE_SESI.KELAS, namaMapel: jadwal.mapel,
-        jadwalId: jadwal._id, terlambatMenit: telat, status: STATUS_SESI.BERJALAN.id, waktuMulai: Thermal
+        jadwalId: jadwal._id, terlambatMenit: telat, status: STATUS_SESI.BERJALAN.id, waktuMulai: sekarang
       });
 
       let pesanTambahan = "";
