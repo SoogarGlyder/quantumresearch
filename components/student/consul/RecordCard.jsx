@@ -23,6 +23,14 @@ const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
     });
   };
 
+  //  FIX: Prioritaskan membaca kodePengajar dari objek
+  let labelPendamping = "Belajar Mandiri";
+  if (sesi.pengajarPendamping) {
+    labelPendamping = typeof sesi.pengajarPendamping === 'object' 
+      ? `${sesi.pengajarPendamping.kodePengajar || sesi.pengajarPendamping.nama || 'Guru'}`
+      : `ID: ${sesi.pengajarPendamping.substring(0, 4)}...`;
+  }
+
   return (
     <div className={`${styles.recordCard} ${styles.recordCardClickable}`} onClick={() => onToggle(sesi._id)}>
       <div className={styles.recordCardRow}>
@@ -53,6 +61,13 @@ const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
 
       {isOpen && (
         <div className={styles.recordDetail}>
+            <div className={styles.recordDetailRow} style={{ backgroundColor: '#f1f5f9' }}>
+              <span>Pendamping</span>
+              <span style={{ fontWeight: '900', color: sesi.pengajarPendamping ? '#2563eb' : '#64748b' }}>
+                {labelPendamping}
+              </span>
+            </div>
+
             <div className={styles.recordDetailRow} style={{ backgroundColor: '#dbeafe' }}>
               <span>Mulai</span>
               <span>{formatJam(sesi.waktuMulai)} WIB</span>

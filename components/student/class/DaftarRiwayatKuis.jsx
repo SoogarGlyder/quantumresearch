@@ -7,7 +7,7 @@ import styles from "@/components/App.module.css";
 
 import PaginationBar from "@/components/ui/PaginationBar";
 
-// 🚀 FIX: Tambahkan penerima kabel currentPage dan onPageChange
+//  FIX: Tambahkan penerima kabel currentPage dan onPageChange
 const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, currentPage, onPageChange, onBukaPembahasan }) => {
   return (
     <div className={styles.contentContainer}>
@@ -57,7 +57,7 @@ const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, currentPage, onPag
             ))}
           </div>
 
-          {/* 🚀 FIX: Sambungkan kabel ke PaginationBar */}
+          {/*  FIX: Sambungkan kabel ke PaginationBar */}
           <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
             <PaginationBar 
               totalPages={totalPage} 

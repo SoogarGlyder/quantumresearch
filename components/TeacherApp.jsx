@@ -12,7 +12,8 @@ import {
   TabProfilPengajar 
 } from "@/components/teacher";
 
-export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) { 
+//  FIX: Tangkap props statsKonsul dari server (app/page.tsx)
+export default function TeacherApp({ dataUser, jadwal, absensi, statsKonsul, onLogout }) { 
   const [tab, setTab] = useState("home");
   
   const absenAktif = useMemo(() => {
@@ -23,7 +24,16 @@ export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) {
   const kontenTab = useMemo(() => {
     switch (tab) {
       case "home":
-        return <TabBerandaPengajar dataUser={dataUser} jadwal={jadwal} absensi={absensi} absenAktif={absenAktif} />;
+        //  FIX: Salurkan statsKonsul ke dalam TabBerandaPengajar
+        return (
+          <TabBerandaPengajar 
+            dataUser={dataUser} 
+            jadwal={jadwal} 
+            absensi={absensi} 
+            absenAktif={absenAktif} 
+            statsKonsul={statsKonsul} 
+          />
+        );
       case "jurnal":
         return <TabJurnalKelas dataUser={dataUser} jadwal={jadwal} />;
       case "scan":
@@ -35,7 +45,8 @@ export default function TeacherApp({ dataUser, jadwal, absensi, onLogout }) {
       default:
         return null;
     }
-  }, [tab, dataUser, jadwal, absensi, onLogout, absenAktif]);
+  //  FIX: Tambahkan statsKonsul ke dalam array dependency useMemo
+  }, [tab, dataUser, jadwal, absensi, onLogout, absenAktif, statsKonsul]);
 
   return (
     <div className={styles.mainContainer}> 

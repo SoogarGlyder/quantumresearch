@@ -10,7 +10,9 @@ import MessageArea from "./MessageArea";
 
 export default function TabScanner({ 
   modeScan, setModeScan, hasilScan, pesanSistem, sedangLoading, 
-  mapelPilihan, setMapelPilihan, saatBarcodeTerbaca, resetScanner, apakahError,
+  mapelPilihan, setMapelPilihan, 
+  guruPilihan, setGuruPilihan, daftarGuru = [], //  FIX: Tambahan Props Guru
+  saatBarcodeTerbaca, resetScanner, apakahError,
   adaKonsulAktif, adaKelasAktif 
 }) {
 
@@ -25,6 +27,9 @@ export default function TabScanner({
           resetScanner={resetScanner}
           mapelPilihan={mapelPilihan}
           setMapelPilihan={setMapelPilihan}
+          guruPilihan={guruPilihan}           //  FIX: Teruskan ke Selector
+          setGuruPilihan={setGuruPilihan}     //  FIX: Teruskan ke Selector
+          daftarGuru={daftarGuru}             //  FIX: Teruskan ke Selector
           adaKonsulAktif={adaKonsulAktif}
           adaKelasAktif={adaKelasAktif}
         />

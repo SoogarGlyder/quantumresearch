@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, Suspense } from "react";
-// 🚀 FIX: Bersihkan Navigation Next.js
+//  FIX: Bersihkan Navigation Next.js
 import { FaLock, FaDesktop } from "react-icons/fa6";
 
 import { ambilSemuaLatihanSoal, prosesSimpanLatihanSoal, prosesHapusLatihanSoal, ambilDaftarSiswaDropdown } from "@/actions/soalAction";
@@ -25,7 +25,7 @@ function InnerTabTugas({ pengajarId }) {
   
   const [searchQuery, setSearchQuery] = useState("");
   
-  // 🚀 FIX: Jantung Pagination pakai RAM murni
+  //  FIX: Jantung Pagination pakai RAM murni
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_BAHAN || 3;
 
@@ -36,7 +36,7 @@ function InnerTabTugas({ pengajarId }) {
     return () => window.removeEventListener("resize", cekLayar);
   }, []);
 
-  // 🚀 FIX: Reset halaman saat ngetik atau pindah tab
+  //  FIX: Reset halaman saat ngetik atau pindah tab
   useEffect(() => {
     setPage(1);
   }, [searchQuery, activeTab]);

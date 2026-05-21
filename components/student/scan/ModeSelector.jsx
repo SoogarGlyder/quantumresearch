@@ -9,7 +9,8 @@ import styles from "@/components/App.module.css";
 
 const ModeSelector = memo(({ 
   modeScan, setModeScan, resetScanner, mapelPilihan, 
-  setMapelPilihan, adaKonsulAktif, adaKelasAktif 
+  setMapelPilihan, guruPilihan, setGuruPilihan, daftarGuru = [], //  FIX: Terima Props Guru
+  adaKonsulAktif, adaKelasAktif 
 }) => {
   
   useEffect(() => {
@@ -60,7 +61,9 @@ const ModeSelector = memo(({
       )}
 
       {modeScan === MODE_SCAN.KONSUL && !adaKelasAktif && !adaKonsulAktif && (
-        <div className={styles.wrapperRow} style={{ marginTop: '12px' }}>
+        //  FIX: Bungkus kedua dropdown dengan Flexbox agar rapi secara vertikal
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+          
           <select 
             value={mapelPilihan} 
             onChange={(e) => setMapelPilihan(e.target.value)} 
@@ -71,6 +74,27 @@ const ModeSelector = memo(({
               <option key={opsi} value={opsi}>{opsi}</option>
             ))}
           </select>
+
+          {/*  FIX: Dropdown Pilihan Guru */}
+          <select 
+            value={guruPilihan} 
+            onChange={(e) => setGuruPilihan(e.target.value)} 
+            className={styles.scheduleOption}
+          >
+            <option value="">-- Pilih Pendamping --</option>
+            
+            {/* OPSI BELAJAR MANDIRI */}
+            <option value="MANDIRI" style={{ fontWeight: '900', color: '#2563eb' }}>
+              Belajar Mandiri (Tanpa Pengajar)
+            </option>
+
+            {(daftarGuru || []).map(guru => (
+              <option key={guru._id} value={guru._id}>
+                {guru.nama}
+              </option>
+            ))}
+          </select>
+
         </div>
       )}
     </div>

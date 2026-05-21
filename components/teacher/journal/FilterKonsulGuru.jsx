@@ -3,11 +3,10 @@
 import { memo } from "react";
 import styles from "@/components/App.module.css";
 
-//  FIX: Beri nilai default = [] pada opsiBulan, opsiMapel, dan opsiPengajar agar anti-crash!
-const FilterKonsul = memo(({ 
+const FilterKonsulGuru = memo(({ 
   filterBulan, setFilterBulan, opsiBulan = [], 
   filterMapel, setFilterMapel, opsiMapel = [], 
-  filterPengajar, setFilterPengajar, opsiPengajar = [], 
+  filterKelas, setFilterKelas, opsiKelas = [], 
   ringkasanFilter 
 }) => (
   <div className={styles.filterContainer} style={{ padding: '16px' }}>
@@ -28,10 +27,10 @@ const FilterKonsul = memo(({
 
     <div className={styles.containerDropdownFilter} style={{ paddingTop: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
       
-      <select value={filterPengajar} onChange={(e) => setFilterPengajar(e.target.value)} className={styles.filterOption} style={{ flex: '1 1 30%', minWidth: '100px' }}>
-        <option value="">Semua Pengajar</option>
-        <option value="MANDIRI">Belajar Mandiri</option>
-        {opsiPengajar.map(g => <option key={g} value={g}>{g}</option>)}
+      {/*  FIX: Dropdown Pengajar diubah menjadi Dropdown Kelas */}
+      <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className={styles.filterOption} style={{ flex: '1 1 30%', minWidth: '100px' }}>
+        <option value="">Semua Kelas</option>
+        {opsiKelas.map(k => <option key={k} value={k}>{k}</option>)}
       </select>
 
     </div>
@@ -44,7 +43,7 @@ const FilterKonsul = memo(({
       }}>
         <div>
           <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#1e3a8a', textTransform: 'uppercase' }}>
-            Total Waktu Konsul
+            Total Durasi Bimbingan
           </p>
           <h3 style={{ margin: '4px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#111827' }}>
             {ringkasanFilter.jam > 0 ? `${ringkasanFilter.jam} Jam ` : ""}
@@ -63,5 +62,5 @@ const FilterKonsul = memo(({
   </div>
 ));
 
-FilterKonsul.displayName = "FilterKonsul";
-export default FilterKonsul;
+FilterKonsulGuru.displayName = "FilterKonsulGuru";
+export default FilterKonsulGuru;

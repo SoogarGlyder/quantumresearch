@@ -5,7 +5,7 @@ import User from "../models/User";
 import Jadwal from "../models/Jadwal";
 import StudySession from "../models/StudySession"; 
 import Quiz from "../models/Quiz"; 
-import HasilKuis from "../models/HasilKuis"; //FIX: Import tabel baru!
+import HasilKuis from "../models/HasilKuis";
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { validationHelper } from "../utils/validationHelper";
@@ -152,9 +152,6 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
   }
 }
 
-// ============================================================================
-// FUNGSI: RADAR CBT (MENYESUAIKAN DENGAN HASILKUIS BARU)
-// ============================================================================
 export async function getStatusKuisLive(idJadwal) {
   try {
     if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID Jadwal tidak valid.");
@@ -165,7 +162,6 @@ export async function getStatusKuisLive(idJadwal) {
     const jadwal = await Jadwal.findById(idJadwal).select("mapel tanggal kelasTarget pengajarId").populate("pengajarId", "kodeCabang").lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
-    //FIX: Tarik data dari koleksi HasilKuis, bukan Quiz
     const riwayatKuis = await HasilKuis.find({ jadwalId: idJadwal }).select("siswaId skorAkhir").lean();
 
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
@@ -183,8 +179,6 @@ export async function getStatusKuisLive(idJadwal) {
 
     const dataLive = siswaKelas.map(siswa => {
       const idSiswaStr = siswa._id.toString();
-      
-      //Cek di hasil kuis baru
       const hasil = riwayatKuis.find(h => h.siswaId.toString() === idSiswaStr);
       if (hasil) return { id: idSiswaStr, nama: siswa.nama, status: "SELESAI", skor: hasil.skorAkhir, pelanggaran: 0 };
       
@@ -197,6 +191,47 @@ export async function getStatusKuisLive(idJadwal) {
     return responseHelper.success("Data Radar CBT termuat.", serialize(dataLive));
   } catch (error) {
     return responseHelper.error("Gagal menyadap status CBT.");
+  }
+}
+
+// ============================================================================
+//  FUNGSI BARU: RIWAYAT KONSUL (PENTING! JANGAN DIHAPUS)
+// ============================================================================
+export async function getRiwayatKonsulPengajar() {
+  try {
+    await connectToDatabase();
+    const { userId, peran } = await authHelper.ambilSesi();
+
+    if (!userId || (peran !== PERAN.PENGAJAR.id && peran !== PERAN.ADMIN.id)) {
+      return responseHelper.error("Akses ditolak.");
+    }
+
+    const riwayat = await StudySession.find({
+      jenisSesi: TIPE_SESI.KONSUL,
+      pengajarPendamping: userId // Tarik data berdasarkan ID guru yang login
+    })
+    .populate("siswaId", "nama kelas")
+    .sort({ waktuMulai: -1 })
+    .lean();
+
+    const dataAman = riwayat.map(k => ({
+      _id: k._id.toString(),
+      jenisSesi: k.jenisSesi,
+      namaMapel: k.namaMapel,
+      waktuMulai: k.waktuMulai?.toISOString() || null,
+      waktuSelesai: k.waktuSelesai?.toISOString() || null,
+      status: k.status,
+      siswaId: k.siswaId ? {
+        _id: k.siswaId._id.toString(),
+        nama: k.siswaId.nama,
+        kelas: k.siswaId.kelas
+      } : null
+    }));
+
+    return responseHelper.success("Data berhasil ditarik", dataAman);
+  } catch (error) {
+    console.error("[ERROR getRiwayatKonsulPengajar]:", error);
+    return responseHelper.error("Gagal memuat riwayat konsul.");
   }
 }
 
@@ -368,12 +403,10 @@ export async function resetUjianSiswa(idJadwal, idSiswa) {
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    //FIX: Hapus dokumen dari HasilKuis
     const hasil = await HasilKuis.deleteOne({ jadwalId: idJadwal, siswaId: idSiswa });
 
     if (hasil.deletedCount === 0) return responseHelper.error("Siswa ini belum mengumpulkan ujian.");
 
-    // Sinkronkan Jurnal: Kosongkan nilai absennya
     await StudySession.updateOne({ jadwalId: idJadwal, siswaId: idSiswa }, { $set: { nilaiTest: null } });
 
     return responseHelper.success("Riwayat ujian berhasil dihapus. Siswa dapat mengulang dari awal.");
@@ -393,25 +426,21 @@ export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    // 1. Pastikan siswa belum mengumpulkan
     const sudahPernah = await HasilKuis.exists({ jadwalId: idJadwal, siswaId: idSiswa });
     if (sudahPernah) return responseHelper.error("Siswa sudah mengumpulkan ujian.");
 
-    // 2. Tarik soal untuk menduplikasi kerangkanya
     const kuis = await Quiz.findOne({ jadwalId: idJadwal }).select("_id soal").lean();
     if (!kuis) return responseHelper.error("Kuis tidak ditemukan.");
 
-    // 3. Buat kerangka jawaban kosong (Agar fitur Review tidak error)
     const emptyDetail = (kuis.soal || []).map(s => {
       const kunciArr = Array.isArray(s.kunciJawaban) ? s.kunciJawaban.map(String) : [String(s.kunciJawaban || "")];
       return {
         kunciJawaban: kunciArr,
-        jawabanSiswa: [""], // Kosong
+        jawabanSiswa: [""], 
         isBenar: false
       };
     });
 
-    // 4. Eksekusi Paksa (Tulis ke DB secara paralel)
     await Promise.all([
       HasilKuis.create({
         jadwalId: idJadwal,

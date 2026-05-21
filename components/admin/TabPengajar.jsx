@@ -12,17 +12,17 @@ import { tambahPengajarBaru, hapusPengajar, editPengajar, prosesBulkTambahPengaj
 import { potongDataPagination } from "../../utils/formatHelper";
 
 import { STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, KONFIGURASI_SISTEM, PANGKAT_PENGAJAR, OPSI_KELAS } from "../../utils/constants";
-
 import styles from "../../app/admin/AdminPage.module.css";
+
+//  FIX: Import Rapor Pengajar
+import ModalRaporPengajar from "./ModalRaporPengajar";
 
 // ============================================================================
 // 2. MAIN COMPONENT (TAB PENGAJAR)
 // ============================================================================
 export default function TabPengajar({ dataPengajar = [], muatData }) {
   
-  // 🚀 FIX: Jantung Pagination beralih ke Local State RAM
   const [page, setPage] = useState(1);
-  
   const fileInputRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -46,9 +46,11 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [hasilBulk, setHasilBulk] = useState(null);
 
+  //  FIX: State untuk menyimpan data guru yang rapor-nya sedang dibuka
+  const [pengajarRapor, setPengajarRapor] = useState(null);
+
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
-  // 🚀 FIX: Reset halaman ke-1 jadi instan tanpa loading URL
   const resetHalamanKeSatu = () => {
     setPage(1);
   };
@@ -213,7 +215,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
   return (
     <div className={`${styles.isiTab} ${styles.SembunyiPrint} ${styles.wadahSiswa}`}>
       
-      {/* PANEL KIRI: FORM PENGAJAR */}
       <div className={`${styles.formPanel} ${idEdit ? styles.formPanelEdit : styles.formPanelBiasa} ${styles.flexSatu}`}>
         <h3 className={idEdit ? styles.judulFormEdit : styles.judulFormPanel}>
           {idEdit ? "✏️ Edit Akun Pengajar" : "➕ Tambah Akun Pengajar"}
@@ -345,7 +346,6 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
         )}
       </div>
       
-      {/* PANEL KANAN: TABEL PENGAJAR */}
       <div className={styles.flexDua}>
         
         <div className={styles.headerTabSiswa} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
@@ -423,9 +423,11 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
                         <p style={{margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#4b5563'}}>{g.noHp || "-"}</p>
                       </td>
                       <td style={{textAlign:'center'}}>
-                        <div className={styles.wadahAksiInlineHorizontal}>
+                        {/*  FIX: Tambahkan tombol Rapor di samping tombol Edit/Hapus */}
+                        <div className={styles.wadahAksiInlineHorizontal} style={{ flexWrap: 'wrap', justifyContent: 'center' }}>
                           <button onClick={() => klikEditPengajar(g)} className={`${styles.tombolAksi} ${styles.btnEdit}`}>Edit</button> 
                           <button onClick={() => klikHapusPengajar(g._id, g.nama)} className={`${styles.tombolAksi} ${styles.btnHapus}`}>Hapus</button>
+                          <button onClick={() => setPengajarRapor(g)} className={styles.tombolAksi} style={{ backgroundColor: '#3b82f6', color: 'white'}}>Rapor</button>
                         </div>
                       </td>
                     </tr>
@@ -441,6 +443,14 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
         </div>
         
       </div>
+      
+      {/*  FIX: Komponen Modal Rapor di-mount di bagian paling bawah */}
+      {pengajarRapor && (
+        <ModalRaporPengajar 
+          pengajar={pengajarRapor} 
+          onClose={() => setPengajarRapor(null)} 
+        />
+      )}
     </div>
   );
 }

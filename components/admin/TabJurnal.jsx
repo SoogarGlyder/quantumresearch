@@ -4,7 +4,7 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react"; 
-// 🚀 FIX: Bye-bye useSearchParams dan Next Router!
+//  FIX: Bye-bye useSearchParams dan Next Router!
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -23,7 +23,7 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
   
-  // 🚀 FIX: State Memori untuk Pagination
+  //  FIX: State Memori untuk Pagination
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
@@ -54,7 +54,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // 🚀 FIX: Reset Instan!
+  //  FIX: Reset Instan!
   const resetHalamanKeSatu = () => {
     setPage(1);
   };
@@ -242,7 +242,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
       </div>
 
       <div style={{ marginTop: '24px' }}>
-        {/* 🚀 FIX: Pasang kabel PaginationBar */}
+        {/*  FIX: Pasang kabel PaginationBar */}
         <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
       

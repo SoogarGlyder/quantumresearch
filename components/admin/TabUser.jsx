@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"; // 🚀 FIX: Menggunakan memori RAM murni
+import { useState } from "react"; //  FIX: Menggunakan memori RAM murni
 // FIX: useSearchParams, usePathname, useRouter sudah dihapus
 
 import TabSiswa from "./TabSiswa";
@@ -16,7 +16,7 @@ import { prosesMigrasiDataLama } from "../../actions/adminAction";
 
 export default function TabUser({ dataSiswa, dataPengajar, dataAdmin, muatData, isKakakAsuh = false, isSuperAdmin = false }) {
   
-  // 🚀 FIX: Sub-View sekarang dikendalikan oleh Local State (0 Lag)
+  //  FIX: Sub-View sekarang dikendalikan oleh Local State (0 Lag)
   const [subView, setSubView] = useState(PERAN.SISWA.id);
 
   const gantiSubView = (idBaru) => {

@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { FaBrain, FaPlus, FaUserTie, FaPenToSquare, FaTrashCan } from "react-icons/fa6";
-import PaginationBar from "@/components/ui/PaginationBar"; // 🚀 FIX: Impor Pagination
+import PaginationBar from "@/components/ui/PaginationBar"; //  FIX: Impor Pagination
 import styles from "@/components/App.module.css";
 
 const DaftarKuis = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loading, onBuatBaru, onEdit, onHapus }) => (
@@ -53,7 +53,7 @@ const DaftarKuis = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loa
           ))}
         </div>
 
-        {/* 🚀 FIX: Render Pagination */}
+        {/*  FIX: Render Pagination */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <PaginationBar 
             currentPage={currentPage} 

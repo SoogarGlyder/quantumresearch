@@ -11,7 +11,7 @@ import JadwalMendatang from "./JadwalMendatang";
 import ModalJurnal from "@/components/teacher/journal/ModalJurnal"; 
 import WidgetRadarCBT from "./WidgetRadarCBT";
 
-// 🚀 FIX: HELPER: Ultimate Safari & Old iOS Safe Date Normalizer
+//  FIX: HELPER: Ultimate Safari & Old iOS Safe Date Normalizer
 const getNormalizeDate = (dateInput) => {
   if (!dateInput) return 0;
   
@@ -28,19 +28,16 @@ const getNormalizeDate = (dateInput) => {
       dateObj = new Date(dateInput);
     }
 
-    // Jika format benar-benar hancur, amankan
     if (isNaN(dateObj.getTime())) return 0;
     
     // 2. Dapatkan string waktu Jakarta (MM/DD/YYYY, hh:mm:ss AM)
     const jktString = dateObj.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
     
-    // 3. iOS KILLER FIX: Jangan parse ulang stringnya pakai new Date(jktString)!
-    // Kita "Culik" paksa angkanya saja menggunakan Regex
-    const datePart = jktString.split(',')[0]; // Ambil "MM/DD/YYYY" nya saja
-    const [month, day, year] = datePart.match(/\d+/g); // Ekstrak 3 angka murninya
+    // 3. iOS KILLER FIX: Culik angka murni pakai Regex
+    const datePart = jktString.split(',')[0]; 
+    const [month, day, year] = datePart.match(/\d+/g); 
     
-    // 4. Rakit ulang Date menggunakan Angka (100% didukung semua browser)
-    // Perhatian: Di Javascript, bulan dimulai dari 0 (Januari = 0)
+    // 4. Rakit ulang pakai Date Number Constructor (Aman dari Invalid Date Safari)
     const jktDate = new Date(year, month - 1, day, 0, 0, 0, 0);
     
     return jktDate.getTime();
@@ -49,7 +46,8 @@ const getNormalizeDate = (dateInput) => {
   }
 };
 
-export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = [], absenAktif }) {
+//  FIX: Tangkap statsKonsul yang sudah dikirim dari TeacherApp.jsx
+export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = [], absenAktif, statsKonsul }) {
   const hariIniMurni = getNormalizeDate(new Date());
   const hariIniString = timeHelper.getTglJakarta(); 
   
@@ -77,15 +75,18 @@ export default function TabBerandaPengajar({ dataUser, jadwal = [], absensi = []
     }), 
   [jadwal, hariIniMurni]);
 
-  // Statistik
+  //  FIX: Selipkan variabel Konsul ke dalam Statistik Gabungan
   const statsPengajar = useMemo(() => ({ 
     totalKelas: (jadwal || []).length, 
     jurnalSelesai: (jadwal || []).filter(j => j?.bab).length,
-    totalAbsensi: (absensi || []).length 
-  }), [jadwal, absensi]);
+    totalAbsensi: (absensi || []).length,
+    totalMenitKonsul: statsKonsul?.totalMenit || 0, // 👈 Kabel Konsul tersambung!
+    totalSesiKonsul: statsKonsul?.totalSesi || 0    // 👈 Kabel Konsul tersambung!
+  }), [jadwal, absensi, statsKonsul]);
 
   return (
     <div className={styles.contentArea}>
+      {/* Objek statsPengajar yang sudah komplet dilempar ke Header */}
       <HeaderPengajar dataUser={dataUser} statsPengajar={statsPengajar} />
       
       <WidgetRadarCBT jadwalHariIni={jadwalHariIni} />

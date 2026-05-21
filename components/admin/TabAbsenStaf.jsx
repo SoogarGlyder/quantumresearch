@@ -4,7 +4,7 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo, memo } from "react";
-// 🚀 FIX: Import Next Navigation dihapus!
+//  FIX: Import Next Navigation dihapus!
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -139,7 +139,7 @@ ModalAbsenStaf.displayName = "ModalAbsenStaf";
 // ============================================================================
 export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bulanAktif, muatData }) {
   
-  // 🚀 FIX: State Memori untuk Pagination
+  //  FIX: State Memori untuk Pagination
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
@@ -148,7 +148,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
   const [filterTglAbsen, setFilterTglAbsen] = useState("");
   const [filterNama, setFilterNama] = useState("");
   
-  // 🚀 FIX: Fungsi Reset Halaman kini sangat ringan
+  //  FIX: Fungsi Reset Halaman kini sangat ringan
   const resetHalamanKeSatu = () => {
     setPage(1);
   };
@@ -348,7 +348,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
       </div>
 
       <div style={{ marginTop: '24px' }}>
-        {/* 🚀 FIX: Pasang kabel PaginationBar */}
+        {/*  FIX: Pasang kabel PaginationBar */}
         <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
 

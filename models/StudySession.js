@@ -10,6 +10,14 @@ const studySessionSchema = new mongoose.Schema({
     enum: Object.values(TIPE_SESI) // ["kelas", "konsul"]
   }, 
   namaMapel: { type: String, trim: true },
+  
+  //  FIX: TAMBAHAN BARU UNTUK FITUR KONSULTASI MANDIRI
+  pengajarPendamping: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "User", 
+    default: null 
+  },
+  
   waktuMulai: { type: Date, default: Date.now },
   waktuSelesai: { type: Date },
   status: { 
@@ -37,6 +45,8 @@ studySessionSchema.index({ waktuMulai: -1, siswaId: 1 });
 studySessionSchema.index({ jenisSesi: 1, namaMapel: 1, waktuMulai: -1 }); 
 // 3. Jalan Tol Rapor Bulanan Siswa: Mencari sesi selesai per siswa dalam rentang bulan
 studySessionSchema.index({ siswaId: 1, status: 1, waktuMulai: -1 }); 
+//  FIX: 4. Jalan Tol Jurnal Konsul Pengajar
+studySessionSchema.index({ pengajarPendamping: 1, jenisSesi: 1, waktuMulai: -1 }); 
 
 const StudySession = mongoose.models.StudySession || mongoose.model("StudySession", studySessionSchema);
 export default StudySession;

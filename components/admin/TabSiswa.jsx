@@ -4,7 +4,7 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useMemo, useRef } from "react";
-// 🚀 FIX: useSearchParams dan router Next.js dihapus
+//  FIX: useSearchParams dan router Next.js dihapus
 
 import PaginationBar from "../ui/PaginationBar";
 import ModalRaporSiswa from "./ModalRaporSiswa";
@@ -22,7 +22,7 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false }) {
   
-  // 🚀 FIX: Pagination pakai State RAM (0 Lag)
+  //  FIX: Pagination pakai State RAM (0 Lag)
   const [page, setPage] = useState(1);
   
   const fileInputRef = useRef(null);
@@ -61,7 +61,7 @@ export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false
   const handleGantiFilterKelas = (e) => {
     setFilterKelas(e.target.value);
     
-    // 🚀 FIX: Reset halaman ke-1 jadi sangat cepat
+    //  FIX: Reset halaman ke-1 jadi sangat cepat
     setPage(1);
   };
 
@@ -387,7 +387,7 @@ export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false
           </table>
         </div>
         
-        {/* 🚀 FIX: Pasang kabel Pagination */}
+        {/*  FIX: Pasang kabel Pagination */}
         <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
 

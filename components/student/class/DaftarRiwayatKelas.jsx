@@ -8,7 +8,7 @@ import styles from "@/components/App.module.css";
 import BadgeKehadiran from "./BadgeKehadiran";
 import PaginationBar from "@/components/ui/PaginationBar";
 
-// 🚀 FIX: Tambahkan penerima kabel currentPage dan onPageChange
+//  FIX: Tambahkan penerima kabel currentPage dan onPageChange
 const DaftarRiwayatKelas = memo(({ dataHalIni, totalPage, currentPage, onPageChange, onBukaCatatan }) => (
   <div className={styles.contentContainer}>
     <h3 className={styles.contentTitle}>Klik untuk melihat foto papan</h3>
@@ -50,7 +50,7 @@ const DaftarRiwayatKelas = memo(({ dataHalIni, totalPage, currentPage, onPageCha
           ))}
         </div>
 
-        {/* 🚀 FIX: Sambungkan kabel ke PaginationBar */}
+        {/*  FIX: Sambungkan kabel ke PaginationBar */}
         <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
           <PaginationBar 
             totalPages={totalPage} 

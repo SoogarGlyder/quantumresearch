@@ -3,14 +3,14 @@
 import { memo } from "react";
 import { FaMagnifyingGlass } from "react-icons/fa6";
 
-const FilterJurnal = memo(({ searchQuery, setSearchQuery }) => (
+const FilterJurnal = memo(({ searchQuery, setSearchQuery, placeholder = "Cari data..." }) => (
   <div style={{ margin: '16px 16px -8px', position: 'relative' }}>
     <div style={{ position: 'absolute', top: '14px', left: '16px', color: '#6b7280' }}>
       <FaMagnifyingGlass size={18} />
     </div>
     <input
       type="text"
-      placeholder="Cari mapel, kelas, tanggal, atau status jurnal..."
+      placeholder={placeholder}
       value={searchQuery}
       onChange={(e) => setSearchQuery(e.target.value)}
       style={{

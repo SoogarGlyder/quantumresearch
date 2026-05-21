@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-// 🚀 FIX: Import navigasi Next.js (useSearchParams dll) dihapus total
+//  FIX: Import navigasi Next.js (useSearchParams dll) dihapus total
 
 import { 
   ambilSemuaLatihanSoal, 
@@ -28,7 +28,7 @@ export default function TabSoal({ dataSiswa = [] }) {
   // STATE FILTER PENCARIAN
   const [searchQuery, setSearchQuery] = useState("");
   
-  // 🚀 FIX: Pagination pindah ke RAM memori!
+  //  FIX: Pagination pindah ke RAM memori!
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5; // Batas data per halaman
 
@@ -41,7 +41,7 @@ export default function TabSoal({ dataSiswa = [] }) {
   };
   const [form, setForm] = useState(initialForm);
 
-  // 🚀 FIX: Fungsi Reset Halaman kini secepat kilat (0 lag)
+  //  FIX: Fungsi Reset Halaman kini secepat kilat (0 lag)
   const resetHalamanKeSatu = () => {
     setCurrentPage(1);
   };
@@ -266,7 +266,7 @@ export default function TabSoal({ dataSiswa = [] }) {
           </table>
         </div>
 
-        {/* 🚀 FIX: Pasang kabel Pagination RAM */}
+        {/*  FIX: Pasang kabel Pagination RAM */}
         <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
           <PaginationBar totalPages={totalPages} currentPage={currentPage} onPageChange={setCurrentPage} />
         </div>

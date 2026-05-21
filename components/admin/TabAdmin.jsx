@@ -2,7 +2,7 @@
 
 //FIX: Tambahkan useEffect di import
 import { useState, useMemo, useEffect } from "react";
-// 🚀 FIX: Import Next Navigation dihapus total
+//  FIX: Import Next Navigation dihapus total
 import PaginationBar from "../ui/PaginationBar";
 
 import { simpanAkunAdmin, hapusAkunAdmin } from "../../actions/adminAction"; 
@@ -13,7 +13,7 @@ import styles from "../../app/admin/AdminPage.module.css";
 
 export default function TabAdmin({ dataAdmin = [], muatData }) {
   
-  // 🚀 FIX: Jantung Pagination beralih ke RAM memori
+  //  FIX: Jantung Pagination beralih ke RAM memori
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA.PAGINATION_DEFAULT;
 
@@ -252,7 +252,7 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
             </tbody>
           </table>
         </div>
-        {/* 🚀 FIX: Pasang kabel Pagination RAM */}
+        {/*  FIX: Pasang kabel Pagination RAM */}
         <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
       

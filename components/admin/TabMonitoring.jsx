@@ -107,9 +107,9 @@ export default function TabMonitoring({ dataRiwayat, dataJadwal, dataSiswa, data
         {subView === TIPE_SESI.KELAS && (
           <TabKelas dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} dataSiswa={dataSiswa} muatData={muatData} bulanAktif={bulanAktif} />
         )}
-        
+
         {subView === TIPE_SESI.KONSUL && (
-          <TabKonsul dataRiwayat={dataRiwayat} bulanAktif={bulanAktif} />
+          <TabKonsul dataRiwayat={dataRiwayat} dataJadwal={dataJadwal} bulanAktif={bulanAktif} />
         )}
 
         {/* FIX: Tab ini tidak akan pernah di-render untuk Kakak Asuh */}

@@ -4,7 +4,7 @@
 // 1. IMPORTS & DEPENDENCIES
 // ============================================================================
 import { useState, useEffect, useMemo } from "react"; 
-// 🚀 FIX: Import next/navigation dihapus bersih!
+//  FIX: Import next/navigation dihapus bersih!
 
 import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
@@ -24,7 +24,7 @@ import styles from "../../app/admin/AdminPage.module.css";
 // ============================================================================
 export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa = [], muatData, bulanAktif }) {
   
-  // 🚀 FIX: Jantung Pagination sekarang menggunakan State RAM Murni
+  //  FIX: Jantung Pagination sekarang menggunakan State RAM Murni
   const [page, setPage] = useState(1);
 
   // State Filter
@@ -56,7 +56,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     return { minDate: min, maxDate: max };
   }, [bulanAktif]);
 
-  // 🚀 FIX: Fungsi untuk mengembalikan ke halaman 1 menjadi secepat kilat
+  //  FIX: Fungsi untuk mengembalikan ke halaman 1 menjadi secepat kilat
   const resetHalamanKeSatu = () => {
     setPage(1);
   };
@@ -331,7 +331,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
       </div>
       
       <div style={{ marginTop: '24px' }}>
-        {/* 🚀 FIX: Kabel Pagination Tersambung ke RAM! */}
+        {/*  FIX: Kabel Pagination Tersambung ke RAM! */}
         <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} />
       </div>
 

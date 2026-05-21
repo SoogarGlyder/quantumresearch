@@ -8,7 +8,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import styles from "@/components/App.module.css";
 
 const ModalGaleri = memo(({ galeriAktif, onClose }) => {
-  // 🚀 STATE BARU: Menyimpan foto mana yang sedang di-klik untuk di-Zoom (Mode Lightbox)
+  //  STATE BARU: Menyimpan foto mana yang sedang di-klik untuk di-Zoom (Mode Lightbox)
   const [zoomedPhoto, setZoomedPhoto] = useState(null);
 
   if (!galeriAktif) return null;
@@ -58,7 +58,7 @@ const ModalGaleri = memo(({ galeriAktif, onClose }) => {
                 {galeriAktif.foto.map((urlFoto, idx) => (
                   <div 
                     key={idx} 
-                    /* 🚀 KETIKA FOTO DIKLIK -> Buka Modal Zoom */
+                    /*  KETIKA FOTO DIKLIK -> Buka Modal Zoom */
                     onClick={() => setZoomedPhoto({ url: urlFoto, index: idx + 1, total: galeriAktif.foto.length })}
                     style={{ 
                       position: 'relative', 

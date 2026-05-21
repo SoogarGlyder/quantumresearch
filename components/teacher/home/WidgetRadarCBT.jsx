@@ -6,7 +6,7 @@ import { ambilKuisByJadwal } from "@/actions/quizAction";
 
 // IMPORT STYLES DAN MODAL
 import styles from "@/components/App.module.css";
-import ModalMonitorCBT from "@/components/teacher/journal/ModalMonitorCBT";
+import ModalMonitorCBT from "@/components/teacher/home/ModalMonitorCBT";
 
 export default function WidgetRadarCBT({ jadwalHariIni }) {
   const [kuisAktif, setKuisAktif] = useState([]);

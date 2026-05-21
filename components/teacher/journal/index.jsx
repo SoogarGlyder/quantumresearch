@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useMemo, useEffect, Suspense } from "react";
-// 🚀 FIX: Bye-bye lag! Navigation hooks dari Next.js sudah dihapus
+import { useState, useMemo, Suspense } from "react";
 
-import { timeHelper } from "@/utils/timeHelper";
-import { PERIODE_BELAJAR, LIMIT_DATA } from "@/utils/constants";
-import { potongDataPagination } from "@/utils/formatHelper"; 
+import { PERIODE_BELAJAR } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
 import HeaderJurnal from "./HeaderJurnal";
-import FilterJurnal from "./FilterJurnal"; 
-import RiwayatJurnal from "./RiwayatJurnal";
-import ModalJurnal from "./ModalJurnal"; 
+import TabSelectorJurnal from "./TabSelectorJurnal"; 
+import DaftarKelas from "./DaftarKelas";
+import DaftarKonsul from "./DaftarKonsul";
 
+// ============================================================================
+// 1. INTERNAL HELPERS
+// ============================================================================
 const getNormalizeDate = (dateInput) => {
   if (!dateInput) return 0;
   try {
@@ -21,28 +21,22 @@ const getNormalizeDate = (dateInput) => {
     const jktDate = new Date(jktString);
     jktDate.setHours(0, 0, 0, 0);
     return jktDate.getTime();
-  } catch (error) { return 0; }
+  } catch (error) { 
+    return 0; 
+  }
 };
 
-function InnerTabJurnalKelas({ dataUser, jadwal = [] }) {
+// ============================================================================
+// 2. INNER COMPONENT (LOGIKA UTAMA JURNAL)
+// ============================================================================
+function InnerJurnalHub({ dataUser, jadwal = [] }) {
+  const [activeTab, setActiveTab] = useState("KELAS");
+  const [totalKonsul, setTotalKonsul] = useState(0);
+
   const hariIniMurni = getNormalizeDate(new Date());
-  const hariIniString = timeHelper.getTglJakarta(); 
   
-  const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
-  
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  // 🚀 FIX: Jantung Pagination sekarang menggunakan Local State
-  const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KELAS || 10;
-
-  // 🚀 FIX: Reset memori ke halaman 1 murni saat mengetik pencarian
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery]);
-
-  const jadwalDitampilkan = useMemo(() => {
-    let arsip = (jadwal || []).filter(j => {
+  const totalKelasSah = useMemo(() => {
+    return (jadwal || []).filter(j => {
       const tglJadwalMurni = getNormalizeDate(j.tanggal);
       const awalPeriodeMurni = getNormalizeDate(PERIODE_BELAJAR.MULAI);
       const akhirPeriodeMurni = getNormalizeDate(PERIODE_BELAJAR.AKHIR);
@@ -52,56 +46,37 @@ function InnerTabJurnalKelas({ dataUser, jadwal = [] }) {
       const masukPeriode = tglJadwalMurni >= awalPeriodeMurni && tglJadwalMurni <= akhirPeriodeMurni;
       
       return masukPeriode && (isMasaLalu || isHariIniSudahSelesai);
-    });
+    }).length;
+  }, [jadwal, hariIniMurni]);
 
-    if (searchQuery.trim()) {
-      const keywords = searchQuery.toLowerCase().split(',').map(k => k.trim()).filter(k => k.length > 0);
-      arsip = arsip.filter(j => {
-        const isTerisi = !!j.bab;
-        const statusTeks = isTerisi ? "jurnal terisi" : "belum isi jurnal";
-        const teksTanggal = j?.tanggal ? new Date(j.tanggal).toLocaleDateString('id-ID', { 
-          timeZone: PERIODE_BELAJAR.TIMEZONE || "Asia/Jakarta", 
-          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
-        }).toLowerCase() : "";
-
-        return keywords.every(kw => (
-          (j?.mapel?.toLowerCase() || "").includes(kw) ||
-          (j?.kelasTarget?.toLowerCase() || "").includes(kw) ||
-          statusTeks.includes(kw) ||
-          teksTanggal.includes(kw)
-        ));
-      });
-    }
-
-    return arsip.sort((a, b) => getNormalizeDate(b.tanggal) - getNormalizeDate(a.tanggal));
-
-  }, [jadwal, hariIniMurni, searchQuery]);
-
-  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
+  // Penentuan Teks Judul dan Sub-judul secara dinamis mengikuti tab yang aktif
+  const judulHeader = activeTab === "KELAS" ? "Jurnal Kelas" : "Riwayat Konsul";
+  const subTeksHeader = activeTab === "KELAS" 
+    ? `Ditemukan ${totalKelasSah} riwayat kelas bulan ini` 
+    : `Ditemukan ${totalKonsul} sesi pendampingan konsul`;
 
   return (
     <>
-      <HeaderJurnal totalArsip={jadwalDitampilkan.length} />
-      <FilterJurnal searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-      <RiwayatJurnal 
-        dataHalIni={dataHalIni} 
-        totalPage={totalPage}
-        currentPage={page}        // 👈 Tembakkan Prop Baru
-        onPageChange={setPage}    // 👈 Tembakkan Prop Baru
-        onPilihJadwal={setJadwalTerpilih} 
-      />
-      {jadwalTerpilih && (
-        <ModalJurnal jadwalTerpilih={jadwalTerpilih} hariIni={hariIniString} onClose={() => setJadwalTerpilih(null)} />
+      <HeaderJurnal judul={judulHeader} subTeks={subTeksHeader} />
+      <TabSelectorJurnal activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {activeTab === "KELAS" ? (
+        <DaftarKelas jadwal={jadwal} hariIniMurni={hariIniMurni} />
+      ) : (
+        <DaftarKonsul dataUser={dataUser} setTotalKonsul={setTotalKonsul} />
       )}
     </>
   );
 }
 
-export default function TabJurnalKelas({ dataUser, jadwal = [] }) {
+// ============================================================================
+// 3. MAIN EXPORT WRAPPER (DENGAN SUSPENSE)
+// ============================================================================
+export default function TabJurnalKelasMain({ dataUser, jadwal = [] }) {
   return (
     <div className={styles.contentArea}>
-      <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold' }}>Memuat Jurnal...</div>}>
-        <InnerTabJurnalKelas dataUser={dataUser} jadwal={jadwal} />
+      <Suspense fallback={<div className={styles.messageLoading} style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold' }}>Memuat Ruang Jurnal...</div>}>
+        <InnerJurnalHub dataUser={dataUser} jadwal={jadwal} />
       </Suspense>
     </div>
   );

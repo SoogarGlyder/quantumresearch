@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react"; 
-// 🚀 FIX: useSearchParams, usePathname, useRouter DIHAPUS TOTAL
 import { FaBoxOpen } from "react-icons/fa6";
 
 // PATH ABSOLUTE
@@ -17,18 +16,18 @@ import RecordCard from "./RecordCard";
 
 export default function TabKonsulSiswa({ riwayat = [] }) {
 
-  // 🚀 FIX: Jantung Pagination beralih ke RAM (0 Lag)
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KONSUL || 10;
 
   const [filterBulan, setFilterBulan] = useState("");
   const [filterMapel, setFilterMapel] = useState("");
+  //  FIX: Ini adalah wadah (state) yang terlewat sehingga memicu error "not defined"
+  const [filterPengajar, setFilterPengajar] = useState(""); 
   const [idTerbuka, setIdTerbuka] = useState(null);
 
-  // 🚀 FIX: Mereset halaman ke-1 secepat kilat saat filter berubah
   useEffect(() => {
     setPage(1);
-  }, [filterBulan, filterMapel]);
+  }, [filterBulan, filterMapel, filterPengajar]);
 
   const dapatkanLabelBulan = (tanggalStr) => {
     if (!tanggalStr) return "-";
@@ -68,27 +67,40 @@ export default function TabKonsulSiswa({ riwayat = [] }) {
 
   const opsiBulan = useMemo(() => [...new Set(riwayatKonsul.map(r => dapatkanLabelBulan(r.waktuMulai)))], [riwayatKonsul]);
   
-  //FIX: Bersihkan imbuhan " (Extra)" saat menyusun daftar Mapel di Dropdown
   const opsiMapel = useMemo(() => {
     const mapelBersih = riwayatKonsul.map(r => {
       const nama = r.namaMapel || "Umum";
       return nama.replace(" (Extra)", "");
     });
-    // Gunakan Set untuk membuang duplikat, lalu sort agar urut abjad
     return [...new Set(mapelBersih)].sort(); 
+  }, [riwayatKonsul]);
+
+  const opsiPengajar = useMemo(() => {
+    const daftarGuru = riwayatKonsul
+      .map(r => r.pengajarPendamping && typeof r.pengajarPendamping === 'object' ? r.pengajarPendamping.nama : null)
+      .filter(nama => nama !== null); 
+    return [...new Set(daftarGuru)].sort();
   }, [riwayatKonsul]);
 
   const konsulDitampilkan = useMemo(() => {
     return riwayatKonsul.filter(r => {
       const matchBulan = filterBulan ? dapatkanLabelBulan(r.waktuMulai) === filterBulan : true;
-      
-      //FIX: Hapus teks " (Extra)" hanya saat melakukan pencocokan filter
       const namaMapelMurni = (r.namaMapel || "Umum").replace(" (Extra)", "");
       const matchMapel = filterMapel ? namaMapelMurni === filterMapel : true;
       
-      return matchBulan && matchMapel;
+      let matchPengajar = true;
+      if (filterPengajar) {
+        if (filterPengajar === "MANDIRI") {
+          matchPengajar = !r.pengajarPendamping;
+        } else {
+          const namaGuru = typeof r.pengajarPendamping === 'object' ? r.pengajarPendamping?.nama : null;
+          matchPengajar = namaGuru === filterPengajar;
+        }
+      }
+      
+      return matchBulan && matchMapel && matchPengajar;
     });
-  }, [riwayatKonsul, filterBulan, filterMapel]);
+  }, [riwayatKonsul, filterBulan, filterMapel, filterPengajar]);
 
   const ringkasanFilter = useMemo(() => {
     let totalMenit = 0;
@@ -125,6 +137,9 @@ export default function TabKonsulSiswa({ riwayat = [] }) {
         filterMapel={filterMapel} 
         setFilterMapel={setFilterMapel} 
         opsiMapel={opsiMapel} 
+        filterPengajar={filterPengajar} 
+        setFilterPengajar={setFilterPengajar}
+        opsiPengajar={opsiPengajar}
         ringkasanFilter={ringkasanFilter}
       />
 
@@ -145,7 +160,6 @@ export default function TabKonsulSiswa({ riwayat = [] }) {
           ))
         )}
 
-        {/* 🚀 FIX: Sambungkan kabel RAM ke PaginationBar */}
         <div style={{ marginTop: '24px'}}>
           <PaginationBar 
             totalPages={totalPage} 

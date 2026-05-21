@@ -94,15 +94,22 @@ export async function ambilDataDashboard() {
     const arrayIdSiswaStr = siswa.map(s => s._id.toString());
     const arrayPencarianAman = [...arrayIdSiswaObj, ...arrayIdSiswaStr];
 
-    //FIX: Diet Memori. Membatasi penarikan riwayat hanya 150 terbaru
     const riwayat = await StudySession.find({ 
       waktuMulai: { $gte: mulai, $lte: akhir },
       siswaId: { $in: arrayPencarianAman } 
     })
-      .select("_id siswaId jenisSesi namaMapel waktuMulai waktuSelesai status terlambatMenit konsulExtraMenit jadwalId tanggalAsli")
+      .select("_id siswaId jenisSesi namaMapel waktuMulai waktuSelesai status terlambatMenit konsulExtraMenit jadwalId tanggalAsli pengajarPendamping")
       .populate("siswaId", "nama username nomorPeserta kelas status") 
+      .populate("pengajarPendamping", "nama kodePengajar")
+      .populate({
+        path: "jadwalId",
+        select: "namaPengajar kodePengajar",
+        model: "Jadwal",
+        strictPopulate: false
+      })
       .sort({ waktuMulai: -1 })
-      .limit(150) // 👈 Limitasi pengamanan memori serverless
+      //  FIX: Limit dinaikkan dari 150 ke 3000 agar Tab Monitoring membaca SELURUH data bulan ini
+      .limit(3000) 
       .lean();
 
     const riwayatBersih = riwayat
@@ -113,7 +120,12 @@ export async function ambilDataDashboard() {
         siswaId: typeof r.siswaId === "object" 
           ? { ...r.siswaId, _id: r.siswaId._id.toString() } 
           : r.siswaId.toString(),
-        jadwalId: r.jadwalId ? r.jadwalId.toString() : null
+        jadwalId: r.jadwalId && typeof r.jadwalId === "object"
+          ? { ...r.jadwalId, _id: r.jadwalId._id.toString() }
+          : r.jadwalId ? r.jadwalId.toString() : null,
+        pengajarPendamping: r.pengajarPendamping && typeof r.pengajarPendamping === "object"
+          ? { ...r.pengajarPendamping, _id: r.pengajarPendamping._id.toString() }
+          : r.pengajarPendamping ? r.pengajarPendamping.toString() : null
       }));
 
     const siswaBersih = siswa.map(s => ({ ...s, _id: s._id.toString() }));
@@ -121,7 +133,6 @@ export async function ambilDataDashboard() {
     return responseHelper.success("Data dashboard dimuat.", { riwayat: riwayatBersih, siswa: siswaBersih });
 
   } catch (error) {
-    //FIX: Sensor Pesan Error
     console.error("[CRITICAL ERROR Dashboard]:", error);
     return responseHelper.error("Gagal memuat data dashboard.");
   }
@@ -242,7 +253,6 @@ export async function tambahJadwal(dataForm) {
     const sesi = await authHelper.ambilSesi();
 
     const kodeCari = dataForm.pengajar?.trim();
-    //FIX: Cegah ReDoS
     const kodeCariAman = validationHelper.escapeRegex(kodeCari);
     
     let queryPengajar = { 
@@ -725,7 +735,123 @@ export async function hapusAkunAdmin(id) {
 }
 
 // ============================================================================
-// 🚨 SKRIP MIGRASI DATA LAMA (SATU KALI PAKAI)
+// 8. LAPORAN BULANAN PENGAJAR (KINERJA)
+// ============================================================================
+export async function ambilLaporanBulananPengajar(pengajarId, bulan, tahun) {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const pengajar = await User.findById(pengajarId)
+      .select("nama nomorPeserta kodePengajar pangkat kodeCabang kelasAsuh")
+      .lean();
+
+    if (!pengajar) return responseHelper.error("Pengajar tidak ditemukan.");
+
+    const tanggalMulai = new Date(tahun, bulan - 1, 1);
+    const tanggalAkhir = new Date(tahun, bulan, 0, 23, 59, 59, 999);
+
+    const strMulai = `${tahun}-${String(bulan).padStart(2, '0')}-01`;
+    const strAkhir = `${tahun}-${String(bulan).padStart(2, '0')}-${String(tanggalAkhir.getDate()).padStart(2, '0')}`;
+
+    // 1. Ambil Kelas Reguler yang diajar oleh Pengajar ini
+    const jadwalGuru = await Jadwal.find({
+      pengajarId: pengajarId,
+      tanggal: { $gte: strMulai, $lte: strAkhir }
+    }).sort({ tanggal: 1, jamMulai: 1 }).lean();
+
+    const jadwalIdsObj = jadwalGuru.map(j => j._id);
+    const jadwalIdsStr = jadwalGuru.map(j => j._id.toString());
+
+    // 2. Tarik SEMUA Sesi Kelas Bulan ini untuk melacak Extra per kepala siswa
+    const semuaSesiKelas = await StudySession.find({
+      jenisSesi: TIPE_SESI.KELAS,
+      waktuMulai: { $gte: tanggalMulai, $lte: tanggalAkhir },
+      status: STATUS_SESI.SELESAI.id 
+    }).populate("siswaId", "kelas").lean();
+
+    //  FIX: Kumpulkan data ekstra menggunakan Map (Anti-Duplikat Double Period)
+    const listExtraSiswaMap = new Map();
+    const extraMap = {};
+
+    jadwalGuru.forEach(j => {
+      let maxExtra = 0;
+      const jIdStr = j._id.toString();
+
+      semuaSesiKelas.forEach(sesi => {
+        if (!sesi.waktuSelesai) return; 
+
+        if (!sesi.jadwalId) {
+          const tglSesi = new Date(sesi.waktuMulai.getTime() - (sesi.waktuMulai.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+          const mapelAsli = sesi.namaMapel ? sesi.namaMapel.replace(" (Extra)", "").trim() : "";
+          const kelasSiswa = sesi.siswaId?.kelas || "";
+
+          if (tglSesi === j.tanggal && mapelAsli === j.mapel && kelasSiswa === j.kelasTarget) {
+            if (sesi.konsulExtraMenit > maxExtra) maxExtra = sesi.konsulExtraMenit;
+            if (sesi.konsulExtraMenit > 0) listExtraSiswaMap.set(sesi._id.toString(), sesi);
+          }
+        } else {
+          const matchId = typeof sesi.jadwalId === 'object' ? sesi.jadwalId.toString() : String(sesi.jadwalId);
+          if (matchId === jIdStr) {
+            if (sesi.konsulExtraMenit > maxExtra) maxExtra = sesi.konsulExtraMenit;
+            if (sesi.konsulExtraMenit > 0) listExtraSiswaMap.set(sesi._id.toString(), sesi);
+          }
+        }
+      });
+      extraMap[jIdStr] = maxExtra;
+    });
+
+    const listExtraSiswa = Array.from(listExtraSiswaMap.values());
+
+    const kelasMapped = jadwalGuru.map(j => ({
+      ...j,
+      _id: j._id.toString(),
+      pengajarId: j.pengajarId ? j.pengajarId.toString() : null, 
+      status: j.bab ? STATUS_SESI.SELESAI.id : "BELUM",
+      waktuMulai: new Date(`${j.tanggal}T${j.jamMulai}:00${PERIODE_BELAJAR.ISO_OFFSET}`).toISOString(),
+      waktuSelesai: j.bab ? new Date(`${j.tanggal}T${j.jamSelesai}:00${PERIODE_BELAJAR.ISO_OFFSET}`).toISOString() : null,
+      namaMapel: j.mapel,
+      kelasTarget: j.kelasTarget,
+      konsulExtraMenit: extraMap[j._id.toString()] || 0
+    }));
+
+    // 3. Ambil Riwayat Bimbingan Konsul Inisiatif Mandiri
+    const sesiKonsul = await StudySession.find({
+      pengajarPendamping: pengajarId,
+      jenisSesi: TIPE_SESI.KONSUL,
+      waktuMulai: { $gte: tanggalMulai, $lte: tanggalAkhir },
+      status: STATUS_SESI.SELESAI.id
+    }).populate("siswaId", "nama kelas").sort({ waktuMulai: 1 }).lean();
+
+    // 4. Ambil Absen Masuk Pengajar
+    const absenGuru = await AbsensiPengajar.find({
+        pengajarId: pengajarId,
+        waktuMasuk: { $gte: tanggalMulai, $lte: tanggalAkhir }
+    }).sort({ waktuMasuk: 1 }).lean();
+
+    const dataRapor = {
+      profil: {
+        nama: pengajar.nama,
+        nomorPeserta: pengajar.nomorPeserta || "-",
+        kodePengajar: pengajar.kodePengajar || "-",
+        pangkat: pengajar.pangkat || PANGKAT_PENGAJAR.FREELANCE,
+        kelasAsuh: pengajar.kelasAsuh || []
+      },
+      kelas: serialize(kelasMapped), 
+      konsul: serialize(sesiKonsul),
+      konsulExtraSiswa: serialize(listExtraSiswa), 
+      absen: serialize(absenGuru)
+    };
+
+    return responseHelper.success("Data rapor pengajar ditarik.", dataRapor);
+  } catch (error) {
+    console.error("[ERROR ambilLaporanBulananPengajar]:", error);
+    return responseHelper.error("Gagal mengambil data rapor pengajar.");
+  }
+}
+
+// ============================================================================
+// 9. 🚨 SKRIP MIGRASI DATA LAMA (SATU KALI PAKAI)
 // ============================================================================
 export async function prosesMigrasiDataLama() {
   try {

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, Suspense, useState } from "react";
-// 🚀 FIX: useSearchParams dihapus dan diganti dengan useState dari React
+//  FIX: useSearchParams dihapus dan diganti dengan useState dari React
 import { FaBookOpen, FaPen, FaUserTie } from "react-icons/fa6";
 
 // PATH ABSOLUTE
@@ -12,7 +12,7 @@ import styles from "@/components/App.module.css";
 
 const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
   
-  // 🚀 FIX: Jantung Pagination kini murni pakai RAM (0 Lag)
+  //  FIX: Jantung Pagination kini murni pakai RAM (0 Lag)
   const [page, setPage] = useState(1);
   
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_BAHAN || 3; 
@@ -66,7 +66,7 @@ const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
               </div>
             ))}
 
-            {/* 🚀 FIX: Pemasangan kabel currentPage dan onPageChange */}
+            {/*  FIX: Pemasangan kabel currentPage dan onPageChange */}
             <div style={{ marginTop: '-12px', display: 'flex', justifyContent: 'center' }}>
                <PaginationBar 
                  totalPages={totalPage} 

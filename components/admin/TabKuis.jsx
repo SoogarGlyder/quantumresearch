@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-// 🚀 FIX: Import Next Navigation dihapus bersih
+//  FIX: Import Next Navigation dihapus bersih
 
 import { FaPlus, FaBrain, FaPenToSquare, FaTrashCan, FaUserTie, FaMagnifyingGlass } from "react-icons/fa6"; 
 
@@ -13,7 +13,7 @@ import PaginationBar from "../ui/PaginationBar";
 import ModalKuis from "./ModalKuis"; 
 
 export default function TabKuis({ adminId }) {
-  // 🚀 FIX: useRouter, usePathname, useSearchParams sudah diamputasi
+  //  FIX: useRouter, usePathname, useSearchParams sudah diamputasi
 
   const [dataBankSoal, setDataBankSoal] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,11 +24,11 @@ export default function TabKuis({ adminId }) {
   // STATE FILTER LOKAL PENCARIAN 
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 🚀 FIX: Jantung Pagination beralih ke Local State RAM
+  //  FIX: Jantung Pagination beralih ke Local State RAM
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5; 
 
-  // 🚀 FIX: Fungsi mereset halaman kembali ke 1 kini secepat kilat
+  //  FIX: Fungsi mereset halaman kembali ke 1 kini secepat kilat
   const resetHalamanKeSatu = () => {
     setCurrentPage(1);
   };
@@ -202,7 +202,7 @@ export default function TabKuis({ adminId }) {
             </table>
           </div>
 
-          {/* 🚀 FIX: Pasang kabel Pagination RAM */}
+          {/*  FIX: Pasang kabel Pagination RAM */}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <PaginationBar totalPages={totalPages} currentPage={currentPage} onPageChange={setCurrentPage} />
           </div>

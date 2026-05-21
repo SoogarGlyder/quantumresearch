@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, Suspense } from "react";
-// 🚀 FIX: useSearchParams dan router Next.js dihapus
+//  FIX: useSearchParams dan router Next.js dihapus
 
 import { potongDataPagination } from "@/utils/formatHelper"; 
 import { pilahJadwalSiswa } from "@/utils/kalkulatorData";
@@ -23,7 +23,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
   const [galeriAktif, setGaleriAktif] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // 🚀 FIX: Jantung Pagination beralih ke RAM (0 Lag)
+  //  FIX: Jantung Pagination beralih ke RAM (0 Lag)
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KELAS || 10;
   
@@ -39,7 +39,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
     }
   }, [siswa]);
 
-  // 🚀 FIX: Reset halaman ke 1 menjadi instan tanpa URL
+  //  FIX: Reset halaman ke 1 menjadi instan tanpa URL
   useEffect(() => {
     setPage(1);
   }, [searchQuery, activeTab]);
@@ -127,8 +127,8 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
         <DaftarRiwayatKelas 
           dataHalIni={dataKelasHalIni} 
           totalPage={totalPageKelas}
-          currentPage={page}        // 🚀 FIX: Kirim kabel
-          onPageChange={setPage}    // 🚀 FIX: Kirim kabel
+          currentPage={page}        //  FIX: Kirim kabel
+          onPageChange={setPage}    //  FIX: Kirim kabel
           onBukaCatatan={klikBukaCatatan} 
         />
       )}
@@ -137,8 +137,8 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
         <DaftarRiwayatKuis 
           dataRiwayatKuis={dataKuisHalIni} 
           totalPage={totalPageKuis}
-          currentPage={page}        // 🚀 FIX: Kirim kabel
-          onPageChange={setPage}    // 🚀 FIX: Kirim kabel
+          currentPage={page}        //  FIX: Kirim kabel
+          onPageChange={setPage}    //  FIX: Kirim kabel
           onBukaPembahasan={handleBukaPembahasan} 
         />
       )}

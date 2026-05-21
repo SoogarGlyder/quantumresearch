@@ -17,7 +17,7 @@ import {
   KONFIGURASI_SISTEM, 
   LABEL_SISTEM,
   CABANG_QUANTUM,
-  PERIODE_BELAJAR //FIX: Import Periode Belajar untuk batasan 1 Tahun Ajaran
+  PERIODE_BELAJAR 
 } from "../utils/constants";
 
 export const dynamic = "force-dynamic";
@@ -51,13 +51,10 @@ export default async function Home() {
   }
 
   // ==========================================================================
-  //PERBAIKAN: LOGIKA WAKTU "DIET DATA" KEBAL ZONA WAKTU VERCEL (UTC)
+  // PERBAIKAN: LOGIKA WAKTU "DIET DATA" KEBAL ZONA WAKTU VERCEL (UTC)
   // ==========================================================================
   
-  // 1. Ambil waktu saat ini, lalu paksa konversi ke string berformat waktu Jakarta
   const waktuJakartaStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
-  
-  // 2. Buat objek Date baru yang murni membaca angka dari waktu Jakarta tersebut
   const sekarang = new Date(waktuJakartaStr);
   
   const y = sekarang.getFullYear();
@@ -92,7 +89,7 @@ export default async function Home() {
   // CABANG 2: PENGAJAR 
   // ==========================================================================
   if (userLogin.peran === PERAN.PENGAJAR.id) {
-    const [jadwalPengajar, riwayatAbsensi] = await Promise.all([
+    const [jadwalPengajar, riwayatAbsensi, statsKonsulRaw] = await Promise.all([
       Jadwal.find({ 
         kodePengajar: userLogin.kodePengajar,
         tanggal: { $gte: strMinStaf, $lte: strMaxStaf }
@@ -104,14 +101,42 @@ export default async function Home() {
         waktuMasuk: { $gte: minDateStafObj, $lte: maxDateStafObj }
       }) 
         .sort({ waktuMasuk: -1 })
-        .lean()
+        .lean(),
+      //  FIX: Tambahkan Agregasi Penghitung Durasi Konsul Khusus Pengajar
+      StudySession.aggregate([
+        { 
+          $match: { 
+            pengajarPendamping: userLogin._id, 
+            status: STATUS_SESI.SELESAI.id,
+            waktuMulai: { $gte: minDateStafObj, $lte: maxDateStafObj } 
+          } 
+        },
+        { 
+          $group: { 
+            _id: null, 
+            totalMenit: { 
+              $sum: { 
+                $add: [
+                  { $max: [0, { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60000] }] },
+                  { $ifNull: ["$konsulExtraMenit", 0] }
+                ]
+              } 
+            },
+            totalSesi: { $count: {} }
+          } 
+        }
+      ]).exec()
     ]);
+
+    //  FIX: Siapkan data hasil agregasi
+    const statsKonsul = statsKonsulRaw.length > 0 ? statsKonsulRaw[0] : { totalMenit: 0, totalSesi: 0 };
 
     return (
       <TeacherApp 
         dataUser={serialize(userLogin)} 
         jadwal={serialize(jadwalPengajar)} 
         absensi={serialize(riwayatAbsensi)} 
+        statsKonsul={serialize(statsKonsul)} // 👈 Oper data ini ke TeacherApp
         onLogout={null}
       />
     );
@@ -120,14 +145,12 @@ export default async function Home() {
   // ==========================================================================
   // CABANG 3: SISWA 
   // ==========================================================================
-  
-  //1. PENCAPAIAN BULANAN (Reset otomatis setiap tanggal 1)
   const statsSiswaPromise = StudySession.aggregate([
     { 
       $match: { 
         siswaId: userLogin._id, 
         status: STATUS_SESI.SELESAI.id,
-        waktuMulai: { $gte: minDateSiswaObj, $lte: maxDateSiswaObj } // 👈 Kunci statistik hanya di bulan ini
+        waktuMulai: { $gte: minDateSiswaObj, $lte: maxDateSiswaObj }
       } 
     },
     { 
@@ -146,20 +169,20 @@ export default async function Home() {
     }
   ]).exec();
 
-  //2. BUKA KERAN RIWAYAT (Satu Tahun Ajaran Penuh)
   const awalSemester = new Date(`${PERIODE_BELAJAR.MULAI}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`);
   const akhirSemester = new Date(`${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`);
 
   const [riwayatRaw, jadwalMentah, statsRaw, latihanHariIniRaw] = await Promise.all([
     StudySession.find({ 
       siswaId: userLogin._id,
-      waktuMulai: { $gte: awalSemester, $lte: akhirSemester } // 👈 Keran riwayat konsul/jurnal dibuka
+      waktuMulai: { $gte: awalSemester, $lte: akhirSemester } 
     })
+      .populate("pengajarPendamping", "nama kodePengajar") 
       .sort({ waktuMulai: -1 })
       .lean(),
     Jadwal.find({ 
       kelasTarget: userLogin.kelas,
-      tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR } // 👈 Keran jadwal kelas dibuka
+      tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR } 
     })
       .populate({ path: "pengajarId", select: "kodeCabang" }) 
       .sort({ tanggal: 1 })

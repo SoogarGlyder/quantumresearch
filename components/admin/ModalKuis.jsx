@@ -31,7 +31,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
 // ============================================================================
-// 🚀 THE FIX: TRANSLATOR DATABASE <--> REACT STATE
+//  THE FIX: TRANSLATOR DATABASE <--> REACT STATE
 // ============================================================================
 const konversiSoalKeState = (dataSoalDB) => {
   return dataSoalDB.map(s => {
@@ -215,7 +215,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
       }
 
       if (kuisLama?.soal?.length > 0) {
-        // 🚀 THE FIX: Konversi data saat ditarik dari Database
+        //  THE FIX: Konversi data saat ditarik dari Database
         setFormSoal(konversiSoalKeState(kuisLama.soal));
         setDurasiUjian(kuisLama.durasi || 10);
       } else {
@@ -307,7 +307,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     setIsMengambil(true);
     const kuisLamaCoy = await ambilKuisByJadwal(jadwalIdLama);
     if (kuisLamaCoy && kuisLamaCoy.soal) {
-       // 🚀 THE FIX: Konversi data saat di-import
+       //  THE FIX: Konversi data saat di-import
        setFormSoal(konversiSoalKeState(kuisLamaCoy.soal));
        setDurasiUjian(kuisLamaCoy.durasi || 10);
        setShowImportPanel(false);
@@ -337,7 +337,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
 
     setLoading(true);
     try {
-      // 🚀 THE FIX: Konversi data ke format Database sebelum dikirim
+      //  THE FIX: Konversi data ke format Database sebelum dikirim
       const formSoalSiapSimpan = konversiStateKeDB(formSoal);
 
       let res;

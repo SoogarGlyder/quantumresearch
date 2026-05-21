@@ -11,7 +11,7 @@ export const TabJurnalKelas = dynamic(() => import("./journal"), {
   loading: () => <FallbackLoading teks="MEMUAT JURNAL..." />,
 });
 
-// 3. SCAN (🚀 FIX: Mematikan SSR agar API Navigator/Kamera tidak crash di Vercel)
+// 3. SCAN ( FIX: Mematikan SSR agar API Navigator/Kamera tidak crash di Vercel)
 export const TabScanPengajar = dynamic(() => import("./scan"), {
   ssr: false, 
   loading: () => <FallbackLoading teks="MENYIAPKAN KAMERA..." />,

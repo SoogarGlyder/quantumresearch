@@ -22,7 +22,16 @@ const absensiPengajarSchema = new mongoose.Schema({
   lokasiScanKeluar: { 
     lat: { type: Number, default: null }, 
     lng: { type: Number, default: null } 
-  }
+  },
+  // ==========================================
+  // TAMBAHAN BARU: PENCATATAN EKSTRA KONSUL
+  // ==========================================
+  riwayatEkstraKelas: [{
+    jadwalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Jadwal' },
+    menitEkstra: { type: Number, default: 0 }
+  }],
+  totalMenitEkstraHarian: { type: Number, default: 0 }
+  // ==========================================
 }, { timestamps: true });
 
 // Indexing lama

@@ -2,9 +2,9 @@
 
 import { memo } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation"; // FIX: Import router untuk pindah ke /admin
-import { FaBuildingShield } from "react-icons/fa6"; // FIX: Icon Tameng Admin
-import { PANGKAT_PENGAJAR } from "@/utils/constants"; // FIX: Import Konstanta Pangkat
+import { useRouter } from "next/navigation"; 
+import { FaBuildingShield } from "react-icons/fa6"; 
+import { PANGKAT_PENGAJAR } from "@/utils/constants"; 
 
 import styles from "@/components/App.module.css";
 
@@ -15,6 +15,12 @@ const HeaderPengajar = memo(({ dataUser, statsPengajar }) => {
   const isBisaMasukAdmin = 
     dataUser?.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK || 
     dataUser?.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH;
+
+  //  FIX: Logika Konversi Waktu Bimbingan (Pembulatan Aman Tanpa Koma)
+  const totalMenit = Math.round(statsPengajar?.totalMenitKonsul || 0);
+  const jamKonsul = Math.floor(totalMenit / 60);
+  const menitKonsul = totalMenit % 60;
+  const totalSesiKonsul = statsPengajar?.totalSesiKonsul || 0;
 
   return (
     <div className={`${styles.appHeader} header-aman-poni`}>
@@ -41,31 +47,46 @@ const HeaderPengajar = memo(({ dataUser, statsPengajar }) => {
 
       <div className={styles.infoContainer} style={{ marginBottom: '0', marginTop: '12px' }}>
          <h2 className={styles.infoHeader}>Ringkasan Mengajar Bulan Ini</h2>
+         
+         {/* 3 Kotak Utama (Jadwal Kelas) */}
          <div className={styles.statGridContainer} style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
             <div className={styles.statContainer}>
               <span className={styles.statLabel} style={{fontSize: '11px'}}>Total Sesi</span>
-              <span className={`${styles.statValue} ${styles.nilaiStatBiru}`}>{statsPengajar.totalKelas}</span>
+              <span className={`${styles.statValue} ${styles.nilaiStatBiru}`}>{statsPengajar?.totalKelas || 0}</span>
             </div>
             <div className={styles.statContainer}>        
               <span className={styles.statLabel} style={{fontSize: '11px'}}>Jurnal OK</span>
-              <span className={`${styles.statValue} ${styles.nilaiStatHijau}`}>{statsPengajar.jurnalSelesai}</span>
+              <span className={`${styles.statValue} ${styles.nilaiStatHijau}`}>{statsPengajar?.jurnalSelesai || 0}</span>
             </div>
             <div className={styles.statContainer}>        
               <span className={styles.statLabel} style={{fontSize: '11px'}}>Presensi</span>
-              <span className={`${styles.statValue} ${styles.nilaiStatMerah}`}>{statsPengajar.totalAbsensi}</span>
+              <span className={`${styles.statValue} ${styles.nilaiStatMerah}`}>{statsPengajar?.totalAbsensi || 0}</span>
+            </div>
+         </div>
+
+         {/*  FIX: 2 Kotak Baru (Konsul) dengan gaya yang identik */}
+         <div className={styles.statGridContainer} style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginTop: '16px' }}>
+            <div className={styles.statContainer}>
+              <span className={styles.statLabel} style={{fontSize: '11px'}}>Durasi Konsul</span>
+              <span className={`${styles.statValue} ${styles.nilaiStatBiru}`} style={{ fontSize: jamKonsul > 0 ? '16px' : '20px' }}>
+                {jamKonsul > 0 ? `${jamKonsul}j ` : ""}{menitKonsul}m
+              </span>
+            </div>
+            <div className={styles.statContainer}>
+              <span className={styles.statLabel} style={{fontSize: '11px'}}>Sesi Konsul</span>
+              <span className={`${styles.statValue} ${styles.nilaiStatHijau}`}>{totalSesiKonsul}</span>
             </div>
          </div>
       </div>
 
       <div>
-        {/* TOMBOL RAHASIA (Hanya Muncul untuk Staff Akademik & Kakak Asuh) */}
         {isBisaMasukAdmin && (
           <button
             onClick={() => router.push('/admin')}
             style={{
               marginTop: '16px',
               padding: '12px 20px',
-              backgroundColor: '#facc15', // Warna Emas Mencolok
+              backgroundColor: '#facc15', 
               color: '#111827',
               border: '3px solid #111827',
               borderRadius: '12px',

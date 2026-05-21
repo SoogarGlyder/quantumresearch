@@ -3,7 +3,7 @@
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import styles from "./PaginationBar.module.css";
 
-// 🚀 FIX: Komponen kini menerima currentPage dan onPageChange dari Induk
+//  FIX: Komponen kini menerima currentPage dan onPageChange dari Induk
 export default function PaginationBar({ 
   currentPage = 1, 
   totalPages, 

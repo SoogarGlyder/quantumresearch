@@ -6,7 +6,7 @@ import styles from "@/components/App.module.css";
 
 const TabSelector = memo(({ activeTab, setActiveTab }) => {
   return (
-    <div className={styles.tabScanContainer} style={{margin: '24px 16px 0'}}>
+    <div className={styles.tabScanContainer} style={{margin: '16px 16px 0'}}>
       <div className={styles.wrapperRow}>
         <button 
           onClick={() => setActiveTab("TUGAS")}
