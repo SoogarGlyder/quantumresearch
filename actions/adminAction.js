@@ -748,20 +748,23 @@ export async function ambilLaporanBulananPengajar(pengajarId, bulan, tahun) {
 
     if (!pengajar) return responseHelper.error("Pengajar tidak ditemukan.");
 
-    const tanggalMulai = new Date(tahun, bulan - 1, 1);
-    const tanggalAkhir = new Date(tahun, bulan, 0, 23, 59, 59, 999);
+    const tanggalMulai = new Date(tahun, bulan - 2, 29);
+    const tanggalAkhir = new Date(tahun, bulan - 1, 28, 23, 59, 59, 999);
 
-    const strMulai = `${tahun}-${String(bulan).padStart(2, '0')}-01`;
-    const strAkhir = `${tahun}-${String(bulan).padStart(2, '0')}-${String(tanggalAkhir.getDate()).padStart(2, '0')}`;
+    const formatTanggal = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
 
-    // 1. Ambil Kelas Reguler yang diajar oleh Pengajar ini
+    const strMulai = formatTanggal(tanggalMulai);
+    const strAkhir = formatTanggal(tanggalAkhir);
+
     const jadwalGuru = await Jadwal.find({
       pengajarId: pengajarId,
       tanggal: { $gte: strMulai, $lte: strAkhir }
     }).sort({ tanggal: 1, jamMulai: 1 }).lean();
-
-    const jadwalIdsObj = jadwalGuru.map(j => j._id);
-    const jadwalIdsStr = jadwalGuru.map(j => j._id.toString());
 
     // 2. Tarik SEMUA Sesi Kelas Bulan ini untuk melacak Extra per kepala siswa
     const semuaSesiKelas = await StudySession.find({
@@ -770,7 +773,6 @@ export async function ambilLaporanBulananPengajar(pengajarId, bulan, tahun) {
       status: STATUS_SESI.SELESAI.id 
     }).populate("siswaId", "kelas").lean();
 
-    //  FIX: Kumpulkan data ekstra menggunakan Map (Anti-Duplikat Double Period)
     const listExtraSiswaMap = new Map();
     const extraMap = {};
 
