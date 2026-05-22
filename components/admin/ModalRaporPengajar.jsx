@@ -179,7 +179,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
   
   const arrayTglMasuk = Array.from(tglMasukSet).sort();
 
-  // 🚀 LOGIKA BARU: MENGHITUNG SUMMARY KEHADIRAN & BEBAN HARIAN
+  //LOGIKA BARU: MENGHITUNG SUMMARY KEHADIRAN & BEBAN HARIAN
   let totalPresensi = 0;
   let hariTanpaKelas = 0;
   let kelasDouble = 0;
@@ -223,7 +223,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
     label, sesi: v.sesi, menit: v.menit, color: WARNA_CHART[(i+4) % WARNA_CHART.length]
   }));
 
-  // 🚀 LOGIKA FORMAT JABATAN KAKAK ASUH
+  //LOGIKA FORMAT JABATAN KAKAK ASUH
   const profilData = dataRapor?.profil || {};
   const isKakakAsuh = profilData.pangkat === "KAKAK_ASUH";
   const teksJabatanFinal = isKakakAsuh 
@@ -270,7 +270,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
             </div>
             <div style={{ borderBottom: '5px solid #111827', marginBottom: '20px' }}></div>
 
-            {/* 🚀 FIX: IDENTITAS PENGAJAR YANG SUDAH DISESUAIKAN */}
+            {/*FIX: IDENTITAS PENGAJAR YANG SUDAH DISESUAIKAN */}
             <div style={{ marginBottom: '20px' }}>
                 <div style={{ margin: '0 0 12px 0', fontSize: '28px', fontWeight: 900, color: '#111827' }}>
                   {profilData.nama?.toUpperCase()}

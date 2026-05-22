@@ -1,26 +1,34 @@
 "use client";
 
 import { memo, Suspense, useState } from "react";
-//  FIX: useSearchParams dihapus dan diganti dengan useState dari React
 import { FaBookOpen, FaPen, FaUserTie } from "react-icons/fa6";
-
-// PATH ABSOLUTE
 import { potongDataPagination } from "@/utils/formatHelper";
 import PaginationBar from "@/components/ui/PaginationBar";
 import { LIMIT_DATA } from "@/utils/constants"; 
 import styles from "@/components/App.module.css";
 
+// 🚀 HELPER: Menyeragamkan menjadi "Kak [Nama Lengkap]" (Untuk menangani data lama)
+const formatNamaKreator = (namaRaw) => {
+  if (!namaRaw) return "Admin Quantum";
+  if (namaRaw === "Admin Quantum") return namaRaw; 
+  
+  let namaAsli = namaRaw;
+  
+  // Bersihkan "Staff Akademik (...)" dari data lawas
+  if (namaRaw.startsWith("Staff Akademik (") && namaRaw.endsWith(")")) {
+    namaAsli = namaRaw.slice(16, -1); 
+  } else if (namaRaw.startsWith("Kak ")) {
+    namaAsli = namaRaw.slice(4); // Hilangkan "Kak " sementara biar tidak ganda
+  }
+
+  return `Kak ${namaAsli}`;
+};
+
 const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
-  
-  //  FIX: Jantung Pagination kini murni pakai RAM (0 Lag)
   const [page, setPage] = useState(1);
-  
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_BAHAN || 3; 
 
-  // Pastikan data selalu berupa array
   const daftarLatihan = Array.isArray(latihanHariIni) ? latihanHariIni : (latihanHariIni ? [latihanHariIni] : []);
-
-  // Potong data sesuai halaman aktif
   const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(daftarLatihan, page, ITEMS_PER_PAGE);
 
   return (
@@ -36,14 +44,7 @@ const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
               <div 
                 key={latihan._id || index} 
                 className={styles.missionCard} 
-                style={{ 
-                  cursor: 'pointer', 
-                  padding: '0', 
-                  overflow: 'hidden',
-                  border: '3px solid #111827', 
-                  boxShadow: '4px 4px 0 #111827', 
-                  borderRadius: '12px'
-                }} 
+                style={{ cursor: 'pointer', padding: '0', overflow: 'hidden', border: '3px solid #111827', boxShadow: '4px 4px 0 #111827', borderRadius: '12px' }} 
                 onClick={() => setUrlMitra(latihan.url)}
               >
                 <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#ffffff' }}>
@@ -57,7 +58,9 @@ const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
                           {latihan.judul}
                         </h4>
                         <span style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold' }}>
-                          <FaUserTie size={12} color="#475569" /> {latihan.namaPembuat || "Admin Quantum"}
+                          <FaUserTie size={12} color="#475569" /> 
+                          {/* 🚀 Nama full ditampilkan rapi di sini */}
+                          {formatNamaKreator(latihan.namaPembuat)}
                         </span>
                       </div>
                     </div>
@@ -66,14 +69,8 @@ const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
               </div>
             ))}
 
-            {/*  FIX: Pemasangan kabel currentPage dan onPageChange */}
             <div style={{ marginTop: '-12px', display: 'flex', justifyContent: 'center' }}>
-               <PaginationBar 
-                 totalPages={totalPage} 
-                 currentPage={page} 
-                 onPageChange={setPage} 
-                 style={{ justifyContent: 'space-evenly', width: '100%' }} 
-               />
+               <PaginationBar totalPages={totalPage} currentPage={page} onPageChange={setPage} style={{ justifyContent: 'space-evenly', width: '100%' }} />
             </div>
           </>
         ) : (
@@ -88,14 +85,9 @@ const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
 
 InnerLatihanHariIni.displayName = "InnerLatihanHariIni";
 
-// Komponen Utama berfungsi sebagai pelindung Suspense
 export default function LatihanHariIni(props) {
   return (
-    <Suspense fallback={
-      <div className={styles.contentContainer} style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontWeight: 'bold' }}>
-        Memuat Bahan Belajar...
-      </div>
-    }>
+    <Suspense fallback={<div className={styles.contentContainer} style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontWeight: 'bold' }}>Memuat Bahan Belajar...</div>}>
       <InnerLatihanHariIni {...props} />
     </Suspense>
   );

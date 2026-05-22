@@ -313,7 +313,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
       let telat = sekarang > waktuMulaiJadwal ? Math.floor((sekarang - waktuMulaiJadwal) / 60000) : 0;
 
-      // 🚀 FIX: Kata 'Thermal' diubah menjadi 'sekarang'
+      //FIX: Kata 'Thermal' diubah menjadi 'sekarang'
       await StudySession.create({
         siswaId: userId, jenisSesi: TIPE_SESI.KELAS, namaMapel: jadwal.mapel,
         jadwalId: jadwal._id, terlambatMenit: telat, status: STATUS_SESI.BERJALAN.id, waktuMulai: sekarang

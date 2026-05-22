@@ -2,8 +2,19 @@
 
 import { memo } from "react";
 import { FaBookOpen, FaBullseye, FaPenToSquare, FaTrash, FaLink, FaPlus } from "react-icons/fa6";
-import PaginationBar from "@/components/ui/PaginationBar"; //  FIX: Impor Pagination
+import PaginationBar from "@/components/ui/PaginationBar";
 import styles from "@/components/App.module.css";
+
+// 🚀 HELPER: Potong target menjadi maksimal 2 kata saja
+const formatNamaTarget = (targetData) => {
+  if (!targetData) return "-";
+  
+  if (Array.isArray(targetData)) {
+    return targetData.map(t => String(t).split(' ').slice(0, 2).join(' ')).join(', ');
+  }
+  
+  return String(targetData).split(' ').slice(0, 2).join(' ');
+};
 
 const DaftarTugas = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loading, onEdit, onHapus, onBukaForm }) => (
   <div className={styles.contentContainer}>
@@ -36,7 +47,10 @@ const DaftarTugas = memo(({ dataHalIni, totalPage, currentPage, onPageChange, lo
                 <p className={styles.scheduleSubject} style={{ fontSize: '18px' }}>{item.judul}</p>
               </div>
               <div className={styles.scheduleCardRow}>
-                <div className={styles.scheduleInfoBox} style={{ background: '#111827', border: '2px solid #111827' }}><span className={styles.scheduleInfo} style={{ color: 'white' }}>{item.target}</span></div>
+                <div className={styles.scheduleInfoBox} style={{ background: '#111827', border: '2px solid #111827', padding: '6px 8px' }}>
+                  {/* 🚀 TARGET DI POTONG JADI 2 KATA */}
+                  <span className={styles.scheduleInfo} style={{ color: 'white' }}>{formatNamaTarget(item.target)}</span>
+                </div>
                 <a href={item.url} target="_blank" rel="noreferrer" className={styles.scheduleCount} style={{ background: '#fef08a', color: '#111827', textDecoration: 'none', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
                   CEK LINK <FaLink size={12}/> 
                 </a>
@@ -45,14 +59,8 @@ const DaftarTugas = memo(({ dataHalIni, totalPage, currentPage, onPageChange, lo
           ))}
         </div>
 
-        {/*  FIX: Render Pagination */}
         <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-          <PaginationBar 
-            currentPage={currentPage} 
-            totalPages={totalPage} 
-            onPageChange={onPageChange} 
-            style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} 
-          />
+          <PaginationBar currentPage={currentPage} totalPages={totalPage} onPageChange={onPageChange} style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} />
         </div>
       </>
     )}
