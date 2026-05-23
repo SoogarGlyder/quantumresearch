@@ -240,7 +240,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(17,24,39,0.95)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', padding: '40px 20px' }}>
       
       {/* 1. PANEL KONTROL */}
-      <div style={{ background: 'white', border: '4px solid #111827', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '1050px', marginBottom: '30px', display: 'flex', gap: '20px', alignItems: 'center', boxShadow: '8px 8px 0 #3b82f6', zIndex: 10 }}>
+      <div style={{ background: 'white', border: '4px solid #111827', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '980px', marginBottom: '30px', display: 'flex', gap: '20px', alignItems: 'center', boxShadow: '8px 8px 0 #3b82f6', zIndex: 10 }}>
         <div style={{ flex: 1 }}>
           <h2 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{pengajar.nama}</h2>
           <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Pilih periode bulan sebelum mengunduh.</p>
@@ -254,7 +254,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
           </select>
         </div>
         <button onClick={cetakGambar} disabled={loadingData || sedangMencetak || !dataRapor} style={{ background: '#2563eb', color: 'white', padding: '12px 24px', border: '3px solid #111827', borderRadius: '12px', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {sedangMencetak ? <FaSpinner className="spinAnimation" /> : <FaDownload />} Cetak Rapor
+          {sedangMencetak ? <FaSpinner className="spinAnimation" /> : <FaDownload />} Cetak Laporan
         </button>
         <button onClick={onClose} style={{ background: '#ef4444', color: 'white', border: '3px solid #111827', borderRadius: '12px', padding: '12px', cursor: 'pointer' }}><FaXmark /></button>
       </div>
@@ -263,7 +263,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
       {loadingData ? (
         <div style={{ color: 'white', textAlign: 'center', marginTop: '100px' }}><FaSpinner className="spinAnimation" style={{fontSize: '40px'}} /></div>
       ) : dataRapor ? (
-        <div id="wrapper-kertas-rapor-pengajar" style={{ background: '#fdfbf7', padding: '40px', borderRadius: '20px', flexShrink: 0, width: '100%', maxWidth: '1000px' }}>
+        <div id="wrapper-kertas-rapor-pengajar" style={{ background: '#fdfbf7', padding: '40px', borderRadius: '20px', flexShrink: 0}}>
           <div className={cetakStyles.kertasPortrait}>
             
             {/* 🚀 HEADER LOGO & CABANG DINAMIS */}

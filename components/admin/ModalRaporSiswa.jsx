@@ -94,7 +94,7 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
           </select>
         </div>
         <button onClick={cetakGambar} disabled={loadingData || sedangMencetak || !dataRapor} style={{ background: '#2563eb', color: 'white', padding: '12px 24px', border: '3px solid #111827', borderRadius: '12px', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {sedangMencetak ? <FaSpinner className="spinAnimation" /> : <FaDownload />} Download Gambar Rapor
+          {sedangMencetak ? <FaSpinner className="spinAnimation" /> : <FaDownload />} Cetak Laporan
         </button>
         <button onClick={onClose} style={{ background: '#ef4444', color: 'white', border: '3px solid #111827', borderRadius: '12px', padding: '12px', cursor: 'pointer' }}><FaXmark /></button>
       </div>
