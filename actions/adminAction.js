@@ -616,7 +616,7 @@ export async function ambilLaporanBulananSiswa(siswaId, bulan, tahun) {
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK); 
 
     const siswa = await User.findById(siswaId)
-      .select("nama nomorPeserta kelas jadwalKelas jamKelas totalExp koleksiLencana")
+      .select("nama nomorPeserta kelas jadwalKelas jamKelas totalExp koleksiLencana kodeCabang") 
       .lean();
       
     if (!siswa) return responseHelper.error("Siswa tidak ditemukan.");
@@ -638,6 +638,7 @@ export async function ambilLaporanBulananSiswa(siswaId, bulan, tahun) {
         nama: siswa.nama,
         nomorPeserta: siswa.nomorPeserta,
         kelas: siswa.kelas,
+        kodeCabang: siswa.kodeCabang,
         jadwalKelas: siswa.jadwalKelas,
         jamKelas: siswa.jamKelas,
         totalExp: siswa.totalExp || 0,
@@ -837,7 +838,8 @@ export async function ambilLaporanBulananPengajar(pengajarId, bulan, tahun) {
         nomorPeserta: pengajar.nomorPeserta || "-",
         kodePengajar: pengajar.kodePengajar || "-",
         pangkat: pengajar.pangkat || PANGKAT_PENGAJAR.FREELANCE,
-        kelasAsuh: pengajar.kelasAsuh || []
+        kelasAsuh: pengajar.kelasAsuh || [],
+        kodeCabang: pengajar.kodeCabang,
       },
       kelas: serialize(kelasMapped), 
       konsul: serialize(sesiKonsul),

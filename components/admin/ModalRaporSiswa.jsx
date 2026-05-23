@@ -5,7 +5,7 @@ import { FaXmark, FaDownload, FaSpinner } from "react-icons/fa6";
 import { toPng } from 'html-to-image'; 
 import { ambilLaporanBulananSiswa } from "../../actions/adminAction";
 import { formatJam } from "../../utils/formatHelper";
-import { STATUS_SESI } from "../../utils/constants";
+import { STATUS_SESI, CABANG_QUANTUM } from "../../utils/constants";
 import cetakStyles from "../../app/admin/LaporanCetak.module.css";
 
 export default function ModalRaporSiswa({ siswa, onClose }) {
@@ -15,7 +15,6 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
   const [loadingData, setLoadingData] = useState(false);
   const [sedangMencetak, setSedangMencetak] = useState(false);
   
-  //FIX: State agar input Tagihan terikat kuat (Controlled Component)
   const [tagihan, setTagihan] = useState("");
 
   const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -72,10 +71,15 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
     return sum;
   }, 0) || 0;
 
+  // 🚀 LOGIKA PENCARIAN CABANG
+  // Mencari ID Cabang dari dataRapor (backend) atau dari prop siswa
+  const kodeCabangSiswa = dataRapor?.profil?.kodeCabang || siswa?.kodeCabang;
+  const infoCabang = Object.values(CABANG_QUANTUM).find(c => c.id === kodeCabangSiswa) || CABANG_QUANTUM.PUSAT;
+
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(17,24,39,0.95)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', padding: '40px 20px' }}>
       
-      {/* 1. PANEL KONTROL */}
+      {/* PANEL KONTROL */}
       <div style={{ background: 'white', border: '4px solid #111827', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '980px', marginBottom: '30px', display: 'flex', gap: '20px', alignItems: 'center', boxShadow: '8px 8px 0 #facc15', zIndex: 10 }}>
         <div style={{ flex: 1 }}>
           <h2 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{siswa.nama}</h2>
@@ -95,27 +99,31 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
         <button onClick={onClose} style={{ background: '#ef4444', color: 'white', border: '3px solid #111827', borderRadius: '12px', padding: '12px', cursor: 'pointer' }}><FaXmark /></button>
       </div>
 
-      {/* 2. AREA KERTAS */}
+      {/* AREA KERTAS */}
       {loadingData ? (
         <div style={{ color: 'white', textAlign: 'center', marginTop: '100px' }}><FaSpinner className="spinAnimation" style={{fontSize: '40px'}} /></div>
       ) : dataRapor ? (
         <div id="wrapper-kertas-rapor" style={{ background: '#fdfbf7', padding: '40px', borderRadius: '20px', flexShrink: 0 }}>
           <div className={cetakStyles.kertasPortrait}>
             
-            {/* CONTAINER 1: LOGO & JUDUL */}
+            {/* 🚀 CONTAINER 1: LOGO & JUDUL (DINAMIS DARI CONSTANTS) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
               <img src="/logo-qr-persegi.png" alt="Logo" style={{ height: '90px', borderRight: '3px solid #111827', paddingRight: '15px'}} />
               <div>
                 <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#111827' }}>LAPORAN BELAJAR BULANAN SISWA</h1>
-                <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbingan Belajar Quantum Research Cempaka Putih</p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>Jalan Cempaka Putih Tengah XV No.05</p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>021 2169 0016 | 0896 9612 9658</p>
+                {infoCabang.id === CABANG_QUANTUM.PUSAT.id ? (
+                  <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbingan Belajar Quantum Research</p>
+                ) : (
+                  <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbingan Belajar Quantum Research {infoCabang.nama}</p>
+                )}
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>{infoCabang.alamat}</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>{infoCabang.kontak}</p>
               </div>
             </div>
 
             <div style={{ borderBottom: '5px solid #111827', marginBottom: '20px' }}></div>
 
-            {/* CONTAINER 2: DATA SISWA (DI BAWAH LOGO) */}
+            {/* CONTAINER 2: DATA SISWA */}
             <div style={{ marginBottom: '20px' }}>
                 <div style={{ margin: 0, fontSize: '28px', fontWeight: 900, color: '#111827', display: 'flex', flexWrap: 'wrap' }}>
                   {dataRapor.profil.nama.toUpperCase().split(/\s+/).map((kata, idx, arr) => (
@@ -218,7 +226,6 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
             </div>
             <div style={{ borderBottom: '5px solid #111827', marginBottom: '15px' }}></div>
             
-            {/*FIX: Elemen Sisa Tagihan dengan State React */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
               <p style={{ fontSize: '20px', color: 'red', fontWeight: '700', margin: 0 }}>
                 Sisa Tagihan:

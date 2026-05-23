@@ -302,9 +302,34 @@ export const GAMIFIKASI = Object.freeze({
 // 13. MULTI-CABANG (MULTI-TENANT)
 // ============================================================================
 export const CABANG_QUANTUM = Object.freeze({
-  CPT: { id: "010101", nama: "Cempaka Putih" },
-  KBY: { id: "010401", nama: "Kebayoran Lama" },
-  PTK: { id: "010402", nama: "Petukangan Selatan" },
-  KYP: { id: "010501", nama: "Kayu Putih" },
-  PUSAT: { id: "000000", nama: "Super Admin Pusat" }
+  CPT: { 
+    id: "010101", 
+    nama: "Cempaka Putih",
+    alamat: "Jalan Cempaka Putih Tengah XV No.05",
+    kontak: "021 2169 0016 | 0896 9612 9658"
+  },
+  KBY: { 
+    id: "010401", 
+    nama: "Kebayoran Lama",
+    alamat: "Jalan Delman Kencana I No.4",
+    kontak: "0851 8799 9947"
+  },
+  PTK: { 
+    id: "010402", 
+    nama: "Petukangan Selatan",
+    alamat: "Jalan Kemajuan No.15",
+    kontak: "021 7376 247 | 0896 0980 2204"
+  },
+  KYP: { 
+    id: "010501", 
+    nama: "Kayu Putih",
+    alamat: "Jalan Angkur No.18",
+    kontak: "021 29833002 | 0812 8968 4856"
+  },
+  PUSAT: { 
+    id: "000000", 
+    nama: "Super Admin Pusat",
+    alamat: "Kantor Pusat Quantum Research",
+    kontak: "-"
+  }
 });

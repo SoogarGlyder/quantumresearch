@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { FaXmark, FaDownload, FaSpinner } from "react-icons/fa6";
 import { toPng } from 'html-to-image'; 
 import { formatJam } from "../../utils/formatHelper";
-import { STATUS_SESI } from "../../utils/constants";
+// 🚀 FIX: Import CABANG_QUANTUM ditambahkan di sini
+import { STATUS_SESI, CABANG_QUANTUM } from "../../utils/constants";
 import cetakStyles from "../../app/admin/LaporanCetak.module.css";
 import { ambilLaporanBulananPengajar } from "../../actions/adminAction"; 
 
@@ -230,11 +231,16 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
     ? `Kakak Asuh ${profilData.kelasAsuh?.length > 0 ? profilData.kelasAsuh.join(", ") : "-"}`
     : (profilData.pangkat?.replace('_', ' ') || "FREELANCE");
 
+  // 🚀 LOGIKA PENCARIAN CABANG (Sama seperti Rapor Siswa & Jurnal)
+  // Ambil dari profil yang ditarik backend, jika null fallback ke PUSAT.
+  const kodeCabangGuru = profilData.kodeCabang || pengajar?.kodeCabang;
+  const infoCabang = Object.values(CABANG_QUANTUM).find(c => c.id === kodeCabangGuru) || CABANG_QUANTUM.PUSAT;
+
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(17,24,39,0.95)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', padding: '40px 20px' }}>
       
       {/* 1. PANEL KONTROL */}
-      <div style={{ background: 'white', border: '4px solid #111827', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '980px', marginBottom: '30px', display: 'flex', gap: '20px', alignItems: 'center', boxShadow: '8px 8px 0 #3b82f6', zIndex: 10 }}>
+      <div style={{ background: 'white', border: '4px solid #111827', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '1050px', marginBottom: '30px', display: 'flex', gap: '20px', alignItems: 'center', boxShadow: '8px 8px 0 #3b82f6', zIndex: 10 }}>
         <div style={{ flex: 1 }}>
           <h2 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{pengajar.nama}</h2>
           <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Pilih periode bulan sebelum mengunduh.</p>
@@ -257,20 +263,26 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
       {loadingData ? (
         <div style={{ color: 'white', textAlign: 'center', marginTop: '100px' }}><FaSpinner className="spinAnimation" style={{fontSize: '40px'}} /></div>
       ) : dataRapor ? (
-        <div id="wrapper-kertas-rapor-pengajar" style={{ background: '#fdfbf7', padding: '40px', borderRadius: '20px', flexShrink: 0 }}>
+        <div id="wrapper-kertas-rapor-pengajar" style={{ background: '#fdfbf7', padding: '40px', borderRadius: '20px', flexShrink: 0, width: '100%', maxWidth: '1000px' }}>
           <div className={cetakStyles.kertasPortrait}>
             
-            {/* HEADER LOGO */}
+            {/* 🚀 HEADER LOGO & CABANG DINAMIS */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
               <img src="/logo-qr-persegi.png" alt="Logo" style={{ height: '90px', borderRight: '3px solid #111827', paddingRight: '15px'}} />
               <div>
                 <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#111827' }}>LAPORAN KINERJA PENGAJAR</h1>
-                <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbingan Belajar Quantum Research Cempaka Putih</p>
+                {infoCabang.id === CABANG_QUANTUM.PUSAT.id ? (
+                  <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbingan Belajar Quantum Research</p>
+                ) : (
+                  <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbingan Belajar Quantum Research {infoCabang.nama}</p>
+                )}
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>{infoCabang.alamat}</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>{infoCabang.kontak}</p>
               </div>
             </div>
             <div style={{ borderBottom: '5px solid #111827', marginBottom: '20px' }}></div>
 
-            {/*FIX: IDENTITAS PENGAJAR YANG SUDAH DISESUAIKAN */}
+            {/* IDENTITAS */}
             <div style={{ marginBottom: '20px' }}>
                 <div style={{ margin: '0 0 12px 0', fontSize: '28px', fontWeight: 900, color: '#111827' }}>
                   {profilData.nama?.toUpperCase()}
@@ -291,7 +303,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
                   </p>
                 </div>
             </div>
-            <div style={{ borderBottom: '4px solid #111827', marginBottom: '10px' }}></div>
+            <div style={{ borderBottom: '5px solid #111827', marginBottom: '10px' }}></div>
 
             {/* BAGIAN 1: STATISTIK KONSUL (3 PIE CHART) */}
             <div className={cetakStyles.blokTabel}>
@@ -304,7 +316,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
               </div>
             </div>
 
-            <div style={{ borderBottom: '4px solid #111827', marginBottom: '10px' }}></div>
+            <div style={{ borderBottom: '5px solid #111827', marginBottom: '10px' }}></div>
 
             {/* BAGIAN 2: TABEL RINCIAN KELAS HARIAN */}
             <div className={cetakStyles.blokTabel}>

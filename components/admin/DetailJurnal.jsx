@@ -6,10 +6,11 @@ import {
   FaDownload, FaClock, FaTriangleExclamation, FaXmark
 } from "react-icons/fa6";
 import { CldUploadWidget } from 'next-cloudinary';
-import { toPng } from 'html-to-image'; // MENGGUNAKAN HTML-TO-IMAGE
+import { toPng } from 'html-to-image'; 
 
 import { formatTanggal, formatYYYYMMDD, formatJam } from "../../utils/formatHelper";
-import { KONFIGURASI_MEDIA, STATUS_SESI, LABEL_SISTEM } from "../../utils/constants";
+// 🚀 FIX: Import CABANG_QUANTUM ditambahkan di sini
+import { KONFIGURASI_MEDIA, STATUS_SESI, LABEL_SISTEM, CABANG_QUANTUM } from "../../utils/constants";
 
 import styles from "../../app/admin/AdminPage.module.css";
 import cetakStyles from "../../app/admin/LaporanCetak.module.css";
@@ -27,6 +28,11 @@ export default function DetailJurnal({
 }) {
   const [sedangMencetak, setSedangMencetak] = useState(false);
   const [showModalPratinjau, setShowModalPratinjau] = useState(false);
+
+  // 🚀 LOGIKA PENCARIAN CABANG
+  // Mencari dari kodeCabang di detailJadwal. Jika tidak ada, pakai PUSAT.
+  const kodeCabangGuru = detailJadwal?.pengajarId?.kodeCabang || detailJadwal?.kodeCabang;
+  const infoCabang = Object.values(CABANG_QUANTUM).find(c => c.id === kodeCabangGuru) || CABANG_QUANTUM.PUSAT;
 
   const ubahKeJpg = (url) => {
     if (!url) return "";
@@ -47,11 +53,10 @@ export default function DetailJurnal({
     try {
       const elemenLaporan = document.getElementById("wrapper-kertas-jurnal");
       
-      // IMPLEMENTASI HTML-TO-IMAGE UNTUK JURNAL
       const dataUrl = await toPng(elemenLaporan, { 
         quality: 1.0, 
         backgroundColor: "#fdfbf7",
-        pixelRatio: 2 // Kualitas High Definition
+        pixelRatio: 2 
       });
       
       const link = document.createElement("a");
@@ -99,11 +104,11 @@ export default function DetailJurnal({
           <div 
             id="wrapper-kertas-jurnal" 
             style={{ 
-              background: '#fdfbf7', // Latar meja
-              padding: '40px',       // RUANG AGAR BAYANGAN MASUK FRAME
+              background: '#fdfbf7', 
+              padding: '40px',       
               display: 'flex',
               justifyContent: 'center',
-              width: '880px',        // 800px Kertas + (40px padding kiri & kanan)
+              width: '880px',        
               flexShrink: 0
             }}
           >
@@ -114,13 +119,18 @@ export default function DetailJurnal({
               className={cetakStyles.kertasLaporan}
             >
               <div className={cetakStyles.header}>
+                {/* 🚀 Render dinamis nama & alamat cabang */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '10px' }}>
                   <img src="/logo-qr-persegi.png" alt="Logo" style={{ height: '90px', borderRight: '3px solid #111827', paddingRight: '15px'}} />
                   <div>
                     <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#111827' }}>JURNAL BELAJAR HARIAN</h1>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbel Quantum Research Cempaka Putih</p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>Jalan Cempaka Putih Tengah XV No.05</p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>021 2169 0016 | 0896 9612 9658</p>
+                    {infoCabang.id === CABANG_QUANTUM.PUSAT.id ? (
+                      <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbel Quantum Research</p>
+                    ) : (
+                      <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 800, color: '#4b5563' }}>Bimbel Quantum Research {infoCabang.nama}</p>
+                    )}
+                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>{infoCabang.alamat}</p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 600, color: '#4b5563' }}>{infoCabang.kontak}</p>
                   </div>
                 </div>
               </div>
