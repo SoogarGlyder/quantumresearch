@@ -32,8 +32,8 @@ export async function dapatkanLatihanSiswa(username, kelasSiswa, kodeCabangSiswa
     }
 
     const latihan = await LatihanSoal.find(queryLatihan)
-      .select("judul mapel tipeTarget target isAktif linkSoal url dibuatPada namaPembuat") 
-      .sort({ dibuatPada: -1 })
+      .select("judul mapel tipeTarget target isAktif linkSoal url createdAt namaPembuat") 
+      .sort({ createdAt: -1 })
       .lean();
 
     if (!latihan || latihan.length === 0) return [];
@@ -95,7 +95,7 @@ export async function ambilSemuaLatihanSoal() {
       query.pembuatId = String(userAsli._id);
     }
 
-    const data = await LatihanSoal.find(query).select("-__v").sort({ dibuatPada: -1 }).lean();
+    const data = await LatihanSoal.find(query).select("-__v").sort({ createdAt: -1 }).lean();
 
     // TRANSLASI ID -> NAMA SISWA
     let listPencarianSiswa = [];

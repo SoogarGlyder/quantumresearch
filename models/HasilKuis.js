@@ -1,26 +1,29 @@
 import mongoose from "mongoose";
 
 const hasilKuisSchema = new mongoose.Schema({
-  jadwalId: { type: mongoose.Schema.Types.ObjectId, ref: "Jadwal", required: true, index: true },
-  quizId: { type: mongoose.Schema.Types.ObjectId, ref: "Quiz", required: true },
+  quizId: { type: mongoose.Schema.Types.ObjectId, ref: "Quiz", required: true, index: true },  
   siswaId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-  
-  namaSiswa: { type: String, required: true },
-  skorAkhir: { type: Number, required: true },
-  
-  // Detail jawaban siswa dipindah ke sini
-  detailJawaban: [{
-    _id: false,
-    kunciJawaban: { type: [String], default: [] },
-    jawabanSiswa: { type: [String], default: [] },
-    isBenar: { type: Boolean, default: false }
-  }],
-  
-  dikumpulkanPada: { type: Date, default: Date.now }
+  namaSiswa: { type: String, required: true, trim: true, maxlength: 100 },
+  jadwalId: { type: mongoose.Schema.Types.ObjectId, ref: "Jadwal", required: true, index: true },
+  jawaban: [
+    {
+      _id: false,
+      nomorSoal: { type: Number, required: true, min: 1 },
+      jawabanSiswa: [{ type: String, trim: true }], 
+      isBenar: { type: Boolean, default: false }
+    }
+  ],
+  totalBenar: { type: Number, default: 0, min: 0 },
+  totalSalah: { type: Number, default: 0, min: 0 },
+  nilai: { type: Number, default: 0, min: 0, max: 100 },
+  totalExpDidapat: { type: Number, default: 0, min: 0 },
+  waktuMulai: { type: Date, default: Date.now },
+  waktuSelesai: { type: Date, default: null },
+  durasiPengerjaanDetik: { type: Number, default: 0, min: 0 }
 }, { timestamps: true });
 
-//JALAN TOL (COMPOUND INDEX)
-hasilKuisSchema.index({ jadwalId: 1, skorAkhir: -1 }); // Mempercepat guru melihat ranking nilai per kelas
-hasilKuisSchema.index({ siswaId: 1, createdAt: -1 }); // Mempercepat tarikan data rapor per siswa
+hasilKuisSchema.index({ quizId: 1, siswaId: 1 }, { unique: true });
+hasilKuisSchema.index({ jadwalId: 1 });
 
-export default mongoose.models.HasilKuis || mongoose.model("HasilKuis", hasilKuisSchema);
+const HasilKuis = mongoose.models.HasilKuis || mongoose.model("HasilKuis", hasilKuisSchema);
+export default HasilKuis;
