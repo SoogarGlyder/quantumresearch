@@ -2,12 +2,12 @@
 
 import { memo } from "react";
 import { FaCalendarDays, FaUserTie } from "react-icons/fa6";
-import { formatYYYYMMDD } from "@/utils/formatHelper";
+import { timeHelper } from "@/utils/timeHelper";
 import { PERIODE_BELAJAR } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
 const JadwalHariIni = memo(({ jadwalAktif, setTab, setModeScan, resetScanner }) => {
-  const tglHariIni = formatYYYYMMDD(new Date());
+  const tglHariIni = timeHelper.getTglJakarta(new Date());
   return (
     <div className={styles.contentContainer}>
       <h3 className={styles.contentTitle}><FaCalendarDays color="#2563eb" /> Pengingat Kelas</h3>

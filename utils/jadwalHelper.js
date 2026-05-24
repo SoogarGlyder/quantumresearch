@@ -1,4 +1,5 @@
 import { OPSI_KELAS, PERIODE_BELAJAR } from "./constants";
+import { timeHelper } from "./timeHelper";
 
 // ============================================================================
 // 1. DATA MASTER KELAS
@@ -34,6 +35,12 @@ export const KAMUS_JAM_SESI = {
   }
 };
 
+/**
+ * Menentukan jam mulai dan selesai berdasarkan nomor sesi dan hari (Sabtu berbeda jam).
+ * @param {number|string} nomorSesi - Sesi ke-1, 2, atau 3.
+ * @param {string} tanggalString - Tanggal dalam format YYYY-MM-DD.
+ * @returns {Object} Objek berisi { mulai: "HH:mm", selesai: "HH:mm" }
+ */
 export function getWaktuBerdasarkanSesi(nomorSesi, tanggalString) {
   const d = new Date(tanggalString);
   const isSabtu = d.getDay() === 6;
@@ -44,11 +51,16 @@ export function getWaktuBerdasarkanSesi(nomorSesi, tanggalString) {
 // ============================================================================
 // 3. MESIN GENERATOR TANGGAL
 // ============================================================================
+/**
+ * Menghasilkan array kalender selama 14 hari ke depan untuk keperluan pembuatan jadwal.
+ * Mengabaikan hari Minggu (index 0).
+ * @param {string} tanggalAwalSenin - Tanggal acuan awal (YYYY-MM-DD).
+ * @returns {Array} Array objek data hari.
+ */
 export function generateDuaMingguKerja(tanggalAwalSenin) {
-  // 👈 Gunakan offset ISO dari constants
   const tanggalMulai = new Date(`${tanggalAwalSenin}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`);
   const tz = PERIODE_BELAJAR.TIMEZONE;
-  const hariIni = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+  const hariIni = timeHelper.getTglJakarta(new Date()); 
   const daftarHari = [];
   
   for (let i = 0; i < 14; i++) {
@@ -57,8 +69,8 @@ export function generateDuaMingguKerja(tanggalAwalSenin) {
 
     const indexHari = hariBidikan.getDay();
     
-    if (indexHari !== 0) {
-      const tglPenuh = hariBidikan.toLocaleDateString('en-CA', { timeZone: tz });
+    if (indexHari !== 0) { // Jika bukan hari Minggu
+      const tglPenuh = timeHelper.getTglJakarta(hariBidikan); // Prinsip DRY
       
       daftarHari.push({
         tanggalPenuh: tglPenuh, 

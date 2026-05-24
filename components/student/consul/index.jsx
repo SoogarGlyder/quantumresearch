@@ -5,7 +5,7 @@ import { FaBoxOpen } from "react-icons/fa6";
 
 // PATH ABSOLUTE
 import PaginationBar from "@/components/ui/PaginationBar"; 
-import { potongDataPagination } from "@/utils/formatHelper"; 
+import { formatHelper } from "@/utils/formatHelper"; 
 import { TIPE_SESI, STATUS_SESI, PERIODE_BELAJAR, LIMIT_DATA } from "@/utils/constants";
 import styles from "@/components/App.module.css";
 
@@ -123,7 +123,7 @@ export default function TabKonsulSiswa({ riwayat = [] }) {
     return { totalMenit, jam, menit, totalSesiSelesai };
   }, [konsulDitampilkan]);
 
-  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(konsulDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(konsulDitampilkan, page, ITEMS_PER_PAGE);
 
   return (
     <div className={styles.contentArea}>

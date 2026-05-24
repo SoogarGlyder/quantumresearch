@@ -12,7 +12,8 @@ import DetailJurnal from "./DetailJurnal";
 import BrutalToast from "../ui/BrutalToast";
 
 import { ambilDetailJurnal, simpanJurnal } from "../../actions/adminAction";
-import { formatTanggal, formatYYYYMMDD, potongDataPagination } from "../../utils/formatHelper";
+import { formatTanggal, formatYYYYMMDD, potongDataPagination, formatHelper } from "@/utils/formatHelper";
+import { timeHelper } from "@/utils/timeHelper"
 import { OPSI_KELAS, LIMIT_DATA } from "../../utils/constants";
 
 import { FaBookBookmark, FaMagnifyingGlass, FaFilter } from "react-icons/fa6"; 
@@ -119,7 +120,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
   };
 
   const jadwalTersedia = useMemo(() => {
-    const hariIni = formatYYYYMMDD(new Date());
+    const hariIni = timeHelper.getTglJakarta(new Date());
     let jadwal = (dataJadwal || []).filter(j => 
       j.tanggal >= minDate && j.tanggal <= maxDate && j.tanggal <= hariIni
     ); 
@@ -138,7 +139,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
     return jadwal.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
   }, [dataJadwal, minDate, maxDate, filterTglJurnal, filterKelas, cariTopik]);
 
-  const { totalPage, dataTerpotong: jadwalHalIni } = potongDataPagination(jadwalTersedia, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: jadwalHalIni } = formatHelper.potongDataPagination(jadwalTersedia, page, ITEMS_PER_PAGE);
 
   const renderDenganToast = (konten) => (
     <>
@@ -217,7 +218,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
               jadwalHalIni.map(j => (
                 <tr key={j._id} onClick={() => bukaJurnal(j._id)} className={styles.barisTabelKlik}>
                   <td>
-                    <p className={styles.teksTanggal}>{formatTanggal(j.tanggal)}</p>
+                    <p className={styles.teksTanggal}>{timeHelper.formatTanggalLengkap(j.tanggal)}</p>
                     <p className={styles.teksJamPudar}>{j.jamMulai} - {j.jamSelesai}</p>
                   </td>
                   <td>

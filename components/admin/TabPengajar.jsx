@@ -9,7 +9,7 @@ import FilterInput from "../ui/FilterInput";
 import { FaMagnifyingGlass } from "react-icons/fa6";
 
 import { tambahPengajarBaru, hapusPengajar, editPengajar, prosesBulkTambahPengajar } from "../../actions/teacherAction";
-import { potongDataPagination } from "../../utils/formatHelper";
+import { potongDataPagination, formatHelper } from "@/utils/formatHelper";
 
 import { STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, KONFIGURASI_SISTEM, PANGKAT_PENGAJAR, OPSI_KELAS } from "../../utils/constants";
 import styles from "../../app/admin/AdminPage.module.css";
@@ -207,7 +207,7 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
     return listData.sort((a, b) => a.nama.localeCompare(b.nama));
   }, [dataPengajar, searchQuery]);
 
-  const { totalPage, dataTerpotong: dataPengajarHalIni } = potongDataPagination(pengajarDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataPengajarHalIni } = formatHelper.potongDataPagination(pengajarDitampilkan, page, ITEMS_PER_PAGE);
 
   // ============================================================================
   // 3. RENDER UI

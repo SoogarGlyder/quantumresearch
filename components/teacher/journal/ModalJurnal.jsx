@@ -12,6 +12,7 @@ import { simpanJurnalPengajar, ambilDetailJurnalPengajar } from "@/actions/teach
 import { ambilKuisByJadwal, ambilSemuaBankSoal, terapkanBankSoalKeJadwal, hapusQuizDariJadwal } from "@/actions/quizAction"; 
 import { PREFIX_BARCODE, STATUS_SESI, LABEL_SISTEM } from "@/utils/constants"; 
 import { formatTanggal } from "@/utils/formatHelper";
+import { timeHelper } from "@/utils/timeHelper"
 import styles from "@/components/App.module.css";
 
 // HELPER: Konverter Tanggal Anti-Bug iOS/Safari
@@ -202,7 +203,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
           <div className={styles.wrapperTitle}>
             <h3 className={styles.galleryTitle}>JURNAL {jadwalTerpilih.mapel}</h3>
             <span className={styles.galleryDate}>
-              {jadwalTerpilih.kelasTarget} • {formatTanggal ? formatTanggal(jadwalTerpilih.tanggal) : jadwalTerpilih.tanggal}
+              {jadwalTerpilih.kelasTarget} • {formatTanggal ? timeHelper.formatTanggalLengkap(jadwalTerpilih.tanggal) : jadwalTerpilih.tanggal}
             </span>
           </div>
           <button 
@@ -227,7 +228,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                 <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#111827', margin: 0, textTransform: 'uppercase' }}>{jadwalTerpilih.mapel}</h2>
                 <p style={{ fontWeight: '900', color: '#2563eb', fontSize: '14px', margin: '8px 0 0 0' }}>
                   {jadwalTerpilih.kelasTarget} <br/> 
-                  <span style={{ color: '#111827' }}>{formatTanggal ? formatTanggal(jadwalTerpilih.tanggal) : jadwalTerpilih.tanggal} • {jadwalTerpilih.jamMulai} - {jadwalTerpilih.jamSelesai}</span>
+                  <span style={{ color: '#111827' }}>{formatTanggal ? timeHelper.formatTanggalLengkap(jadwalTerpilih.tanggal) : jadwalTerpilih.tanggal} • {jadwalTerpilih.jamMulai} - {jadwalTerpilih.jamSelesai}</span>
                 </p>
               </div>
 

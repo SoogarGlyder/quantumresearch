@@ -7,6 +7,8 @@ import PaginationBar from "@/components/ui/PaginationBar";
 import { potongDataPagination, hitungDurasiMenit, formatJam } from "@/utils/formatHelper";
 import { STATUS_SESI, PERIODE_BELAJAR } from "@/utils/constants";
 import styles from "@/components/App.module.css";
+import { timeHelper } from "@/utils/timeHelper";
+import { formatHelper } from "@/utils/formatHelper";
 
 import FilterKonsulGuru from "./FilterKonsulGuru"; 
 
@@ -50,7 +52,7 @@ const RecordCardGuru = memo(({ sesi, isOpen, onToggle }) => {
           </span>
         )}
 
-        {isSelesai && <span className={styles.recordDuration}>{hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)} menit</span>}
+        {isSelesai && <span className={styles.recordDuration}>{timeHelper.hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)} menit</span>}
       </div>
 
       <div className={styles.recordCardRow}>
@@ -74,12 +76,12 @@ const RecordCardGuru = memo(({ sesi, isOpen, onToggle }) => {
 
             <div className={styles.recordDetailRow} style={{ backgroundColor: '#dbeafe' }}>
               <span>Mulai</span>
-              <span>{formatJam(sesi.waktuMulai)} WIB</span>
+              <span>{timeHelper.formatJam(sesi.waktuMulai)} WIB</span>
             </div>
             
             <div className={styles.recordDetailRow} style={{ backgroundColor: isSelesai ? '#dcfce3' : isPinalti ? '#fecaca' : '#fef08a' }}>
               <span>Selesai</span>
-              <span>{isSelesai || isPinalti ? `${formatJam(sesi.waktuSelesai)} WIB` : 'Sedang Berjalan...'}</span>
+              <span>{isSelesai || isPinalti ? `${timeHelper.formatJam(sesi.waktuSelesai)} WIB` : 'Sedang Berjalan...'}</span>
             </div>
             
             {isPinalti && (
@@ -182,7 +184,7 @@ export default function DaftarKonsul({ dataUser, setTotalKonsul }) {
     return { totalMenit, jam, menit, totalSesiSelesai };
   }, [konsulDitampilkan]);
 
-  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(konsulDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(konsulDitampilkan, page, ITEMS_PER_PAGE);
   const toggleDetail = (id) => setIdTerbuka(prevId => prevId === id ? null : id);
 
   return (

@@ -11,7 +11,8 @@ import { DAFTAR_KELAS_BIMBEL, generateDuaMingguKerja, KAMUS_JAM_SESI } from "../
 import { OPSI_MAPEL_KELAS, OPSI_KELAS, LIMIT_DATA, CABANG_QUANTUM } from "../../utils/constants";
 import { tambahJadwal, hapusJadwal, editJadwal } from "../../actions/adminAction";
 import { ambilKuisByJadwal, ambilSemuaBankSoal, terapkanBankSoalKeJadwal, hapusQuizDariJadwal } from "../../actions/quizAction"; 
-import { formatTanggal, potongDataPagination } from "../../utils/formatHelper";
+import { formatTanggal, potongDataPagination, formatHelper } from "@/utils/formatHelper";
+import { timeHelper } from "@/utils/timeHelper"
 import styles from "../../app/admin/AdminPage.module.css";
 
 // ============================================================================
@@ -296,7 +297,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     return jadwal.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
   }, [jadwalBulanIni, filterTglMulai, filterTglAkhir, filterKelas]);
 
-  const { totalPage, dataTerpotong: dataJadwalHalIni } = potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataJadwalHalIni } = formatHelper.potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
 
   const cariDraftLokal = (kelasId, tanggalPenuh) => jadwalLokal.filter(j => j.kelasId === kelasId && j.tanggal === tanggalPenuh);
   
@@ -453,7 +454,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
                 dataJadwalHalIni.map(j => (
                   <tr key={j._id} className={styles.trDataTabel}>
                     <td className={styles.tdDataTabel}>
-                      <div style={{ fontWeight: '900', color: '#111827' }}>{formatTanggal(j.tanggal)}</div>
+                      <div style={{ fontWeight: '900', color: '#111827' }}>{timeHelper.formatTanggalLengkap(j.tanggal)}</div>
                       <div style={{ fontSize: '12px', fontWeight: '800', color: '#6b7280' }}>{j.jamMulai} - {j.jamSelesai}</div>
                     </td>
                     <td className={styles.tdDataTabel} style={{ fontWeight: '900', color: '#2563eb' }}>{j.kelasTarget}</td>

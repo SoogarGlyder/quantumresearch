@@ -1,6 +1,6 @@
 // Belum Beres!!!
 import mongoose from "mongoose";
-import { PERAN, STATUS_USER, PANGKAT_PENGAJAR } from "../utils/constants";
+import { PERAN, STATUS_USER, PANGKAT_PENGAJAR, CABANG_QUANTUM } from "../utils/constants";
 
 const userSchema = new mongoose.Schema({
   // --- INFORMASI DASAR ---
@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
   status: { type: String, enum: Object.values(STATUS_USER), default: STATUS_USER.AKTIF },
 
   /** ISOLASI CABANG (MULTI-TENANT) */
-  kodeCabang: { type: String, default: "010101", trim: true, maxlength: 20, index: true },
+  kodeCabang: { type: String, default: CABANG_QUANTUM.CPT.id, trim: true, maxlength: 20, index: true },
 
   /** PANGKAT & HAK AKSES PENGAJAR (RBAC) */
   pangkat: { type: String, enum: Object.values(PANGKAT_PENGAJAR), default: PANGKAT_PENGAJAR.FREELANCE },

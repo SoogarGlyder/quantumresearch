@@ -7,6 +7,7 @@ import { FaChevronDown, FaChevronUp, FaSkullCrossbones } from "react-icons/fa6";
 import { STATUS_SESI, PERIODE_BELAJAR } from "@/utils/constants";
 import { hitungDurasiMenit, formatJam } from "@/utils/formatHelper";
 import styles from "@/components/App.module.css";
+import { timeHelper } from "@/utils/timeHelper";
 
 const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
   const isSelesai = sesi.status === STATUS_SESI.SELESAI.id;
@@ -49,7 +50,7 @@ const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
           </span>
         )}
 
-        {isSelesai && <span className={styles.recordDuration}>{hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)} menit</span>}
+        {isSelesai && <span className={styles.recordDuration}>{timeHelper.hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)} menit</span>}
       </div>
 
       <div className={styles.recordCardRow}>
@@ -70,12 +71,12 @@ const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
 
             <div className={styles.recordDetailRow} style={{ backgroundColor: '#dbeafe' }}>
               <span>Mulai</span>
-              <span>{formatJam(sesi.waktuMulai)} WIB</span>
+              <span>{timeHelper.formatJam(sesi.waktuMulai)} WIB</span>
             </div>
             
             <div className={styles.recordDetailRow} style={{ backgroundColor: isSelesai ? '#dcfce3' : isPinalti ? '#fecaca' : '#fef08a' }}>
               <span>Selesai</span>
-              <span>{isSelesai || isPinalti ? `${formatJam(sesi.waktuSelesai)} WIB` : 'Sedang Berjalan...'}</span>
+              <span>{isSelesai || isPinalti ? `${timeHelper.formatJam(sesi.waktuSelesai)} WIB` : 'Sedang Berjalan...'}</span>
             </div>
             
             {isPinalti && (

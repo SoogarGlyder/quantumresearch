@@ -1,47 +1,20 @@
-//FIX: Hapus import statis "import * as XLSX from 'xlsx';" dari sini!
-import { STATUS_SESI, TIPE_SESI, PERIODE_BELAJAR } from "./constants"; 
+import { STATUS_SESI, TIPE_SESI } from "./constants"; 
+import { timeHelper } from "./timeHelper";
 
-const TZ = PERIODE_BELAJAR.TIMEZONE;
-
-// ============================================================================
-// 1. HELPER INTERNAL (Format Khusus Laporan)
-// ============================================================================
-const formatTanggalLaporan = (tanggal) => {
-  if (!tanggal) return "-";
-  try {
-    return new Date(tanggal).toLocaleDateString('id-ID', { 
-      timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-    });
-  } catch (e) { return "-"; }
-};
-
-const formatJamLaporan = (tanggal) => {
-  if (!tanggal) return "-";
-  try {
-    return new Date(tanggal).toLocaleTimeString('id-ID', {
-      timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false
-    }).replace(/\./g, ':');
-  } catch (e) { return "-"; }
-};
-
-// ============================================================================
-// 2. FUNGSI MAPPER
-// ============================================================================
 const siapkanDataKelas = (data) => {
   return data.map(s => {
     const isVirtual = s.isVirtual === true;
     const isAlpha = s.status === STATUS_SESI.ALPA.id; 
-    
-    const namaSiswa = s.siswaId?.nama || "Siswa Dihapus";
+    const namaSiswa = s.siswaId?.nama || s.namaSiswa || "Siswa Tidak Ditemukan";
     const kelasSiswa = s.siswaId?.kelas || "-";
 
     return {
-      "Tanggal": formatTanggalLaporan(s.waktuMulai),
+      "Tanggal": timeHelper.formatTanggalLaporan(s.waktuMulai),
       "Mata Pelajaran": s.namaMapel || "-",
       "Nama Siswa": namaSiswa,
       "Kelas": kelasSiswa,
-      "Jam Masuk": (isAlpha || isVirtual) ? "-" : formatJamLaporan(s.waktuMulai),
-      "Jam Keluar": (isAlpha || isVirtual) ? "-" : (s.waktuSelesai ? formatJamLaporan(s.waktuSelesai) : "Belum Pulang"),
+      "Jam Masuk": (isAlpha || isVirtual) ? "-" : timeHelper.formatJam(s.waktuMulai),
+      "Jam Keluar": (isAlpha || isVirtual) ? "-" : (s.waktuSelesai ? timeHelper.formatJam(s.waktuSelesai) : "Belum Pulang"),
       "Status Kehadiran": isVirtual ? "ALPHA (SISTEM)" : (s.terlambatMenit > 0 ? `Telat ${s.terlambatMenit} mnt` : (s.status ? s.status.toUpperCase() : "-")),
       "Extra Konsul (Mnt)": s.konsulExtraMenit || 0,
       "Nilai Test": s.nilaiTest ?? "-",
@@ -51,38 +24,34 @@ const siapkanDataKelas = (data) => {
 };
 
 const siapkanDataKonsul = (data) => {
-  return data.map(s => {
-    return {
-      "Tanggal": formatTanggalLaporan(s.waktuMulai),
-      "Nama Siswa": s.siswaId?.nama || "Siswa Dihapus",
-      "Kelas": s.siswaId?.kelas || "-",
-      "Mata Pelajaran": s.namaMapel || "Umum",
-      "Jam Mulai": formatJamLaporan(s.waktuMulai),
-      "Jam Selesai": s.waktuSelesai ? formatJamLaporan(s.waktuSelesai) : "Berjalan",
-      "Durasi (Menit)": s.waktuSelesai ? Math.floor((new Date(s.waktuSelesai) - new Date(s.waktuMulai)) / 60000) : 0,
-      "Status": s.status?.toUpperCase() || "-"
-    };
-  });
+  return data.map(s => ({
+    "Tanggal": timeHelper.formatTanggalLaporan(s.waktuMulai),
+    "Nama Siswa": s.siswaId?.nama || s.namaSiswa || "Siswa Tidak Ditemukan",
+    "Kelas": s.siswaId?.kelas || "-",
+    "Mata Pelajaran": s.namaMapel || "Umum",
+    "Jam Mulai": timeHelper.formatJam(s.waktuMulai),
+    "Jam Selesai": s.waktuSelesai ? timeHelper.formatJam(s.waktuSelesai) : "Berjalan",
+    "Durasi (Menit)": timeHelper.hitungDurasiMenit(s.waktuMulai, s.waktuSelesai),
+    "Status": s.status?.toUpperCase() || "-"
+  }));
 };
 
 const siapkanDataAbsenStaf = (data) => {
-  return data.map(a => {
-    return {
-      "Tanggal": formatTanggalLaporan(a.waktuMasuk),
-      "Nama Pengajar": a.pengajarId?.nama || "Pengajar Dihapus",
-      "Kode Pengajar": a.pengajarId?.kodePengajar || "-",
-      "Clock-In (Masuk)": formatJamLaporan(a.waktuMasuk),
-      "Clock-Out (Keluar)": a.waktuKeluar ? formatJamLaporan(a.waktuKeluar) : "Belum Pulang",
-      "Durasi Kerja (Menit)": (a.waktuMasuk && a.waktuKeluar) ? Math.floor((new Date(a.waktuKeluar) - new Date(a.waktuMasuk)) / 60000) : 0,
-      "Status": a.waktuKeluar ? "SELESAI" : "AKTIF BEKERJA"
-    };
-  });
+  return data.map(a => ({
+    "Tanggal": timeHelper.formatTanggalLaporan(a.waktuMasuk),
+    "Nama Pengajar": a.pengajarId?.nama || a.namaPengajar || "Pengajar Tidak Ditemukan",
+    "Kode Pengajar": a.pengajarId?.kodePengajar || "-",
+    "Clock-In (Masuk)": timeHelper.formatJam(a.waktuMasuk),
+    "Clock-Out (Keluar)": a.waktuKeluar ? timeHelper.formatJam(a.waktuKeluar) : "Belum Pulang",
+    "Durasi Kerja (Menit)": timeHelper.hitungDurasiMenit(a.waktuMasuk, a.waktuKeluar),
+    "Status": a.waktuKeluar ? "SELESAI" : "AKTIF BEKERJA"
+  }));
 };
 
-// ============================================================================
-// 3. FUNGSI UTAMA (DOWNLOADER)
-// ============================================================================
-export const unduhExcel = async (data, tipe) => { //FIX: Jadikan fungsi async
+/**
+ * Mengunduh array data menjadi file Excel secara Asynchronous
+ */
+export const unduhExcel = async (data, tipe) => {
   if (typeof window === "undefined") return;
 
   try {
@@ -91,7 +60,6 @@ export const unduhExcel = async (data, tipe) => { //FIX: Jadikan fungsi async
       return false;
     }
 
-    //FIX: DYNAMIC IMPORT (Browser hanya download library ini saat tombol dieksekusi)
     const XLSX = await import("xlsx");
 
     let dataFormat = [];
@@ -113,20 +81,19 @@ export const unduhExcel = async (data, tipe) => { //FIX: Jadikan fungsi async
 
     const worksheet = XLSX.utils.json_to_sheet(dataFormat);
     const workbook = XLSX.utils.book_new();
-    
     const maxWidths = Object.keys(dataFormat[0] || {}).map(key => ({ wch: key.length + 12 }));
     worksheet["!cols"] = maxWidths;
 
     XLSX.utils.book_append_sheet(workbook, worksheet, namaSheet);
     
-    const tglCetak = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+    const tglCetak = timeHelper.getTglJakarta(new Date());
     const namaFileLabel = tipe.replace("-", "_").toUpperCase();
     
     XLSX.writeFile(workbook, `Laporan_Quantum_${namaFileLabel}_${tglCetak}.xlsx`);
     
     return true;
   } catch (error) {
-    console.error("[ERROR unduhExcel]:", error.message);
+    console.error("[exportExcel] Error:", error.message);
     alert("❌ Gagal mengunduh Excel: " + error.message);
     return false;
   }

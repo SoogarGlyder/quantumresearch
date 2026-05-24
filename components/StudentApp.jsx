@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { prosesHasilScan, ambilDaftarGuruDropdown } from "@/actions/scanAction";
 import { prosesLogout } from "@/actions/authAction";
 import { MODE_SCAN, PREFIX_BARCODE, TIPE_SESI, STATUS_SESI, KONFIGURASI_SISTEM } from "@/utils/constants";
-import { cekPesanErrorScanner } from "@/utils/formatHelper";
+import { formatHelper } from "@/utils/formatHelper";
 import styles from "@/components/App.module.css";
 
 import { 
@@ -54,7 +54,7 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
   });
   const [daftarGuru, setDaftarGuru] = useState([]);
 
-  const apakahError = cekPesanErrorScanner(pesanSistem);
+  const apakahError = formatHelper.cekPesanErrorScanner(pesanSistem);
 
   useEffect(() => {
     const muatDaftarGuru = async () => {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { FaXmark, FaDownload, FaSpinner } from "react-icons/fa6";
 import { toPng } from 'html-to-image'; 
-import { formatJam } from "../../utils/formatHelper";
+import { formatJam, formatHelper } from "@/utils/formatHelper";
 // 🚀 FIX: Import CABANG_QUANTUM ditambahkan di sini
 import { STATUS_SESI, CABANG_QUANTUM } from "../../utils/constants";
 import cetakStyles from "../../app/admin/LaporanCetak.module.css";
@@ -366,10 +366,10 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
                                absenHariIni.map((a, idx) => (
                                  <div key={idx} style={{ marginBottom: idx !== absenHariIni.length - 1 ? '10px' : '0' }}>
                                    <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 'bold', marginBottom: '2px' }}>
-                                     ✓ Clock In: {formatJam(a.waktuMasuk)}
+                                     ✓ Clock In: {timeHelper.formatJam(a.waktuMasuk)}
                                    </div>
                                    <div style={{ fontSize: '11px', color: a.waktuKeluar ? '#ea580c' : '#94a3b8', fontWeight: 'bold' }}>
-                                     {a.waktuKeluar ? `⬅ Clock Out: ${formatJam(a.waktuKeluar)}` : "⏱️ Belum Clock Out"}
+                                     {a.waktuKeluar ? `⬅ Clock Out: ${timeHelper.formatJam(a.waktuKeluar)}` : "⏱️ Belum Clock Out"}
                                    </div>
                                  </div>
                                ))
@@ -389,7 +389,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
                                       <strong style={{ minWidth: '100px' }}>{k.namaMapel}</strong>
                                       <span style={{ color: '#4b5563' }}>({k.kelasTarget})</span>
                                       <span style={{ marginLeft: 'auto', fontWeight: 'bold', color: '#111827', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '6px' }}>
-                                        {formatJam(k.waktuMulai)} - {k.waktuSelesai ? formatJam(k.waktuSelesai) : "..."}
+                                        {timeHelper.formatJam(k.waktuMulai)} - {k.waktuSelesai ? timeHelper.formatJam(k.waktuSelesai) : "..."}
                                       </span>
                                     </div>
                                   ))}

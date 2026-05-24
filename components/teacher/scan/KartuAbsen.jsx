@@ -12,7 +12,7 @@ const KartuAbsen = memo(({ abs, isOpen, onToggle }) => {
   return (
     <div className={`${styles.recordCard} ${styles.recordCardClickable}`} onClick={() => onToggle(abs._id)} style={{ border: '3px solid #111827', margin: '0 0 20px'}}>
       <div className={styles.recordCardRow}>
-        <p className={styles.recordDate}>{formatTanggal(abs.waktuMasuk)}</p>
+        <p className={styles.recordDate}>{timeHelper.formatTanggalLengkap(abs.waktuMasuk)}</p>
         
         {!isSelesai && (
           <span className={styles.recordDuration} style={{ backgroundColor: '#fef08a', color: '#111827', border: '2px solid #111827', display: 'flex', gap: '4px', alignItems: 'center' }}>

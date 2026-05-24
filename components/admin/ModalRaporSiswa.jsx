@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { FaXmark, FaDownload, FaSpinner } from "react-icons/fa6";
 import { toPng } from 'html-to-image'; 
 import { ambilLaporanBulananSiswa } from "../../actions/adminAction";
-import { formatJam } from "../../utils/formatHelper";
+import { formatJam, formatHelper } from "@/utils/formatHelper";
 import { STATUS_SESI, CABANG_QUANTUM } from "../../utils/constants";
 import cetakStyles from "../../app/admin/LaporanCetak.module.css";
 
@@ -171,7 +171,7 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
                       <tr key={k._id}>
                         <td className={cetakStyles.teksTebal}>{formatHariTanggalKhusus(k.waktuMulai)}</td>
                         <td>{k.namaMapel}</td>
-                        <td style={{textAlign:'center', fontSize: '12px'}}>{isHadir ? `${formatJam(k.waktuMulai)} - ${formatJam(k.waktuSelesai)}` : "-"}</td>
+                        <td style={{textAlign:'center', fontSize: '12px'}}>{isHadir ? `${timeHelper.formatJam(k.waktuMulai)} - ${timeHelper.formatJam(k.waktuSelesai)}` : "-"}</td>
                         <td style={{textAlign:'center', fontWeight: 900}} className={isHadir ? cetakStyles.bgHadir : cetakStyles.bgAbsen}>
                           {isHadir ? "HADIR" : "TIDAK HADIR"}
                         </td>
@@ -217,7 +217,7 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
                     <tr key={k._id}>
                       <td className={cetakStyles.teksTebal}>{formatHariTanggalKhusus(k.waktuMulai)}</td>
                       <td>{k.namaMapel}</td>
-                      <td style={{textAlign:'center'}}>{formatJam(k.waktuMulai)} - {formatJam(k.waktuSelesai)}</td>
+                      <td style={{textAlign:'center'}}>{timeHelper.formatJam(k.waktuMulai)} - {timeHelper.formatJam(k.waktuSelesai)}</td>
                       <td style={{textAlign:'center'}}><span>{Math.round((new Date(k.waktuSelesai) - new Date(k.waktuMulai)) / 60000)} Menit</span></td>
                     </tr>
                   ))}

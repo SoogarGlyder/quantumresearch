@@ -2,7 +2,7 @@
 
 import { memo, Suspense, useState } from "react";
 import { FaBookOpen, FaPen, FaUserTie } from "react-icons/fa6";
-import { potongDataPagination } from "@/utils/formatHelper";
+import { formatHelper } from "@/utils/formatHelper";
 import PaginationBar from "@/components/ui/PaginationBar";
 import { LIMIT_DATA } from "@/utils/constants"; 
 import styles from "@/components/App.module.css";
@@ -29,7 +29,7 @@ const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_BAHAN || 3; 
 
   const daftarLatihan = Array.isArray(latihanHariIni) ? latihanHariIni : (latihanHariIni ? [latihanHariIni] : []);
-  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(daftarLatihan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(daftarLatihan, page, ITEMS_PER_PAGE);
 
   return (
     <div className={styles.contentContainer}>

@@ -759,8 +759,8 @@ export async function ambilLaporanBulananPengajar(pengajarId, bulan, tahun) {
         return `${y}-${m}-${day}`;
     };
 
-    const strMulai = formatTanggal(tanggalMulai);
-    const strAkhir = formatTanggal(tanggalAkhir);
+    const strMulai = timeHelper.formatTanggalLengkap(tanggalMulai);
+    const strAkhir = timeHelper.formatTanggalLengkap(tanggalAkhir);
 
     const jadwalGuru = await Jadwal.find({
       pengajarId: pengajarId,

@@ -8,7 +8,8 @@ import {
 import { CldUploadWidget } from 'next-cloudinary';
 import { toPng } from 'html-to-image'; 
 
-import { formatTanggal, formatYYYYMMDD, formatJam } from "../../utils/formatHelper";
+import { formatTanggal, formatYYYYMMDD, formatJam, formatHelper } from "@/utils/formatHelper";
+import { timeHelper } from "@/utils/timeHelper"
 // 🚀 FIX: Import CABANG_QUANTUM ditambahkan di sini
 import { KONFIGURASI_MEDIA, STATUS_SESI, LABEL_SISTEM, CABANG_QUANTUM } from "../../utils/constants";
 
@@ -60,7 +61,7 @@ export default function DetailJurnal({
       });
       
       const link = document.createElement("a");
-      link.download = `Laporan-${detailJadwal.mapel}-${detailJadwal.kelasTarget}-${formatYYYYMMDD(new Date(detailJadwal.tanggal))}.png`;
+      link.download = `Laporan-${detailJadwal.mapel}-${detailJadwal.kelasTarget}-${timeHelper.getTglJakarta(new Date(detailJadwal.tanggal))}.png`;
       link.href = dataUrl;
       link.click();
       
@@ -140,7 +141,7 @@ export default function DetailJurnal({
                   <p className={cetakStyles.labelLabel}>Kelas & Mata Pelajaran</p>
                   <p className={cetakStyles.nilaiLabelKiri}>Kelas: {detailJadwal.kelasTarget}</p>
                   <p className={cetakStyles.nilaiLabelKiri}>Mapel: {detailJadwal.mapel}</p>
-                  <p className={cetakStyles.nilaiLabelKiri}>Tanggal: {formatTanggal(detailJadwal.tanggal)}</p>
+                  <p className={cetakStyles.nilaiLabelKiri}>Tanggal: {timeHelper.formatTanggalLengkap(detailJadwal.tanggal)}</p>
                   <p className={cetakStyles.nilaiLabelKiri}>Waktu: {detailJadwal.jamMulai} - {detailJadwal.jamSelesai}</p>
                 </div>
                 <div className={cetakStyles.infoKanan}>
@@ -187,7 +188,7 @@ export default function DetailJurnal({
                         <tr key={siswa.siswaId}>
                           <td className={cetakStyles.namaSiswa} style={{ padding: '16px' }}>{siswa.nama}</td>
                           <td style={{ textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#4b5563', padding: '16px' }}>
-                            {isAbsen || isBelumAbsen ? "-" : `${siswa.waktuMulai ? formatJam(siswa.waktuMulai) : '--:--'} - ${siswa.waktuSelesai ? formatJam(siswa.waktuSelesai) : '??:??'}`}
+                            {isAbsen || isBelumAbsen ? "-" : `${siswa.waktuMulai ? timeHelper.formatJam(siswa.waktuMulai) : '--:--'} - ${siswa.waktuSelesai ? timeHelper.formatJam(siswa.waktuSelesai) : '??:??'}`}
                           </td>
                           <td className={`${cetakStyles.statusSiswa} ${isAbsen ? cetakStyles.bgAbsen : isHadir ? cetakStyles.bgHadir : ''}`} style={{ padding: '16px' }}>
                             {isAbsen ? "Tidak Hadir" : isBelumAbsen ? "Belum" : "Hadir"}
@@ -246,7 +247,7 @@ export default function DetailJurnal({
       <div className={styles.formContainer}>
         <div className={styles.kartuInfoJurnal}>
           <h2 className={styles.judulInfoJurnal}>{detailJadwal.mapel} - {detailJadwal.kelasTarget}</h2>
-          <p className={styles.teksInfoJurnal}>📅 {formatTanggal(detailJadwal.tanggal)} | ⏰ {detailJadwal.jamMulai} - {detailJadwal.jamSelesai}</p>
+          <p className={styles.teksInfoJurnal}>📅 {timeHelper.formatTanggalLengkap(detailJadwal.tanggal)} | ⏰ {detailJadwal.jamMulai} - {detailJadwal.jamSelesai}</p>
         </div>
 
         {pesan && (
@@ -340,9 +341,9 @@ export default function DetailJurnal({
                               <span className={styles.teksPudar}>-</span>
                             ) : (
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                <span className={styles.teksJam}>{siswa.waktuMulai ? formatJam(siswa.waktuMulai) : "--:--"}</span>
+                                <span className={styles.teksJam}>{siswa.waktuMulai ? timeHelper.formatJam(siswa.waktuMulai) : "--:--"}</span>
                                 <span className={styles.panahJam}>→</span>
-                                <span className={styles.teksJamPudar}>{siswa.waktuSelesai ? formatJam(siswa.waktuSelesai) : "??:??"}</span>
+                                <span className={styles.teksJamPudar}>{siswa.waktuSelesai ? timeHelper.formatJam(siswa.waktuSelesai) : "??:??"}</span>
                               </div>
                             )}
                           </td>

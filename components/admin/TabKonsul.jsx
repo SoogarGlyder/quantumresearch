@@ -10,10 +10,10 @@ import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
 import { unduhExcel } from "../../utils/exportExcel";
-import { formatTanggal, formatJam, hitungDurasiMenit, potongDataPagination, formatYYYYMMDD } from "../../utils/formatHelper"; 
+import { formatTanggal, formatJam, hitungDurasiMenit, potongDataPagination, formatYYYYMMDD, formatHelper } from "@/utils/formatHelper"; 
 import { paksaHentikanSesi } from "../../actions/adminAction";
 import { TIPE_SESI, STATUS_SESI, OPSI_MAPEL_KONSUL, LIMIT_DATA, STATUS_USER, OPSI_KELAS } from "../../utils/constants";
-
+import { timeHelper } from "@/utils/timeHelper"
 import { FaFileExcel, FaFilter, FaMagnifyingGlass, FaClock } from "react-icons/fa6"; //  FIX: Import FaClock
 import styles from "../../app/admin/AdminPage.module.css";
 
@@ -73,7 +73,7 @@ export default function TabKonsul({ dataRiwayat = [], dataJadwal = [], bulanAkti
 
   const riwayatBulanIni = useMemo(() => {
     return dataRiwayat.filter(r => {
-      const tglStr = formatYYYYMMDD(r.waktuMulai);
+      const tglStr = timeHelper.getTglJakarta(r.waktuMulai);
       return tglStr >= minDate && tglStr <= maxDate;
     });
   }, [dataRiwayat, minDate, maxDate]);
@@ -112,7 +112,7 @@ export default function TabKonsul({ dataRiwayat = [], dataJadwal = [], bulanAkti
         jadwalTerkait = dataJadwal.find(j => j._id === idJadwalBiasa);
       }
       if (!jadwalTerkait) {
-        const tglSesi = formatYYYYMMDD(sesi.waktuMulai);
+        const tglSesi = timeHelper.getTglJakarta(sesi.waktuMulai);
         const mapelAsli = sesi.namaMapel ? sesi.namaMapel.replace(" (Extra)", "").trim() : "";
         jadwalTerkait = dataJadwal.find(j => 
           j.tanggal === tglSesi && 
@@ -144,7 +144,7 @@ export default function TabKonsul({ dataRiwayat = [], dataJadwal = [], bulanAkti
     let riwayat = riwayatKonsulGabungan.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
     
     if (filterTglKonsul) {
-      riwayat = riwayat.filter(s => formatYYYYMMDD(s.waktuMulai) === filterTglKonsul);
+      riwayat = riwayat.filter(s => timeHelper.getTglJakarta(s.waktuMulai) === filterTglKonsul);
     }
     if (filterKelasKonsul) {
       riwayat = riwayat.filter(s => s.siswaId?.kelas === filterKelasKonsul);
@@ -179,7 +179,7 @@ export default function TabKonsul({ dataRiwayat = [], dataJadwal = [], bulanAkti
     return { jam, menit };
   }, [riwayatKonsulDifilter]);
 
-  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(riwayatKonsulDifilter, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(riwayatKonsulDifilter, page, ITEMS_PER_PAGE);
 
   const handlePaksaHenti = async (idSesi, namaSiswa) => {
     const pilihan = window.confirm(
@@ -337,17 +337,17 @@ export default function TabKonsul({ dataRiwayat = [], dataJadwal = [], bulanAkti
                     </td>
                     
                     <td>
-                      <p className={styles.teksTanggal}>{formatTanggal(sesi.waktuMulai)}</p>
+                      <p className={styles.teksTanggal}>{timeHelper.formatTanggalLengkap(sesi.waktuMulai)}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span className={styles.teksJamPudar}>{formatJam(sesi.waktuMulai)}</span>
+                        <span className={styles.teksJamPudar}>{timeHelper.formatJam(sesi.waktuMulai)}</span>
                         <span className={styles.teksJamPudar}>-</span>
-                        <span className={styles.teksJamPudar}>{sesi.waktuSelesai ? formatJam(sesi.waktuSelesai) : "Sekarang"}</span>
+                        <span className={styles.teksJamPudar}>{sesi.waktuSelesai ? timeHelper.formatJam(sesi.waktuSelesai) : "Sekarang"}</span>
                       </div>
                     </td>
                     
                     <td style={{textAlign: 'center'}}>
                       <span className={styles.teksJam}>
-                        {sesi.waktuSelesai ? `${hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)}m` : "-"}
+                        {sesi.waktuSelesai ? `${timeHelper.hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)}m` : "-"}
                       </span>
                     </td>
                     

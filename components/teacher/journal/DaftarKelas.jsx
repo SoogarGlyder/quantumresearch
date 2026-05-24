@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, memo } from "react";
 import { FaCalendarCheck, FaCheckDouble, FaCircleExclamation } from "react-icons/fa6";
 import { timeHelper } from "@/utils/timeHelper";
 import { LIMIT_DATA, PERIODE_BELAJAR } from "@/utils/constants";
-import { potongDataPagination } from "@/utils/formatHelper"; 
+import { formatHelper } from "@/utils/formatHelper"; 
 import PaginationBar from "@/components/ui/PaginationBar";
 import styles from "@/components/App.module.css";
 
@@ -98,7 +98,7 @@ export default function DaftarKelas({ jadwal = [], hariIniMurni }) {
 
   }, [jadwal, hariIniMurni, searchQuery]);
 
-  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
 
   return (
     <>

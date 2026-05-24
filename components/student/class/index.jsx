@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, Suspense } from "react";
 //  FIX: useSearchParams dan router Next.js dihapus
 
-import { potongDataPagination } from "@/utils/formatHelper"; 
+import { formatHelper } from "@/utils/formatHelper"; 
 import { pilahJadwalSiswa } from "@/utils/kalkulatorData";
 import { PERIODE_BELAJAR, LIMIT_DATA } from "@/utils/constants"; 
 import styles from "@/components/App.module.css";
@@ -98,8 +98,8 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
     });
   }, [riwayatKuis, searchQuery]);
 
-  const { totalPage: totalPageKelas, dataTerpotong: dataKelasHalIni } = potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
-  const { totalPage: totalPageKuis, dataTerpotong: dataKuisHalIni } = potongDataPagination(kuisDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage: totalPageKelas, dataTerpotong: dataKelasHalIni } = formatHelper.potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage: totalPageKuis, dataTerpotong: dataKuisHalIni } = formatHelper.potongDataPagination(kuisDitampilkan, page, ITEMS_PER_PAGE);
 
   const klikBukaCatatan = (jadwalItem) => {
     setGaleriAktif({ mapel: jadwalItem.mapel, tanggal: jadwalItem.tanggal, foto: jadwalItem.galeriPapan || [], bab: jadwalItem.bab, subBab: jadwalItem.subBab });

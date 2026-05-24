@@ -6,7 +6,7 @@ import { FaLock, FaDesktop } from "react-icons/fa6";
 
 import { ambilSemuaLatihanSoal, prosesSimpanLatihanSoal, prosesHapusLatihanSoal, ambilDaftarSiswaDropdown } from "@/actions/soalAction";
 import { ambilSemuaBankSoal, hapusBankSoal } from "@/actions/quizAction";
-import { potongDataPagination } from "@/utils/formatHelper"; 
+import { formatHelper } from "@/utils/formatHelper"; 
 
 import { OPSI_KELAS, LIMIT_DATA } from "@/utils/constants";
 import styles from "@/components/App.module.css";
@@ -145,8 +145,8 @@ function InnerTabTugas({ pengajarId }) {
     )));
   }, [dataBankSoal, searchQuery]);
 
-  const { totalPage: totalPageTugas, dataTerpotong: dataTugasHalIni } = potongDataPagination(tugasDitampilkan, page, ITEMS_PER_PAGE);
-  const { totalPage: totalPageKuis, dataTerpotong: dataKuisHalIni } = potongDataPagination(kuisDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage: totalPageTugas, dataTerpotong: dataTugasHalIni } = formatHelper.potongDataPagination(tugasDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage: totalPageKuis, dataTerpotong: dataKuisHalIni } = formatHelper.potongDataPagination(kuisDitampilkan, page, ITEMS_PER_PAGE);
 
   return (
     <>

@@ -12,8 +12,8 @@ import PaginationBar from "../ui/PaginationBar";
 import { unduhExcel } from "../../utils/exportExcel"; 
 import { inputAbsenManual } from "../../actions/adminAction";
 import { kalkulasiAbsensiLengkap } from "../../utils/kalkulatorData";
-import { formatTanggal, formatJam, formatYYYYMMDD, potongDataPagination, ekstrakKeteranganAbsen } from "../../utils/formatHelper";
-
+import { formatTanggal, formatJam, formatYYYYMMDD, potongDataPagination, ekstrakKeteranganAbsen, formatHelper } from "@/utils/formatHelper";
+import { timeHelper } from "@/utils/timeHelper"
 import { STATUS_SESI, OPSI_KELAS, OPSI_MAPEL_KELAS, OPSI_KETERANGAN_ABSEN, LIMIT_DATA, STATUS_USER } from "../../utils/constants";
 
 import { FaFileExcel, FaTriangleExclamation, FaClock, FaFilter, FaMagnifyingGlass } from "react-icons/fa6";
@@ -73,7 +73,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   // DIET MEMORI: Potong "Paket 1 Tahun" menjadi "Paket 1 Bulan" SEBELUM dikalkulasi
   const riwayatBulanIni = useMemo(() => {
     return dataRiwayat.filter(r => {
-      const tglStr = formatYYYYMMDD(r.waktuMulai);
+      const tglStr = timeHelper.getTglJakarta(r.waktuMulai);
       return tglStr >= minDate && tglStr <= maxDate;
     });
   }, [dataRiwayat, minDate, maxDate]);
@@ -91,7 +91,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
   const riwayatKelasDifilter = useMemo(() => {
     let riwayat = riwayatKelasMurni.filter(s => s.siswaId?.status !== STATUS_USER.NONAKTIF);
     
-    if (filterTglKelas) riwayat = riwayat.filter(s => formatYYYYMMDD(s.waktuMulai) === filterTglKelas);
+    if (filterTglKelas) riwayat = riwayat.filter(s => timeHelper.getTglJakarta(s.waktuMulai) === filterTglKelas);
     if (filterKelasAbsen) riwayat = riwayat.filter(s => s.siswaId?.kelas === filterKelasAbsen);
     if (filterMapelKelas) riwayat = riwayat.filter(s => s.namaMapel === filterMapelKelas);
     if (filterNama) {
@@ -102,12 +102,12 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     return riwayat;
   }, [riwayatKelasMurni, filterTglKelas, filterKelasAbsen, filterMapelKelas, filterNama]);
   
-  const { totalPage, dataTerpotong: dataKelasHalIni } = potongDataPagination(riwayatKelasDifilter, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataKelasHalIni } = formatHelper.potongDataPagination(riwayatKelasDifilter, page, ITEMS_PER_PAGE);
 
   // --- HANDLER INLINE EDIT ---
   const mulaiEditAbsen = (sesi) => {
     setEditingAbsenId(sesi._id); 
-    const catatanExtracted = ekstrakKeteranganAbsen(sesi.status);
+    const catatanExtracted = formatHelper.ekstrakKeteranganAbsen(sesi.status);
     const ketExtracted = sesi.status ? sesi.status.split('(')[0].trim().toLowerCase() : STATUS_SESI.ALPA.id;
     setInlineKet(ketExtracted); 
     setInlineCatatan(catatanExtracted || "");
@@ -115,7 +115,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
 
   const simpanAbsenInline = async (sesi) => {
     setLoadingInline(true);
-    const tgl = sesi.tanggalAsli || formatYYYYMMDD(sesi.waktuMulai); 
+    const tgl = sesi.tanggalAsli || timeHelper.getTglJakarta(sesi.waktuMulai); 
     const payload = { 
       siswaId: sesi.siswaId._id, 
       tanggal: tgl, 
@@ -252,7 +252,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
                 return (
                   <tr key={sesi._id}>
                     <td className={styles.tdLebar}>
-                      <p className={styles.teksTanggal}>{formatTanggal(sesi.waktuMulai)}</p>
+                      <p className={styles.teksTanggal}>{timeHelper.formatTanggalLengkap(sesi.waktuMulai)}</p>
                       <p className={styles.teksMapel}>{sesi.namaMapel || "-"}</p>
                     </td>
                     
@@ -266,9 +266,9 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
                         <span className={styles.teksPudar}>-</span>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                          <span className={styles.teksJam}>{formatJam(sesi.waktuMulai)}</span>
+                          <span className={styles.teksJam}>{timeHelper.formatJam(sesi.waktuMulai)}</span>
                           <span className={styles.panahJam}>→</span>
-                          <span className={styles.teksJamPudar}>{sesi.waktuSelesai ? formatJam(sesi.waktuSelesai) : "??:??"}</span>
+                          <span className={styles.teksJamPudar}>{sesi.waktuSelesai ? timeHelper.formatJam(sesi.waktuSelesai) : "??:??"}</span>
                         </div>
                       )}
                     </td>

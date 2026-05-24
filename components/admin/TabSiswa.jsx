@@ -11,7 +11,7 @@ import ModalRaporSiswa from "./ModalRaporSiswa";
 
 import { editAkunSiswa, hapusAkunSiswa } from "../../actions/adminAction";
 import { prosesTambahSiswa, prosesBulkTambahSiswa } from "../../actions/authAction";
-import { potongDataPagination } from "../../utils/formatHelper";
+import { potongDataPagination, formatHelper } from "@/utils/formatHelper";
 
 import { OPSI_KELAS, STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, KONFIGURASI_SISTEM } from "../../utils/constants"; 
 
@@ -207,7 +207,7 @@ export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false
     return siswa;
   }, [dataSiswa, filterKelas]);
 
-  const { totalPage, dataTerpotong: dataSiswaHalIni } = potongDataPagination(siswaDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataSiswaHalIni } = formatHelper.potongDataPagination(siswaDitampilkan, page, ITEMS_PER_PAGE);
 
   // ============================================================================
   // 3. RENDER UI

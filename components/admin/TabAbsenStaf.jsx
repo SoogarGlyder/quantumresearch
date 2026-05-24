@@ -10,8 +10,9 @@ import FilterInput from "../ui/FilterInput";
 import PaginationBar from "../ui/PaginationBar";
 
 import { unduhExcel } from "../../utils/exportExcel";
-import { formatTanggal, potongDataPagination, formatYYYYMMDD } from "../../utils/formatHelper";
+import { formatTanggal, potongDataPagination, formatYYYYMMDD, formatHelper } from "@/utils/formatHelper";
 import { LIMIT_DATA } from "../../utils/constants";
+import { timeHelper } from "@/utils/timeHelper"
 
 import { 
   FaFileExcel, FaFilter, FaClock, FaRightFromBracket, FaUserTie, 
@@ -28,7 +29,7 @@ const ModalAbsenStaf = memo(({ isOpen, onClose, dataPengajar = [], muatData }) =
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     pengajarId: "",
-    tanggal: formatYYYYMMDD(new Date()),
+    tanggal: timeHelper.getTglJakarta(new Date()),
     keterangan: "Input Manual Admin (Otomatis 12:00-20:00)"
   });
 
@@ -182,7 +183,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
   const absenBulanIni = useMemo(() => {
     return dataAbsenStaf.filter(a => {
       if (!a.waktuMasuk) return false;
-      const tglStr = formatYYYYMMDD(a.waktuMasuk);
+      const tglStr = timeHelper.getTglJakarta(a.waktuMasuk);
       return tglStr >= minDate && tglStr <= maxDate;
     });
   }, [dataAbsenStaf, minDate, maxDate]);
@@ -191,7 +192,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
     let hasil = [...absenBulanIni];
 
     if (filterTglAbsen) {
-      hasil = hasil.filter(a => formatYYYYMMDD(a.waktuMasuk) === filterTglAbsen);
+      hasil = hasil.filter(a => timeHelper.getTglJakarta(a.waktuMasuk) === filterTglAbsen);
     }
 
     if (filterNama) {
@@ -205,7 +206,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
     return hasil;
   }, [absenBulanIni, filterTglAbsen, filterNama]);
 
-  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(dataDifilter, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(dataDifilter, page, ITEMS_PER_PAGE);
 
   const handleHapus = async (id) => {
     if (confirm("Hapus data presensi staf ini?")) {
@@ -317,7 +318,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
                       </div>
                     </div>
                   </td>
-                  <td style={{ fontWeight: "800" }}>{formatTanggal(absen.waktuMasuk)}</td>
+                  <td style={{ fontWeight: "800" }}>{timeHelper.formatTanggalLengkap(absen.waktuMasuk)}</td>
                   <td style={{ color: "#15803d", fontWeight: "900" }}>
                     <FaClock size={12} /> {new Date(absen.waktuMasuk).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
                   </td>

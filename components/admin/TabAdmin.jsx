@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect } from "react";
 import PaginationBar from "../ui/PaginationBar";
 
 import { simpanAkunAdmin, hapusAkunAdmin } from "../../actions/adminAction"; 
-import { potongDataPagination } from "../../utils/formatHelper";
+import { potongDataPagination, formatHelper } from "@/utils/formatHelper";
 
 import { STATUS_USER, LIMIT_DATA, VALIDASI_SISTEM, CABANG_QUANTUM, PERAN } from "../../utils/constants"; 
 import styles from "../../app/admin/AdminPage.module.css";
@@ -107,7 +107,7 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
     } 
   };
 
-  const { totalPage, dataTerpotong: dataAdminHalIni } = potongDataPagination(dataAdmin, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataAdminHalIni } = formatHelper.potongDataPagination(dataAdmin, page, ITEMS_PER_PAGE);
 
   const getNamaCabang = (kode) => {
     if (kode === CABANG_QUANTUM.PUSAT.id) return CABANG_QUANTUM.PUSAT.nama;
