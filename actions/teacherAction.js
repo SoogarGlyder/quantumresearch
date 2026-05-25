@@ -11,16 +11,8 @@ import { responseHelper } from "../utils/responseHelper";
 import { validationHelper } from "../utils/validationHelper";
 import { timeHelper } from "../utils/timeHelper";  
 import { 
-  PERAN, 
-  STATUS_USER, 
-  KONFIGURASI_MEDIA, 
-  PESAN_SISTEM,
-  TIPE_SESI,       
-  LABEL_SISTEM,    
-  PANGKAT_PENGAJAR,
-  STATUS_SESI,
-  KONFIGURASI_SISTEM,
-  CABANG_QUANTUM 
+  PERAN, STATUS_USER, KONFIGURASI_MEDIA, PESAN_SISTEM,
+  TIPE_SESI, LABEL_SISTEM, PANGKAT_PENGAJAR
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
@@ -116,14 +108,20 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
     if (!babClean) return responseHelper.error("Materi (Bab) wajib diisi!");
 
     const rawLinks = Array.isArray(dataJurnal.galeriPapan) ? dataJurnal.galeriPapan : (dataJurnal.galeriPapan || "").split(",").filter(Boolean);
-    const galeriBersih = [...new Set(rawLinks.map(link => link.trim()).filter(link => isValidCloudinary(link)))];
+    const galeriBersih = [...new Set(rawLinks.map(link => validationHelper.sanitize(link)).filter(link => isValidCloudinary(link)))];
 
     const query = { _id: idJadwal };
     if (auth.peran !== PERAN.ADMIN.id) query.pengajarId = auth.userId; 
 
     const updateJadwal = await Jadwal.findOneAndUpdate(
       query,
-      { $set: { bab: babClean, subBab: validationHelper.sanitize(dataJurnal.subBab), galeriPapan: galeriBersih, fotoBersama: isValidCloudinary(dataJurnal.fotoBersama) ? dataJurnal.fotoBersama : "", jurnalTerakhirUpdate: new Date() } },
+      { $set: { 
+          bab: babClean, 
+          subBab: validationHelper.sanitize(dataJurnal.subBab), 
+          galeriPapan: galeriBersih, 
+          fotoBersama: isValidCloudinary(dataJurnal.fotoBersama) ? dataJurnal.fotoBersama : "", 
+          jurnalTerakhirUpdate: new Date() 
+      } },
       { new: true }
     ).lean();
 
@@ -132,11 +130,24 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
     if (arrayNilaiSiswa.length > 0) {
       const { awal, akhir } = timeHelper.getRentangHari(updateJadwal.tanggal);
       const ops = arrayNilaiSiswa.filter(item => item.statusAbsen !== LABEL_SISTEM.BELUM_ABSEN).map(item => {
-          const statusFinal = item.catatan?.trim() ? `${item.statusAbsen} (${item.catatan.trim()})`.toLowerCase() : item.statusAbsen.toLowerCase();
+          const catatanClean = validationHelper.sanitize(item.catatan);
+          const statusFinal = catatanClean ? `${item.statusAbsen} (${catatanClean})`.toLowerCase() : item.statusAbsen.toLowerCase();
+          
           return {
             updateOne: {
               filter: { siswaId: item.siswaId, jenisSesi: TIPE_SESI.KELAS, namaMapel: updateJadwal.mapel, waktuMulai: { $gte: awal, $lte: akhir } },
-              update: { $set: { status: statusFinal, nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest) }, $setOnInsert: { waktuMulai: awal, waktuSelesai: awal, terlambatMenit: 0 } },
+              update: { 
+                $set: { 
+                  status: statusFinal, 
+                  nilaiTest: item.nilaiTest === "" ? null : Number(item.nilaiTest) 
+                }, 
+                $setOnInsert: { 
+                  namaSiswa: item.nama,
+                  waktuMulai: awal, 
+                  waktuSelesai: awal, 
+                  terlambatMenit: 0 
+                } 
+              },
               upsert: true 
             }
           };
@@ -163,7 +174,6 @@ export async function getStatusKuisLive(idJadwal) {
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
     const riwayatKuis = await HasilKuis.find({ jadwalId: idJadwal }).select("siswaId skorAkhir").lean();
-
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
     let querySiswa = { peran: PERAN.SISWA.id, kelas: jadwal.kelasTarget, status: STATUS_USER.AKTIF };
@@ -194,9 +204,6 @@ export async function getStatusKuisLive(idJadwal) {
   }
 }
 
-// ============================================================================
-//  FUNGSI BARU: RIWAYAT KONSUL (PENTING! JANGAN DIHAPUS)
-// ============================================================================
 export async function getRiwayatKonsulPengajar() {
   try {
     await connectToDatabase();
@@ -208,7 +215,7 @@ export async function getRiwayatKonsulPengajar() {
 
     const riwayat = await StudySession.find({
       jenisSesi: TIPE_SESI.KONSUL,
-      pengajarPendamping: userId // Tarik data berdasarkan ID guru yang login
+      pengajarPendamping: userId 
     })
     .populate("siswaId", "nama kelas")
     .sort({ waktuMulai: -1 })
@@ -236,165 +243,7 @@ export async function getRiwayatKonsulPengajar() {
 }
 
 // ============================================================================
-// 3. ADMIN ACTIONS (MANAGEMENT PENGAJAR)
-// ============================================================================
-export async function ambilSemuaPengajar() {
-  try {
-    await connectToDatabase();
-    if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
-
-    const pengajar = await User.find({ peran: PERAN.PENGAJAR.id })
-      .select("_id nama kodePengajar username noHp").sort({ nama: 1 }).lean();
-      
-    const dataBersih = pengajar.map(p => ({ ...p, _id: p._id.toString(), kodePengajar: p.kodePengajar || "-" }));
-    return responseHelper.success("Data pengajar dimuat.", serialize(dataBersih));
-  } catch (error) {
-    return responseHelper.error("Gagal memuat data pengajar.");
-  }
-}
-
-export async function tambahPengajarBaru(formData) {
-  try {
-    await connectToDatabase();
-    const sesiAdmin = await authHelper.ambilSesi(); 
-    if (!sesiAdmin || sesiAdmin.peran !== PERAN.ADMIN.id) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
-
-    const username = validationHelper.sanitize(formData.username).toLowerCase();
-    const kodePengajar = validationHelper.sanitize(formData.kodePengajar).toUpperCase();
-
-    const exist = await User.exists({ $or: [{ username }, { kodePengajar }] });
-    if (exist) return responseHelper.error("Username/Kode sudah terdaftar.");
-
-    const hashed = await authHelper.buatHash(formData.password || KONFIGURASI_SISTEM.DEFAULT_PASSWORD);
-
-    let payloadBaru = {
-      ...formData, username, kodePengajar, password: hashed, peran: PERAN.PENGAJAR.id, status: STATUS_USER.AKTIF
-    };
-
-    if (sesiAdmin.kodeCabang && sesiAdmin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
-      payloadBaru.kodeCabang = sesiAdmin.kodeCabang;
-    }
-
-    await User.create(payloadBaru);
-
-    revalidatePath(PERAN.ADMIN.home);
-    return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
-  } catch (error) {
-    return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
-  }
-}
-
-export async function hapusPengajar(idPengajar) {
-  try {
-    await connectToDatabase();
-    if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
-
-    await User.deleteOne({ _id: idPengajar }); 
-    revalidatePath(PERAN.ADMIN.home);
-    return responseHelper.success("Pengajar dihapus.");
-  } catch (error) {
-    return responseHelper.error("Gagal hapus pengajar.");
-  }
-}
-
-export async function editPengajar(idPengajar, dataBaru) {
-  try {
-    await connectToDatabase();
-    const auth = await pastikanOtoritas([PERAN.ADMIN.id]);
-    if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
-
-    const dataUpdate = { ...dataBaru };
-    delete dataUpdate.isKakakAsuh; 
-    
-    if (dataUpdate.pangkat) {
-      const statusWaliKelas = dataUpdate.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH;
-      dataUpdate.isKakakAsuh = statusWaliKelas;
-      if (!statusWaliKelas) dataUpdate.kelasAsuh = [];
-    }
-
-    if (dataBaru.password?.trim()) {
-      dataUpdate.password = await authHelper.buatHash(dataBaru.password);
-    } else {
-      delete dataUpdate.password;
-    }
-
-    if (dataUpdate.username) dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
-    if (dataUpdate.kodePengajar) dataUpdate.kodePengajar = validationHelper.sanitize(dataUpdate.kodePengajar).toUpperCase();
-
-    const hasil = await User.updateOne({ _id: idPengajar }, { $set: dataUpdate });
-    if (hasil.matchedCount === 0) return responseHelper.error("Data pengajar tidak ditemukan.");
-
-    revalidatePath(PERAN.ADMIN.home);
-    return responseHelper.success("✅ Data pengajar berhasil diperbarui.");
-  } catch (error) {
-    console.error("[CRITICAL ERROR editPengajar]:", error);
-    return responseHelper.error("Gagal mengupdate data pengajar. Silakan cek koneksi database.");
-  }
-}
-
-export async function prosesBulkTambahPengajar(dataArray) {
-  try {
-    await connectToDatabase();
-    const sesiAdmin = await authHelper.ambilSesi(); 
-    if (!sesiAdmin || sesiAdmin.peran !== PERAN.ADMIN.id) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
-
-    let suksesCount = 0;
-    let laporan = [];
-
-    const uNames = dataArray.map(i => (i.username || i.kodePengajar)?.toLowerCase()).filter(Boolean);
-    const kodes = dataArray.map(i => i.kodePengajar?.toUpperCase()).filter(Boolean);
-    
-    const existing = await User.find({ 
-      $or: [{ username: { $in: uNames } }, { kodePengajar: { $in: kodes } }] 
-    }).select("username kodePengajar").lean();
-    
-    const setU = new Set(existing.map(e => e.username));
-    const setK = new Set(existing.map(e => e.kodePengajar));
-
-    for (let [index, item] of dataArray.entries()) {
-      try {
-        if (!item.nama || !item.kodePengajar) {
-          laporan.push(`Baris ${index + 1}: Nama & Kode Pengajar wajib diisi.`);
-          continue;
-        }
-
-        const usernameTarget = item.username || item.kodePengajar;
-        const username = validationHelper.sanitize(usernameTarget).toLowerCase();
-        const kodePengajar = validationHelper.sanitize(item.kodePengajar).toUpperCase();
-
-        if (setU.has(username) || setK.has(kodePengajar)) {
-          laporan.push(`Baris ${index + 1} (${item.nama}): Username '${username}' atau Kode '${kodePengajar}' sudah dipakai.`);
-          continue;
-        }
-
-        const pwd = item.password || KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
-        const hashed = await authHelper.buatHash(pwd);
-
-        let payloadBaru = {
-          nama: item.nama, nomorPeserta: item.nomorPeserta || "", username, kodePengajar,
-          noHp: item.noHp || "", password: hashed, peran: PERAN.PENGAJAR.id, status: STATUS_USER.AKTIF
-        };
-
-        if (sesiAdmin.kodeCabang && sesiAdmin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
-          payloadBaru.kodeCabang = sesiAdmin.kodeCabang;
-        }
-
-        await User.create(payloadBaru);
-        suksesCount++;
-      } catch (err) {
-        laporan.push(`Baris ${index + 1} (${item.nama}): Gagal menyimpan (${err.message}).`);
-      }
-    }
-
-    revalidatePath(PERAN.ADMIN.home);
-    return responseHelper.success(`Selesai: ${suksesCount} berhasil terdaftar, ${laporan.length} gagal.`, { laporan });
-  } catch (error) {
-    return responseHelper.error("Gagal melakukan upload massal.", error);
-  }
-}
-
-// ============================================================================
-// GOD MODE - RESET UJIAN SISWA (MENGHAPUS DARI HASILKUIS)
+// 3. GOD MODE - RESET & FORCE SUBMIT UJIAN
 // ============================================================================
 export async function resetUjianSiswa(idJadwal, idSiswa) {
   try {
@@ -404,11 +253,9 @@ export async function resetUjianSiswa(idJadwal, idSiswa) {
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const hasil = await HasilKuis.deleteOne({ jadwalId: idJadwal, siswaId: idSiswa });
-
     if (hasil.deletedCount === 0) return responseHelper.error("Siswa ini belum mengumpulkan ujian.");
 
     await StudySession.updateOne({ jadwalId: idJadwal, siswaId: idSiswa }, { $set: { nilaiTest: null } });
-
     return responseHelper.success("Riwayat ujian berhasil dihapus. Siswa dapat mengulang dari awal.");
   } catch (error) {
     console.error("[ERROR resetUjianSiswa]:", error);
@@ -416,9 +263,6 @@ export async function resetUjianSiswa(idJadwal, idSiswa) {
   }
 }
 
-// ============================================================================
-// GOD MODE - FORCE SUBMIT (MEMBUAT DOKUMEN HASILKUIS BARU)
-// ============================================================================
 export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
   try {
     if (!mongoose.Types.ObjectId.isValid(idJadwal)) return responseHelper.error("ID tidak valid.");
@@ -434,11 +278,7 @@ export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
 
     const emptyDetail = (kuis.soal || []).map(s => {
       const kunciArr = Array.isArray(s.kunciJawaban) ? s.kunciJawaban.map(String) : [String(s.kunciJawaban || "")];
-      return {
-        kunciJawaban: kunciArr,
-        jawabanSiswa: [""], 
-        isBenar: false
-      };
+      return { kunciJawaban: kunciArr, jawabanSiswa: [""], isBenar: false };
     });
 
     await Promise.all([
@@ -446,7 +286,7 @@ export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
         jadwalId: idJadwal,
         quizId: kuis._id,
         siswaId: idSiswa,
-        namaSiswa: namaSiswa,
+        namaSiswa: validationHelper.sanitize(namaSiswa),
         skorAkhir: 0,
         detailJawaban: emptyDetail
       }),

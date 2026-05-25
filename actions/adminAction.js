@@ -10,23 +10,15 @@ import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
 import { validationHelper } from "../utils/validationHelper";
 import { 
-  PERAN, 
-  TIPE_SESI, 
-  STATUS_USER, 
-  LABEL_SISTEM,
-  PESAN_SISTEM,
-  STATUS_SESI,
-  PERIODE_BELAJAR,
-  CABANG_QUANTUM, 
-  PANGKAT_PENGAJAR,
-  KONFIGURASI_SISTEM 
+  PERAN, TIPE_SESI, STATUS_USER, LABEL_SISTEM,
+  PESAN_SISTEM, STATUS_SESI, PERIODE_BELAJAR,
+  CABANG_QUANTUM, PANGKAT_PENGAJAR, KONFIGURASI_SISTEM 
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
 // 0. INTERNAL HELPERS
 // ============================================================================
-
 async function pastikanAdmin() {
   const sesi = await authHelper.ambilSesi();
   if (!sesi || !sesi.userId) return false;
@@ -57,7 +49,6 @@ const serialize = (data) => JSON.parse(JSON.stringify(data));
 export async function ambilDataDashboard() {
   try {
     await connectToDatabase();
-    
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const sesi = await authHelper.ambilSesi();
@@ -108,7 +99,6 @@ export async function ambilDataDashboard() {
         strictPopulate: false
       })
       .sort({ waktuMulai: -1 })
-      //  FIX: Limit dinaikkan dari 150 ke 3000 agar Tab Monitoring membaca SELURUH data bulan ini
       .limit(3000) 
       .lean();
 
@@ -129,9 +119,7 @@ export async function ambilDataDashboard() {
       }));
 
     const siswaBersih = siswa.map(s => ({ ...s, _id: s._id.toString() }));
-
     return responseHelper.success("Data dashboard dimuat.", { riwayat: riwayatBersih, siswa: siswaBersih });
-
   } catch (error) {
     console.error("[CRITICAL ERROR Dashboard]:", error);
     return responseHelper.error("Gagal memuat data dashboard.");
@@ -151,24 +139,17 @@ export async function ambilAbsensiPengajar() {
     const akhir = new Date(`${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`);
 
     const filterCabangStaf = (sesi.kodeCabang && sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) 
-      ? { kodeCabang: sesi.kodeCabang } 
-      : {};
+      ? { kodeCabang: sesi.kodeCabang } : {};
 
     const data = await AbsensiPengajar.find({ waktuMasuk: { $gte: mulai, $lte: akhir } })
-      .select("_id pengajarId waktuMasuk waktuKeluar status")
-      .populate({
-        path: "pengajarId",
-        select: "nama kodePengajar",
-        match: filterCabangStaf 
-      }) 
+      .select("_id pengajarId waktuMasuk waktuKeluar status namaPengajar")
+      .populate({ path: "pengajarId", select: "nama kodePengajar", match: filterCabangStaf }) 
       .sort({ waktuMasuk: -1 })
       .lean();
 
     const dataBersih = data.filter(d => d.pengajarId !== null);
-
     return responseHelper.success("Data absen staf dimuat.", serialize(dataBersih));
   } catch (error) {
-    console.error("[ERROR ambilAbsensiPengajar]:", error);
     return responseHelper.error("Gagal mengambil absen staf.");
   }
 }
@@ -182,31 +163,21 @@ export async function ambilSemuaJadwal() {
     if (!(await pastikanAdmin())) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const sesi = await authHelper.ambilSesi();
-    
-    let queryJadwal = {
-      tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR }
-    };
+    let queryJadwal = { tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR } };
 
     const adminYgLogin = await User.findById(sesi.userId).select("kodeCabang pangkat kelasAsuh").lean();
     if (!adminYgLogin) return responseHelper.error("User tidak ditemukan.");
 
     if (adminYgLogin.kodeCabang && adminYgLogin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
-      const guruSekota = await User.find({ 
-        kodeCabang: adminYgLogin.kodeCabang, 
-        peran: PERAN.PENGAJAR.id 
-      }).select("_id").lean();
-      
-      const daftarIdGuru = guruSekota.map(g => g._id);
-      queryJadwal.pengajarId = { $in: daftarIdGuru };
+      const guruSekota = await User.find({ kodeCabang: adminYgLogin.kodeCabang, peran: PERAN.PENGAJAR.id }).select("_id").lean();
+      queryJadwal.pengajarId = { $in: guruSekota.map(g => g._id) };
     }
 
     if (adminYgLogin.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH && Array.isArray(adminYgLogin.kelasAsuh) && adminYgLogin.kelasAsuh.length > 0) {
       queryJadwal.kelasTarget = { $in: adminYgLogin.kelasAsuh };
     }
 
-    const jadwal = await Jadwal.find(queryJadwal)
-      .populate("pengajarId", "nama kodePengajar kodeCabang") 
-      .lean();
+    const jadwal = await Jadwal.find(queryJadwal).populate("pengajarId", "nama kodePengajar kodeCabang").lean();
 
     const dataAman = jadwal.map(j => ({
       ...j,
@@ -221,7 +192,6 @@ export async function ambilSemuaJadwal() {
 
     return responseHelper.success("Jadwal termuat", dataAman);
   } catch (error) {
-    console.error("[ERROR ambilSemuaJadwal]:", error);
     return responseHelper.error("Gagal memuat jadwal.");
   }
 }
@@ -241,7 +211,6 @@ export async function ambilPengajarCabang() {
 
     return responseHelper.success("Data pengajar dimuat.", serialize(pengajar));
   } catch (error) {
-    console.error("[ERROR ambilPengajarCabang]:", error);
     return responseHelper.error("Gagal mengambil data pengajar.");
   }
 }
@@ -252,7 +221,7 @@ export async function tambahJadwal(dataForm) {
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak: Anda tidak memiliki otoritas.");
     const sesi = await authHelper.ambilSesi();
 
-    const kodeCari = dataForm.pengajar?.trim();
+    const kodeCari = validationHelper.sanitize(dataForm.pengajar);
     const kodeCariAman = validationHelper.escapeRegex(kodeCari);
     
     let queryPengajar = { 
@@ -267,15 +236,20 @@ export async function tambahJadwal(dataForm) {
     if (!pengajarObj) return responseHelper.error(`Kode "${kodeCari}" tidak ditemukan di cabang Anda!`);
 
     await Jadwal.create({
-      tanggal: dataForm.tanggal, mapel: dataForm.mapel, kelasTarget: dataForm.kelasTarget,
-      jamMulai: dataForm.jamMulai, jamSelesai: dataForm.jamSelesai, pertemuan: Number(dataForm.pertemuan),
-      pengajarId: pengajarObj._id, pengajar: pengajarObj.nama, namaPengajar: pengajarObj.nama, kodePengajar: pengajarObj.kodePengajar
+      tanggal: validationHelper.sanitize(dataForm.tanggal), 
+      mapel: validationHelper.sanitize(dataForm.mapel), 
+      kelasTarget: validationHelper.sanitize(dataForm.kelasTarget),
+      jamMulai: validationHelper.sanitize(dataForm.jamMulai), 
+      jamSelesai: validationHelper.sanitize(dataForm.jamSelesai), 
+      pertemuan: Number(dataForm.pertemuan),
+      pengajarId: pengajarObj._id, 
+      namaPengajar: pengajarObj.nama,
+      kodePengajar: pengajarObj.kodePengajar
     });
 
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
   } catch (error) {
-    console.error("[ERROR tambahJadwal]:", error);
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }
@@ -295,17 +269,22 @@ export async function editJadwal(id, dataBaru) {
     }
 
     let payloadUpdate = { ...dataBaru };
+    
+    if (payloadUpdate.tanggal) payloadUpdate.tanggal = validationHelper.sanitize(payloadUpdate.tanggal);
+    if (payloadUpdate.mapel) payloadUpdate.mapel = validationHelper.sanitize(payloadUpdate.mapel);
+    if (payloadUpdate.kelasTarget) payloadUpdate.kelasTarget = validationHelper.sanitize(payloadUpdate.kelasTarget);
+
     if (dataBaru.pengajar) {
+      const pCari = validationHelper.sanitize(dataBaru.pengajar);
       let queryPengajar = { 
         peran: PERAN.PENGAJAR.id,
-        $or: [{ kodePengajar: dataBaru.pengajar }, { nama: dataBaru.pengajar }]
+        $or: [{ kodePengajar: pCari }, { nama: pCari }]
       };
       if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) queryPengajar.kodeCabang = sesi.kodeCabang;
 
       const pengajarObj = await User.findOne(queryPengajar).select("_id nama kodePengajar").lean();
       if (pengajarObj) {
         payloadUpdate.pengajarId = pengajarObj._id;
-        payloadUpdate.pengajar = pengajarObj.nama;
         payloadUpdate.namaPengajar = pengajarObj.nama;
         payloadUpdate.kodePengajar = pengajarObj.kodePengajar;
       }
@@ -315,7 +294,6 @@ export async function editJadwal(id, dataBaru) {
     revalidatePath(PERAN.ADMIN.home);
     return responseHelper.success("Jadwal diperbarui.");
   } catch (error) {
-    console.error("[ERROR editJadwal]:", error);
     return responseHelper.error("Gagal mengedit jadwal.");
   }
 }
@@ -365,6 +343,7 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
     }
 
     if (dataUpdate.username) dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
+    if (dataUpdate.nama) dataUpdate.nama = validationHelper.sanitize(dataUpdate.nama);
 
     const hasil = await User.updateOne(queryFilter, { $set: dataUpdate });
     
@@ -410,26 +389,37 @@ export async function hapusAkunSiswa(idSiswa) {
 // ============================================================================
 // 5. ABSENSI & JURNAL 
 // ============================================================================
-
 export async function inputAbsenManual(data) {
   try {
     await connectToDatabase();
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak.");
     const sesi = await authHelper.ambilSesi();
 
+    let querySiswa = { _id: data.siswaId };
     if (sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
-      const validasiSiswa = await User.findOne({ _id: data.siswaId, kodeCabang: sesi.kodeCabang });
-      if (!validasiSiswa) return responseHelper.error("Akses Ditolak: Siswa bukan dari cabang Anda.");
+      querySiswa.kodeCabang = sesi.kodeCabang;
     }
 
+    const siswaData = await User.findOne(querySiswa).select("nama").lean();
+    if (!siswaData) return responseHelper.error("Akses Ditolak: Siswa bukan dari cabang Anda.");
+
     const { awal } = timeHelper.getRentangHari(data.tanggal);
-    const statusFinal = data.catatan ? `${data.keterangan} (${data.catatan})`.toLowerCase() : data.keterangan.toLowerCase();
+    const keteranganAman = validationHelper.sanitize(data.keterangan);
+    const catatanAman = validationHelper.sanitize(data.catatan);
+    const statusFinal = catatanAman ? `${keteranganAman} (${catatanAman})`.toLowerCase() : keteranganAman.toLowerCase();
 
     await StudySession.updateOne(
       { siswaId: data.siswaId, jenisSesi: TIPE_SESI.KELAS, namaMapel: data.mapel, waktuMulai: { $gte: awal } },
       {
         $set: { status: statusFinal, waktuSelesai: awal },
-        $setOnInsert: { siswaId: data.siswaId, jenisSesi: TIPE_SESI.KELAS, namaMapel: data.mapel, waktuMulai: awal, terlambatMenit: 0 }
+        $setOnInsert: { 
+          siswaId: data.siswaId, 
+          namaSiswa: siswaData.nama,
+          jenisSesi: TIPE_SESI.KELAS, 
+          namaMapel: data.mapel, 
+          waktuMulai: awal, 
+          terlambatMenit: 0 
+        }
       },
       { upsert: true }
     );
@@ -498,7 +488,12 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
     }
 
     const updateJadwal = Jadwal.updateOne({ _id: idJadwal }, {
-      $set: { bab: dataJurnal.bab, subBab: dataJurnal.subBab, galeriPapan: dataJurnal.galeriPapan, fotoBersama: dataJurnal.fotoBersama }
+      $set: { 
+        bab: validationHelper.sanitize(dataJurnal.bab), 
+        subBab: validationHelper.sanitize(dataJurnal.subBab), 
+        galeriPapan: dataJurnal.galeriPapan, 
+        fotoBersama: dataJurnal.fotoBersama 
+      }
     });
 
     let updateSesi = Promise.resolve();
@@ -569,12 +564,18 @@ export async function prosesSimpanAbsenManual(data) {
     await connectToDatabase();
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak.");
 
-    const waktuMasuk = new Date(`${data.tanggal}T${data.jamMasuk}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
-    const waktuKeluar = data.jamKeluar ? new Date(`${data.tanggal}T${data.jamKeluar}:00${PERIODE_BELAJAR.ISO_OFFSET}`) : null;
+    const guru = await User.findById(data.pengajarId).select("nama").lean();
+
+    const waktuMasuk = new Date(`${validationHelper.sanitize(data.tanggal)}T${validationHelper.sanitize(data.jamMasuk)}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
+    const waktuKeluar = data.jamKeluar ? new Date(`${validationHelper.sanitize(data.tanggal)}T${validationHelper.sanitize(data.jamKeluar)}:00${PERIODE_BELAJAR.ISO_OFFSET}`) : null;
 
     await AbsensiPengajar.create({
-      pengajarId: data.pengajarId, waktuMasuk, waktuKeluar,
-      status: "HADIR", keterangan: data.keterangan || "Input Manual Admin"
+      pengajarId: data.pengajarId, 
+      namaPengajar: guru ? guru.nama : "Pengajar",
+      waktuMasuk, 
+      waktuKeluar,
+      status: "HADIR", 
+      keterangan: validationHelper.sanitize(data.keterangan) || "Input Manual Admin"
     });
 
     revalidatePath(PERAN.ADMIN.home);
@@ -681,11 +682,11 @@ export async function simpanAkunAdmin(idEdit, payload) {
     if (!(await pastikanSuperAdmin())) return responseHelper.error("Akses Ditolak: Hanya Super Admin.");
     
     const dataSimpan = {
-      nama: payload.nama,
-      username: payload.username.trim().toLowerCase(), 
-      noHp: payload.noHp,
+      nama: validationHelper.sanitize(payload.nama),
+      username: validationHelper.sanitize(payload.username).toLowerCase(), 
+      noHp: validationHelper.sanitize(payload.noHp),
       peran: PERAN.ADMIN.id, 
-      kodeCabang: payload.kodeCabang,
+      kodeCabang: validationHelper.sanitize(payload.kodeCabang),
       status: payload.status
     };
     
@@ -752,13 +753,6 @@ export async function ambilLaporanBulananPengajar(pengajarId, bulan, tahun) {
     const tanggalMulai = new Date(tahun, bulan - 2, 29);
     const tanggalAkhir = new Date(tahun, bulan - 1, 28, 23, 59, 59, 999);
 
-    const formatTanggal = (d) => {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-    };
-
     const strMulai = timeHelper.formatTanggalLengkap(tanggalMulai);
     const strAkhir = timeHelper.formatTanggalLengkap(tanggalAkhir);
 
@@ -767,7 +761,6 @@ export async function ambilLaporanBulananPengajar(pengajarId, bulan, tahun) {
       tanggal: { $gte: strMulai, $lte: strAkhir }
     }).sort({ tanggal: 1, jamMulai: 1 }).lean();
 
-    // 2. Tarik SEMUA Sesi Kelas Bulan ini untuk melacak Extra per kepala siswa
     const semuaSesiKelas = await StudySession.find({
       jenisSesi: TIPE_SESI.KELAS,
       waktuMulai: { $gte: tanggalMulai, $lte: tanggalAkhir },
@@ -818,7 +811,6 @@ export async function ambilLaporanBulananPengajar(pengajarId, bulan, tahun) {
       konsulExtraMenit: extraMap[j._id.toString()] || 0
     }));
 
-    // 3. Ambil Riwayat Bimbingan Konsul Inisiatif Mandiri
     const sesiKonsul = await StudySession.find({
       pengajarPendamping: pengajarId,
       jenisSesi: TIPE_SESI.KONSUL,
@@ -826,7 +818,6 @@ export async function ambilLaporanBulananPengajar(pengajarId, bulan, tahun) {
       status: STATUS_SESI.SELESAI.id
     }).populate("siswaId", "nama kelas").sort({ waktuMulai: 1 }).lean();
 
-    // 4. Ambil Absen Masuk Pengajar
     const absenGuru = await AbsensiPengajar.find({
         pengajarId: pengajarId,
         waktuMasuk: { $gte: tanggalMulai, $lte: tanggalAkhir }

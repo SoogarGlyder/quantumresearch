@@ -5,12 +5,13 @@ import StudySession from "../models/StudySession";
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
+import { validationHelper } from "../utils/validationHelper";
 import { 
   STATUS_SESI, 
   TIPE_SESI, 
   PESAN_SISTEM,
   GAMIFIKASI,
-  CABANG_QUANTUM // FIX: Import konstanta cabang
+  CABANG_QUANTUM 
 } from "../utils/constants";
 
 // ============================================================================
@@ -27,10 +28,10 @@ function tentukanGelar(jamTotal) {
 export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
   try {
     await connectToDatabase();
-
-    // FIX: Tarik sesi dan kodeCabang siswa yang sedang login
     const sesi = await authHelper.ambilSesi();
     if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
+
+    const kelasAman = validationHelper.sanitize(filterKelas);
 
     const awalBulan = timeHelper.getAwalBulan();
     const kini = new Date();
@@ -80,13 +81,12 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
       { $unwind: "$siswa" }
     ];
 
-    // FILTER KUNCI: Pastikan saingan di klasemen hanya dari cabang yang sama
     if (sesi.kodeCabang && sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
       pipeline.push({ $match: { "siswa.kodeCabang": sesi.kodeCabang } });
     }
 
-    if (filterKelas && filterKelas !== "Semua Kelas") {
-      pipeline.push({ $match: { "siswa.kelas": filterKelas } });
+    if (kelasAman && kelasAman !== "Semua Kelas") {
+      pipeline.push({ $match: { "siswa.kelas": kelasAman } });
     }
 
     pipeline.push(
@@ -121,7 +121,6 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
     });
 
     return responseHelper.success("Klasemen bulan ini dimuat.", dataFinal);
-
   } catch (error) {
     console.error("[KLASEMEN_ERROR]:", error.message);
     return responseHelper.error("Gagal memproses data klasemen.");

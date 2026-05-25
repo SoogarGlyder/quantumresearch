@@ -100,7 +100,8 @@ export async function getStatistikSiswa(idSiswa) {
 
     return responseHelper.success("Statistik profil dimuat.", { stats: statsKategori, streak: currentStreak });
   } catch (error) {
-    return responseHelper.error("Gagal statistik profil.");
+    console.error("[ERROR getStatistikSiswa]:", error);
+    return responseHelper.error("Gagal memuat statistik profil.");
   }
 }
 
@@ -116,8 +117,6 @@ export async function updateProfilSiswa(idSiswa, dataUpdate) {
 
     if (dataUpdate.username) {
       const cleanUser = validationHelper.sanitize(dataUpdate.username).toLowerCase();
-      
-      // OPTIMASI: Pengecekan ada dengan .exists()
       const ada = await User.exists({ username: cleanUser, _id: { $ne: idSiswa } });
       if (ada) return responseHelper.error("Username dipakai pengguna lain.");
       
@@ -133,7 +132,6 @@ export async function updateProfilSiswa(idSiswa, dataUpdate) {
 
     if (Object.keys(payload).length === 0) return responseHelper.success("Tidak ada perubahan.");
 
-    // OPTIMASI: updateOne
     await User.updateOne({ _id: idSiswa }, { $set: payload });
     
     revalidatePath(PERAN.SISWA.home);
@@ -141,6 +139,7 @@ export async function updateProfilSiswa(idSiswa, dataUpdate) {
     
     return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
   } catch (error) {
+    console.error("[ERROR updateProfilSiswa]:", error);
     return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
   }
 }

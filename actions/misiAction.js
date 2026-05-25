@@ -5,21 +5,21 @@ import User from "../models/User";
 import { authHelper } from "../utils/authHelper";
 import { timeHelper } from "../utils/timeHelper";
 import { responseHelper } from "../utils/responseHelper";
+import { validationHelper } from "../utils/validationHelper";
 import { revalidatePath } from "next/cache";
-import { GAMIFIKASI } from "../utils/constants";
+import { GAMIFIKASI, PERAN, PESAN_SISTEM } from "../utils/constants";
 
 export async function cekDanGenerateMisiHarian() {
   try {
     await connectToDatabase();
     const { userId, peran } = await authHelper.ambilSesi();
-    
-    if (!userId || peran !== "siswa") return responseHelper.error("Bukan siswa.");
 
-    // OPTIMASI: Hanya tarik kolom misiHarian
+    if (!userId || peran !== PERAN.SISWA.id) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
     const siswa = await User.findById(userId).select("misiHarian").lean();
     if (!siswa) return responseHelper.error("Siswa tidak ditemukan.");
 
-    const hariIni = timeHelper.getTglJakarta(new Date()); 
+    const hariIni = timeHelper.getTglJakarta(new Date());
 
     let daftarMisi = siswa.misiHarian?.daftar || [];
 
@@ -35,18 +35,17 @@ export async function cekDanGenerateMisiHarian() {
         expBonus: m.expBonus
       }));
 
-      // OPTIMASI: updateOne langsung, tanpa memuat seluruh object mongoose
       await User.updateOne(
         { _id: userId },
         { $set: { "misiHarian.tanggal": hariIni, "misiHarian.daftar": daftarMisiBaru } }
       );
-      
+
       revalidatePath("/", "layout");
-      daftarMisi = daftarMisiBaru; // Pakai yang baru kita *generate*
+      daftarMisi = daftarMisiBaru;
     }
 
     const daftarMisiBersih = daftarMisi.map(misi => ({
-      _id: misi._id?.toString() || Math.random().toString(36), 
+      _id: misi._id?.toString() || Math.random().toString(36),
       kodeMisi: misi.kodeMisi,
       judul: misi.judul,
       target: misi.target,
@@ -57,20 +56,20 @@ export async function cekDanGenerateMisiHarian() {
     }));
 
     return responseHelper.success("Misi hari ini dimuat.", daftarMisiBersih);
-
   } catch (error) {
     console.error("[ERROR Misi Harian]:", error);
     return responseHelper.error("Gagal memuat misi harian.");
   }
 }
 
-export async function klaimHadiahMisi(idMisiDalamArray) {
+export async function klaimHadiahMisi(idMisiRaw) {
   try {
     await connectToDatabase();
     const { userId } = await authHelper.ambilSesi();
-    if (!userId) return responseHelper.error("Sesi habis.");
+    if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    // OPTIMASI: Tarik secukupnya pakai .lean()
+    const idMisiDalamArray = validationHelper.sanitize(idMisiRaw);
+
     const siswa = await User.findById(userId).select("misiHarian totalExp").lean();
     if (!siswa || !siswa.misiHarian || !siswa.misiHarian.daftar) {
       return responseHelper.error("Siswa/Misi tidak ditemukan.");
@@ -85,18 +84,17 @@ export async function klaimHadiahMisi(idMisiDalamArray) {
     if (misi.diklaim) return responseHelper.error("Hadiah misi ini sudah diklaim.");
 
     const expBaru = (siswa.totalExp || 0) + misi.expBonus;
-    
-    // OPTIMASI: Atomic Update di Array (Hanya update Misi yang di-klaim)
+
     await User.updateOne(
       { _id: userId },
-      { 
-        $set: { 
+      {
+        $set: {
           [`misiHarian.daftar.${indexMisi}.diklaim`]: true,
           totalExp: expBaru
-        } 
+        }
       }
     );
-    
+
     revalidatePath("/", "layout");
     return responseHelper.success(`🎉 Berhasil klaim +${misi.expBonus} EXP!`);
   } catch (error) {
