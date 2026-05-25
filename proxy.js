@@ -1,20 +1,19 @@
 import { NextResponse } from "next/server";
+import { KONFIGURASI_SISTEM, PERAN } from "./utils/constants";
 
 export function proxy(request) {
   const path = request.nextUrl.pathname;
   
-  // Ambil Karcis (Token) dan Peran dari Cookie
-  const karcisId = request.cookies.get("karcis_quantum")?.value;
-  const karcisPeran = request.cookies.get("peran_quantum")?.value;
+  const karcisId = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
+  const karcisPeran = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_ROLE)?.value;
   
-  const isPublicPath = path === "/login";
+  const isPublicPath = path === KONFIGURASI_SISTEM.PATH_LOGIN;
   const isLoggedIn = !!karcisId;
 
-  // 🛡️ PENAWAR INFINITE LOOP
   if (isPublicPath && request.nextUrl.searchParams.get("clear") === "true") {
     const response = NextResponse.next();
-    response.cookies.delete("karcis_quantum");
-    response.cookies.delete("peran_quantum");
+    response.cookies.delete(KONFIGURASI_SISTEM.COOKIE_NAME);
+    response.cookies.delete(KONFIGURASI_SISTEM.COOKIE_ROLE);
     return response;
   }
 
@@ -22,7 +21,7 @@ export function proxy(request) {
   // 1. PROTEKSI PENGUNJUNG TANPA LOGIN
   // ============================================================================
   if (!isLoggedIn && !isPublicPath) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL(KONFIGURASI_SISTEM.PATH_LOGIN, request.url));
   }
 
   // ============================================================================
@@ -30,23 +29,20 @@ export function proxy(request) {
   // ============================================================================
   if (isLoggedIn) {
     
+    // A. Jika sudah login tapi mencoba kembali ke halaman /login
     if (isPublicPath) {
-      const destination = karcisPeran === "admin" ? "/admin" : "/";
+      const destination = karcisPeran === PERAN.ADMIN.id ? PERAN.ADMIN.home : PERAN.SISWA.home;
       return NextResponse.redirect(new URL(destination, request.url));
     }
 
-    // FIX: Proteksi Area Admin yang Baru
-    // Siswa mutlak kita blokir. Tapi "pengajar" kita izinkan lewat, 
-    // nanti pangkat mereka (Kakak Asuh/Staff) akan diseleksi langsung oleh halaman /admin.
-    if (path.startsWith("/admin") && karcisPeran === "siswa") {
-      return NextResponse.redirect(new URL("/", request.url));
+    // B. Proteksi Area Admin (Siswa Mutlak Diblokir)
+    if (path.startsWith(PERAN.ADMIN.home) && karcisPeran === PERAN.SISWA.id) {
+      return NextResponse.redirect(new URL(PERAN.SISWA.home, request.url));
     }
 
-    // C. Admin Tulen tidak boleh di "/" (Dashboard Siswa/Umum)
-    // Catatan: Jika dia Staff Akademik (yang perannya pengajar), dia TETAP BISA ke "/"
-    // Inilah yang membuat sistem "Topi Ganda" bekerja sempurna!
-    if (path === "/" && karcisPeran === "admin") {
-      return NextResponse.redirect(new URL("/admin", request.url));
+    // C. Admin Tulen tidak boleh di halaman Dashboard Siswa/Umum ("/")
+    if (path === PERAN.SISWA.home && karcisPeran === PERAN.ADMIN.id) {
+      return NextResponse.redirect(new URL(PERAN.ADMIN.home, request.url));
     }
   }
 

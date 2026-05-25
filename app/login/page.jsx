@@ -3,22 +3,20 @@
 import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-
 import { prosesLogin } from "../../actions/authAction";
 import { PESAN_SISTEM } from "../../utils/constants";
-
 import styles from "./LoginPage.module.css";
-import { 
-  FaUserAstronaut, FaLock, FaArrowRightToBracket, 
-  FaEye, FaEyeSlash 
+import {
+  FaUserAstronaut, FaLock, FaArrowRightToBracket,
+  FaEye, FaEyeSlash
 } from "react-icons/fa6";
 
 function FormLoginArea() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [form, setForm] = useState({ identifier: "", password: "" });
-  const [notifikasi, setNotifikasi] = useState({ teks: "", tipe: "" }); 
+  const [notifikasi, setNotifikasi] = useState({ teks: "", tipe: "" });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -43,27 +41,22 @@ function FormLoginArea() {
       const hasil = await prosesLogin(form);
       if (hasil.sukses) {
         setNotifikasi({ teks: hasil.pesan, tipe: "sukses" });
-        
-        // 🔥 FIX KHUSUS SAFARI:
-        // Menggunakan window.location.href memaksa browser melakukan 
-        // request penuh ke server. Ini memastikan Middleware membaca 
-        // cookie terbaru dan mengarahkan user ke area yang benar (Admin atau Beranda).
-        window.location.href = "/"; 
+        window.location.href = "/";
       } else {
         setNotifikasi({ teks: hasil.pesan, tipe: "error" });
-        setLoading(false);
       }
     } catch (error) {
       console.error("[ERROR handleLogin]:", error);
       setNotifikasi({ teks: "Gagal terhubung ke server.", tipe: "error" });
-      setLoading(false);
+    } finally {
+      if (!notifikasi.teks.includes("Berhasil")) setLoading(false);
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    if (notifikasi.teks) setNotifikasi({ teks: "", tipe: "" }); 
+    if (notifikasi.teks) setNotifikasi({ teks: "", tipe: "" });
   };
 
   return (
@@ -95,7 +88,7 @@ function FormLoginArea() {
           <button
             type="button" className={styles.tombolIntip}
             onClick={() => setShowPassword(!showPassword)}
-            tabIndex="-1" 
+            tabIndex="-1"
             style={{
               position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
               background: 'none', border: 'none', cursor: 'pointer', color: '#4b5563',
@@ -126,12 +119,9 @@ function FormLoginArea() {
 }
 
 export default function LoginPage() {
-  // Tetap pertahankan fungsi pencegah bfcache Safari yang sudah kamu buat
   useEffect(() => {
     const basmiCacheSafari = (event) => {
-      if (event.persisted) {
-        window.location.reload();
-      }
+      if (event.persisted) window.location.reload();
     };
     window.addEventListener("pageshow", basmiCacheSafari);
     return () => window.removeEventListener("pageshow", basmiCacheSafari);

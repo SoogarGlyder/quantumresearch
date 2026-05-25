@@ -9,6 +9,18 @@ export const timeHelper = {
   _isValidDate: (d) => d instanceof Date && !isNaN(d),
 
   /**
+   * (Internal) Helper untuk menangani overflow bulan (misal: bulan -1 menjadi Desember tahun lalu).
+   * Mengembalikan string YYYY-MM-DD yang absolut dan aman dari pergeseran Timezone server.
+   */
+  _buildSafeYMD: (year, monthIndex, day) => {
+    const temp = new Date(Date.UTC(year, monthIndex, day));
+    const realY = temp.getUTCFullYear();
+    const realM = String(temp.getUTCMonth() + 1).padStart(2, '0');
+    const realD = String(temp.getUTCDate()).padStart(2, '0');
+    return `${realY}-${realM}-${realD}`;
+  },
+
+  /**
    * Menghasilkan string tanggal format YYYY-MM-DD sesuai zona waktu.
    */
   getTglJakarta: (dateInput = new Date()) => {
@@ -92,9 +104,49 @@ export const timeHelper = {
     return false;
   },
 
+  /**
+   * Mendapatkan rentang tanggal 1 hingga akhir bulan untuk Siswa. (Timezone Safe)
+   */
+  getRentangBulanSiswa: (dateInput = new Date()) => {
+    const d = new Date(new Date(dateInput).toLocaleString("en-US", { timeZone: TZ }));
+    const y = d.getFullYear();
+    const m = d.getMonth();
+
+    const startYMD = timeHelper._buildSafeYMD(y, m, 1);
+    const endYMD = timeHelper._buildSafeYMD(y, m + 1, 0); // Hari ke-0 = hari terakhir bulan sebelumnya
+
+    return {
+      awal: new Date(`${startYMD}T00:00:00.000${PERIODE_BELAJAR.ISO_OFFSET}`),
+      akhir: new Date(`${endYMD}T23:59:59.999${PERIODE_BELAJAR.ISO_OFFSET}`)
+    };
+  },
+
+  /**
+   * Mendapatkan rentang cut-off tanggal 29 (bulan lalu/kini) s/d 28 (bulan kini/depan) untuk Pengajar. (Timezone Safe)
+   */
+  getRentangBulanStaf: (dateInput = new Date()) => {
+    const d = new Date(new Date(dateInput).toLocaleString("en-US", { timeZone: TZ }));
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const date = d.getDate();
+
+    let startYMD, endYMD;
+    if (date >= 29) {
+      startYMD = timeHelper._buildSafeYMD(y, m, 29);
+      endYMD = timeHelper._buildSafeYMD(y, m + 1, 28);
+    } else {
+      startYMD = timeHelper._buildSafeYMD(y, m - 1, 29);
+      endYMD = timeHelper._buildSafeYMD(y, m, 28);
+    }
+
+    return {
+      awal: new Date(`${startYMD}T00:00:00.000${PERIODE_BELAJAR.ISO_OFFSET}`),
+      akhir: new Date(`${endYMD}T23:59:59.999${PERIODE_BELAJAR.ISO_OFFSET}`)
+    };
+  },
+
   getAwalBulan: () => {
-    const d = new Date();
-    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), 1, PERIODE_BELAJAR.UTC_OFFSET, 0, 0, 0));
+    return timeHelper.getRentangBulanSiswa().awal;
   },
 
   getRentangHari: (tglInput) => {
