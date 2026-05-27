@@ -9,6 +9,7 @@ import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
 import { validationHelper } from "../utils/validationHelper";
+import { syncHelper } from "../utils/syncHelper"; // 🔥 Import Sync Helper
 import { 
   PERAN, TIPE_SESI, STATUS_USER, LABEL_SISTEM,
   PESAN_SISTEM, STATUS_SESI, PERIODE_BELAJAR,
@@ -221,7 +222,8 @@ export async function tambahJadwal(dataForm) {
     if (!(await pastikanAdminBisaEdit())) return responseHelper.error("Akses Ditolak: Anda tidak memiliki otoritas.");
     const sesi = await authHelper.ambilSesi();
 
-    const kodeCari = validationHelper.sanitize(dataForm.pengajar);
+    // 🔥 PERBAIKAN: Gunakan trimInput
+    const kodeCari = validationHelper.trimInput(dataForm.pengajar);
     const kodeCariAman = validationHelper.escapeRegex(kodeCari);
     
     let queryPengajar = { 
@@ -236,11 +238,11 @@ export async function tambahJadwal(dataForm) {
     if (!pengajarObj) return responseHelper.error(`Kode "${kodeCari}" tidak ditemukan di cabang Anda!`);
 
     await Jadwal.create({
-      tanggal: validationHelper.sanitize(dataForm.tanggal), 
-      mapel: validationHelper.sanitize(dataForm.mapel), 
-      kelasTarget: validationHelper.sanitize(dataForm.kelasTarget),
-      jamMulai: validationHelper.sanitize(dataForm.jamMulai), 
-      jamSelesai: validationHelper.sanitize(dataForm.jamSelesai), 
+      tanggal: validationHelper.trimInput(dataForm.tanggal), 
+      mapel: validationHelper.trimInput(dataForm.mapel), 
+      kelasTarget: validationHelper.trimInput(dataForm.kelasTarget),
+      jamMulai: validationHelper.trimInput(dataForm.jamMulai), 
+      jamSelesai: validationHelper.trimInput(dataForm.jamSelesai), 
       pertemuan: Number(dataForm.pertemuan),
       pengajarId: pengajarObj._id, 
       namaPengajar: pengajarObj.nama,
@@ -270,12 +272,13 @@ export async function editJadwal(id, dataBaru) {
 
     let payloadUpdate = { ...dataBaru };
     
-    if (payloadUpdate.tanggal) payloadUpdate.tanggal = validationHelper.sanitize(payloadUpdate.tanggal);
-    if (payloadUpdate.mapel) payloadUpdate.mapel = validationHelper.sanitize(payloadUpdate.mapel);
-    if (payloadUpdate.kelasTarget) payloadUpdate.kelasTarget = validationHelper.sanitize(payloadUpdate.kelasTarget);
+    // 🔥 PERBAIKAN: Gunakan trimInput
+    if (payloadUpdate.tanggal) payloadUpdate.tanggal = validationHelper.trimInput(payloadUpdate.tanggal);
+    if (payloadUpdate.mapel) payloadUpdate.mapel = validationHelper.trimInput(payloadUpdate.mapel);
+    if (payloadUpdate.kelasTarget) payloadUpdate.kelasTarget = validationHelper.trimInput(payloadUpdate.kelasTarget);
 
     if (dataBaru.pengajar) {
-      const pCari = validationHelper.sanitize(dataBaru.pengajar);
+      const pCari = validationHelper.trimInput(dataBaru.pengajar);
       let queryPengajar = { 
         peran: PERAN.PENGAJAR.id,
         $or: [{ kodePengajar: pCari }, { nama: pCari }]
@@ -342,13 +345,19 @@ export async function editAkunSiswa(idSiswa, dataBaru) {
       delete dataUpdate.password;
     }
 
-    if (dataUpdate.username) dataUpdate.username = validationHelper.sanitize(dataUpdate.username).toLowerCase();
-    if (dataUpdate.nama) dataUpdate.nama = validationHelper.sanitize(dataUpdate.nama);
+    // 🔥 PERBAIKAN: Gunakan trimInput
+    if (dataUpdate.username) dataUpdate.username = validationHelper.trimInput(dataUpdate.username).toLowerCase();
+    if (dataUpdate.nama) dataUpdate.nama = validationHelper.trimInput(dataUpdate.nama);
 
     const hasil = await User.updateOne(queryFilter, { $set: dataUpdate });
     
     if (hasil.matchedCount === 0) {
       return responseHelper.error("Gagal! Siswa tidak ditemukan atau berasal dari cabang lain.");
+    }
+
+    // 🔥 PERBAIKAN CELAH #3: Eventual Consistency (Sinkronisasi Nama Lintas Koleksi)
+    if (dataUpdate.nama) {
+      syncHelper.sinkronisasiNamaMassal(idSiswa, dataUpdate.nama, PERAN.SISWA.id);
     }
 
     revalidatePath(PERAN.ADMIN.home);
@@ -404,8 +413,9 @@ export async function inputAbsenManual(data) {
     if (!siswaData) return responseHelper.error("Akses Ditolak: Siswa bukan dari cabang Anda.");
 
     const { awal } = timeHelper.getRentangHari(data.tanggal);
-    const keteranganAman = validationHelper.sanitize(data.keterangan);
-    const catatanAman = validationHelper.sanitize(data.catatan);
+    // 🔥 PERBAIKAN: Gunakan trimInput
+    const keteranganAman = validationHelper.trimInput(data.keterangan);
+    const catatanAman = validationHelper.trimInput(data.catatan);
     const statusFinal = catatanAman ? `${keteranganAman} (${catatanAman})`.toLowerCase() : keteranganAman.toLowerCase();
 
     await StudySession.updateOne(
@@ -489,8 +499,8 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
 
     const updateJadwal = Jadwal.updateOne({ _id: idJadwal }, {
       $set: { 
-        bab: validationHelper.sanitize(dataJurnal.bab), 
-        subBab: validationHelper.sanitize(dataJurnal.subBab), 
+        bab: validationHelper.trimInput(dataJurnal.bab), 
+        subBab: validationHelper.trimInput(dataJurnal.subBab), 
         galeriPapan: dataJurnal.galeriPapan, 
         fotoBersama: dataJurnal.fotoBersama 
       }
@@ -498,7 +508,11 @@ export async function simpanJurnal(idJadwal, dataJurnal, arraySiswa) {
 
     let updateSesi = Promise.resolve();
     if (arraySiswa?.length > 0) {
-      const ops = arraySiswa.filter(item => item.sesiId).map(item => ({
+      // 🔥 PERBAIKAN CELAH #4: Type-Safety (Menangkal Crash karena _id "virtual_xyz")
+      // Mongoose bulkWrite akan error CastError jika disuapi id non-hexadecimal.
+      const ops = arraySiswa
+        .filter(item => item.sesiId && validationHelper.isValidObjectId(item.sesiId))
+        .map(item => ({
           updateOne: {
             filter: { _id: item.sesiId },
             update: { 
@@ -566,8 +580,9 @@ export async function prosesSimpanAbsenManual(data) {
 
     const guru = await User.findById(data.pengajarId).select("nama").lean();
 
-    const waktuMasuk = new Date(`${validationHelper.sanitize(data.tanggal)}T${validationHelper.sanitize(data.jamMasuk)}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
-    const waktuKeluar = data.jamKeluar ? new Date(`${validationHelper.sanitize(data.tanggal)}T${validationHelper.sanitize(data.jamKeluar)}:00${PERIODE_BELAJAR.ISO_OFFSET}`) : null;
+    // 🔥 PERBAIKAN: Gunakan trimInput
+    const waktuMasuk = new Date(`${validationHelper.trimInput(data.tanggal)}T${validationHelper.trimInput(data.jamMasuk)}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
+    const waktuKeluar = data.jamKeluar ? new Date(`${validationHelper.trimInput(data.tanggal)}T${validationHelper.trimInput(data.jamKeluar)}:00${PERIODE_BELAJAR.ISO_OFFSET}`) : null;
 
     await AbsensiPengajar.create({
       pengajarId: data.pengajarId, 
@@ -575,7 +590,7 @@ export async function prosesSimpanAbsenManual(data) {
       waktuMasuk, 
       waktuKeluar,
       status: "HADIR", 
-      keterangan: validationHelper.sanitize(data.keterangan) || "Input Manual Admin"
+      keterangan: validationHelper.trimInput(data.keterangan) || "Input Manual Admin"
     });
 
     revalidatePath(PERAN.ADMIN.home);
@@ -681,12 +696,13 @@ export async function simpanAkunAdmin(idEdit, payload) {
     await connectToDatabase();
     if (!(await pastikanSuperAdmin())) return responseHelper.error("Akses Ditolak: Hanya Super Admin.");
     
+    // 🔥 PERBAIKAN: Gunakan trimInput
     const dataSimpan = {
-      nama: validationHelper.sanitize(payload.nama),
-      username: validationHelper.sanitize(payload.username).toLowerCase(), 
-      noHp: validationHelper.sanitize(payload.noHp),
+      nama: validationHelper.trimInput(payload.nama),
+      username: validationHelper.trimInput(payload.username).toLowerCase(), 
+      noHp: validationHelper.trimInput(payload.noHp),
       peran: PERAN.ADMIN.id, 
-      kodeCabang: validationHelper.sanitize(payload.kodeCabang),
+      kodeCabang: validationHelper.trimInput(payload.kodeCabang),
       status: payload.status
     };
     
@@ -699,6 +715,12 @@ export async function simpanAkunAdmin(idEdit, payload) {
       if (duplikat) return responseHelper.error("Username sudah dipakai oleh akun lain!");
 
       await User.updateOne({ _id: idEdit }, { $set: dataSimpan });
+      
+      // 🔥 PERBAIKAN CELAH #3: Eventual Consistency untuk Admin (Pembuat Soal)
+      if (dataSimpan.nama) {
+        syncHelper.sinkronisasiNamaMassal(idEdit, dataSimpan.nama, PERAN.ADMIN.id);
+      }
+
       revalidatePath(PERAN.ADMIN.home);
       return responseHelper.success("Admin berhasil diperbarui!");
     } else {

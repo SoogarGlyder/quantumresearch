@@ -54,10 +54,10 @@ export async function dapatkanLatihanSiswa(username, kelasSiswa, kodeCabangSiswa
   try {
     await connectToDatabase();
     
-    // Sanitasi
-    const unameAman = validationHelper.sanitize(username);
-    const kelasAman = validationHelper.sanitize(kelasSiswa);
-    const cabangAman = validationHelper.sanitize(kodeCabangSiswa);
+    // PERBAIKAN: Gunakan trimInput
+    const unameAman = validationHelper.trimInput(username);
+    const kelasAman = validationHelper.trimInput(kelasSiswa);
+    const cabangAman = validationHelper.trimInput(kodeCabangSiswa);
 
     let queryLatihan = {
       isAktif: true,
@@ -119,13 +119,13 @@ export async function prosesSimpanLatihanSoal(idRaw, dataForm) {
     if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const namaKreator = sesi.peran === PERAN.ADMIN.id ? "Admin Quantum" : `Kak ${sesi.nama}`;
-    const id = validationHelper.sanitize(idRaw);
+    const id = validationHelper.trimInput(idRaw);
 
     const payload = {
-      judul: validationHelper.sanitize(dataForm.judul),
-      url: validationHelper.sanitize(dataForm.url),
-      tipeTarget: validationHelper.sanitize(dataForm.tipeTarget),
-      target: validationHelper.sanitize(dataForm.target),
+      judul: validationHelper.trimInput(dataForm.judul),
+      url: validationHelper.trimInput(dataForm.url),
+      tipeTarget: validationHelper.trimInput(dataForm.tipeTarget),
+      target: validationHelper.trimInput(dataForm.target),
       pembuatId: String(sesi.userId), 
       namaPembuat: namaKreator
     };
@@ -149,7 +149,7 @@ export async function prosesHapusLatihanSoal(idRaw) {
     const sesi = await authHelper.ambilSesi();
     if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const id = validationHelper.sanitize(idRaw);
+    const id = validationHelper.trimInput(idRaw);
     await LatihanSoal.deleteOne({ _id: id });
     
     revalidatePath(PERAN.ADMIN.home);

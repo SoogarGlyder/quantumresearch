@@ -1,29 +1,57 @@
-import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
-import { KONFIGURASI_SISTEM } from "./constants"; 
+//ada perbaikan.
 
+import bcrypt from "bcryptjs";
+import { SignJWT, jwtVerify } from "jose";
+import { cookies } from "next/headers";
+import { KONFIGURASI_SISTEM, PERAN } from "./constants";
+
+// ============================================================================
+// KONFIGURASI JWT & COOKIE
+// ============================================================================
+const getJwtSecret = () => {
+  let secret = process.env.JWT_SECRET;
+  
+  if (!secret || secret.trim() === "") {
+    secret = "quantum_secret_dev_key_2026_wajib_diganti_di_production";
+  }
+  
+  return new TextEncoder().encode(secret);
+};
+
+const buatOpsiCookie = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: KONFIGURASI_SISTEM.SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
+});
+
+// ============================================================================
+// AUTH HELPER
+// ============================================================================
 export const authHelper = {
   /**
-   * Mengacak password menggunakan bcrypt untuk disimpan di database.
-   * @param {string} password - Password mentah dari input pengguna.
-   * @returns {Promise<string>} Password yang sudah di-hash.
+   * @param {string} password
+   * @returns {Promise<string>}
    */
   buatHash: async (password) => {
     try {
-      const pwd = typeof password === "string" && password.trim() !== "" ? password : KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
+      const pwd = typeof password === "string" && password.trim() !== "" 
+        ? password 
+        : KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
+
       const salt = await bcrypt.genSalt(KONFIGURASI_SISTEM.SALT_ROUNDS);
       return await bcrypt.hash(pwd, salt);
     } catch (error) {
-      console.error("[authHelper.buatHash] Error saat mengenkripsi password:", error);
+      console.error("[authHelper.buatHash] Gagal meng-hash password:", error.message);
       throw new Error("Terjadi kesalahan sistem saat memproses keamanan data.");
     }
   },
 
   /**
-   * Membandingkan password input dengan hash yang ada di database.
-   * @param {string} input - Password mentah dari form login.
-   * @param {string} hashed - Password hash dari database.
-   * @returns {Promise<boolean>} True jika password cocok.
+   * @param {string} input
+   * @param {string} hashed
+   * @returns {Promise<boolean>}
    */
   bandingkanPassword: async (input, hashed) => {
     try {
@@ -32,94 +60,86 @@ export const authHelper = {
       }
       return await bcrypt.compare(input, hashed);
     } catch (error) {
-      console.error("[authHelper.bandingkanPassword] Error saat validasi password:", error);
-      return false; // Fail-safe (mencegah aplikasi crash)
+      console.error("[authHelper.bandingkanPassword] Gagal:", error.message);
+      return false;
     }
   },
 
   /**
-   * Membuat dan menyimpan session pengguna ke dalam HTTP-Only Cookie.
-   * @param {Object} user - Objek data user dari database.
-   * @returns {Promise<boolean>} True jika proses set sesi berhasil.
+   * @param {Object} user
+   * @returns {Promise<boolean>}
    */
   setSesi: async (user) => {
-    if (!user || !user._id) {
-      console.warn("[authHelper.setSesi] Gagal: Objek user tidak valid atau kosong.");
+    if (!user?._id) {
+      console.warn("[authHelper.setSesi] Gagal: objek user tidak punya _id.");
       return false;
     }
 
     try {
-      const cookieStore = await cookies();
-      const opsi = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/",
-        maxAge: 60 * 60 * 24 * KONFIGURASI_SISTEM.SESSION_MAX_AGE_DAYS 
+      const payload = {
+        userId: user._id.toString(),
+        peran: user.peran ?? PERAN.SISWA.id,
+        kodeCabang: user.kodeCabang ?? null,
+        pangkat: user.pangkat ?? null,
+        kelasAsuh: Array.isArray(user.kelasAsuh) ? user.kelasAsuh : [],
       };
-      
-      cookieStore.set(KONFIGURASI_SISTEM.COOKIE_NAME, user._id.toString(), opsi);
-      cookieStore.set(KONFIGURASI_SISTEM.COOKIE_ROLE, user.peran || "siswa", opsi);
 
-      if (user.kodeCabang) cookieStore.set("cabang_quantum", user.kodeCabang, opsi);
-      if (user.pangkat) cookieStore.set("pangkat_quantum", user.pangkat, opsi);
-      
-      if (Array.isArray(user.kelasAsuh) && user.kelasAsuh.length > 0) {
-        cookieStore.set("kelas_asuh_quantum", JSON.stringify(user.kelasAsuh), opsi);
-      }
-      
+      const token = await new SignJWT(payload)
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime(`${KONFIGURASI_SISTEM.SESSION_MAX_AGE_DAYS}d`)
+        .sign(getJwtSecret());
+
+      const cookieStore = await cookies();
+      cookieStore.set(KONFIGURASI_SISTEM.COOKIE_NAME, token, buatOpsiCookie());
+
       return true;
     } catch (error) {
-      console.error("[authHelper.setSesi] Error saat menyimpan cookies:", error);
+      console.error("[authHelper.setSesi] Gagal sign JWT:", error.message);
       return false;
     }
   },
 
   /**
-   * Mengambil data session user yang sedang login dari Cookie.
-   * @returns {Promise<Object>} Objek berisi informasi sesi aktif.
+   * @returns {Promise<{
+   * userId: string|null, peran: string|null, kodeCabang: string|null, 
+   * pangkat: string|null, kelasAsuh: string[]
+   * }>}
    */
   ambilSesi: async () => {
+    const sesiKosong = { userId: null, peran: null, kodeCabang: null, pangkat: null, kelasAsuh: [] };
+    
     try {
       const cookieStore = await cookies();
-      
-      const kelasAsuhRaw = cookieStore.get("kelas_asuh_quantum")?.value;
-      let daftarKelasAsuh = [];
-      
-      if (kelasAsuhRaw) {
-        try {
-          daftarKelasAsuh = JSON.parse(kelasAsuhRaw);
-        } catch (e) {
-          console.error("[authHelper.ambilSesi] Gagal mem-parsing array kelas asuh:", e);
-        }
-      }
+      const token = cookieStore.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
+
+      if (!token) return sesiKosong;
+
+      // Verifikasi Signature JWT
+      const { payload } = await jwtVerify(token, getJwtSecret());
 
       return {
-        userId: cookieStore.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value || null,
-        peran: cookieStore.get(KONFIGURASI_SISTEM.COOKIE_ROLE)?.value || null,
-        kodeCabang: cookieStore.get("cabang_quantum")?.value || null,
-        pangkat: cookieStore.get("pangkat_quantum")?.value || null,
-        kelasAsuh: daftarKelasAsuh
+        userId: payload.userId,
+        peran: payload.peran,
+        kodeCabang: payload.kodeCabang,
+        pangkat: payload.pangkat,
+        kelasAsuh: payload.kelasAsuh,
       };
     } catch (error) {
-      console.error("[authHelper.ambilSesi] Error saat membaca cookies:", error);
-      return { userId: null, peran: null, kodeCabang: null, pangkat: null, kelasAsuh: [] };
+      console.warn("[authHelper.ambilSesi] Sesi tidak valid / Expired.");
+      return sesiKosong;
     }
   },
 
   /**
-   * Menghapus jejak login (Logout) dengan membersihkan Cookie.
+   * @returns {Promise<void>}
    */
   hapusSesi: async () => {
     try {
       const cookieStore = await cookies();
       cookieStore.delete(KONFIGURASI_SISTEM.COOKIE_NAME);
-      cookieStore.delete(KONFIGURASI_SISTEM.COOKIE_ROLE);
-      cookieStore.delete("cabang_quantum");
-      cookieStore.delete("pangkat_quantum");
-      cookieStore.delete("kelas_asuh_quantum");
     } catch (error) {
-      console.error("[authHelper.hapusSesi] Error saat menghapus cookies:", error);
+      console.error("[authHelper.hapusSesi] Gagal menghapus cookie:", error.message);
     }
-  }
+  },
 };

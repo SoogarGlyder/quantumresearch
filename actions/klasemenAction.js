@@ -31,7 +31,8 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
     const sesi = await authHelper.ambilSesi();
     if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    const kelasAman = validationHelper.sanitize(filterKelas);
+    // 🔥 PERBAIKAN: Gunakan trimInput, HAPUS sanitize
+    const kelasAman = validationHelper.trimInput(filterKelas);
 
     const awalBulan = timeHelper.getAwalBulan();
     const kini = new Date();

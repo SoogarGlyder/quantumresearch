@@ -8,7 +8,7 @@ import Quiz from "../models/Quiz";
 import HasilKuis from "../models/HasilKuis";
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
-import { validationHelper } from "../utils/validationHelper";
+import { validationHelper } from "../utils/validationHelper"; // 🔥 Import Validation Helper
 import { timeHelper } from "../utils/timeHelper";  
 import { 
   PERAN, STATUS_USER, KONFIGURASI_MEDIA, PESAN_SISTEM,
@@ -104,11 +104,12 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
     const auth = await pastikanOtoritas();
     if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const babClean = validationHelper.sanitize(dataJurnal.bab);
+    // 🔥 PERBAIKAN: Gunakan trimInput
+    const babClean = validationHelper.trimInput(dataJurnal.bab);
     if (!babClean) return responseHelper.error("Materi (Bab) wajib diisi!");
 
     const rawLinks = Array.isArray(dataJurnal.galeriPapan) ? dataJurnal.galeriPapan : (dataJurnal.galeriPapan || "").split(",").filter(Boolean);
-    const galeriBersih = [...new Set(rawLinks.map(link => validationHelper.sanitize(link)).filter(link => isValidCloudinary(link)))];
+    const galeriBersih = [...new Set(rawLinks.map(link => validationHelper.trimInput(link)).filter(link => isValidCloudinary(link)))];
 
     const query = { _id: idJadwal };
     if (auth.peran !== PERAN.ADMIN.id) query.pengajarId = auth.userId; 
@@ -117,7 +118,7 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
       query,
       { $set: { 
           bab: babClean, 
-          subBab: validationHelper.sanitize(dataJurnal.subBab), 
+          subBab: validationHelper.trimInput(dataJurnal.subBab), 
           galeriPapan: galeriBersih, 
           fotoBersama: isValidCloudinary(dataJurnal.fotoBersama) ? dataJurnal.fotoBersama : "", 
           jurnalTerakhirUpdate: new Date() 
@@ -130,7 +131,8 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
     if (arrayNilaiSiswa.length > 0) {
       const { awal, akhir } = timeHelper.getRentangHari(updateJadwal.tanggal);
       const ops = arrayNilaiSiswa.filter(item => item.statusAbsen !== LABEL_SISTEM.BELUM_ABSEN).map(item => {
-          const catatanClean = validationHelper.sanitize(item.catatan);
+          // 🔥 PERBAIKAN: Gunakan trimInput
+          const catatanClean = validationHelper.trimInput(item.catatan);
           const statusFinal = catatanClean ? `${item.statusAbsen} (${catatanClean})`.toLowerCase() : item.statusAbsen.toLowerCase();
           
           return {
@@ -173,7 +175,8 @@ export async function getStatusKuisLive(idJadwal) {
     const jadwal = await Jadwal.findById(idJadwal).select("mapel tanggal kelasTarget pengajarId").populate("pengajarId", "kodeCabang").lean();
     if (!jadwal) return responseHelper.error("Jadwal tidak ditemukan.");
 
-    const riwayatKuis = await HasilKuis.find({ jadwalId: idJadwal }).select("siswaId skorAkhir").lean();
+    // 🔥 SESUAIKAN SCHEMA: Gunakan 'nilai' bukan 'skorAkhir'
+    const riwayatKuis = await HasilKuis.find({ jadwalId: idJadwal }).select("siswaId nilai").lean();
     const { awal, akhir } = timeHelper.getRentangHari(jadwal.tanggal);
     
     let querySiswa = { peran: PERAN.SISWA.id, kelas: jadwal.kelasTarget, status: STATUS_USER.AKTIF };
@@ -190,7 +193,7 @@ export async function getStatusKuisLive(idJadwal) {
     const dataLive = siswaKelas.map(siswa => {
       const idSiswaStr = siswa._id.toString();
       const hasil = riwayatKuis.find(h => h.siswaId.toString() === idSiswaStr);
-      if (hasil) return { id: idSiswaStr, nama: siswa.nama, status: "SELESAI", skor: hasil.skorAkhir, pelanggaran: 0 };
+      if (hasil) return { id: idSiswaStr, nama: siswa.nama, status: "SELESAI", skor: hasil.nilai, pelanggaran: 0 };
       
       const sudahAbsen = sesiHariIni.some(s => s.siswaId.toString() === idSiswaStr);
       if (sudahAbsen) return { id: idSiswaStr, nama: siswa.nama, status: "MENGERJAKAN", skor: null, pelanggaran: 0 };
@@ -276,19 +279,27 @@ export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
     const kuis = await Quiz.findOne({ jadwalId: idJadwal }).select("_id soal").lean();
     if (!kuis) return responseHelper.error("Kuis tidak ditemukan.");
 
-    const emptyDetail = (kuis.soal || []).map(s => {
-      const kunciArr = Array.isArray(s.kunciJawaban) ? s.kunciJawaban.map(String) : [String(s.kunciJawaban || "")];
-      return { kunciJawaban: kunciArr, jawabanSiswa: [""], isBenar: false };
+    const emptyDetail = (kuis.soal || []).map((s, idx) => {
+      return { 
+         nomorSoal: idx + 1, 
+         jawabanSiswa: [""], 
+         isBenar: false 
+      };
     });
 
+    // 🔥 PERBAIKAN SCHEMA KEY: Sesuaikan dengan models/HasilKuis.js
     await Promise.all([
       HasilKuis.create({
         jadwalId: idJadwal,
         quizId: kuis._id,
         siswaId: idSiswa,
-        namaSiswa: validationHelper.sanitize(namaSiswa),
-        skorAkhir: 0,
-        detailJawaban: emptyDetail
+        namaSiswa: validationHelper.trimInput(namaSiswa), // Hapus sanitize
+        nilai: 0,           // Sebelumnya skorAkhir
+        totalBenar: 0,
+        totalSalah: emptyDetail.length,
+        totalExpDidapat: 0,
+        waktuSelesai: new Date(),
+        jawaban: emptyDetail // Sebelumnya detailJawaban
       }),
       StudySession.updateOne(
         { jadwalId: idJadwal, siswaId: idSiswa },

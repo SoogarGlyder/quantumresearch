@@ -26,7 +26,7 @@ const formatNamaKreator = (namaRaw) => {
 
 const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
   const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_BAHAN || 3; 
+  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_BAHAN || 3; 
 
   const daftarLatihan = Array.isArray(latihanHariIni) ? latihanHariIni : (latihanHariIni ? [latihanHariIni] : []);
   const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(daftarLatihan, page, ITEMS_PER_PAGE);

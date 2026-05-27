@@ -1,31 +1,40 @@
 /**
- * Perkakas untuk menstandarkan format balasan (response) dari Server Actions ke Client/Frontend.
- * Memastikan Prinsip Konsistensi (Standarisasi) di seluruh aplikasi.
+ * Kontrak response:
+ *   ok        {boolean} - true jika operasi berhasil
+ *   pesan     {string}  - pesan yang aman ditampilkan ke pengguna
+ *   data      {any}     - payload (hanya jika ok: true)
+ *   detail    {string}  - detail error teknis untuk logging (hanya jika ok: false)
+ *   kode      {string}  - kode error terstruktur untuk frontend & monitoring (opsional)
+ *   timestamp {string}  - ISO string waktu response dibuat
  */
 export const responseHelper = {
   /**
-   * Format standar ketika operasi (database/logika) berhasil dilakukan.
-   * @param {string} pesan - Pesan sukses yang ramah pengguna (contoh: "Data berhasil disimpan").
-   * @param {any} [data=null] - Payload atau objek data yang ingin dikirimkan ke frontend (opsional).
-   * @returns {Object} Objek response sukses.
+   * @param {string} pesan
+   * @param {any} [data]
+   * @returns {{ ok: true, pesan: string, data: any, timestamp: string }}
+   * @example
+   * return responseHelper.success("Data berhasil disimpan.", { id: "abc123" });
    */
   success: (pesan, data = null) => ({
-    sukses: true,
+    ok: true,
     pesan,
     data,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   }),
-  
+
   /**
-   * Format standar ketika terjadi kegagalan sistem atau penolakan validasi.
-   * @param {string} pesan - Pesan error yang aman ditampilkan ke pengguna (contoh: "Gagal menyimpan absen").
-   * @param {Error|string} [errorRaw=null] - Detail error asli dari sistem/database untuk keperluan debugging log (opsional).
-   * @returns {Object} Objek response gagal.
+   * @param {string} pesan
+   * @param {Error|string} [errorRaw]
+   * @param {string} [kode]
+   * @returns {{ ok: false, pesan: string, detail: string|null, kode: string|null, timestamp: string }}
+   * @example
+   * return responseHelper.error("Gagal menyimpan data.", err, "DB_ERROR");
    */
-  error: (pesan, errorRaw = null) => ({
-    sukses: false,
+  error: (pesan, errorRaw = null, kode = null) => ({
+    ok: false,
     pesan,
-    error: errorRaw?.message || errorRaw,
-    timestamp: new Date().toISOString()
-  })
+    detail: errorRaw?.message ?? (typeof errorRaw === "string" ? errorRaw : null),
+    kode,
+    timestamp: new Date().toISOString(),
+  }),
 };

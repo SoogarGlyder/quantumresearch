@@ -2,6 +2,7 @@
 
 import connectToDatabase from "../lib/db";
 import User from "../models/User";
+import MisiSiswa from "../models/MisiSiswa"; // 🔥 Menggunakan Model Baru
 import { authHelper } from "../utils/authHelper";
 import { timeHelper } from "../utils/timeHelper";
 import { responseHelper } from "../utils/responseHelper";
@@ -16,14 +17,17 @@ export async function cekDanGenerateMisiHarian() {
 
     if (!userId || peran !== PERAN.SISWA.id) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const siswa = await User.findById(userId).select("misiHarian").lean();
-    if (!siswa) return responseHelper.error("Siswa tidak ditemukan.");
-
     const hariIni = timeHelper.getTglJakarta(new Date());
 
-    let daftarMisi = siswa.misiHarian?.daftar || [];
+    // 1. Cek apakah siswa sudah memiliki dokumen misi di tabel MisiSiswa hari ini
+    let dokumenMisi = await MisiSiswa.findOne({ siswaId: userId, tanggal: hariIni }).lean();
 
-    if (siswa.misiHarian?.tanggal !== hariIni) {
+    if (!dokumenMisi) {
+      // 2. Jika belum ada, ambil kodeCabang dari user untuk Multi-Tenant
+      const siswaData = await User.findById(userId).select("kodeCabang").lean();
+      if (!siswaData) return responseHelper.error("Siswa tidak ditemukan.");
+
+      // 3. Generate misi acak dari POOL
       const misiAcak = [...GAMIFIKASI.POOL_MISI].sort(() => 0.5 - Math.random()).slice(0, 2);
       const daftarMisiBaru = misiAcak.map(m => ({
         kodeMisi: m.kodeMisi,
@@ -35,16 +39,18 @@ export async function cekDanGenerateMisiHarian() {
         expBonus: m.expBonus
       }));
 
-      await User.updateOne(
-        { _id: userId },
-        { $set: { "misiHarian.tanggal": hariIni, "misiHarian.daftar": daftarMisiBaru } }
-      );
+      // 4. Simpan ke koleksi MisiSiswa (Bukan ke User lagi!)
+      dokumenMisi = await MisiSiswa.create({
+        siswaId: userId,
+        tanggal: hariIni,
+        kodeCabang: siswaData.kodeCabang,
+        daftarMisi: daftarMisiBaru
+      });
 
       revalidatePath("/", "layout");
-      daftarMisi = daftarMisiBaru;
     }
 
-    const daftarMisiBersih = daftarMisi.map(misi => ({
+    const daftarMisiBersih = dokumenMisi.daftarMisi.map(misi => ({
       _id: misi._id?.toString() || Math.random().toString(36),
       kodeMisi: misi.kodeMisi,
       judul: misi.judul,
@@ -68,31 +74,30 @@ export async function klaimHadiahMisi(idMisiRaw) {
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    const idMisiDalamArray = validationHelper.sanitize(idMisiRaw);
+    // 🔥 Ganti sanitize -> trimInput
+    const idMisiDalamArray = validationHelper.trimInput(idMisiRaw);
+    const hariIni = timeHelper.getTglJakarta(new Date());
 
-    const siswa = await User.findById(userId).select("misiHarian totalExp").lean();
-    if (!siswa || !siswa.misiHarian || !siswa.misiHarian.daftar) {
-      return responseHelper.error("Siswa/Misi tidak ditemukan.");
-    }
+    // 1. Cari dokumen misi spesifik di hari ini
+    const dokumenMisi = await MisiSiswa.findOne({ siswaId: userId, tanggal: hariIni });
+    if (!dokumenMisi) return responseHelper.error("Misi hari ini tidak ditemukan.");
 
-    const indexMisi = siswa.misiHarian.daftar.findIndex(m => m._id?.toString() === idMisiDalamArray);
+    const indexMisi = dokumenMisi.daftarMisi.findIndex(m => m._id?.toString() === idMisiDalamArray);
     if (indexMisi === -1) return responseHelper.error("Misi tidak ditemukan.");
 
-    const misi = siswa.misiHarian.daftar[indexMisi];
+    const misi = dokumenMisi.daftarMisi[indexMisi];
 
     if (!misi.selesai) return responseHelper.error("Selesaikan misi terlebih dahulu!");
     if (misi.diklaim) return responseHelper.error("Hadiah misi ini sudah diklaim.");
 
-    const expBaru = (siswa.totalExp || 0) + misi.expBonus;
+    // 2. Update status klaim di tabel MisiSiswa
+    dokumenMisi.daftarMisi[indexMisi].diklaim = true;
+    await dokumenMisi.save();
 
+    // 3. Tambahkan EXP ke tabel User (menggunakan atomic $inc agar anti-crash)
     await User.updateOne(
       { _id: userId },
-      {
-        $set: {
-          [`misiHarian.daftar.${indexMisi}.diklaim`]: true,
-          totalExp: expBaru
-        }
-      }
+      { $inc: { totalExp: misi.expBonus } }
     );
 
     revalidatePath("/", "layout");

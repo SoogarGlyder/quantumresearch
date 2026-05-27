@@ -8,7 +8,7 @@ import HasilKuis from "../models/HasilKuis";
 import mongoose from "mongoose";
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
-import { validationHelper } from "../utils/validationHelper";
+import { validationHelper } from "../utils/validationHelper"; // 🔥 Import validationHelper
 import { PESAN_SISTEM, PERAN } from "../utils/constants";
 
 const serialize = (data) => JSON.parse(JSON.stringify(data));
@@ -54,7 +54,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
     const sesiAuth = await authHelper.ambilSesi();
     if (!sesiAuth || !sesiAuth.userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    if (sesiAuth.peran === PERAN.SISWA.id && sesiAuth.userId !== siswaId) {
+    if (sesiAuth.peran === PERAN.SISWA.id && String(sesiAuth.userId) !== String(siswaId)) {
       return responseHelper.error("Akses Ditolak: Anda tidak dapat mengumpulkan ujian atas nama orang lain.");
     }
 
@@ -78,7 +78,11 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
     const soalAsli = dataKuis.soal;
     let expDidapat = 0;
     let totalExpMaksimal = 0;
-    const detailJawabanData = [];
+    
+    // Sesuaikan variabel dengan schema `models/HasilKuis.js`
+    let totalBenar = 0;
+    let totalSalah = 0;
+    const arrayJawaban = [];
 
     jawabanSiswa.forEach((jawaban, index) => {
       const soalDb = soalAsli[index];
@@ -100,10 +104,15 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
           isBenar = String(jwbSiswaArr[0]).trim().toLowerCase() === String(kunciDbArr[0]).trim().toLowerCase();
         }
 
-        if (isBenar) expDidapat += bobot;
+        if (isBenar) {
+           expDidapat += bobot;
+           totalBenar++;
+        } else {
+           totalSalah++;
+        }
 
-        detailJawabanData.push({
-          kunciJawaban: kunciDbArr,
+        arrayJawaban.push({
+          nomorSoal: index + 1,
           jawabanSiswa: jwbSiswaArr,
           isBenar
         });
@@ -111,16 +120,23 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
     });
 
     const skorAkhir = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
-    const namaAman = validationHelper.sanitize(nama);
+    
+    // 🔥 PERBAIKAN: Ganti sanitize -> trimInput
+    const namaAman = validationHelper.trimInput(nama);
 
+    // 🔥 PERBAIKAN SCHEMA KEY: Sesuaikan key payload dengan `models/HasilKuis.js`
     await Promise.all([
       HasilKuis.create([{
-        jadwalId: new mongoose.Types.ObjectId(jadwalId),
         quizId: dataKuis._id,
+        jadwalId: new mongoose.Types.ObjectId(jadwalId),
         siswaId: new mongoose.Types.ObjectId(siswaId),
         namaSiswa: namaAman,
-        skorAkhir,
-        detailJawaban: detailJawabanData
+        jawaban: arrayJawaban, // <-- disesuaikan
+        totalBenar: totalBenar, // <-- disesuaikan
+        totalSalah: totalSalah, // <-- disesuaikan
+        nilai: skorAkhir,       // <-- disesuaikan
+        totalExpDidapat: expDidapat, // <-- disesuaikan
+        waktuSelesai: new Date(),
       }], { session }),
 
       StudySession.updateOne(
@@ -155,8 +171,8 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
     if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
     const [kuis, riwayat] = await Promise.all([
-      Quiz.findOne({ jadwalId, isAktif: true }).select("_id durasi soal").lean(),
-      HasilKuis.findOne({ jadwalId, siswaId }).select("skorAkhir").lean()
+      Quiz.findOne({ jadwalId, isAktif: true }).select("_id durasiMenit soal").lean(),
+      HasilKuis.findOne({ jadwalId, siswaId }).select("nilai").lean()
     ]);
 
     if (!kuis || !kuis.soal) return responseHelper.success("Tidak ada kuis", { ada: false });
@@ -165,9 +181,9 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
       ada: true,
       _id: kuis._id.toString(),
       jumlahSoal: kuis.soal.length,
-      durasi: kuis.durasi || 10,
+      durasi: kuis.durasiMenit || 10,
       isSudahDikerjakan: !!riwayat,
-      skor: riwayat ? riwayat.skorAkhir : null,
+      skor: riwayat ? riwayat.nilai : null, // Disesuaikan dengan schema
     });
   } catch (error) {
     return responseHelper.success("Error memuat", { ada: false });
@@ -185,10 +201,10 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
 
     const [dataKuis, riwayatHasil] = await Promise.all([
       Quiz.findOne({ jadwalId }).select("soal").lean(),
-      HasilKuis.findOne({ jadwalId, siswaId }).select("detailJawaban").lean()
+      HasilKuis.findOne({ jadwalId, siswaId }).select("jawaban").lean() // Disesuaikan
     ]);
 
-    if (!riwayatHasil || !riwayatHasil.detailJawaban) {
+    if (!riwayatHasil || !riwayatHasil.jawaban) {
       return responseHelper.error("Akses ditolak. Riwayat pengerjaan tidak ditemukan.");
     }
 
@@ -196,7 +212,7 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
       return responseHelper.error("Soal asli telah dihapus oleh pengajar.");
     }
 
-    const jawabanSiswaEkstrak = riwayatHasil.detailJawaban.map(d => {
+    const jawabanSiswaEkstrak = riwayatHasil.jawaban.map(d => {
       if (d.jawabanSiswa.length > 1) return d.jawabanSiswa;
       return d.jawabanSiswa[0] || "";
     });
@@ -223,7 +239,7 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
     const riwayat = await HasilKuis.find({ siswaId })
       .populate("jadwalId", "mapel bab tanggal")
       .populate("quizId", "soal")
-      .sort({ dikumpulkanPada: -1 })
+      .sort({ createdAt: -1 })
       .lean();
 
     const dataFinal = riwayat.map(r => ({
@@ -231,9 +247,9 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
       jadwalId: r.jadwalId ? r.jadwalId._id.toString() : "-",
       mapel: r.jadwalId?.mapel || "Kuis CBT",
       bab: r.jadwalId?.bab || "Ujian",
-      tanggal: r.jadwalId?.tanggal || r.dikumpulkanPada,
-      skor: r.skorAkhir || 0,
-      jumlahSoal: r.quizId?.soal?.length || r.detailJawaban?.length || 0
+      tanggal: r.jadwalId?.tanggal || r.createdAt,
+      skor: r.nilai || 0, // Disesuaikan dengan schema
+      jumlahSoal: r.quizId?.soal?.length || r.jawaban?.length || 0
     }));
 
     return responseHelper.success("Riwayat dimuat", serialize(dataFinal));

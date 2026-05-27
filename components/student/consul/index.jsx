@@ -17,7 +17,7 @@ import RecordCard from "./RecordCard";
 export default function TabKonsulSiswa({ riwayat = [] }) {
 
   const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KONSUL || 10;
+  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_KONSUL || 10;
 
   const [filterBulan, setFilterBulan] = useState("");
   const [filterMapel, setFilterMapel] = useState("");

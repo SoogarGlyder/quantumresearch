@@ -1,47 +1,43 @@
 import { NextResponse } from "next/server";
+import { jwtVerify } from "jose"; // 🔥 Gunakan jose untuk edge runtime
 import { KONFIGURASI_SISTEM, PERAN } from "./utils/constants";
 
-export function proxy(request) {
+const getJwtSecret = () => new TextEncoder().encode(process.env.JWT_SECRET || "quantum_secret_dev_key_2026_wajib_diganti_di_production");
+
+export async function middleware(request) {
   const path = request.nextUrl.pathname;
-  
-  const karcisId = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
-  const karcisPeran = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_ROLE)?.value;
+  const token = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
   
   const isPublicPath = path === KONFIGURASI_SISTEM.PATH_LOGIN;
-  const isLoggedIn = !!karcisId;
-
-  if (isPublicPath && request.nextUrl.searchParams.get("clear") === "true") {
-    const response = NextResponse.next();
-    response.cookies.delete(KONFIGURASI_SISTEM.COOKIE_NAME);
-    response.cookies.delete(KONFIGURASI_SISTEM.COOKIE_ROLE);
-    return response;
+  
+  // Verifikasi JWT
+  let sesi = null;
+  if (token) {
+    try {
+      const { payload } = await jwtVerify(token, getJwtSecret());
+      sesi = payload;
+    } catch {
+      sesi = null; // Token tidak valid atau expired
+    }
   }
 
-  // ============================================================================
-  // 1. PROTEKSI PENGUNJUNG TANPA LOGIN
-  // ============================================================================
-  if (!isLoggedIn && !isPublicPath) {
+  // 1. Jika mencoba akses login saat sudah login
+  if (isPublicPath && sesi) {
+    const destination = sesi.peran === PERAN.ADMIN.id ? PERAN.ADMIN.home : PERAN.SISWA.home;
+    return NextResponse.redirect(new URL(destination, request.url));
+  }
+
+  // 2. Jika akses area privat tanpa sesi
+  if (!isPublicPath && !sesi) {
     return NextResponse.redirect(new URL(KONFIGURASI_SISTEM.PATH_LOGIN, request.url));
   }
 
-  // ============================================================================
-  // 2. PROTEKSI PENGUNJUNG YANG SUDAH LOGIN
-  // ============================================================================
-  if (isLoggedIn) {
-    
-    // A. Jika sudah login tapi mencoba kembali ke halaman /login
-    if (isPublicPath) {
-      const destination = karcisPeran === PERAN.ADMIN.id ? PERAN.ADMIN.home : PERAN.SISWA.home;
-      return NextResponse.redirect(new URL(destination, request.url));
-    }
-
-    // B. Proteksi Area Admin (Siswa Mutlak Diblokir)
-    if (path.startsWith(PERAN.ADMIN.home) && karcisPeran === PERAN.SISWA.id) {
+  // 3. Proteksi Role (Admin vs Siswa)
+  if (sesi) {
+    if (path.startsWith(PERAN.ADMIN.home) && sesi.peran === PERAN.SISWA.id) {
       return NextResponse.redirect(new URL(PERAN.SISWA.home, request.url));
     }
-
-    // C. Admin Tulen tidak boleh di halaman Dashboard Siswa/Umum ("/")
-    if (path === PERAN.SISWA.home && karcisPeran === PERAN.ADMIN.id) {
+    if (path === PERAN.SISWA.home && sesi.peran === PERAN.ADMIN.id) {
       return NextResponse.redirect(new URL(PERAN.ADMIN.home, request.url));
     }
   }
@@ -50,7 +46,5 @@ export function proxy(request) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
-  ]
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

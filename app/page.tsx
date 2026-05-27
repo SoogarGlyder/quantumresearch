@@ -3,13 +3,13 @@ import User from "../models/User";
 import StudySession from "../models/StudySession";
 import Jadwal from "../models/Jadwal";
 import AbsensiPengajar from "../models/AbsensiPengajar";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import StudentApp from "../components/StudentApp";
 import TeacherApp from "../components/TeacherApp";
 import { dapatkanLatihanSiswa } from "../actions/soalAction";
 import { timeHelper } from "../utils/timeHelper";
+import { authHelper } from "../utils/authHelper";
 
 import {
   PERAN,
@@ -133,7 +133,6 @@ async function ambilDataDashboardSiswa(userLogin: any) {
     dapatkanLatihanSiswa(userLogin.username, userLogin.kelas, userLogin.kodeCabang)
   ]);
 
-
   let jadwalBersih = jadwalMentah as any[];
   if (userLogin.kodeCabang && userLogin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
     jadwalBersih = jadwalBersih.filter((j: any) =>
@@ -162,12 +161,13 @@ async function ambilDataDashboardSiswa(userLogin: any) {
 export default async function Home() {
   await connectToDatabase();
 
-  const cookieStore = await cookies();
-  const karcis = cookieStore.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
+  const sesi = await authHelper.ambilSesi();
 
-  if (!karcis) redirect(KONFIGURASI_SISTEM.PATH_LOGIN);
+  if (!sesi || !sesi.userId) {
+    redirect(KONFIGURASI_SISTEM.PATH_LOGIN);
+  }
 
-  const userLogin = await User.findById(karcis).select("-password").lean() as any;
+  const userLogin = await User.findById(sesi.userId).select("-password").lean() as any;
 
   if (!userLogin) {
     redirect(`${KONFIGURASI_SISTEM.PATH_LOGIN}?${LABEL_SISTEM.REDIRECT_CLEAR}`);

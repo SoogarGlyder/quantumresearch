@@ -56,7 +56,7 @@ export default function DaftarKelas({ jadwal = [], hariIniMurni }) {
   const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KELAS || 10;
+  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_KELAS || 10;
 
   useEffect(() => {
     setPage(1);

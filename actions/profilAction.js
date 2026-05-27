@@ -8,6 +8,7 @@ import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
 import { validationHelper } from "../utils/validationHelper";
+import { syncHelper } from "../utils/syncHelper"; // 🔥 Import Eventual Consistency
 import { 
   STATUS_SESI, 
   PERAN, 
@@ -114,9 +115,17 @@ export async function updateProfilSiswa(idSiswa, dataUpdate) {
     if (!(await pastikanPunyaAkses(idSiswa))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const payload = {};
+    let adaPerubahanNama = false;
+
+    // Tambahan Keamanan: Izinkan update nama (dan sinkronisasi otomatis)
+    if (dataUpdate.nama) {
+      payload.nama = validationHelper.trimInput(dataUpdate.nama);
+      adaPerubahanNama = true;
+    }
 
     if (dataUpdate.username) {
-      const cleanUser = validationHelper.sanitize(dataUpdate.username).toLowerCase();
+      // 🔥 PERBAIKAN: Gunakan trimInput, HAPUS sanitize
+      const cleanUser = validationHelper.trimInput(dataUpdate.username).toLowerCase();
       const ada = await User.exists({ username: cleanUser, _id: { $ne: idSiswa } });
       if (ada) return responseHelper.error("Username dipakai pengguna lain.");
       
@@ -133,6 +142,11 @@ export async function updateProfilSiswa(idSiswa, dataUpdate) {
     if (Object.keys(payload).length === 0) return responseHelper.success("Tidak ada perubahan.");
 
     await User.updateOne({ _id: idSiswa }, { $set: payload });
+
+    // 🔥 PERBAIKAN CELAH #3: Eventual Consistency!
+    if (adaPerubahanNama) {
+       syncHelper.sinkronisasiNamaMassal(idSiswa, payload.nama, PERAN.SISWA.id);
+    }
     
     revalidatePath(PERAN.SISWA.home);
     revalidatePath(PERAN.ADMIN.home);

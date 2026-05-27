@@ -40,9 +40,7 @@ export async function prosesLogin(dataFormulir) {
   try {
     await connectToDatabase();
 
-    const idInputRaw = validationHelper.sanitize(dataFormulir.identifier || dataFormulir.username || dataFormulir.noHp || "");
-    const amanInputRaw = validationHelper.escapeRegex(idInputRaw); // Proteksi ReDoS
-
+    const idInputRaw = validationHelper.trimInput(dataFormulir.identifier || dataFormulir.username || dataFormulir.noHp || "");
     const idInputLower = idInputRaw.toLowerCase();
     const idInputUpper = idInputRaw.toUpperCase();
 
@@ -59,7 +57,7 @@ export async function prosesLogin(dataFormulir) {
           peran: PERAN.SISWA.id,
           $or: [
             { username: idInputLower },
-            { nomorPeserta: { $regex: new RegExp(`^${amanInputRaw}$`, "i") } },
+            { nomorPeserta: idInputUpper },
             { noHp: idInputRaw }
           ]
         },
@@ -67,7 +65,7 @@ export async function prosesLogin(dataFormulir) {
           peran: PERAN.PENGAJAR.id,
           $or: [
             { username: idInputLower },
-            { nomorPeserta: { $regex: new RegExp(`^${amanInputRaw}$`, "i") } },
+            { nomorPeserta: idInputUpper },
             { noHp: idInputRaw },
             { kodePengajar: idInputUpper }
           ]
@@ -82,7 +80,10 @@ export async function prosesLogin(dataFormulir) {
     const passwordCocok = await authHelper.bandingkanPassword(passwordInput, user.password);
     if (!passwordCocok) return responseHelper.error("Kata sandi salah!");
 
-    await authHelper.setSesi(user);
+    const sesiBerhasil = await authHelper.setSesi(user);
+    if (!sesiBerhasil) {
+      return responseHelper.error("Terjadi gangguan server saat membuat Token Sesi.");
+    }
 
     return responseHelper.success("Login Berhasil! Memuat portal...");
   } catch (error) {
@@ -106,9 +107,9 @@ export async function prosesTambahSiswa(dataFormulir) {
 
     const sesi = await authHelper.ambilSesi();
 
-    const username = validationHelper.sanitize(dataFormulir.username || dataFormulir.nomorPeserta).toLowerCase();
-    const noHp = validationHelper.sanitize(dataFormulir.noHp || dataFormulir.whatsapp || "");
-    const namaSiswa = validationHelper.sanitize(dataFormulir.nama); // Proteksi Sanitasi Nama
+    const username = validationHelper.trimInput(dataFormulir.username || dataFormulir.nomorPeserta).toLowerCase();
+    const noHp = validationHelper.trimInput(dataFormulir.noHp || dataFormulir.whatsapp || "");
+    const namaSiswa = validationHelper.trimInput(dataFormulir.nama);
 
     let passPolos = (dataFormulir.password || dataFormulir.kataSandi || "").toString().trim();
     if (!passPolos) passPolos = noHp || KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
@@ -145,10 +146,10 @@ export async function prosesTambahPengajar(dataFormulir) {
 
     const sesi = await authHelper.ambilSesi();
 
-    const username = validationHelper.sanitize(dataFormulir.username).toLowerCase();
-    const kodePengajar = validationHelper.sanitize(dataFormulir.kodePengajar).toUpperCase();
-    const noHp = validationHelper.sanitize(dataFormulir.noHp || dataFormulir.whatsapp || "");
-    const namaPengajar = validationHelper.sanitize(dataFormulir.nama);
+    const username = validationHelper.trimInput(dataFormulir.username).toLowerCase();
+    const kodePengajar = validationHelper.trimInput(dataFormulir.kodePengajar).toUpperCase();
+    const noHp = validationHelper.trimInput(dataFormulir.noHp || dataFormulir.whatsapp || "");
+    const namaPengajar = validationHelper.trimInput(dataFormulir.nama);
 
     let passPolos = (dataFormulir.password || dataFormulir.kataSandi || "").toString().trim();
     if (!passPolos) passPolos = noHp || KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
@@ -183,8 +184,8 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
     if (!(await pastikanAdmin())) return responseHelper.error("Akses Ditolak: Khusus Admin & Staff Akademik.");
 
     const sesi = await authHelper.ambilSesi();
-    const barisUsername = daftarSiswaRaw.map(s => validationHelper.sanitize(s.username || s.nomorPeserta).toLowerCase());
-    const barisNomor = daftarSiswaRaw.map(s => validationHelper.sanitize(s.nomorPeserta));
+    const barisUsername = daftarSiswaRaw.map(s => validationHelper.trimInput(s.username || s.nomorPeserta).toLowerCase());
+    const barisNomor = daftarSiswaRaw.map(s => validationHelper.trimInput(s.nomorPeserta));
 
     const existing = await User.find({
       $or: [{ username: { $in: barisUsername } }, { nomorPeserta: { $in: barisNomor } }]
@@ -195,10 +196,10 @@ export async function prosesBulkTambahSiswa(daftarSiswaRaw) {
     const dataSiap = [];
 
     for (const s of daftarSiswaRaw) {
-      const id = validationHelper.sanitize(s.nomorPeserta);
-      const user = validationHelper.sanitize(s.username || id).toLowerCase();
-      const noHp = validationHelper.sanitize(s.noHp || s.nomorHp || "");
-      const nama = validationHelper.sanitize(s.nama);
+      const id = validationHelper.trimInput(s.nomorPeserta);
+      const user = validationHelper.trimInput(s.username || id).toLowerCase();
+      const noHp = validationHelper.trimInput(s.noHp || s.nomorHp || "");
+      const nama = validationHelper.trimInput(s.nama);
 
       if (setU.has(user) || setN.has(id)) continue;
 

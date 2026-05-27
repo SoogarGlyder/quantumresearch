@@ -25,7 +25,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
   
   //  FIX: Jantung Pagination beralih ke RAM (0 Lag)
   const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KELAS || 10;
+  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_KELAS || 10;
   
   const [riwayatKuis, setRiwayatKuis] = useState([]);
   const [kuisAktifReview, setKuisAktifReview] = useState(null);

@@ -39,11 +39,12 @@ function FormLoginArea() {
 
     try {
       const hasil = await prosesLogin(form);
-      if (hasil.sukses) {
-        setNotifikasi({ teks: hasil.pesan, tipe: "sukses" });
-        window.location.href = "/";
+      if (hasil.ok) {
+          setNotifikasi({ teks: hasil.pesan, tipe: "sukses" });
+          window.location.href = "/";
       } else {
-        setNotifikasi({ teks: hasil.pesan, tipe: "error" });
+          setNotifikasi({ teks: hasil.pesan, tipe: "error" });
+          setLoading(false);
       }
     } catch (error) {
       console.error("[ERROR handleLogin]:", error);

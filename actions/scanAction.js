@@ -14,6 +14,7 @@ import {
   PESAN_SISTEM, GAMIFIKASI
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
+import MisiSiswa from "../models/MisiSiswa";
 
 function isLokasiValid(lokasi) {
   if (!lokasi?.lat || !lokasi?.lng) return false;
@@ -56,7 +57,8 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    const siswa = await User.findById(userId).select("nama kelas status kodeCabang totalExp koleksiLencana misiHarian");
+    // misiHarian sudah tidak ada di User schema, jadi diabaikan saja dari seleksi
+    const siswa = await User.findById(userId).select("nama kelas status kodeCabang totalExp koleksiLencana");
     if (!siswa || siswa.status !== STATUS_USER.AKTIF) return responseHelper.error("Akun dinonaktifkan/tidak ditemukan.");
 
     const sekarang = new Date();
@@ -153,10 +155,13 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         if (!lencanaDimiliki.includes(GAMIFIKASI.LENCANA.FIRST_BLOOD)) lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.FIRST_BLOOD, tanggalDidapat: sekarang });
         if (jamSelesai >= 18 && !lencanaDimiliki.includes(GAMIFIKASI.LENCANA.BURUNG_HANTU)) lencanaBaru.push({ idLencana: GAMIFIKASI.LENCANA.BURUNG_HANTU, tanggalDidapat: sekarang });
 
+        // Update profil User (EXP dan Lencana)
         siswa.totalExp += expDapat;
         if (lencanaBaru.length > 0) siswa.koleksiLencana.push(...lencanaBaru);
-        const misiUpdates = updateMisiSiswa(siswa, tglHariIni, { jenis: "HADIR_KELAS" });
-        await siswa.save();
+        await siswa.save(); 
+
+        // Update Misi secara terpisah
+        await updateMisiSiswa(userId, tglHariIni, { jenis: "HADIR_KELAS" });
 
         let pesanAkhir = `Check-out Berhasil! ✨ +${expDapat} EXP`;
         if (menitExtra > 0) pesanAkhir += ` (Ekstra ${menitExtra}m)`;
@@ -178,9 +183,12 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         let expDapat = GAMIFIKASI.EXP.KONSUL_DASAR;
         if (durasiMenit >= 30) expDapat += Math.floor(durasiMenit / 30) * GAMIFIKASI.EXP.KONSUL_PER_30_MENIT;
 
+        // Update Profil
         siswa.totalExp += expDapat;
-        updateMisiSiswa(siswa, tglHariIni, { jenis: "KONSUL", durasi: durasiMenit, jam: sekarang.getHours() });
         await siswa.save();
+
+        // Update Misi
+        await updateMisiSiswa(userId, tglHariIni, { jenis: "KONSUL", durasi: durasiMenit, jam: sekarang.getHours() });
 
         revalidatePath("/", "layout");
         return responseHelper.success(`Sesi Konsul Selesai! ✨ +${expDapat} EXP`);
@@ -217,7 +225,10 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         waktuMulai: sekarang
       });
 
-      if (sekarang.getHours() < 15 && updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" }) > 0) await siswa.save();
+      if (sekarang.getHours() < 15) {
+        await updateMisiSiswa(userId, tglHariIni, { jenis: "DATANG_AWAL" });
+      }
+
       revalidatePath("/", "layout");
       return responseHelper.success(`Check-in Berhasil! ${telat > 0 ? '(Terlambat ' + telat + 'm)' : 'Tepat Waktu!'}`);
     }
@@ -243,7 +254,10 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         waktuMulai: sekarang
       });
 
-      if (sekarang.getHours() < 15 && updateMisiSiswa(siswa, tglHariIni, { jenis: "DATANG_AWAL" }) > 0) await siswa.save();
+      if (sekarang.getHours() < 15) {
+        await updateMisiSiswa(userId, tglHariIni, { jenis: "DATANG_AWAL" });
+      }
+
       revalidatePath("/", "layout");
       return responseHelper.success(`Sesi Konsul ${mapelPilihan} dimulai.`);
     }
@@ -303,20 +317,43 @@ export async function absenPengajarAction(teksQR, lokasi) {
   }
 }
 
-function updateMisiSiswa(siswa, tanggalSekarang, aksi) {
+// ============================================================================
+// HELPER: UPDATE MISI SISWA (Sesuai dengan arsitektur MisiSiswa.js)
+// ============================================================================
+async function updateMisiSiswa(userId, tanggalSekarang, aksi) {
   let adaUpdate = 0;
-  if (!siswa.misiHarian || siswa.misiHarian.tanggal !== tanggalSekarang) return adaUpdate;
-  siswa.misiHarian.daftar.forEach(misi => {
+  
+  // Ambil dokumen misi harian siswa di koleksi MisiSiswa
+  const dokumenMisi = await MisiSiswa.findOne({ siswaId: userId, tanggal: tanggalSekarang });
+  if (!dokumenMisi || !dokumenMisi.daftarMisi) return 0;
+
+  dokumenMisi.daftarMisi.forEach(misi => {
     if (misi.selesai) return;
+    
     let tercapai = false;
-    if (aksi.jenis === "HADIR_KELAS" && misi.kodeMisi === "HADIR_KELAS") { misi.progress = 1; tercapai = true; }
+    
+    if (aksi.jenis === "HADIR_KELAS" && misi.kodeMisi === "HADIR_KELAS") { 
+      misi.progress = 1; tercapai = true; 
+    }
     else if (aksi.jenis === "KONSUL" && misi.kodeMisi.startsWith("KONSUL_")) {
       if (misi.kodeMisi === "KONSUL_30" && aksi.durasi >= 30) tercapai = true;
       if (misi.kodeMisi === "KONSUL_60" && aksi.durasi >= 60) tercapai = true;
       if (misi.kodeMisi === "KONSUL_MALAM" && aksi.jam >= 18) tercapai = true;
       if (tercapai) misi.progress = misi.target;
-    } else if (aksi.jenis === "DATANG_AWAL" && misi.kodeMisi === "DATANG_AWAL") { misi.progress = 1; tercapai = true; }
-    if (tercapai) { misi.selesai = true; adaUpdate++; }
+    } 
+    else if (aksi.jenis === "DATANG_AWAL" && misi.kodeMisi === "DATANG_AWAL") { 
+      misi.progress = 1; tercapai = true; 
+    }
+    
+    if (tercapai) { 
+      misi.selesai = true; 
+      adaUpdate++; 
+    }
   });
+
+  if (adaUpdate > 0) {
+    await dokumenMisi.save();
+  }
+  
   return adaUpdate;
 }
