@@ -10,7 +10,7 @@
 export const responseHelper = {
   /**
    * @param {string} pesan
-   * @param {any} [data]
+   * @param {any}    [data]
    * @returns {{ ok: true, pesan: string, data: any, timestamp: string }}
    * @example
    * return responseHelper.success("Data berhasil disimpan.", { id: "abc123" });
@@ -23,9 +23,9 @@ export const responseHelper = {
   }),
 
   /**
-   * @param {string} pesan
+   * @param {string}       pesan
    * @param {Error|string} [errorRaw]
-   * @param {string} [kode]
+   * @param {string}       [kode]
    * @returns {{ ok: false, pesan: string, detail: string|null, kode: string|null, timestamp: string }}
    * @example
    * return responseHelper.error("Gagal menyimpan data.", err, "DB_ERROR");
@@ -38,3 +38,14 @@ export const responseHelper = {
     timestamp: new Date().toISOString(),
   }),
 };
+
+// ============================================================================
+// SERIALIZE HELPER
+// ============================================================================
+
+/**
+ * @template T
+ * @param {T} data
+ * @returns {T}
+ */
+export const serialize = (data) => JSON.parse(JSON.stringify(data));

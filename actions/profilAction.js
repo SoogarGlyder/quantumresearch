@@ -8,23 +8,27 @@ import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
 import { validationHelper } from "../utils/validationHelper";
-import { syncHelper } from "../utils/syncHelper"; // 🔥 Import Eventual Consistency
-import { 
-  STATUS_SESI, 
-  PERAN, 
+import { syncHelper } from "../utils/syncHelper";
+import {
+  STATUS_SESI,
+  PERAN,
   PERIODE_BELAJAR,
   VALIDASI_SISTEM,
-  PESAN_SISTEM 
+  PESAN_SISTEM,
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 
 // ============================================================================
 // 1. INTERNAL SECURITY
 // ============================================================================
+/**
+ * @param {string} idTarget
+ * @returns {Promise<boolean>}
+ */
 async function pastikanPunyaAkses(idTarget) {
-  const { userId, peran } = await authHelper.ambilSesi();
-  if (!userId) return false;
-  return String(userId) === String(idTarget) || peran === PERAN.ADMIN.id;
+  const sesi = await authHelper.ambilSesi();
+  if (!sesi?.userId) return false;
+  return String(sesi.userId) === String(idTarget) || sesi.peran === PERAN.ADMIN.id;
 }
 
 // ============================================================================
@@ -33,7 +37,9 @@ async function pastikanPunyaAkses(idTarget) {
 export async function getStatistikSiswa(idSiswa) {
   try {
     await connectToDatabase();
-    if (!(await pastikanPunyaAkses(idSiswa))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    if (!(await pastikanPunyaAkses(idSiswa))) {
+      return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    }
 
     const oid = new mongoose.Types.ObjectId(idSiswa);
 
@@ -46,52 +52,55 @@ export async function getStatistikSiswa(idSiswa) {
             totalMenit: {
               $sum: {
                 $add: [
-                  { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60000] },
-                  { $ifNull: ["$konsulExtraMenit", 0] }
-                ]
-              }
+                  { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60_000] },
+                  { $ifNull: ["$konsulExtraMenit", 0] },
+                ],
+              },
             },
-            jumlahSesi: { $sum: 1 }
-          }
-        }
+            jumlahSesi: { $sum: 1 },
+          },
+        },
       ]),
       StudySession.aggregate([
         { $match: { siswaId: oid } },
-        { 
-          $project: { 
-            tgl: { 
-              $dateToString: { 
-                format: "%Y-%m-%d", 
-                date: "$waktuMulai", 
-                timezone: PERIODE_BELAJAR.TIMEZONE 
-              } 
-            } 
-          } 
+        {
+          $project: {
+            tgl: {
+              $dateToString: {
+                format:   "%Y-%m-%d",
+                date:     "$waktuMulai",
+                timezone: PERIODE_BELAJAR.TIMEZONE,
+              },
+            },
+          },
         },
         { $group: { _id: "$tgl" } },
-        { $sort: { _id: -1 } }
-      ])
+        { $sort: { _id: -1 } },
+      ]),
     ]);
 
     let currentStreak = 0;
+
     if (riwayatTanggal.length > 0) {
-      const tglUnik = riwayatTanggal.map(d => d._id); 
-      const hariIni = timeHelper.getTglJakarta();
-      const dCek = new Date();
-      dCek.setDate(dCek.getDate() - 1);
-      const tglKemarinStr = timeHelper.getTglJakarta(dCek);
+      const tglUnik    = riwayatTanggal.map((d) => d._id);
+      const hariIni    = timeHelper.getTglJakarta();
+      const kemarin    = timeHelper.getTglJakarta(
+        new Date(Date.now() - 86_400_000) // 24 jam lalu
+      );
 
-      if (tglUnik[0] !== hariIni && tglUnik[0] !== tglKemarinStr) {
-        currentStreak = 0;
-      } else {
+      const streakAktif = tglUnik[0] === hariIni || tglUnik[0] === kemarin;
+
+      if (streakAktif) {
         let dHitung = new Date();
-        if (tglUnik[0] !== hariIni) dHitung.setDate(dHitung.getDate() - 1);
+        if (tglUnik[0] !== hariIni) dHitung = new Date(Date.now() - 86_400_000);
 
-        while (true) {
+        const MAKS_STREAK = 366;
+
+        for (let i = 0; i < MAKS_STREAK; i++) {
           const target = timeHelper.getTglJakarta(dHitung);
           if (tglUnik.includes(target)) {
             currentStreak++;
-            dHitung.setDate(dHitung.getDate() - 1);
+            dHitung = new Date(dHitung.getTime() - 86_400_000);
           } else {
             break;
           }
@@ -99,7 +108,10 @@ export async function getStatistikSiswa(idSiswa) {
       }
     }
 
-    return responseHelper.success("Statistik profil dimuat.", { stats: statsKategori, streak: currentStreak });
+    return responseHelper.success("Statistik profil dimuat.", {
+      stats:  statsKategori,
+      streak: currentStreak,
+    });
   } catch (error) {
     console.error("[ERROR getStatistikSiswa]:", error);
     return responseHelper.error("Gagal memuat statistik profil.");
@@ -112,45 +124,47 @@ export async function getStatistikSiswa(idSiswa) {
 export async function updateProfilSiswa(idSiswa, dataUpdate) {
   try {
     await connectToDatabase();
-    if (!(await pastikanPunyaAkses(idSiswa))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    if (!(await pastikanPunyaAkses(idSiswa))) {
+      return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    }
 
-    const payload = {};
-    let adaPerubahanNama = false;
+    const payload           = {};
+    let adaPerubahanNama    = false;
 
-    // Tambahan Keamanan: Izinkan update nama (dan sinkronisasi otomatis)
     if (dataUpdate.nama) {
-      payload.nama = validationHelper.trimInput(dataUpdate.nama);
+      payload.nama     = validationHelper.trimInput(dataUpdate.nama);
       adaPerubahanNama = true;
     }
 
     if (dataUpdate.username) {
-      // 🔥 PERBAIKAN: Gunakan trimInput, HAPUS sanitize
       const cleanUser = validationHelper.trimInput(dataUpdate.username).toLowerCase();
       const ada = await User.exists({ username: cleanUser, _id: { $ne: idSiswa } });
       if (ada) return responseHelper.error("Username dipakai pengguna lain.");
-      
       payload.username = cleanUser;
     }
 
     if (dataUpdate.password) {
       if (dataUpdate.password.length < VALIDASI_SISTEM.MIN_PASSWORD) {
-        return responseHelper.error(`Password minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter.`);
+        return responseHelper.error(
+          `Password minimal ${VALIDASI_SISTEM.MIN_PASSWORD} karakter.`
+        );
       }
       payload.password = await authHelper.buatHash(dataUpdate.password);
     }
 
-    if (Object.keys(payload).length === 0) return responseHelper.success("Tidak ada perubahan.");
+    if (Object.keys(payload).length === 0) {
+      return responseHelper.success("Tidak ada perubahan.");
+    }
 
     await User.updateOne({ _id: idSiswa }, { $set: payload });
 
-    // 🔥 PERBAIKAN CELAH #3: Eventual Consistency!
     if (adaPerubahanNama) {
-       syncHelper.sinkronisasiNamaMassal(idSiswa, payload.nama, PERAN.SISWA.id);
+      syncHelper.sinkronisasiNamaMassal(idSiswa, payload.nama, PERAN.SISWA.id);
     }
-    
+
     revalidatePath(PERAN.SISWA.home);
     revalidatePath(PERAN.ADMIN.home);
-    
+
     return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
   } catch (error) {
     console.error("[ERROR updateProfilSiswa]:", error);

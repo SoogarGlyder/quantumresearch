@@ -4,6 +4,7 @@ import { CABANG_QUANTUM } from "../utils/constants";
 // ============================================================================
 // MISI SISWA SCHEMA (GAMIFICATION DOMAIN)
 // ============================================================================
+
 const misiSiswaSchema = new mongoose.Schema(
   {
     siswaId: {
@@ -12,12 +13,10 @@ const misiSiswaSchema = new mongoose.Schema(
       required: true,
     },
     tanggal: {
-      type: String,
+      type: Date,
       required: true,
-      trim: true,
-      maxlength: 10,
     },
-    
+
     // -------------------------------------------------------------------------
     // ISOLASI CABANG (MULTI-TENANT)
     // -------------------------------------------------------------------------
@@ -35,7 +34,7 @@ const misiSiswaSchema = new mongoose.Schema(
     daftarMisi: [
       {
         _id: false,
-        kodeMisi:  { type: String, required: true, trim: true, maxlength: 50 },
+        kodeMisi:  { type: String, required: true, trim: true, maxlength: 50  },
         judul:     { type: String, required: true, trim: true, maxlength: 255 },
         target:    { type: Number, required: true, min: 0 },
         progress:  { type: Number, default: 0, min: 0 },
@@ -49,20 +48,21 @@ const misiSiswaSchema = new mongoose.Schema(
 );
 
 // ============================================================================
-// INDEXES & CONSTRAINTS
+// INDEXES
 // ============================================================================
 // UNIQUE CONSTRAINT: Satu siswa hanya boleh punya 1 dokumen misi per hari.
-// Ini mencegah Race Condition (misi ganda di hari yang sama).
+// Mencegah race condition (misi ganda di hari yang sama).
 misiSiswaSchema.index({ siswaId: 1, tanggal: 1 }, { unique: true });
 
-// Index untuk mencari riwayat misi siswa (History)
+// Riwayat misi siswa (halaman history gamifikasi)
 misiSiswaSchema.index({ siswaId: 1, createdAt: -1 });
 
-// Index untuk analitik per cabang
+// Analitik misi per cabang per periode
 misiSiswaSchema.index({ kodeCabang: 1, tanggal: -1 });
 
 // ============================================================================
 // MODEL
 // ============================================================================
-const MisiSiswa = mongoose.models.MisiSiswa || mongoose.model("MisiSiswa", misiSiswaSchema);
+const MisiSiswa =
+  mongoose.models.MisiSiswa || mongoose.model("MisiSiswa", misiSiswaSchema);
 export default MisiSiswa;

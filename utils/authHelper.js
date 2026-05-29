@@ -1,23 +1,36 @@
-//ada perbaikan.
-
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { KONFIGURASI_SISTEM, PERAN } from "./constants";
 
 // ============================================================================
-// KONFIGURASI JWT & COOKIE
+// KONFIGURASI JWT
 // ============================================================================
+
+/**
+ * @returns {Uint8Array}
+ * @throws {Error}
+ */
 const getJwtSecret = () => {
-  let secret = process.env.JWT_SECRET;
-  
+  const secret = process.env.JWT_SECRET;
+
   if (!secret || secret.trim() === "") {
-    secret = "quantum_secret_dev_key_2026_wajib_diganti_di_production";
+    throw new Error(
+      "[authHelper] JWT_SECRET belum diset di environment variables. " +
+      "Tambahkan JWT_SECRET ke file .env.local Anda. " +
+      "Generate secret: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\""
+    );
   }
-  
+
   return new TextEncoder().encode(secret);
 };
 
+// ============================================================================
+// OPSI COOKIE
+// ============================================================================
+/**
+ * @returns {Object}
+ */
 const buatOpsiCookie = () => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -33,12 +46,14 @@ export const authHelper = {
   /**
    * @param {string} password
    * @returns {Promise<string>}
+   * @throws {Error}
    */
   buatHash: async (password) => {
     try {
-      const pwd = typeof password === "string" && password.trim() !== "" 
-        ? password 
-        : KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
+      const pwd =
+        typeof password === "string" && password.trim() !== ""
+          ? password
+          : KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
 
       const salt = await bcrypt.genSalt(KONFIGURASI_SISTEM.SALT_ROUNDS);
       return await bcrypt.hash(pwd, salt);
@@ -55,7 +70,11 @@ export const authHelper = {
    */
   bandingkanPassword: async (input, hashed) => {
     try {
-      if (!input || !hashed || typeof input !== "string" || typeof hashed !== "string") {
+      if (
+        !input || !hashed ||
+        typeof input !== "string" ||
+        typeof hashed !== "string"
+      ) {
         return false;
       }
       return await bcrypt.compare(input, hashed);
@@ -66,6 +85,13 @@ export const authHelper = {
   },
 
   /**
+   * Payload JWT yang disimpan:
+   *   - userId      : user._id sebagai string
+   *   - peran       : peran user (siswa / pengajar / admin)
+   *   - kodeCabang  : kode cabang user
+   *   - pangkat     : pangkat pengajar (null jika bukan pengajar)
+   *   - kelasAsuh   : array kelas asuh (hanya relevan untuk kakak asuh)
+   *
    * @param {Object} user
    * @returns {Promise<boolean>}
    */
@@ -77,11 +103,11 @@ export const authHelper = {
 
     try {
       const payload = {
-        userId: user._id.toString(),
-        peran: user.peran ?? PERAN.SISWA.id,
+        userId:     user._id.toString(),
+        peran:      user.peran      ?? PERAN.SISWA.id,
         kodeCabang: user.kodeCabang ?? null,
-        pangkat: user.pangkat ?? null,
-        kelasAsuh: Array.isArray(user.kelasAsuh) ? user.kelasAsuh : [],
+        pangkat:    user.pangkat    ?? null,
+        kelasAsuh:  Array.isArray(user.kelasAsuh) ? user.kelasAsuh : [],
       };
 
       const token = await new SignJWT(payload)
@@ -102,31 +128,36 @@ export const authHelper = {
 
   /**
    * @returns {Promise<{
-   * userId: string|null, peran: string|null, kodeCabang: string|null, 
-   * pangkat: string|null, kelasAsuh: string[]
+   *   userId:     string|null,
+   *   peran:      string|null,
+   *   kodeCabang: string|null,
+   *   pangkat:    string|null,
+   *   kelasAsuh:  string[]
    * }>}
    */
   ambilSesi: async () => {
-    const sesiKosong = { userId: null, peran: null, kodeCabang: null, pangkat: null, kelasAsuh: [] };
-    
+    const sesiKosong = {
+      userId: null, peran: null, kodeCabang: null,
+      pangkat: null, kelasAsuh: [],
+    };
+
     try {
       const cookieStore = await cookies();
       const token = cookieStore.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
 
       if (!token) return sesiKosong;
 
-      // Verifikasi Signature JWT
       const { payload } = await jwtVerify(token, getJwtSecret());
 
       return {
-        userId: payload.userId,
-        peran: payload.peran,
-        kodeCabang: payload.kodeCabang,
-        pangkat: payload.pangkat,
-        kelasAsuh: payload.kelasAsuh,
+        userId:     payload.userId     ?? null,
+        peran:      payload.peran      ?? null,
+        kodeCabang: payload.kodeCabang ?? null,
+        pangkat:    payload.pangkat    ?? null,
+        kelasAsuh:  Array.isArray(payload.kelasAsuh) ? payload.kelasAsuh : [],
       };
-    } catch (error) {
-      console.warn("[authHelper.ambilSesi] Sesi tidak valid / Expired.");
+    } catch {
+      console.warn("[authHelper.ambilSesi] Token tidak valid atau sudah expired.");
       return sesiKosong;
     }
   },

@@ -6,43 +6,54 @@ import User from "../models/User";
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { validationHelper } from "../utils/validationHelper";
-import { PERAN, PESAN_SISTEM, CABANG_QUANTUM, PANGKAT_PENGAJAR } from "../utils/constants"; 
+import { ambilSesiAktif } from "../utils/guardHelper";
+import { PERAN, PESAN_SISTEM, CABANG_QUANTUM, PANGKAT_PENGAJAR } from "../utils/constants";
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 
 // ============================================================================
-// 1. INTERNAL HELPERS (Mencegah DRY & Mengurai Nama Target)
+// 1. INTERNAL HELPER
 // ============================================================================
+/**
+ * @param {Object[]} dataLatihanMentah
+ * @returns {Promise<Object[]>}
+ */
 async function translasiTargetKeNamaSiswa(dataLatihanMentah) {
-  let listPencarianSiswa = [];
-  
-  dataLatihanMentah.forEach(item => {
+  const listPencarianSiswa = [];
+
+  for (const item of dataLatihanMentah) {
     if (item.tipeTarget === "SISWA") {
-      if (Array.isArray(item.target)) listPencarianSiswa.push(...item.target);
-      else if (item.target) listPencarianSiswa.push(item.target);
+      const targets = Array.isArray(item.target) ? item.target : [item.target];
+      listPencarianSiswa.push(...targets.filter(Boolean));
     }
-  });
+  }
 
   if (listPencarianSiswa.length === 0) return dataLatihanMentah;
 
-  const orQuery = [
-    { username: { $in: listPencarianSiswa } },
-    { nomorPeserta: { $in: listPencarianSiswa } }
-  ];
+  const dataSiswa = await User.find({
+    peran: PERAN.SISWA.id,
+    $or: [
+      { username:     { $in: listPencarianSiswa } },
+      { nomorPeserta: { $in: listPencarianSiswa } },
+    ],
+  })
+    .select("username nomorPeserta nama")
+    .lean();
 
-  const dataSiswa = await User.find({ peran: PERAN.SISWA.id, $or: orQuery }).select("username nomorPeserta nama").lean();
-  
   const mapNamaSiswa = {};
-  dataSiswa.forEach(s => {
-    if (s.username) mapNamaSiswa[s.username] = s.nama;
+  for (const s of dataSiswa) {
+    if (s.username)     mapNamaSiswa[s.username]     = s.nama;
     if (s.nomorPeserta) mapNamaSiswa[s.nomorPeserta] = s.nama;
-  });
+  }
 
-  return dataLatihanMentah.map(item => {
-    if (item.tipeTarget === "SISWA") {
-      const arrayTarget = Array.isArray(item.target) ? item.target : [item.target];
-      item.target = arrayTarget.map(t => mapNamaSiswa[t] || t).join(", ");
-    }
-    return item;
+  return dataLatihanMentah.map((item) => {
+    if (item.tipeTarget !== "SISWA") return item;
+
+    const arrayTarget = Array.isArray(item.target) ? item.target : [item.target];
+    const targetTerjemah = arrayTarget
+      .map((t) => mapNamaSiswa[t] || t)
+      .join(", ");
+
+    return { ...item, target: targetTerjemah };
   });
 }
 
@@ -50,27 +61,31 @@ async function translasiTargetKeNamaSiswa(dataLatihanMentah) {
 // 2. MAIN ACTIONS
 // ============================================================================
 export async function dapatkanLatihanSiswa(username, kelasSiswa, kodeCabangSiswa) {
-  noStore(); 
+  noStore();
   try {
     await connectToDatabase();
-    
-    // PERBAIKAN: Gunakan trimInput
-    const unameAman = validationHelper.trimInput(username);
-    const kelasAman = validationHelper.trimInput(kelasSiswa);
+
+    const unameAman  = validationHelper.trimInput(username);
+    const kelasAman  = validationHelper.trimInput(kelasSiswa);
     const cabangAman = validationHelper.trimInput(kodeCabangSiswa);
 
     let queryLatihan = {
       isAktif: true,
-      $or: [{ tipeTarget: "SISWA", target: unameAman }, { tipeTarget: "KELAS", target: kelasAman }]
+      $or: [
+        { tipeTarget: "SISWA", target: unameAman },
+        { tipeTarget: "KELAS", target: kelasAman },
+      ],
     };
 
     if (cabangAman && cabangAman !== CABANG_QUANTUM.PUSAT.id) {
-      const guruCabang = await User.find({ kodeCabang: cabangAman }).select("_id").lean();
-      queryLatihan.pembuatId = { $in: guruCabang.map(g => String(g._id)) };
+      const guruCabang = await User.find({ kodeCabang: cabangAman })
+        .select("_id")
+        .lean();
+      queryLatihan.pembuatId = { $in: guruCabang.map((g) => String(g._id)) };
     }
 
     const latihan = await LatihanSoal.find(queryLatihan)
-      .select("judul mapel tipeTarget target isAktif linkSoal url createdAt namaPembuat") 
+      .select("judul mapel tipeTarget target isAktif url createdAt namaPembuat")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -85,29 +100,37 @@ export async function dapatkanLatihanSiswa(username, kelasSiswa, kodeCabangSiswa
 }
 
 export async function ambilSemuaLatihanSoal() {
-  noStore(); 
+  noStore();
   try {
     await connectToDatabase();
-    const sesi = await authHelper.ambilSesi();
-    if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    const sesi = await ambilSesiAktif();
+    if (!sesi) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const isStaffAkademik =
+      sesi.peran === PERAN.PENGAJAR.id &&
+      sesi.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK;
+    const isAdmin = sesi.peran === PERAN.ADMIN.id;
 
     let query = {};
-    const isStaffAkademik = sesi.peran === PERAN.PENGAJAR.id && sesi.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK;
-    const isAdmin = sesi.peran === PERAN.ADMIN.id;
-    
+
     if ((isAdmin || isStaffAkademik) && sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
-      const guruCabang = await User.find({ kodeCabang: sesi.kodeCabang }).select("_id").lean();
-      query.pembuatId = { $in: guruCabang.map(g => String(g._id)) };
+      const guruCabang = await User.find({ kodeCabang: sesi.kodeCabang })
+        .select("_id")
+        .lean();
+      query.pembuatId = { $in: guruCabang.map((g) => String(g._id)) };
     } else if (sesi.peran === PERAN.PENGAJAR.id && !isStaffAkademik) {
       query.pembuatId = String(sesi.userId);
     }
 
-    const data = await LatihanSoal.find(query).select("-__v").sort({ createdAt: -1 }).lean();
+    const data = await LatihanSoal.find(query)
+      .select("-__v")
+      .sort({ createdAt: -1 })
+      .lean();
+
     const dataSiap = await translasiTargetKeNamaSiswa(data);
-      
     return responseHelper.success("Data berhasil ditarik", JSON.parse(JSON.stringify(dataSiap)));
   } catch (error) {
-    console.error("[ERROR ambilSemuaLatihanSoal]:", error); 
+    console.error("[ERROR ambilSemuaLatihanSoal]:", error);
     return responseHelper.error("Gagal mengambil data soal.");
   }
 }
@@ -115,27 +138,41 @@ export async function ambilSemuaLatihanSoal() {
 export async function prosesSimpanLatihanSoal(idRaw, dataForm) {
   try {
     await connectToDatabase();
-    const sesi = await authHelper.ambilSesi();
-    if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    const sesi = await ambilSesiAktif();
+    if (!sesi) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
-    const namaKreator = sesi.peran === PERAN.ADMIN.id ? "Admin Quantum" : `Kak ${sesi.nama}`;
-    const id = validationHelper.trimInput(idRaw);
+    const id  = validationHelper.trimInput(idRaw);
+    const url = validationHelper.trimInput(dataForm.url);
+
+    if (!validationHelper.isValidUrl(url)) {
+      return responseHelper.error(
+        "Format URL tidak valid. Gunakan format https://...",
+        null,
+        "INVALID_URL"
+      );
+    }
+
+    const namaKreator =
+      sesi.peran === PERAN.ADMIN.id ? "Admin Quantum" : `Kak ${sesi.nama}`;
 
     const payload = {
-      judul: validationHelper.trimInput(dataForm.judul),
-      url: validationHelper.trimInput(dataForm.url),
-      tipeTarget: validationHelper.trimInput(dataForm.tipeTarget),
-      target: validationHelper.trimInput(dataForm.target),
-      pembuatId: String(sesi.userId), 
-      namaPembuat: namaKreator
+      judul:       validationHelper.trimInput(dataForm.judul),
+      url,
+      tipeTarget:  validationHelper.trimInput(dataForm.tipeTarget),
+      target:      validationHelper.trimInput(dataForm.target),
+      pembuatId:   String(sesi.userId),
+      namaPembuat: namaKreator,
     };
 
-    if (id) await LatihanSoal.updateOne({ _id: id }, { $set: payload });
-    else await LatihanSoal.create(payload);
+    if (id) {
+      await LatihanSoal.updateOne({ _id: id }, { $set: payload });
+    } else {
+      await LatihanSoal.create(payload);
+    }
 
     revalidatePath(PERAN.ADMIN.home);
     revalidatePath(PERAN.PENGAJAR.home);
-    revalidatePath("/"); 
+    revalidatePath("/");
     return responseHelper.success(id ? "Latihan diperbarui!" : "Latihan dikirim ke siswa!");
   } catch (error) {
     console.error("[ERROR prosesSimpanLatihanSoal]:", error);
@@ -146,36 +183,41 @@ export async function prosesSimpanLatihanSoal(idRaw, dataForm) {
 export async function prosesHapusLatihanSoal(idRaw) {
   try {
     await connectToDatabase();
-    const sesi = await authHelper.ambilSesi();
-    if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+    const sesi = await ambilSesiAktif();
+    if (!sesi) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
 
     const id = validationHelper.trimInput(idRaw);
     await LatihanSoal.deleteOne({ _id: id });
-    
+
     revalidatePath(PERAN.ADMIN.home);
     revalidatePath(PERAN.PENGAJAR.home);
     revalidatePath("/");
-    
-    return responseHelper.success("Latihan soal berhasil ditarik/dihapus!");
+    return responseHelper.success("Latihan soal berhasil dihapus.");
   } catch (error) {
-    return responseHelper.error("Gagal menghapus.");
+    console.error("[ERROR prosesHapusLatihanSoal]:", error);
+    return responseHelper.error("Gagal menghapus latihan soal.");
   }
 }
 
 export async function ambilDaftarSiswaDropdown() {
-  noStore(); 
+  noStore();
   try {
     await connectToDatabase();
-    const sesi = await authHelper.ambilSesi();
-    
+    const sesi = await ambilSesiAktif();
+
     let querySiswa = { peran: PERAN.SISWA.id };
-    if (sesi && sesi.kodeCabang && sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
-       querySiswa.kodeCabang = sesi.kodeCabang;
+    if (sesi?.kodeCabang && sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
+      querySiswa.kodeCabang = sesi.kodeCabang;
     }
 
-    const data = await User.find(querySiswa).select("nama username kelas").sort({ nama: 1 }).lean();
+    const data = await User.find(querySiswa)
+      .select("nama username kelas")
+      .sort({ nama: 1 })
+      .lean();
+
     return responseHelper.success("Data siswa ditarik", JSON.parse(JSON.stringify(data)));
   } catch (error) {
+    console.error("[ERROR ambilDaftarSiswaDropdown]:", error);
     return responseHelper.error("Gagal menarik daftar siswa.");
   }
 }

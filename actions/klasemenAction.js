@@ -2,23 +2,27 @@
 
 import connectToDatabase from "../lib/db";
 import StudySession from "../models/StudySession";
-import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
 import { validationHelper } from "../utils/validationHelper";
-import { 
-  STATUS_SESI, 
-  TIPE_SESI, 
+import { ambilSesiAktif } from "../utils/guardHelper";
+import {
+  STATUS_SESI,
+  TIPE_SESI,
   PESAN_SISTEM,
   GAMIFIKASI,
-  CABANG_QUANTUM 
+  CABANG_QUANTUM,
 } from "../utils/constants";
 
 // ============================================================================
 // 1. INTERNAL HELPERS (Gamification)
 // ============================================================================
+/**
+ * @param {number} jamTotal
+ * @returns {string}
+ */
 function tentukanGelar(jamTotal) {
-  const gelarMatch = GAMIFIKASI.GELAR_KLASEMEN.find(g => jamTotal >= g.minJam);
+  const gelarMatch = GAMIFIKASI.GELAR_KLASEMEN.find((g) => jamTotal >= g.minJam);
   return gelarMatch ? gelarMatch.gelar : "🐢 Masih Pemanasan";
 }
 
@@ -28,22 +32,20 @@ function tentukanGelar(jamTotal) {
 export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
   try {
     await connectToDatabase();
-    const sesi = await authHelper.ambilSesi();
-    if (!sesi || !sesi.userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    // 🔥 PERBAIKAN: Gunakan trimInput, HAPUS sanitize
+    const sesi = await ambilSesiAktif();
+    if (!sesi) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
+
     const kelasAman = validationHelper.trimInput(filterKelas);
 
-    const awalBulan = timeHelper.getAwalBulan();
-    const kini = new Date();
-    const awalBulanDepan = new Date(Date.UTC(kini.getFullYear(), kini.getMonth() + 1, 1, -7, 0, 0, 0));
+    const { awal: awalBulan, akhir: akhirBulan } = timeHelper.getRentangBulanSiswa();
 
     const pipeline = [
       {
         $match: {
-          waktuMulai: { $gte: awalBulan, $lt: awalBulanDepan },
-          status: STATUS_SESI.SELESAI.id 
-        }
+          waktuMulai: { $gte: awalBulan, $lte: akhirBulan },
+          status:     STATUS_SESI.SELESAI.id,
+        },
       },
       {
         $project: {
@@ -51,35 +53,35 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
           menitMurni: {
             $cond: [
               { $eq: ["$jenisSesi", TIPE_SESI.KONSUL] },
-              { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60000] },
-              0
-            ]
+              { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60_000] },
+              0,
+            ],
           },
-          menitBonus: { $ifNull: ["$konsulExtraMenit", 0] }
-        }
+          menitBonus: { $ifNull: ["$konsulExtraMenit", 0] },
+        },
       },
       {
         $project: {
           siswaId: 1,
-          totalSesi: { $add: ["$menitMurni", "$menitBonus"] }
-        }
+          totalSesi: { $add: ["$menitMurni", "$menitBonus"] },
+        },
       },
       {
         $group: {
-          _id: "$siswaId",
-          akumulasiMenit: { $sum: "$totalSesi" }
-        }
+          _id:             "$siswaId",
+          akumulasiMenit: { $sum: "$totalSesi" },
+        },
       },
       { $match: { akumulasiMenit: { $gt: 0 } } },
       {
         $lookup: {
-          from: "users",
-          localField: "_id",
+          from:         "users",
+          localField:   "_id",
           foreignField: "_id",
-          as: "siswa"
-        }
+          as:           "siswa",
+        },
       },
-      { $unwind: "$siswa" }
+      { $unwind: "$siswa" },
     ];
 
     if (sesi.kodeCabang && sesi.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
@@ -95,10 +97,10 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
       { $limit: 10 },
       {
         $project: {
-          nama: "$siswa.nama",
-          kelas: "$siswa.kelas", 
-          akumulasiMenit: 1
-        }
+          nama:           "$siswa.nama",
+          kelas:          "$siswa.kelas",
+          akumulasiMenit: 1,
+        },
       }
     );
 
@@ -106,24 +108,24 @@ export async function dapatkanKlasemenBulanIni(filterKelas = "Semua Kelas") {
 
     const dataFinal = klasemenMentah.map((item, index) => {
       const total = Math.floor(item.akumulasiMenit);
-      const jam = Math.floor(total / 60);
+      const jam   = Math.floor(total / 60);
       const menit = total % 60;
 
       return {
-        peringkat: index + 1,
-        idSiswa: item._id.toString(), 
-        nama: item.nama || "Siswa Quantum", 
-        kelas: item.kelas || "N/A",        
+        peringkat:   index + 1,
+        idSiswa:     item._id.toString(),
+        nama:        item.nama  || "Siswa Quantum",
+        kelas:       item.kelas || "N/A",
         jam,
         menit,
-        totalMenit: total,
-        gelar: tentukanGelar(jam)
+        totalMenit:  total,
+        gelar:       tentukanGelar(jam),
       };
     });
 
     return responseHelper.success("Klasemen bulan ini dimuat.", dataFinal);
   } catch (error) {
-    console.error("[KLASEMEN_ERROR]:", error.message);
+    console.error("[ERROR dapatkanKlasemenBulanIni]:", error.message);
     return responseHelper.error("Gagal memproses data klasemen.");
   }
 }
