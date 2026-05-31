@@ -1,40 +1,46 @@
 "use client";
 
 import { useEffect } from "react";
-import { FaCheck, FaTriangleExclamation, FaXmark } from "react-icons/fa6";
+import {
+  FaCheck,
+  FaTriangleExclamation,
+  FaCircleInfo,
+  FaXmark,
+} from "react-icons/fa6";
 import { KONFIGURASI_SISTEM } from "@/utils/constants";
-import styles from "./BrutalToast.module.css"; // 👈 Import CSS Module
+import styles from "./BrutalToast.module.css";
 
+/**
+ * @param {{ pesan: string, tipe?: "sukses"|"error"|"info", onClose: () => void }} props
+ */
 export default function BrutalToast({ pesan, tipe = "sukses", onClose }) {
-  // Otomatis hilang sesuai konfigurasi sistem
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, KONFIGURASI_SISTEM.TOAST_DELAY_MS);
-    
+    const timer = setTimeout(() => onClose(), KONFIGURASI_SISTEM.TOAST_DELAY_MS);
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const isSukses = tipe === "sukses";
+  const toastClass =
+    tipe === "sukses" ? styles.toastSukses
+    : tipe === "info" ? styles.toastInfo
+    : styles.toastError;
 
-  // Tentukan class berdasarkan tipe
-  const toastClass = isSukses ? styles.toastSukses : styles.toastError;
+  const Ikon =
+    tipe === "sukses" ? FaCheck
+    : tipe === "info"  ? FaCircleInfo
+    : FaTriangleExclamation;
 
   return (
     <div className={`${styles.toastBase} ${toastClass}`}>
-      {isSukses ? <FaCheck size={20} /> : <FaTriangleExclamation size={20} />}
-      
+      <Ikon size={20} aria-hidden="true" />
+
       <span className={styles.toastText}>{pesan}</span>
-      
-      <button 
-        onClick={onClose} 
+
+      <button
+        onClick={onClose}
         className={styles.closeButton}
-        aria-label="Tutup Notifikasi"
+        aria-label="Tutup notifikasi"
       >
-        <FaXmark 
-          size={20} 
-          color={isSukses ? "var(--brutal-hitam)" : "var(--brutal-putih)"} 
-        />
+        <FaXmark size={20} className={styles.ikonTutup} />
       </button>
     </div>
   );

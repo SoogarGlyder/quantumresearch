@@ -121,7 +121,7 @@ export default function DaftarKonsul({ dataUser, setTotalKonsul }) {
     let isMounted = true;
     const fetchKonsul = async () => {
       const res = await getRiwayatKonsulPengajar();
-      if (isMounted && res.sukses) {
+      if (isMounted && res.ok) {
         const listData = res.data || [];
         setDataKonsul(listData);
         if (setTotalKonsul) setTotalKonsul(listData.length); 
@@ -202,7 +202,7 @@ export default function DaftarKonsul({ dataUser, setTotalKonsul }) {
         ringkasanFilter={ringkasanFilter}
       />
 
-      <div className={styles.contentContainer} style={{ marginTop: '-24px' }}>
+      <div className={styles.contentContainer}>
         {/*  FIX: Logika ternary rendering loading dihapus */}
         {dataHalIni.length === 0 ? (
           <div className={styles.emptySchedule} style={{ padding: '40px 20px' }}>

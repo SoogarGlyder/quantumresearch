@@ -202,7 +202,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     if (!window.confirm("Yakin ingin menerapkan paket soal ini ke jadwal kelas ini?")) return;
     setIsMemprosesKuis(true);
     const res = await terapkanBankSoalKeJadwal(idBankSoal, jadwalEdit._id, adminId);
-    if (res.sukses) { alert("✅ " + res.pesan); setIsModalBankOpen(false); setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'siap'})); } 
+    if (res.ok) { alert("✅ " + res.pesan); setIsModalBankOpen(false); setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'siap'})); } 
     else { alert("❌ " + res.pesan); }
     setIsMemprosesKuis(false);
   };
@@ -211,7 +211,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     if (!window.confirm("Yakin ingin membatalkan/melepas kuis dari kelas ini?")) return;
     setIsMemprosesKuis(true);
     const res = await hapusQuizDariJadwal(jadwalEdit._id);
-    if (res.sukses) { alert("✅ " + res.pesan); setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'kosong'})); } 
+    if (res.ok) { alert("✅ " + res.pesan); setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'kosong'})); } 
     else { alert("❌ " + res.pesan); }
     setIsMemprosesKuis(false);
   };
@@ -256,10 +256,10 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
         return tambahJadwal({ tanggal: jadwal.tanggal, mapel: jadwal.mapel, kelasTarget: jadwal.kelasTarget, jamMulai: jadwal.jamMulai, jamSelesai: jadwal.jamSelesai, pengajar: jadwal.pengajar, pertemuan: jadwal.pertemuan });
       });
       const hasilEksekusi = await Promise.all(tembakanServer);
-      const adaYangGagal = hasilEksekusi.some(res => res.sukses === false);
+      const adaYangGagal = hasilEksekusi.some(res => res.ok === false);
 
       if (adaYangGagal) {
-        const errorPertama = hasilEksekusi.find(res => res.sukses === false);
+        const errorPertama = hasilEksekusi.find(res => res.ok === false);
         alert(`❌ GAGAL SIMPAN: ${errorPertama?.pesan || "Terjadi kesalahan sistem"}`);
       } else {
         setJadwalLokal([]); if(muatData) await muatData(); alert("✅ Jadwal berhasil mengudara!");

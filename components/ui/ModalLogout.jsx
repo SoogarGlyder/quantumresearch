@@ -1,52 +1,66 @@
 "use client";
 
+import { useEffect } from "react";
 import { FaTriangleExclamation } from "react-icons/fa6";
+import styles from "./ModalLogout.module.css";
 
+/**
+ * @param {{ isOpen: boolean, onClose: () => void, onConfirm: () => void }} props
+ */
 export default function ModalLogout({ isOpen, onClose, onConfirm }) {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const tanganiEscape = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", tanganiEscape);
+    return () => document.removeEventListener("keydown", tanganiEscape);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <div style={{ 
-        backgroundColor: 'white', border: '4px solid #111827', boxShadow: '8px 8px 0 #111827', 
-        width: '100%', maxWidth: '350px', borderRadius: '16px', overflow: 'hidden', 
-        textAlign: 'center', padding: '24px', animation: 'slideDownBrutal 0.2s ease-out' 
-      }}>
-        
-        <FaTriangleExclamation size={48} color="#ef4444" style={{ marginBottom: '16px' }} />
-        
-        <h3 style={{ margin: '0 0 8px 0', fontWeight: '900', fontSize: '20px', color: '#111827', textTransform: 'uppercase' }}>
+    <div
+      className={styles.backdrop}
+      onClick={onClose}
+      aria-hidden="true"
+    >
+      <div
+        className={styles.card}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-logout-judul"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <FaTriangleExclamation className={styles.ikonPeringatan} />
+
+        <h3 id="modal-logout-judul" className={styles.judul}>
           Konfirmasi Keluar
         </h3>
-        
-        <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#4b5563', fontWeight: '600' }}>
+
+        <p className={styles.deskripsi}>
           Apakah Anda yakin ingin keluar dari aplikasi?
         </p>
-        
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
+
+        <div className={styles.grupTombol}>
+          <button
             onClick={onClose}
-            style={{ 
-              flex: 1, padding: '12px', backgroundColor: '#f3f4f6', color: '#111827', 
-              border: '3px solid #111827', borderRadius: '10px', fontWeight: '900', 
-              cursor: 'pointer', boxShadow: '2px 2px 0 #111827' 
-            }}
+            className={`${styles.tombol} ${styles.tombolBatal}`}
+            // eslint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
           >
-            BATAL
+            Batal
           </button>
-          
-          <button 
+
+          <button
             onClick={onConfirm}
-            style={{ 
-              flex: 1, padding: '12px', backgroundColor: '#ef4444', color: 'white', 
-              border: '3px solid #111827', borderRadius: '10px', fontWeight: '900', 
-              cursor: 'pointer', boxShadow: '2px 2px 0 #111827' 
-            }}
+            className={`${styles.tombol} ${styles.tombolKeluar}`}
           >
-            YA, KELUAR
+            Ya, Keluar
           </button>
         </div>
-
       </div>
     </div>
   );

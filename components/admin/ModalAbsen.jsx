@@ -31,7 +31,7 @@ export default function ModalAbsen({ isOpen, onClose, dataPengajar = [], muatDat
     // Kirim payload yang sudah disuntik ke Backend
     const res = await prosesSimpanAbsenManual(payloadAbsen);
     
-    if (res.sukses) {
+    if (res.ok) {
       alert(res.pesan);
       muatData(); // Refresh tabel setelah simpan
       onClose();

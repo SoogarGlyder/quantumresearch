@@ -10,41 +10,65 @@ import TeacherApp from "../components/TeacherApp";
 import { dapatkanLatihanSiswa } from "../actions/soalAction";
 import { timeHelper } from "../utils/timeHelper";
 import { authHelper } from "../utils/authHelper";
-
+import { serialize } from "../utils/responseHelper";
 import {
   PERAN,
   STATUS_SESI,
   KONFIGURASI_SISTEM,
   LABEL_SISTEM,
   CABANG_QUANTUM,
-  PERIODE_BELAJAR
+  PERIODE_BELAJAR,
 } from "../utils/constants";
 
-export const dynamic = "force-dynamic";
+export const dynamic   = "force-dynamic";
 export const revalidate = 0;
 
-const serialize = (data: any) => JSON.parse(JSON.stringify(data));
+// ============================================================================
+// KONSTANTA PERIODE
+// ============================================================================
+const PERIODE_MULAI = new Date(
+  `${PERIODE_BELAJAR.MULAI}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`
+);
+const PERIODE_AKHIR = new Date(
+  `${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`
+);
 
 // ============================================================================
-// 1. DATA SERVICES (Prinsip #7: Separation of Concerns)
+// TYPE DEFINITIONS
 // ============================================================================
-async function ambilDataDashboardPengajar(userLogin: any) {
-  const sekarang = new Date();
+interface UserLogin {
+  _id:            string;
+  nama:           string;
+  username:       string;
+  nomorPeserta:   string;
+  kelas:          string | null;
+  kodePengajar:   string | null;
+  kodeCabang:     string;
+  peran:          string;
+  pangkat:        string | null;
+  totalExp:       number;
+  koleksiLencana: unknown[];
+  status:         string;
+}
+
+// ============================================================================
+// 1. DATA SERVICES (Separation of Concerns)
+// ============================================================================
+async function ambilDataDashboardPengajar(userLogin: UserLogin) {
+  const sekarang  = new Date();
   const batasStaf = timeHelper.getRentangBulanStaf(sekarang);
-  const strMinStaf = timeHelper.getTglJakarta(batasStaf.awal);
-  const strMaxStaf = timeHelper.getTglJakarta(batasStaf.akhir);
 
   const [jadwalPengajar, riwayatAbsensi, statsKonsulRaw] = await Promise.all([
     Jadwal.find({
       kodePengajar: userLogin.kodePengajar,
-      tanggal: { $gte: strMinStaf, $lte: strMaxStaf }
+      tanggal: { $gte: batasStaf.awal, $lte: batasStaf.akhir },
     })
       .sort({ tanggal: 1 })
       .lean(),
 
     AbsensiPengajar.find({
       pengajarId: userLogin._id,
-      waktuMasuk: { $gte: batasStaf.awal, $lte: batasStaf.akhir }
+      waktuMasuk: { $gte: batasStaf.awal, $lte: batasStaf.akhir },
     })
       .sort({ waktuMasuk: -1 })
       .lean(),
@@ -53,9 +77,9 @@ async function ambilDataDashboardPengajar(userLogin: any) {
       {
         $match: {
           pengajarPendamping: userLogin._id,
-          status: STATUS_SESI.SELESAI.id,
-          waktuMulai: { $gte: batasStaf.awal, $lte: batasStaf.akhir }
-        }
+          status:     STATUS_SESI.SELESAI.id,
+          waktuMulai: { $gte: batasStaf.awal, $lte: batasStaf.akhir },
+        },
       },
       {
         $group: {
@@ -63,111 +87,135 @@ async function ambilDataDashboardPengajar(userLogin: any) {
           totalMenit: {
             $sum: {
               $add: [
-                { $max: [0, { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60000] }] },
-                { $ifNull: ["$konsulExtraMenit", 0] }
-              ]
-            }
+                {
+                  $max: [
+                    0,
+                    { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60_000] },
+                  ],
+                },
+                { $ifNull: ["$konsulExtraMenit", 0] },
+              ],
+            },
           },
-          totalSesi: { $count: {} }
-        }
-      }
-    ]).exec()
+          totalSesi: { $count: {} },
+        },
+      },
+    ]).exec(),
   ]);
 
-  const statsKonsul = statsKonsulRaw.length > 0 ? statsKonsulRaw[0] : { totalMenit: 0, totalSesi: 0 };
+  const statsKonsul =
+    statsKonsulRaw.length > 0
+      ? statsKonsulRaw[0]
+      : { totalMenit: 0, totalSesi: 0 };
 
   return {
-    jadwal: serialize(jadwalPengajar),
-    absensi: serialize(riwayatAbsensi),
-    statsKonsul: serialize(statsKonsul)
+    jadwal:      serialize(jadwalPengajar),
+    absensi:     serialize(riwayatAbsensi),
+    statsKonsul: serialize(statsKonsul),
   };
 }
 
-async function ambilDataDashboardSiswa(userLogin: any) {
-  const sekarang = new Date();
-  const batasSiswa = timeHelper.getRentangBulanSiswa(sekarang);
-  const awalSemester = new Date(`${PERIODE_BELAJAR.MULAI}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`);
-  const akhirSemester = new Date(`${PERIODE_BELAJAR.AKHIR}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`);
+async function ambilDataDashboardSiswa(userLogin: UserLogin) {
+  const sekarang    = new Date();
+  const batasSiswa  = timeHelper.getRentangBulanSiswa(sekarang);
 
-  const [riwayatRaw, jadwalMentah, statsRaw, latihanHariIniRaw] = await Promise.all([
-    StudySession.find({
-      siswaId: userLogin._id,
-      waktuMulai: { $gte: awalSemester, $lte: akhirSemester }
-    })
-      .populate("pengajarPendamping", "nama kodePengajar")
-      .sort({ waktuMulai: -1 })
-      .lean(),
+  const [riwayatRaw, jadwalMentah, statsRaw, latihanHariIniRaw] =
+    await Promise.all([
+      StudySession.find({
+        siswaId:    userLogin._id,
+        waktuMulai: { $gte: PERIODE_MULAI, $lte: PERIODE_AKHIR },
+      })
+        .populate("pengajarPendamping", "nama kodePengajar")
+        .sort({ waktuMulai: -1 })
+        .lean(),
 
-    Jadwal.find({
-      kelasTarget: userLogin.kelas,
-      tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR }
-    })
-      .populate({ path: "pengajarId", select: "kodeCabang" })
-      .sort({ tanggal: 1 })
-      .lean(),
+      Jadwal.find({
+        kelasTarget: userLogin.kelas,
+        tanggal: { $gte: PERIODE_MULAI, $lte: PERIODE_AKHIR },
+      })
+        .populate({ path: "pengajarId", select: "kodeCabang" })
+        .sort({ tanggal: 1 })
+        .lean(),
 
-    StudySession.aggregate([
-      {
-        $match: {
-          siswaId: userLogin._id,
-          status: STATUS_SESI.SELESAI.id,
-          waktuMulai: { $gte: batasSiswa.awal, $lte: batasSiswa.akhir }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalMenit: {
-            $sum: {
-              $add: [
-                { $max: [0, { $divide: [{ $subtract: ["$waktuSelesai", "$waktuMulai"] }, 60000] }] },
-                { $ifNull: ["$konsulExtraMenit", 0] }
-              ]
-            }
+      StudySession.aggregate([
+        {
+          $match: {
+            siswaId:    userLogin._id,
+            status:     STATUS_SESI.SELESAI.id,
+            waktuMulai: { $gte: batasSiswa.awal, $lte: batasSiswa.akhir },
           },
-          totalSesi: { $count: {} }
-        }
-      }
-    ]).exec(),
+        },
+        {
+          $group: {
+            _id: null,
+            totalMenit: {
+              $sum: {
+                $add: [
+                  {
+                    $max: [
+                      0,
+                      {
+                        $divide: [
+                          { $subtract: ["$waktuSelesai", "$waktuMulai"] },
+                          60_000,
+                        ],
+                      },
+                    ],
+                  },
+                  { $ifNull: ["$konsulExtraMenit", 0] },
+                ],
+              },
+            },
+            totalSesi: { $count: {} },
+          },
+        },
+      ]).exec(),
 
-    dapatkanLatihanSiswa(userLogin.username, userLogin.kelas, userLogin.kodeCabang)
-  ]);
+      dapatkanLatihanSiswa(
+        userLogin.username,
+        userLogin.kelas ?? "",
+        userLogin.kodeCabang
+      ),
+    ]);
 
-  let jadwalBersih = jadwalMentah as any[];
+  let jadwalBersih = jadwalMentah as Array<typeof jadwalMentah[0] & { pengajarId?: { _id: unknown; kodeCabang: string } | null }>;
+
   if (userLogin.kodeCabang && userLogin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
-    jadwalBersih = jadwalBersih.filter((j: any) =>
-      j.pengajarId && j.pengajarId.kodeCabang === userLogin.kodeCabang
+    jadwalBersih = jadwalBersih.filter(
+      (j) => j.pengajarId?.kodeCabang === userLogin.kodeCabang
     );
   }
 
-  const jadwalFinal = jadwalBersih.map(j => ({
+  const jadwalFinal = jadwalBersih.map((j) => ({
     ...j,
-    pengajarId: j.pengajarId ? j.pengajarId._id.toString() : null
+    pengajarId: j.pengajarId ? (j.pengajarId as { _id: unknown }).toString() : null,
   }));
 
-  const statistik = statsRaw.length > 0 ? statsRaw[0] : { totalMenit: 0, totalSesi: 0 };
+  const statistik =
+    statsRaw.length > 0 ? statsRaw[0] : { totalMenit: 0, totalSesi: 0 };
 
   return {
-    riwayat: serialize(riwayatRaw),
-    jadwal: serialize(jadwalFinal),
-    statistik: serialize(statistik),
-    latihanHariIni: serialize(latihanHariIniRaw)
+    riwayat:        serialize(riwayatRaw),
+    jadwal:         serialize(jadwalFinal),
+    statistik:      serialize(statistik),
+    latihanHariIni: serialize(latihanHariIniRaw),
   };
 }
 
 // ============================================================================
-// 2. MAIN ORCHESTRATOR COMPONENT (Server-Side Controller)
+// 2. MAIN ORCHESTRATOR (Server Component)
 // ============================================================================
 export default async function Home() {
   await connectToDatabase();
 
   const sesi = await authHelper.ambilSesi();
-
-  if (!sesi || !sesi.userId) {
+  if (!sesi?.userId) {
     redirect(KONFIGURASI_SISTEM.PATH_LOGIN);
   }
 
-  const userLogin = await User.findById(sesi.userId).select("-password").lean() as any;
+  const userLogin = await User.findById(sesi.userId)
+    .select("-password")
+    .lean() as UserLogin | null;
 
   if (!userLogin) {
     redirect(`${KONFIGURASI_SISTEM.PATH_LOGIN}?${LABEL_SISTEM.REDIRECT_CLEAR}`);
@@ -183,7 +231,6 @@ export default async function Home() {
       <TeacherApp
         dataUser={serialize(userLogin)}
         {...dataPengajar}
-        onLogout={null}
       />
     );
   }

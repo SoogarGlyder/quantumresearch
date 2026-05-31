@@ -29,7 +29,7 @@ export default function ModalRaporSiswa({ siswa, onClose }) {
   const tarikDataRapor = async () => {
     setLoadingData(true);
     const res = await ambilLaporanBulananSiswa(siswa._id, bulan, tahun);
-    if (res.sukses) setDataRapor(res.data);
+    if (res.ok) setDataRapor(res.data);
     setLoadingData(false);
   };
 

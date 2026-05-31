@@ -161,7 +161,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
     setIsMemprosesKuis(true);
     const res = await terapkanBankSoalKeJadwal(idBankSoal, jadwalTerpilih._id, jadwalTerpilih.pengajarId);
     
-    if (res.sukses) {
+    if (res.ok) {
       alert("✅ " + res.pesan);
       setIsModalBankOpen(false);
       const kuisBaru = await ambilKuisByJadwal(jadwalTerpilih._id);
@@ -177,7 +177,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
     
     setIsMemprosesKuis(true);
     const res = await hapusQuizDariJadwal(jadwalTerpilih._id);
-    if (res.sukses) {
+    if (res.ok) {
       alert("✅ " + res.pesan);
       setDataKuisAktif(null);
     } else {

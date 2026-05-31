@@ -53,7 +53,7 @@ export default function TabSoal({ dataSiswa = [] }) {
   const muatData = async () => {
     setLoading(true);
     const res = await ambilSemuaLatihanSoal();
-    if (res.sukses) setDataSoal(res.data);
+    if (res.ok) setDataSoal(res.data);
     setLoading(false);
   };
 
@@ -92,7 +92,7 @@ export default function TabSoal({ dataSiswa = [] }) {
 
     const res = await prosesSimpanLatihanSoal(idEdit, { ...form, target: finalTarget, url: finalUrl });
     
-    if (res.sukses) {
+    if (res.ok) {
       batalEdit();
       muatData();
     } else {
@@ -120,7 +120,7 @@ export default function TabSoal({ dataSiswa = [] }) {
   const klikHapus = async (id, judul) => {
     if (window.confirm(`Yakin hapus link latihan: "${judul}"?`)) {
       const res = await prosesHapusLatihanSoal(id);
-      if (res.sukses) muatData();
+      if (res.ok) muatData();
       else alert(res.pesan);
     }
   };

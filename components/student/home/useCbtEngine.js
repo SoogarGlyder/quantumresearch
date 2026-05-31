@@ -176,7 +176,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
         jawabanSiswa: arrayJawaban 
       });
       
-      if (res.sukses) {
+      if (res.ok) {
         localStorage.removeItem(storageKey);
         alert(`✅ UJIAN SELESAI!\n🎯 Nilai Anda: ${res.skor}\n🌟 Anda mendapatkan +${res.exp} EXP!`);
         onClose(); 

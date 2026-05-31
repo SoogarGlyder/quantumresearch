@@ -1,14 +1,16 @@
 "use client";
 
 import { FaBolt } from "react-icons/fa6";
-// IMPORT MODULE CSS YANG BARU DIBUAT
-import styles from "./FallbackLoading.module.css"; 
+import styles from "./FallbackLoading.module.css";
 
+/**
+ * @param {{ teks?: string }} props
+ */
 export default function FallbackLoading({ teks = "MEMUAT..." }) {
   return (
     <div className={styles.loadingWrapper}>
       <div className={styles.loadingBox}>
-        <FaBolt color="#ef4444" size={24} className={styles.iconBounce} />
+        <FaBolt className={styles.ikonBolt} aria-hidden="true" />
         <span>{teks}</span>
       </div>
     </div>

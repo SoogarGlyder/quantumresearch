@@ -16,7 +16,7 @@ const bankSoalSchema = new mongoose.Schema(
     mapel: {
       type: String,
       enum: OPSI_MAPEL_KELAS,
-      default: "Matematika",
+      default: "Umum",
       trim: true,
     },
 

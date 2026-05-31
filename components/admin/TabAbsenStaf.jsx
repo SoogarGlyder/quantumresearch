@@ -49,7 +49,7 @@ const ModalAbsenStaf = memo(({ isOpen, onClose, dataPengajar = [], muatData }) =
     };
 
     const res = await prosesSimpanAbsenManual(payloadAbsen);
-    if (res.sukses) {
+    if (res.ok) {
       alert(res.pesan);
       if (muatData) muatData(); 
       onClose();
@@ -211,7 +211,7 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
   const handleHapus = async (id) => {
     if (confirm("Hapus data presensi staf ini?")) {
       const res = await prosesHapusAbsenStaf(id);
-      if (res.sukses) {
+      if (res.ok) {
         if (muatData) muatData();
       } else {
         alert(res.pesan);

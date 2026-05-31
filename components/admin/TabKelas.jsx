@@ -126,7 +126,7 @@ export default function TabKelas({ dataRiwayat = [], dataJadwal = [], dataSiswa 
     
     try {
       const res = await inputAbsenManual(payload);
-      if (res.sukses) { 
+      if (res.ok) { 
         setEditingAbsenId(null); 
         if(typeof muatData === 'function') muatData(); 
       } else { 

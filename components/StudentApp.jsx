@@ -60,7 +60,7 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
     const muatDaftarGuru = async () => {
       try {
         const res = await ambilDaftarGuruDropdown();
-        if (res && res.sukses) {
+        if (res && res.ok) {
           setDaftarGuru(res.data || []);
         }
       } catch (err) {

@@ -58,7 +58,7 @@ function InnerTabTugas({ pengajarId }) {
   useEffect(() => {
     if (!hasFetchedTugas.current) { muatDataTugas(); hasFetchedTugas.current = true; }
     if (!hasFetchedSiswa.current) {
-      ambilDaftarSiswaDropdown().then(res => { if(res.sukses) setDataSiswa(res.data); });
+      ambilDaftarSiswaDropdown().then(res => { if(res.ok) setDataSiswa(res.data); });
       hasFetchedSiswa.current = true;
     }
   }, []);
@@ -66,7 +66,7 @@ function InnerTabTugas({ pengajarId }) {
   const muatDataTugas = async () => {
     setLoadingTugas(true);
     const res = await ambilSemuaLatihanSoal();
-    if (res.sukses) setDataSoal(res.data || []); 
+    if (res.ok) setDataSoal(res.data || []); 
     setLoadingTugas(false);
   };
 
@@ -79,7 +79,7 @@ function InnerTabTugas({ pengajarId }) {
     if (finalUrl.includes("drive.google.com") && finalUrl.includes("/view")) { finalUrl = finalUrl.split("/view")[0] + "/preview"; }
 
     const res = await prosesSimpanLatihanSoal(idEdit, { ...form, target: finalTarget, url: finalUrl });
-    if (res.sukses) { batalEditTugas(); muatDataTugas(); } else { alert(res.pesan); }
+    if (res.ok) { batalEditTugas(); muatDataTugas(); } else { alert(res.pesan); }
     setLoadingForm(false);
   };
 
@@ -94,7 +94,7 @@ function InnerTabTugas({ pengajarId }) {
   const klikHapusTugas = async (id, judul) => {
     if (window.confirm(`Yakin hapus tugas: "${judul}"?`)) {
       const res = await prosesHapusLatihanSoal(id);
-      if (res.sukses) muatDataTugas();
+      if (res.ok) muatDataTugas();
     }
   };
 
@@ -118,7 +118,7 @@ function InnerTabTugas({ pengajarId }) {
   const klikHapusBankSoal = async (id, judul) => {
     if (window.confirm(`YAKIN MENGHAPUS CBT: "${judul}"?`)) {
       const res = await hapusBankSoal(id);
-      if (res.sukses) muatBankSoal(); else alert(res.pesan);
+      if (res.ok) muatBankSoal(); else alert(res.pesan);
     }
   };
 

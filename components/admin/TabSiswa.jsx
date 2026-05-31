@@ -103,7 +103,7 @@ export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false
       const res = await prosesBulkTambahSiswa(jsonData);
       setIsBulkLoading(false);
       
-      if (res.sukses) {
+      if (res.ok) {
         setHasilBulk({ pesan: res.pesan, laporan: res.laporan || [] });
         if (typeof muatData === 'function') muatData();
       } else {

@@ -3,46 +3,57 @@
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import styles from "./PaginationBar.module.css";
 
-//  FIX: Komponen kini menerima currentPage dan onPageChange dari Induk
-export default function PaginationBar({ 
-  currentPage = 1, 
-  totalPages, 
-  onPageChange, 
-  className = "", 
-  style = {} 
+/**
+ * @param {{
+ *   currentPage?: number,
+ *   totalPages: number,
+ *   onPageChange: (page: number) => void,
+ *   className?: string,
+ *   style?: React.CSSProperties,
+ * }} props
+ */
+export default function PaginationBar({
+  currentPage  = 1,
+  totalPages,
+  onPageChange,
+  className    = "",
+  style        = {},
 }) {
   const safeTotal = Math.max(1, Number(totalPages) || 1);
-  
-  // Pastikan currentPage tidak melebihi total halaman 
-  let safeCurrentPage = Number(currentPage);
-  if (isNaN(safeCurrentPage) || safeCurrentPage < 1) safeCurrentPage = 1;
-  if (safeCurrentPage > safeTotal) safeCurrentPage = safeTotal;
 
-  // Jika cuma 1 halaman, sembunyikan pagination
+  let safePage = Number(currentPage);
+  if (isNaN(safePage) || safePage < 1) safePage = 1;
+  if (safePage > safeTotal)            safePage = safeTotal;
+
   if (safeTotal <= 1) return null;
 
   return (
-    <div className={`${styles.wadahPagination} ${className}`} style={style}>
-      <button 
-        disabled={safeCurrentPage <= 1} 
-        onClick={() => onPageChange(safeCurrentPage - 1)}
+    <div
+      className={`${styles.wadahPagination} ${className}`}
+      style={style}
+      role="navigation"
+      aria-label="Navigasi halaman"
+    >
+      <button
+        disabled={safePage <= 1}
+        onClick={() => onPageChange(safePage - 1)}
         className={styles.tombolPage}
-        aria-label="Halaman Sebelumnya"
+        aria-label="Halaman sebelumnya"
       >
-        <FaChevronLeft /> Prev
+        <FaChevronLeft aria-hidden="true" /> Prev
       </button>
 
-      <span className={styles.teksHalaman}>
-        <b>{safeCurrentPage}</b> / {safeTotal}
+      <span className={styles.teksHalaman} aria-live="polite">
+        <b>{safePage}</b> / {safeTotal}
       </span>
 
-      <button 
-        disabled={safeCurrentPage >= safeTotal} 
-        onClick={() => onPageChange(safeCurrentPage + 1)}
+      <button
+        disabled={safePage >= safeTotal}
+        onClick={() => onPageChange(safePage + 1)}
         className={styles.tombolPage}
-        aria-label="Halaman Selanjutnya"
+        aria-label="Halaman selanjutnya"
       >
-        Next <FaChevronRight />
+        Next <FaChevronRight aria-hidden="true" />
       </button>
     </div>
   );

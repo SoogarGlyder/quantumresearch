@@ -297,7 +297,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
     setShowImportPanel(!showImportPanel);
     if (!showImportPanel && listRiwayatKuis.length === 0) {
       const res = await getRiwayatKuisPengajar(adminId);
-      if (res.sukses) setListRiwayatKuis(res.data);
+      if (res.ok) setListRiwayatKuis(res.data);
     }
   };
 
@@ -352,7 +352,7 @@ export default function ModalKuis({ isOpen, onClose, jadwal, kuisLama, adminId, 
         res = await simpanKuis(jadwal._id, adminId, formSoalSiapSimpan, durasiUjian); // Gunakan data hasil konversi
       }
 
-      if (res.sukses) {
+      if (res.ok) {
         alert(isModeBankSoal ? "✅ Master Soal Berhasil Disimpan di Bank!" : "✅ Kuis CBT Berhasil Dipublikasikan!");
         if (muatData) muatData(); 
         onClose();

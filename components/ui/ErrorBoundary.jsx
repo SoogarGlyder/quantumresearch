@@ -2,7 +2,7 @@
 
 import React from "react";
 import { FaTriangleExclamation, FaArrowRotateRight } from "react-icons/fa6";
-import styles from "./ErrorBoundary.module.css"; // 👈 Import CSS Module
+import styles from "./ErrorBoundary.module.css";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -15,7 +15,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary menangkap error:", error, errorInfo);
+    console.error("[ErrorBoundary] Error tertangkap:", error, errorInfo);
   }
 
   render() {
@@ -25,21 +25,23 @@ class ErrorBoundary extends React.Component {
           <div className={styles.errorIcon}>
             <FaTriangleExclamation size={48} />
           </div>
-          
+
           <h2 className={styles.errorTitle}>
-            Waduh, Tab Ini Mengalami Kendala!
+            Komponen ini mengalami kendala
           </h2>
-          
+
           <p className={styles.errorMessage}>
-            Tenang, tab lain masih aman. Error:{" "}
-            <span className={styles.errorDetail}>{this.state.errorMsg}</span>
+            Terjadi kesalahan yang tidak terduga. Silakan coba muat ulang,
+            atau hubungi tim teknis jika masalah berlanjut.
           </p>
-          
-          <button 
-            onClick={() => this.setState({ hasError: false })}
+
+          <button
+            onClick={() =>
+              this.setState({ hasError: false, errorMsg: "" })
+            }
             className={styles.reloadButton}
           >
-            <FaArrowRotateRight /> Muat Ulang Tab
+            <FaArrowRotateRight /> Coba Lagi
           </button>
         </div>
       );

@@ -98,7 +98,7 @@ export default function ModalRaporPengajar({ pengajar, onClose }) {
     setLoadingData(true);
     try {
       const res = await ambilLaporanBulananPengajar(pengajar._id, bulan, tahun);
-      if (res.sukses) setDataRapor(res.data);
+      if (res.ok) setDataRapor(res.data);
     } catch (error) { 
       console.error("Gagal menarik data rapor:", error); 
     }

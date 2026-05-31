@@ -12,41 +12,46 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Modifier berdasarkan ID di constants.js */
 .selesai {
   background-color: #dcfce3;
-  color: #4ade80;
+  color: #15803d;
   border-color: rgba(74, 222, 128, 0.2);
 }
 
 .berjalan {
   background-color: #fef9c3;
-  color: #facc15;
+  color: #854d0e;
   border-color: rgba(250, 204, 21, 0.2);
 }
 
 .tidak_hadir {
   background-color: #f3f4f6;
-  color: #9ca3af;
+  color: #6b7280;
   border-color: rgba(156, 163, 175, 0.2);
 }
 
 .alpa {
   background-color: #fee2e2;
-  color: #ef4444;
+  color: #b91c1c;
   border-color: rgba(239, 68, 68, 0.2);
 }
 
 .sakit {
   background-color: #ffedd5;
-  color: #f97316;
+  color: #c2410c;
   border-color: rgba(249, 115, 22, 0.2);
 }
 
 .izin {
   background-color: #dbeafe;
-  color: #3b82f6;
+  color: #1d4ed8;
   border-color: rgba(59, 130, 246, 0.2);
+}
+
+.pinalti {
+  background-color: #111827;
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 /* Status Default / Belum Absen */

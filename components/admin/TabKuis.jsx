@@ -71,7 +71,7 @@ export default function TabKuis({ adminId }) {
   const klikHapusBankSoal = async (id, judul) => {
     if (window.confirm(`YAKIN MENGHAPUS MASTER SOAL: "${judul}"?\n\nSoal yang sudah ter-copy di kelas/jadwal tidak akan terpengaruh.`)) {
       const res = await hapusBankSoal(id);
-      if (res.sukses) muatBankSoal(); else alert(res.pesan);
+      if (res.ok) muatBankSoal(); else alert(res.pesan);
     }
   };
 

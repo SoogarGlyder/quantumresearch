@@ -18,7 +18,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
   const fetchLiveStatus = async () => {
     try {
       const res = await getStatusKuisLive(jadwalId);
-      if (res.sukses) {
+      if (res.ok) {
         setDataSiswaLive(res.data);
         const now = new Date();
         setLastUpdate(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`);
@@ -47,7 +47,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
     setIsProcessing(true);
     const res = await forceSubmitUjianSiswa(jadwalId, siswaId, nama);
     alert(res.pesan);
-    if (res.sukses) await fetchLiveStatus(); 
+    if (res.ok) await fetchLiveStatus(); 
     setIsProcessing(false);
   };
 
@@ -58,7 +58,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
     setIsProcessing(true);
     const res = await resetUjianSiswa(jadwalId, siswaId);
     alert(res.pesan);
-    if (res.sukses) await fetchLiveStatus(); 
+    if (res.ok) await fetchLiveStatus(); 
     setIsProcessing(false);
   };
 

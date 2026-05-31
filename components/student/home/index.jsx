@@ -61,7 +61,7 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
     let isMounted = true;
     setLoadingMisi(true);
     cekDanGenerateMisiHarian().then(res => {
-      if (isMounted && res.sukses) setMisiHarian(res.data);
+      if (isMounted && res.ok) setMisiHarian(res.data);
       if (isMounted) setLoadingMisi(false);
     });
     return () => { isMounted = false; };
@@ -159,14 +159,14 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
             
             if (isReview) {
               const res = await module.getPembahasanKuis(jadwalKuisHariIni._id, siswa._id);
-              if (res.sukses) {
+              if (res.ok) {
                 setIsReviewMode(true);
                 setJawabanPastReview(res.data.jawabanSiswa);
                 setKuisAktif({ ...dataKuisLive, soal: res.data.soal });
               } else { alert("Gagal memuat pembahasan: " + res.pesan); }
             } else {
               const res = await module.getKuisSiswa(jadwalKuisHariIni._id);
-              if (res.sukses) {
+              if (res.ok) {
                 setIsReviewMode(false);
                 setJawabanPastReview([]);
                 setKuisAktif({ ...dataKuisLive, soal: res.data.soal });

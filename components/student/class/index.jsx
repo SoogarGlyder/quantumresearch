@@ -34,7 +34,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
   useEffect(() => {
     if (siswa?._id) {
       getRiwayatKuisSiswa(siswa._id).then(res => {
-        if (res.sukses) setRiwayatKuis(res.data);
+        if (res.ok) setRiwayatKuis(res.data);
       });
     }
   }, [siswa]);
@@ -108,7 +108,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
   const handleBukaPembahasan = async (jadwalId) => {
     if (!siswa) return alert("Data siswa tidak ditemukan.");
     const res = await getPembahasanKuis(jadwalId, siswa._id);
-    if (res.sukses) {
+    if (res.ok) {
       setJawabanPastReview(res.data.jawabanSiswa);
       setKuisAktifReview({ jadwalId, soal: res.data.soal });
     } else {
