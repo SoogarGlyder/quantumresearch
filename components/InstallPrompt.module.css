@@ -1,0 +1,11 @@
+.installOverlay { position: fixed; bottom: 0; left: 0; right: 0; padding: 16px; z-index: 999998; display: flex; justify-content: center; pointer-events: none; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.installCard { background-color: white; border: 4px solid #111827; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 8px 8px 0 #111827; max-width: 448px; width: 100%; pointer-events: auto; animation: slideUpBrutal 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; }
+.installCloseBtn { position: absolute; top: -12px; right: -12px; background: #ef4444; border: 3px solid #111827; width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; color: white; cursor: pointer; box-shadow: 2px 2px 0 #111827; transition: transform 0.1s, box-shadow 0.1s; }
+.installCloseBtn:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111827; }
+.installHeader { display: flex; align-items: center; gap: 16px; }
+.installIconBox { background-color: #facc15; padding: 12px; border-radius: 12px; border: 3px solid #111827; display: flex; box-shadow: 2px 2px 0 #111827; }
+.installTitle { margin: 0 0 4px 0; color: #111827; font-weight: 900; font-size: 16px; text-transform: uppercase; }
+.installDesc { margin: 0; color: #4b5563; font-size: 13px; font-weight: bold; line-height: 1.5; }
+.installBtn { width: 100%; padding: 14px; background-color: #2563eb; color: white; border: 3px solid #111827; border-radius: 12px; font-weight: 900; cursor: pointer; box-shadow: 4px 4px 0 #111827; display: flex; justify-content: center; align-items: center; gap: 8px; text-transform: uppercase; transition: transform 0.1s, box-shadow 0.1s; margin-top: 8px;}
+.installBtn:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.installIosBox { background-color: #f3f4f6; border: 3px dashed #111827; padding: 12px; border-radius: 12px; margin-top: 8px; font-size: 13px; font-weight: bold; color: #111827; display: flex; flex-direction: column; gap: 8px; text-align: center; }

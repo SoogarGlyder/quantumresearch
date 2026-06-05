@@ -1,58 +1,71 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { FaHouse, FaQrcode, FaUserAstronaut, FaBookOpen, FaBookBookmark, FaRotate } from "react-icons/fa6";
-import styles from "@/components/App.module.css";
+import {
+  FaHouse, FaQrcode, FaUserAstronaut,
+  FaBookOpen, FaBookBookmark, FaRotate,
+} from "react-icons/fa6";
+import styles from "@/components/teacher/TeacherBottomNav.module.css";
+
+const REFRESH_COOLDOWN_MS = 1500;
 
 const TeacherBottomNav = memo(({ tab, setTab }) => {
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // FUNGSI KETUK TAB CERDAS (SMART REFRESH)
-  const handleTabClick = (targetTab) => {
-    if (tab !== targetTab) {
-      setTab(targetTab);
-      return;
-    }
+  const handleTabClick = useCallback(
+    (targetTab) => {
+      if (tab !== targetTab) { setTab(targetTab); return; }
+      if (!isRefreshing) {
+        setIsRefreshing(true);
+        router.refresh();
+        setTimeout(() => setIsRefreshing(false), REFRESH_COOLDOWN_MS);
+      }
+    },
+    [tab, setTab, router, isRefreshing]
+  );
 
-    if (tab === targetTab && !isRefreshing) {
-      setIsRefreshing(true);
-      router.refresh(); 
-      
-      setTimeout(() => {
-        setIsRefreshing(false);
-      }, 1500);
-    }
+  const renderIkon = (targetTab, IkonNormal) => {
+    if (tab === targetTab && isRefreshing)
+      return <FaRotate className={`${styles.navIcon} ${styles.spinAnimation}`} />;
+    return <IkonNormal className={styles.navIcon} />;
   };
 
-  return (
-    <nav className={styles.navMenu}>
-      <button onClick={() => handleTabClick("home")} className={`${styles.navButton} ${tab === "home" ? styles.navButtonActive : ""}`} aria-label="Beranda Pengajar">
-        {tab === "home" && isRefreshing ? <FaRotate className={`${styles.navIcon} ${styles.spinAnimation}`} /> : <FaHouse className={styles.navIcon} />}
-        <span className={styles.teksNav}>Home</span>
-      </button>
+  const navItems = [
+    { key: "home",   label: "Home",   ikon: FaHouse,         aria: "Beranda Pengajar" },
+    { key: "jurnal", label: "Jurnal", ikon: FaBookBookmark,  aria: "Jurnal Pengajar"  },
+    { key: "tugas",  label: "Tugas",  ikon: FaBookOpen,      aria: "Tugas Pengajar"   },
+    { key: "profil", label: "Profil", ikon: FaUserAstronaut, aria: "Profil Pengajar"  },
+  ];
 
-      <button onClick={() => handleTabClick("jurnal")} className={`${styles.navButton} ${tab === "jurnal" ? styles.navButtonActive : ""}`} aria-label="Jurnal Pengajar">
-        {tab === "jurnal" && isRefreshing ? <FaRotate className={`${styles.navIcon} ${styles.spinAnimation}`} /> : <FaBookBookmark className={styles.navIcon} />}
-        <span className={styles.teksNav}>Jurnal</span>
-      </button>
-      
+  return (
+    <nav className={styles.navMenu} aria-label="Navigasi utama pengajar">
+      {navItems.slice(0, 2).map(({ key, label, ikon: Ikon, aria }) => (
+        <button key={key} onClick={() => handleTabClick(key)}
+          className={`${styles.navButton} ${tab === key ? styles.navButtonActive : ""}`}
+          aria-label={aria} aria-current={tab === key ? "page" : undefined}>
+          {renderIkon(key, Ikon)}
+          <span className={styles.teksNav}>{label}</span>
+        </button>
+      ))}
+
       <div className={styles.navButtonMid}>
-        <button onClick={() => handleTabClick("scan")} className={`${styles.scanButton} ${tab === "scan" ? styles.scanButtonActive : ""}`} aria-label="Scan QR Pengajar">
+        <button onClick={() => handleTabClick("scan")}
+          className={`${styles.scanButton} ${tab === "scan" ? styles.scanButtonActive : ""}`}
+          aria-label="Scan QR Pengajar" aria-current={tab === "scan" ? "page" : undefined}>
           <FaQrcode className={styles.scanIcon} />
         </button>
       </div>
 
-      <button onClick={() => handleTabClick("tugas")} className={`${styles.navButton} ${tab === "tugas" ? styles.navButtonActive : ""}`} aria-label="Tugas oleh Pengajar">
-        {tab === "tugas" && isRefreshing ? <FaRotate className={`${styles.navIcon} ${styles.spinAnimation}`} /> : <FaBookOpen className={styles.navIcon} />}
-        <span className={styles.teksNav}>Tugas</span>
-      </button>
-      
-      <button onClick={() => handleTabClick("profil")} className={`${styles.navButton} ${tab === "profil" ? styles.navButtonActive : ""}`} aria-label="Profil Pengajar">
-        {tab === "profil" && isRefreshing ? <FaRotate className={`${styles.navIcon} ${styles.spinAnimation}`} /> : <FaUserAstronaut className={styles.navIcon} />}
-        <span className={styles.teksNav}>Profil</span>
-      </button>
+      {navItems.slice(2).map(({ key, label, ikon: Ikon, aria }) => (
+        <button key={key} onClick={() => handleTabClick(key)}
+          className={`${styles.navButton} ${tab === key ? styles.navButtonActive : ""}`}
+          aria-label={aria} aria-current={tab === key ? "page" : undefined}>
+          {renderIkon(key, Ikon)}
+          <span className={styles.teksNav}>{label}</span>
+        </button>
+      ))}
     </nav>
   );
 });

@@ -2,50 +2,56 @@
 
 import { memo } from "react";
 import { FaBrain, FaPlus, FaUserTie, FaPenToSquare, FaTrashCan } from "react-icons/fa6";
-import PaginationBar from "@/components/ui/PaginationBar"; //  FIX: Impor Pagination
+import PaginationBar from "@/components/ui/PaginationBar";
 import styles from "@/components/App.module.css";
+import taskStyles from "@/components/teacher/task/Task.module.css";
 
-const DaftarKuis = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loading, onBuatBaru, onEdit, onHapus }) => (
-  <div style={{ padding: '24px 16px' }}>
-    
-    <button 
-      onClick={onBuatBaru} 
-      style={{ width: '100%', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: '#22c55e', color: 'white', border: '4px solid #111827', borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '6px 6px 0 #111827', marginBottom: '24px' }}
-    >
+const DaftarKuis = memo(({
+  dataHalIni, totalPage, currentPage, onPageChange,
+  loading, onBuatBaru, onEdit, onHapus,
+}) => (
+  <div className={taskStyles.wrapperDaftarKuis}>
+    <button onClick={onBuatBaru} className={taskStyles.tombolBuatKuis}>
       <FaPlus size={18} /> RAKIT SOAL CBT BARU
     </button>
 
-    <h3 className={styles.contentTitle} style={{ marginLeft: '0'}}><FaBrain color="rgb(34, 197, 94)" /> Daftar Materi Buatanku</h3>
+    <h3 className={styles.contentTitle}>
+      <FaBrain className={taskStyles.ikonHijau} /> Daftar Bank Soal Buatanku
+    </h3>
 
     {loading ? (
-      <div style={{ textAlign: 'center', padding: '40px', fontWeight: '900', color: '#111827' }}>MEMUAT BANK SOAL...</div>
-    ) : (!dataHalIni || dataHalIni.length === 0) ? (
-      <div style={{ textAlign: 'center', padding: '40px', border: '3px dashed #cbd5e1', borderRadius: '15px', color: '#64748b', fontWeight: 'bold' }}>
+      <div className={taskStyles.loadingKuis}>MEMUAT BANK SOAL...</div>
+    ) : !dataHalIni?.length ? (
+      <div className={taskStyles.emptyKuis}>
         Belum ada master soal CBT. Silakan buat baru.
       </div>
     ) : (
       <>
-        <div style={{ display: 'grid', gap: '16px' }}>
+        <div className={taskStyles.gridBankSoal}>
           {dataHalIni.map((bank) => (
-            <div key={bank._id} style={{ background: 'white', border: '4px solid #111827', borderRadius: '15px', padding: '16px', boxShadow: '4px 4px 0 #cbd5e1', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ margin: '0 0 6px 0', fontWeight: '900', fontSize: '18px', color: '#111827', textTransform: 'uppercase', lineHeight: '1.3' }}>
+            <div key={bank._id} className={taskStyles.kartuBankSoal}>
+              <div>
+                <h4 className={taskStyles.judulBankSoal}>
                   {bank.judul || "Tanpa Judul"}
                 </h4>
-                <p style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 'bold', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <p className={taskStyles.pembuatBankSoal}>
                   <FaUserTie /> Oleh: {bank.pembuatId?.nama || "Admin Sistem"}
                 </p>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                  <span style={{ background: '#fef08a', color: '#854d0e', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: '2px solid #a16207' }}>📝 {bank.soal?.length || 0} SOAL</span>
-                  <span style={{ background: '#e2e8f0', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', border: '2px solid #475569' }}>⏱ {bank.durasi || 10} MENIT</span>
+                <div className={taskStyles.chipGroup}>
+                  <span className={taskStyles.chipSoal}>
+                    📝 {bank.soal?.length || 0} SOAL
+                  </span>
+                  <span className={taskStyles.chipDurasi}>
+                    ⏱ {bank.durasiMenit || 10} MENIT
+                  </span>
                 </div>
               </div>
-              
-              <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-                <button onClick={() => onEdit(bank)} style={{ flex: 1, padding: '10px', background: '#facc15', color: '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+
+              <div className={taskStyles.grupTombolBank}>
+                <button onClick={() => onEdit(bank)} className={taskStyles.tombolEditBank}>
                   <FaPenToSquare /> EDIT
                 </button>
-                <button onClick={() => onHapus(bank._id, bank.judul)} style={{ padding: '10px 15px', background: '#ef4444', color: 'white', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>
+                <button onClick={() => onHapus(bank._id, bank.judul)} className={taskStyles.tombolHapusBank} aria-label={`Hapus ${bank.judul}`}>
                   <FaTrashCan />
                 </button>
               </div>
@@ -53,13 +59,12 @@ const DaftarKuis = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loa
           ))}
         </div>
 
-        {/*  FIX: Render Pagination */}
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <PaginationBar 
-            currentPage={currentPage} 
-            totalPages={totalPage} 
-            onPageChange={onPageChange} 
-            style={{ justifyContent: 'space-evenly', width: '100%' }} 
+        <div className={taskStyles.paginasiWrapper}>
+          <PaginationBar
+            currentPage={currentPage}
+            totalPages={totalPage}
+            onPageChange={onPageChange}
+            className={taskStyles.paginasiInner}
           />
         </div>
       </>

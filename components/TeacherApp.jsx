@@ -3,35 +3,40 @@
 import { useState, useMemo } from "react";
 import styles from "@/components/App.module.css";
 import TeacherBottomNav from "@/components/teacher/TeacherBottomNav";
-
-import { 
-  TabBerandaPengajar, 
-  TabJurnalKelas, 
-  TabScanPengajar, 
-  TabTugasPengajar, 
-  TabProfilPengajar 
+import {
+  TabBerandaPengajar,
+  TabJurnalKelas,
+  TabScanPengajar,
+  TabTugasPengajar,
+  TabProfilPengajar,
 } from "@/components/teacher";
 
-//  FIX: Tangkap props statsKonsul dari server (app/page.tsx)
-export default function TeacherApp({ dataUser, jadwal, absensi, statsKonsul, onLogout }) { 
+/**
+ * @param {{
+ *   dataUser:    object,
+ *   jadwal:      object[],
+ *   absensi:     object[],
+ *   statsKonsul: object,
+ * }} props
+ */
+export default function TeacherApp({ dataUser, jadwal, absensi, statsKonsul }) {
   const [tab, setTab] = useState("home");
-  
+
   const absenAktif = useMemo(() => {
-    if (!absensi || !Array.isArray(absensi)) return null;
-    return absensi.find(a => a.waktuMasuk && !a.waktuKeluar);
+    if (!Array.isArray(absensi)) return null;
+    return absensi.find((a) => a.waktuMasuk && !a.waktuKeluar) ?? null;
   }, [absensi]);
 
   const kontenTab = useMemo(() => {
     switch (tab) {
       case "home":
-        //  FIX: Salurkan statsKonsul ke dalam TabBerandaPengajar
         return (
-          <TabBerandaPengajar 
-            dataUser={dataUser} 
-            jadwal={jadwal} 
-            absensi={absensi} 
-            absenAktif={absenAktif} 
-            statsKonsul={statsKonsul} 
+          <TabBerandaPengajar
+            dataUser={dataUser}
+            jadwal={jadwal}
+            absensi={absensi}
+            absenAktif={absenAktif}
+            statsKonsul={statsKonsul}
           />
         );
       case "jurnal":
@@ -41,18 +46,15 @@ export default function TeacherApp({ dataUser, jadwal, absensi, statsKonsul, onL
       case "tugas":
         return <TabTugasPengajar pengajarId={dataUser?._id} />;
       case "profil":
-        return <TabProfilPengajar dataUser={dataUser} onLogout={onLogout} />;
+        return <TabProfilPengajar dataUser={dataUser} />;
       default:
         return null;
     }
-  //  FIX: Tambahkan statsKonsul ke dalam array dependency useMemo
-  }, [tab, dataUser, jadwal, absensi, onLogout, absenAktif, statsKonsul]);
+  }, [tab, dataUser, jadwal, absensi, absenAktif, statsKonsul]);
 
   return (
-    <div className={styles.mainContainer}> 
-      <main>
-        {kontenTab}
-      </main>
+    <div className={styles.mainContainer}>
+      <main>{kontenTab}</main>
       <TeacherBottomNav tab={tab} setTab={setTab} />
     </div>
   );

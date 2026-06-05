@@ -1,0 +1,59 @@
+.logoContainer { padding-top: 24px; margin-bottom: 24px; position: relative; z-index: 10; }
+.logo { background-color: white; padding: 8px 20px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
+
+.identityContainer { width: -webkit-fill-available; display: inline-grid; align-items: flex-end; position: relative; z-index: 10; }
+.welcomeText { font-size: 14px; color: whitesmoke; margin-left: 2px; font-weight: 800; text-transform: uppercase; }
+.userName { font-size: 34px; font-weight: 900; margin: 0; color: white; -webkit-text-stroke: 1px #111827; text-shadow: 3px 3px 0 #111827; }
+.containerIdNumber { background-color: #facc15; color: #111827; padding: 6px 12px; border-radius: 8px; border: 3px solid #111827; display: flex; align-items: center; gap: 8px; box-shadow: 2px 2px 0 #111827; margin-top: 10px; width: fit-content; }
+.IdNumber { font-family: monospace; font-size: 14px; font-weight: 900; }
+
+.bagianPengaturan { padding: 24px; margin-top: 40px; }
+.logoutButton { transition: transform 0.1s ease, box-shadow 0.1s ease; width: 100%; background-color: #ef4444; color: white; font-weight: 900; text-transform: uppercase; padding: 16px; border-radius: 12px; border: 3px solid #111827; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 4px 4px 0 #111827; cursor: pointer; }
+.logoutButton:active { transform: translate(4px, 4px) !important; box-shadow: 0px 0px 0 #111827 !important; }
+
+/* Modal Khusus Profil / Leaderboard */
+.modalOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); z-index: 100; display: flex; flex-direction: column; justify-content: flex-end; max-width: 448px; margin: 0 auto; }
+.modalKonten { background-color: #fdfbf7; border-top: 4px solid #111827; border-left: 4px solid #111827; border-right: 4px solid #111827; border-radius: 24px 24px 0 0; padding: 24px; height: 85vh; overflow-y: auto; position: relative; animation: slideUpBrutal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.tombolTutupModal { position: absolute; top: 20px; right: 20px; background-color: #ef4444; border: 3px solid #111827; color: white; width: 36px; height: 36px; border-radius: 50%; font-weight: 900; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 2px 2px 0 #111827; cursor: pointer; z-index: 10; }
+.tombolTutupModal:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111827; }
+.top10Button { width: 100%; background-color: #111827; color: #facc15; border: 3px solid #111827; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; cursor: pointer; transition: transform 0.1s; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); }
+.top10Button:active { transform: scale(0.96); box-shadow: 0 0 0 rgba(0,0,0,0); }
+/* ==========================================================================
+   TAMBAHAN: Inline styles dipindahkan dari JSX
+   ========================================================================== */
+
+/* ProfilCard — wrapper utama */
+.profilCardWrapper { transform: none; margin: 0 16px 32px; }
+
+/* ProfilCard — header */
+.cardHeaderRow { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #111827; padding-bottom: 16px; }
+.namaPengajar  { margin: 0; font-size: 18px; font-weight: 900; color: #111827; text-transform: uppercase; }
+
+/* ProfilCard — tombol toggle edit */
+.tombolToggleEdit     { border: 3px solid #111827; border-radius: 8px; padding: 10px; box-shadow: 3px 3px 0 #111827; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+.tombolToggleEdit:active { transform: translate(3px, 3px); box-shadow: 0 0 0 #111827; }
+.tombolToggleEditBuka { background-color: #facc15; color: #111827; }
+.tombolToggleEditTutup { background-color: #ef4444; color: white; }
+
+/* ProfilCard — notifikasi */
+.pesanNotif  { margin-bottom: 20px; padding: 12px; border-radius: 12px; border: 3px solid #111827; font-weight: 900; font-size: 13px; color: #111827; box-shadow: 4px 4px 0 #111827; }
+.pesanError  { background-color: #fecaca; }
+.pesanSukses { background-color: #dcfce3; }
+.pesanInfo   { background-color: #fef08a; }
+
+/* ProfilCard — form edit */
+.formStackProfil { display: flex; flex-direction: column; gap: 16px; }
+.wrapperField    { display: flex; flex-direction: column; gap: 4px; }
+.inputProfil     { background-color: #f8fafc; }
+.tombolSimpanProfil { width: 100%; margin-top: 12px; padding: 16px; }
+
+/* LogoutSection — wrapper */
+.logoutWrapper { margin: 0 16px; padding: 0; }
+
+/* ProfilView — InfoRow */
+.infoRow          { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border: 3px solid #111827; border-radius: 12px; box-shadow: 2px 2px 0 rgba(0,0,0,0.1); background-color: #f8fafc; }
+.infoRowHighlight { background-color: #dbeafe; }
+.infoRowLabel     { font-size: 12px; font-weight: 900; color: #4b5563; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
+.infoRowValue     { font-size: 14px; font-weight: 900; color: #111827; }
+.infoRowValueHighlight { color: #2563eb; }
+.infoStack        { display: flex; flex-direction: column; gap: 12px; }

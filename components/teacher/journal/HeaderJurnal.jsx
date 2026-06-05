@@ -6,18 +6,25 @@ import styles from "@/components/App.module.css";
 
 const HeaderJurnal = memo(({ judul, subTeks }) => (
   <div className={`${styles.appHeader} header-aman-poni`}>
-    <div className={styles.shapeRed}></div>
-    <div className={styles.shapeYellow}></div>
+    <div className={styles.shapeRed} />
+    <div className={styles.shapeYellow} />
     <div className={styles.logoContainer}>
       <div className={styles.logo}>
-        <Image src="/logo-qr-panjang.png" alt="Logo" width={1000} height={40} style={{width: '100%', height: 'auto'}} priority />
+        <Image
+          src="/logo-qr-panjang.png"
+          alt="Logo Quantum Research"
+          width={1000}
+          height={40}
+          style={{ width: "100%", height: "auto" }}
+          priority
+        />
       </div>
     </div>
     <div className={styles.identityContainer}>
       <p className={styles.welcomeText}>Administrasi Mengajar</p>
       <h1 className={styles.userName}>{judul}</h1>
       <div className={styles.containerIdNumber}>
-         <span className={styles.IdNumber}>{subTeks}</span>
+        <span className={styles.IdNumber}>{subTeks}</span>
       </div>
     </div>
   </div>

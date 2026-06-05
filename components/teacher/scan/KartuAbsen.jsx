@@ -2,39 +2,53 @@
 
 import { memo } from "react";
 import { FaHourglassHalf, FaChevronUp, FaChevronDown } from "react-icons/fa6";
+import { timeHelper } from "@/utils/timeHelper";
 import styles from "@/components/App.module.css";
+import scanStyles from "@/components/teacher/scan/Scan.module.css";
 
 const KartuAbsen = memo(({ abs, isOpen, onToggle }) => {
   const isSelesai = !!abs.waktuKeluar;
-  const formatWaktu = (date) => new Date(date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  const formatTanggal = (date) => new Date(date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className={`${styles.recordCard} ${styles.recordCardClickable}`} onClick={() => onToggle(abs._id)} style={{ border: '3px solid #111827', margin: '0 0 20px'}}>
+    <div
+      className={`${styles.recordCard} ${styles.recordCardClickable} ${scanStyles.kartuAbsenBorder}`}
+      onClick={() => onToggle(abs._id)}
+    >
       <div className={styles.recordCardRow}>
-        <p className={styles.recordDate}>{timeHelper.formatTanggalLengkap(abs.waktuMasuk)}</p>
-        
+        <p className={styles.recordDate}>
+          {timeHelper.formatTanggalLengkap(abs.waktuMasuk)}
+        </p>
+
         {!isSelesai && (
-          <span className={styles.recordDuration} style={{ backgroundColor: '#fef08a', color: '#111827', border: '2px solid #111827', display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <span className={`${styles.recordDuration} ${scanStyles.badgeBertugas}`}>
             <FaHourglassHalf className={styles.spin} /> Bertugas
           </span>
         )}
-        
-        <div style={{ color: '#111827' }}>
+
+        <div className={scanStyles.chevronWrapper}>
           {isOpen ? <FaChevronUp size={16} /> : <FaChevronDown size={16} />}
         </div>
       </div>
 
       {isOpen && (
-        <div className={styles.recordDetail} style={{ marginTop: '12px' }}>
-            <div className={styles.recordDetailRow} style={{ backgroundColor: '#dbeafe', border: '2px solid #111827', marginBottom: '4px' }}>
-              <span>Clock In</span>
-              <span style={{ fontWeight: '900' }}>{formatWaktu(abs.waktuMasuk)} WIB</span>
-            </div>
-            <div className={styles.recordDetailRow} style={{ backgroundColor: isSelesai ? '#dcfce3' : '#fef08a', border: '2px solid #111827' }}>
-              <span>Clock Out</span>
-              <span style={{ fontWeight: '900' }}>{isSelesai ? `${formatWaktu(abs.waktuKeluar)} WIB` : 'Sedang Bertugas...'}</span>
-            </div>
+        <div className={styles.recordDetail}>
+          <div className={`${styles.recordDetailRow} ${scanStyles.rowClockIn}`}>
+            <span>Clock In</span>
+            <span className={scanStyles.rowNilaiBold}>
+              {timeHelper.formatJam(abs.waktuMasuk)} WIB
+            </span>
+          </div>
+
+          <div
+            className={`${styles.recordDetailRow} ${isSelesai ? scanStyles.rowClockOutSelesai : scanStyles.rowClockOutBerjalan}`}
+          >
+            <span>Clock Out</span>
+            <span className={scanStyles.rowNilaiBold}>
+              {isSelesai
+                ? `${timeHelper.formatJam(abs.waktuKeluar)} WIB`
+                : "Sedang Bertugas..."}
+            </span>
+          </div>
         </div>
       )}
     </div>

@@ -4,63 +4,87 @@ import { memo } from "react";
 import { FaBookOpen, FaBullseye, FaPenToSquare, FaTrash, FaLink, FaPlus } from "react-icons/fa6";
 import PaginationBar from "@/components/ui/PaginationBar";
 import styles from "@/components/App.module.css";
+import taskStyles from "@/components/teacher/task/Task.module.css";
 
-// 🚀 HELPER: Potong target menjadi maksimal 2 kata saja
 const formatNamaTarget = (targetData) => {
   if (!targetData) return "-";
-  
   if (Array.isArray(targetData)) {
-    return targetData.map(t => String(t).split(' ').slice(0, 2).join(' ')).join(', ');
+    return targetData.map((t) => String(t).split(" ").slice(0, 2).join(" ")).join(", ");
   }
-  
-  return String(targetData).split(' ').slice(0, 2).join(' ');
+  return String(targetData).split(" ").slice(0, 2).join(" ");
 };
 
-const DaftarTugas = memo(({ dataHalIni, totalPage, currentPage, onPageChange, loading, onEdit, onHapus, onBukaForm }) => (
+const DaftarTugas = memo(({
+  dataHalIni, totalPage, currentPage, onPageChange,
+  loading, onEdit, onHapus, onBukaForm,
+}) => (
   <div className={styles.contentContainer}>
-    
-    <div style={{ padding: '0 16px', marginBottom: '24px' }}>
-      <button onClick={onBukaForm} className={styles.tombolSimpanBiruBaru} style={{ width: '100%', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+    <div className={taskStyles.wrapperTombolBuat}>
+      <button onClick={onBukaForm} className={`${styles.tombolSimpanBiruBaru} ${taskStyles.tombolBuatTugas}`}>
         <FaPlus size={18} /> BUAT TUGAS BARU
       </button>
     </div>
 
-    <h3 className={styles.contentTitle}><FaBookOpen color="#2563eb" /> Daftar Materi Buatanku</h3>
-    
+    <h3 className={styles.contentTitle}>
+      <FaBookOpen className={taskStyles.ikonBiru} /> Daftar Materi Buatanku
+    </h3>
+
     {loading ? (
-      <div className={styles.messageLoading} style={{ borderRadius: '12px', margin: '0 16px' }}>MEMUAT DATA...</div>
-    ) : (!dataHalIni || dataHalIni.length === 0) ? (
+      <div className={`${styles.messageLoading} ${taskStyles.loadingBlock}`}>MEMUAT DATA...</div>
+    ) : !dataHalIni?.length ? (
       <p className={styles.emptySchedule}>BELUM ADA MATERI YANG DIBUAT.</p>
     ) : (
       <>
         <div className={styles.scheduleList}>
-          {(dataHalIni || []).map(item => (
-            <div key={item._id} className={styles.scheduleCard} style={{ backgroundColor: item.isAktif ? '#ffffff' : '#f3f4f6', opacity: item.isAktif ? 1 : 0.7 }}>
+          {dataHalIni.map((item) => (
+            <div
+              key={item._id}
+              className={`${styles.scheduleCard} ${item.isAktif ? taskStyles.kartuTugasAktif : taskStyles.kartuTugasNonaktif}`}
+            >
               <div className={styles.scheduleCardRow}>
-                <div className={styles.scheduleDate} style={{ color: '#2563eb' }}><FaBullseye style={{marginRight: '6px'}}/> {item.tipeTarget}</div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={() => onEdit(item)} style={{ color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer' }}><FaPenToSquare size={20}/></button>
-                  <button onClick={() => onHapus(item._id, item.judul)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><FaTrash size={20}/></button>
+                <div className={`${styles.scheduleDate} ${taskStyles.scheduleDateBiru}`}>
+                  <FaBullseye style={{ marginRight: 6 }} /> {item.tipeTarget}
+                </div>
+                <div className={taskStyles.wrapperTombolAksi}>
+                  <button onClick={() => onEdit(item)} className={taskStyles.tombolAksiEdit} aria-label={`Edit ${item.judul}`}>
+                    <FaPenToSquare size={20} />
+                  </button>
+                  <button onClick={() => onHapus(item._id, item.judul)} className={taskStyles.tombolAksiHapus} aria-label={`Hapus ${item.judul}`}>
+                    <FaTrash size={20} />
+                  </button>
                 </div>
               </div>
+
               <div className={styles.scheduleCardRow}>
-                <p className={styles.scheduleSubject} style={{ fontSize: '18px' }}>{item.judul}</p>
+                <p className={styles.scheduleSubject}>{item.judul}</p>
               </div>
+
               <div className={styles.scheduleCardRow}>
-                <div className={styles.scheduleInfoBox} style={{ background: '#111827', border: '2px solid #111827', padding: '6px 8px' }}>
-                  {/* 🚀 TARGET DI POTONG JADI 2 KATA */}
-                  <span className={styles.scheduleInfo} style={{ color: 'white' }}>{formatNamaTarget(item.target)}</span>
+                <div className={`${styles.scheduleInfoBox} ${taskStyles.tagTarget}`}>
+                  <span className={`${styles.scheduleInfo} ${taskStyles.tagTargetTeks}`}>
+                    {formatNamaTarget(item.target)}
+                  </span>
                 </div>
-                <a href={item.url} target="_blank" rel="noreferrer" className={styles.scheduleCount} style={{ background: '#fef08a', color: '#111827', textDecoration: 'none', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-                  CEK LINK <FaLink size={12}/> 
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${styles.scheduleCount} ${taskStyles.linkCekTugas}`}
+                >
+                  CEK LINK <FaLink size={12} />
                 </a>
               </div>
             </div>
           ))}
         </div>
 
-        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-          <PaginationBar currentPage={currentPage} totalPages={totalPage} onPageChange={onPageChange} style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} />
+        <div className={taskStyles.paginasiWrapper}>
+          <PaginationBar
+            currentPage={currentPage}
+            totalPages={totalPage}
+            onPageChange={onPageChange}
+            className={taskStyles.paginasiInner}
+          />
         </div>
       </>
     )}

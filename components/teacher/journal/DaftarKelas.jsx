@@ -4,121 +4,129 @@ import { useState, useMemo, useEffect, memo } from "react";
 import { FaCalendarCheck, FaCheckDouble, FaCircleExclamation } from "react-icons/fa6";
 import { timeHelper } from "@/utils/timeHelper";
 import { LIMIT_DATA, PERIODE_BELAJAR } from "@/utils/constants";
-import { formatHelper } from "@/utils/formatHelper"; 
+import { formatHelper } from "@/utils/formatHelper";
 import PaginationBar from "@/components/ui/PaginationBar";
 import styles from "@/components/App.module.css";
+import journalStyles from "@/components/teacher/journal/Journal.module.css";
 
-import FilterJurnal from "./FilterJurnal"; 
-import ModalJurnal from "./ModalJurnal"; 
+import FilterJurnal from "./FilterJurnal";
+import ModalJurnal from "./ModalJurnal";
 
-const getNormalizeDate = (dateInput) => {
-  if (!dateInput) return 0;
-  try {
-    const dateObj = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-    const jktString = dateObj.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
-    const jktDate = new Date(jktString);
-    jktDate.setHours(0, 0, 0, 0);
-    return jktDate.getTime();
-  } catch (error) { return 0; }
-};
-
+// ============================================================================
+// SUB-KOMPONEN: KARTU JADWAL
+// ============================================================================
 const CardJadwal = memo(({ j, onPilihJadwal }) => {
   const isTerisi = !!j.bab;
+
   return (
-    <div 
-      className={styles.scheduleCard} 
-      onClick={() => onPilihJadwal(j)} 
-      style={{ backgroundColor: isTerisi ? '#ffffff' : '#ffffe0', border: '3px solid #111827', cursor: 'pointer' }}
+    <div
+      className={`${styles.scheduleCard} ${isTerisi ? journalStyles.cardJadwalTerisi : journalStyles.cardJadwalKosong}`}
+      onClick={() => onPilihJadwal(j)}
     >
       <div className={styles.scheduleCardRow}>
-        <div className={styles.scheduleDate} style={{ color: isTerisi ? '#15803d' : '#b45309' }}>
-          {isTerisi ? <FaCheckDouble /> : <FaCircleExclamation />} {new Date(j.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}
+        <div className={`${styles.scheduleDate} ${isTerisi ? journalStyles.scheduleDateTerisi : journalStyles.scheduleDateKosong}`}>
+          {isTerisi ? <FaCheckDouble /> : <FaCircleExclamation />}
+          {" "}{timeHelper.formatTanggalLengkap(j.tanggal)}
         </div>
         <div className={styles.scheduleTime}>{j.jamMulai} - {j.jamSelesai}</div>
       </div>
-      <div className={styles.scheduleCardRow}><p className={styles.scheduleSubject}>{j.mapel}</p></div>
+
       <div className={styles.scheduleCardRow}>
-        <div className={styles.scheduleInfoBox} style={{ background: isTerisi ? '#15803d' : '#ef4444', border: '2px solid #111827', padding: '4px 10px' }}>
-          <span className={styles.scheduleInfo} style={{ color: 'white', fontSize: '10px', fontWeight: '900' }}>
-            {isTerisi ? 'JURNAL TERISI' : 'BELUM ISI JURNAL'}
+        <p className={styles.scheduleSubject}>{j.mapel}</p>
+      </div>
+
+      <div className={styles.scheduleCardRow}>
+        <div className={`${styles.scheduleInfoBox} ${isTerisi ? journalStyles.badgeStatusTerisi : journalStyles.badgeStatusKosong}`}>
+          <span className={journalStyles.badgeStatusTeks}>
+            {isTerisi ? "JURNAL TERISI" : "BELUM ISI JURNAL"}
           </span>
         </div>
-        <div className={styles.scheduleCount} style={{ fontWeight: '900' }}>{j.kelasTarget}</div>
+        <div className={styles.scheduleCount}>{j.kelasTarget}</div>
       </div>
     </div>
   );
 });
 CardJadwal.displayName = "CardJadwal";
 
-export default function DaftarKelas({ jadwal = [], hariIniMurni }) {
-  const hariIniString = timeHelper.getTglJakarta(); 
-  
-  const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_KELAS || 10;
+// ============================================================================
+// KOMPONEN UTAMA
+// ============================================================================
+const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_KELAS || 10;
 
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery]);
+/**
+ * @param {{ jadwal: object[], hariIniString: string }} props
+ */
+export default function DaftarKelas({ jadwal = [], hariIniString }) {
+  const [jadwalTerpilih, setJadwalTerpilih] = useState(null);
+  const [searchQuery,    setSearchQuery]    = useState("");
+  const [page,           setPage]           = useState(1);
+
+  useEffect(() => { setPage(1); }, [searchQuery]);
 
   const jadwalDitampilkan = useMemo(() => {
-    let arsip = (jadwal || []).filter(j => {
-      const tglJadwalMurni = getNormalizeDate(j.tanggal);
-      const awalPeriodeMurni = getNormalizeDate(PERIODE_BELAJAR.MULAI);
-      const akhirPeriodeMurni = getNormalizeDate(PERIODE_BELAJAR.AKHIR);
-
-      const isMasaLalu = tglJadwalMurni < hariIniMurni;
-      const isHariIniSudahSelesai = tglJadwalMurni === hariIniMurni && !!j.bab;
-      const masukPeriode = tglJadwalMurni >= awalPeriodeMurni && tglJadwalMurni <= akhirPeriodeMurni;
-      
-      return masukPeriode && (isMasaLalu || isHariIniSudahSelesai);
+    let arsip = jadwal.filter((j) => {
+      const tgl          = timeHelper.getTglJakarta(j.tanggal);
+      const masukPeriode = tgl >= PERIODE_BELAJAR.MULAI && tgl <= PERIODE_BELAJAR.AKHIR;
+      const sudahLewat   = tgl < hariIniString;
+      const hariIniSelesai = tgl === hariIniString && !!j.bab;
+      return masukPeriode && (sudahLewat || hariIniSelesai);
     });
 
     if (searchQuery.trim()) {
-      const keywords = searchQuery.toLowerCase().split(',').map(k => k.trim()).filter(k => k.length > 0);
-      arsip = arsip.filter(j => {
-        const isTerisi = !!j.bab;
-        const statusTeks = isTerisi ? "jurnal terisi" : "belum isi jurnal";
-        const teksTanggal = j?.tanggal ? new Date(j.tanggal).toLocaleDateString('id-ID', { 
-          timeZone: PERIODE_BELAJAR.TIMEZONE || "Asia/Jakarta", 
-          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
-        }).toLowerCase() : "";
+      const keywords = searchQuery
+        .toLowerCase()
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean);
 
-        return keywords.every(kw => (
-          (j?.mapel?.toLowerCase() || "").includes(kw) ||
-          (j?.kelasTarget?.toLowerCase() || "").includes(kw) ||
-          statusTeks.includes(kw) ||
-          teksTanggal.includes(kw)
-        ));
+      arsip = arsip.filter((j) => {
+        const statusTeks = j.bab ? "jurnal terisi" : "belum isi jurnal";
+        const teksTanggal = timeHelper.formatTanggalLengkap(j.tanggal).toLowerCase();
+
+        return keywords.every(
+          (kw) =>
+            (j?.mapel?.toLowerCase() || "").includes(kw) ||
+            (j?.kelasTarget?.toLowerCase() || "").includes(kw) ||
+            statusTeks.includes(kw) ||
+            teksTanggal.includes(kw)
+        );
       });
     }
 
-    return arsip.sort((a, b) => getNormalizeDate(b.tanggal) - getNormalizeDate(a.tanggal));
+    return arsip.sort(
+      (a, b) =>
+        timeHelper.getTglJakarta(b.tanggal).localeCompare(
+          timeHelper.getTglJakarta(a.tanggal)
+        )
+    );
+  }, [jadwal, hariIniString, searchQuery]);
 
-  }, [jadwal, hariIniMurni, searchQuery]);
-
-  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(jadwalDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(
+    jadwalDitampilkan,
+    page,
+    ITEMS_PER_PAGE
+  );
 
   return (
     <>
-      {/*  FIX: Lempar text placeholder kustom untuk Kelas */}
-      <FilterJurnal 
-        searchQuery={searchQuery} 
-        setSearchQuery={setSearchQuery} 
+      <FilterJurnal
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
         placeholder="Cari mapel, kelas, tanggal, atau status..."
       />
-      
+
       <div className={styles.contentContainer}>
         <h3 className={styles.contentTitle}>
-          <FaCalendarCheck color="#10b981" /> Daftar Riwayat & Revisi
+          <FaCalendarCheck className={journalStyles.ikonHijau} /> Daftar Riwayat & Revisi
         </h3>
-        
-        {(!dataHalIni || dataHalIni.length === 0) ? (
-          <div className={styles.emptySchedule} style={{ padding: '40px 20px' }}>
-            <p style={{ fontSize: '30px', margin: 0 }}>📂</p>
-            <p style={{ fontWeight: '800', marginTop: '12px' }}>BELUM ADA ARSIP JURNAL.</p>
-            <p style={{ fontSize: '11px', color: '#64748b' }}>Selesaikan kelas di Beranda untuk memindahkannya ke sini.</p>
+
+        {dataHalIni.length === 0 ? (
+          <div className={`${styles.emptySchedule} ${journalStyles.emptyJurnal}`}>
+            <p className={journalStyles.emptyJurnalIkon}>📂</p>
+            <p className={journalStyles.emptyJurnalJudul}>BELUM ADA ARSIP JURNAL.</p>
+            <p className={journalStyles.emptyJurnalSub}>
+              Selesaikan kelas di Beranda untuk memindahkannya ke sini.
+            </p>
           </div>
         ) : (
           <>
@@ -128,12 +136,12 @@ export default function DaftarKelas({ jadwal = [], hariIniMurni }) {
               ))}
             </div>
 
-            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-              <PaginationBar 
-                currentPage={page} 
-                totalPages={totalPage} 
-                onPageChange={setPage} 
-                style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} 
+            <div className={journalStyles.paginasiWrapper}>
+              <PaginationBar
+                currentPage={page}
+                totalPages={totalPage}
+                onPageChange={setPage}
+                className={journalStyles.paginasiInner}
               />
             </div>
           </>
@@ -141,7 +149,11 @@ export default function DaftarKelas({ jadwal = [], hariIniMurni }) {
       </div>
 
       {jadwalTerpilih && (
-        <ModalJurnal jadwalTerpilih={jadwalTerpilih} hariIni={hariIniString} onClose={() => setJadwalTerpilih(null)} />
+        <ModalJurnal
+          jadwalTerpilih={jadwalTerpilih}
+          hariIni={hariIniString}
+          onClose={() => setJadwalTerpilih(null)}
+        />
       )}
     </>
   );
