@@ -86,13 +86,11 @@ input, button, select, textarea {
 body {
   background-color: var(--background);
   color: var(--foreground);
-  /* 👇 Body menetapkan Encode Sans sebagai hukum dasar 👇 */
   font-family: var(--font-premium) !important; 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 👇 Judul (h1-h6) menetapkan League Spartan sebagai hukum pengecualian 👇 */
 h1, h2, h3, h4, h5, h6, .font-spartan {
   font-family: var(--font-judul) !important;
   letter-spacing: -0.5px;
@@ -155,6 +153,20 @@ h1, h2, h3, h4, h5, h6, .font-spartan {
   z-index: 10000 !important;
 }
 
+/* ============================================================================
+   3. OPTIMASI PWA & MOBILE LAYOUT (iOS Notch Fix)
+   ============================================================================ */
+.header-aman-poni {
+  padding-top: max(20px, env(safe-area-inset-top)) !important;
+}
+
+.nav-bawah-aman {
+  padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+}
+
+/* ============================================================================
+   4. PENGALAMAN NATIVE APP (Sembunyikan Scroll Bar)
+   ============================================================================ */
 ::-webkit-scrollbar {
   background-color: var(--background);
   display: none;
