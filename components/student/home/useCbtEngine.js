@@ -22,17 +22,13 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   
   const timerRef = useRef(null);
 
-  // Sinkronisasi Ref agar fungsi submit selalu mendapat data terbaru dari state
   useEffect(() => {
     jawabanSiswaRef.current = jawabanSiswa;
   }, [jawabanSiswa]);
 
-  //PERBAIKAN KRUSIAL: Muat Data Review / Lokal
   useEffect(() => {
     if (isReviewMode && jawabanPast) {
       const pastObj = {};
-      // FIX: Jangan pernah memfilter jawaban kosong (""). 
-      // Jika dihilangkan, index soal akan bergeser dan merusak pewarnaan Merah/Hijau!
       jawabanPast.forEach((jawaban, index) => {
         pastObj[index] = jawaban !== undefined && jawaban !== null ? jawaban : "";
       });
@@ -55,7 +51,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     }
   }, [isReviewMode, storageKey, jawabanPast]);
 
-  // Auto-Save ke Local Storage (Hanya saat ujian aktif)
   useEffect(() => {
     if (isDataLoaded && !isReviewMode && isUjianMulai) {
       const stateToSave = { jawaban: jawabanSiswa, waktu: sisaDetik, pelanggaran };
@@ -63,7 +58,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     }
   }, [jawabanSiswa, sisaDetik, isDataLoaded, pelanggaran, storageKey, isReviewMode, isUjianMulai]);
 
-  // Sistem Anti-Cheat
   useEffect(() => {
     if (isReviewMode || !isUjianMulai || isSubmitting) return;
     
@@ -100,7 +94,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isUjianMulai, isSubmitting, koneksiTerputus, isReviewMode]);
 
-  // Deteksi Koneksi Internet Terputus
   useEffect(() => {
     const handleOnline = () => {
       if (koneksiTerputus && isSubmitting && !isReviewMode) {
@@ -112,7 +105,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [koneksiTerputus, isSubmitting, isReviewMode]);
 
-  // Countdown Timer
   useEffect(() => {
     if (isDataLoaded && isUjianMulai && !koneksiTerputus && !isReviewMode) {
       timerRef.current = setInterval(() => {
@@ -131,7 +123,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDataLoaded, isUjianMulai, koneksiTerputus, isReviewMode]);
 
-  // Handler Pilihan Jawaban
   const handlePilihJawaban = useCallback((nomorSoal, opsiPilihan) => {
     if (isReviewMode) return; 
     setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: opsiPilihan }));
@@ -154,14 +145,20 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: text }));
   }, [isReviewMode]);
 
-  // Eksekusi Submit Jawaban ke Database
   const eksekusiSubmit = async () => {
+    // 🛡️ GUARD CLAUSE: Jangan pernah tembak server jika ini Ujian Demo!
+    if (jadwalId && jadwalId.includes("demo")) {
+      alert("🎉 LUAR BIASA! Ini adalah simulasi CBT pada Mode Demo. Jawaban tidak dikirim ke server. Anda bisa mengulang kuis ini lagi kapan saja!");
+      localStorage.removeItem(storageKey); // Bersihkan sisa jawaban agar bisa diulang dari nol
+      onClose();
+      return;
+    }
+
+    // -- LOGIKA ASLI --
     setIsSubmitting(true); setKoneksiTerputus(false); clearInterval(timerRef.current);
     if (document.fullscreenElement) document.exitFullscreen().catch(e=>e);
 
     const jawabanFinal = jawabanSiswaRef.current;
-    
-    // Pastikan panjang arrayJawaban selalu sama persis dengan jumlah daftarSoal
     const arrayJawaban = daftarSoal.map((_, index) => 
       jawabanFinal[index] !== undefined ? jawabanFinal[index] : ""
     );

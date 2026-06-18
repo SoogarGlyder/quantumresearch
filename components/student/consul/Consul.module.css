@@ -1,0 +1,28 @@
+/* ==========================================================================
+   STUDENT: CONSUL (Riwayat Konsul)
+   ========================================================================== */
+.filterContainer { padding: 20px 24px; margin: 24px 16px; margin-bottom: 0; justify-items: center; background-color: white; border: 3px solid #111827; box-shadow: 6px 6px 0 #111827; border-radius: 16px; position: relative; z-index: 10;}
+.labelFilter { font-size: 14px; font-weight: 900; color: #111827; text-transform: uppercase; }
+.containerDropdownFilter { display: flex; gap: 12px; justify-self: normal}
+.filterOption { flex: 1; background-color: #e5e7eb; border: 3px solid #111827; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 900; color: #111827; outline: none; appearance: none; box-shadow: 4px 4px 0 #111827; transition: transform 0.1s ease, box-shadow 0.1s ease; }
+.filterOption:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+
+.containerRecord { padding: 0 16px 24px; flex: 1; overflow-y: auto; }
+.emptyIcon { font-size: 60px; color: #9ca3af; margin: 0 auto 16px; display: block; }
+.emptyText { color: #111827; font-weight: 900; font-size: 16px; text-transform: uppercase; }
+
+.recordCard { padding: 20px; margin: 24px 0; display: flex; flex-direction: column; background-color: white; border: 3px solid #111827; box-shadow: 6px 6px 0 #111827; border-radius: 16px; position: relative; z-index: 10; transition: transform 0.1s ease, box-shadow 0.1s ease;}
+.recordCard:active { transform: translate(4px, 4px) !important; box-shadow: 0px 0px 0 #111827 !important; }
+.recordCard:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 #ef4444; }
+
+.recordCardRow {display: flex; justify-content: space-between; align-items: center;}
+.recordDate {font-size: 14px; font-weight: 900; color: #111827; background-color: #fef08a; padding: 4px 8px; border-radius: 6px; border: 2px solid #111827; text-transform: uppercase; }
+.recordTitle { font-size: 20px; font-weight: 900; color: #111827; text-transform: uppercase; margin-top: 8px; }
+
+.wadahStatusKanan { text-align: right; }
+.badgeStatus { font-size: 10px; padding: 6px 12px; border-radius: 8px; font-weight: 900; text-transform: uppercase; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; }
+.recordDuration { font-size: 14px; font-weight: 900; color: #2563eb; border: 2px solid #2563eb; padding: 4px 8px; border-radius: 6px; display: inline-block; }
+
+.recordCardClickable { cursor: pointer; }
+.recordDetail { margin-top: 16px; padding-top: 16px; border-top: 3px dashed #111827; display: flex; flex-direction: column; gap: 8px; animation: slideDownBrutal 0.2s ease-out forwards; transform-origin: top; }
+.recordDetailRow { display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; color: #111827; padding: 10px 16px; border: 3px solid #111827; border-radius: 8px; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }

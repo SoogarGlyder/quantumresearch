@@ -13,13 +13,20 @@ import {
 
 /**
  * @param {{
- *   dataUser:    object,
- *   jadwal:      object[],
- *   absensi:     object[],
- *   statsKonsul: object,
+ * dataUser:      object,
+ * jadwal:        object[],
+ * absensi:       object[],
+ * statsKonsul:   object,
+ * riwayatKonsul: object[],
  * }} props
  */
-export default function TeacherApp({ dataUser, jadwal, absensi, statsKonsul }) {
+export default function TeacherApp({ 
+  dataUser, 
+  jadwal, 
+  absensi, 
+  statsKonsul, 
+  riwayatKonsul = []
+}) {
   const [tab, setTab] = useState("home");
 
   const absenAktif = useMemo(() => {
@@ -37,6 +44,7 @@ export default function TeacherApp({ dataUser, jadwal, absensi, statsKonsul }) {
             absensi={absensi}
             absenAktif={absenAktif}
             statsKonsul={statsKonsul}
+            riwayatKonsul={riwayatKonsul}
           />
         );
       case "jurnal":
@@ -50,7 +58,7 @@ export default function TeacherApp({ dataUser, jadwal, absensi, statsKonsul }) {
       default:
         return null;
     }
-  }, [tab, dataUser, jadwal, absensi, absenAktif, statsKonsul]);
+  }, [tab, dataUser, jadwal, absensi, absenAktif, statsKonsul, riwayatKonsul]); // 👈 3. MENAMBAHKAN riwayatKonsul KE DEPENDENCY ARRAY USEMEMO
 
   return (
     <div className={styles.mainContainer}>

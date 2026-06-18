@@ -43,7 +43,6 @@
   max-width: 448px;
   margin: 0 auto;
   position: relative;
-
   box-shadow: 0 0 0 rgba(0,0,0,1);
   display: flex;
   flex-direction: column;
@@ -100,19 +99,19 @@
 
 .identityContainer { width: -webkit-fill-available; display: inline-grid; align-items: flex-end; position: relative; z-index: 10; }
 .welcomeText { font-size: 14px; color: whitesmoke; margin-left: 2px; font-weight: 800; text-transform: uppercase; }
-.userName { font-size: 34px; font-weight: 900; margin: 0; color: white; -webkit-text-stroke: 1px #111827; text-shadow: 3px 3px 0 #111827; }
+.userName { font-size: 40px; font-weight: 900; margin: 0; color: white; -webkit-text-stroke: 1px #111827; text-shadow: 3px 3px 0 #111827; }
 
 .containerIdNumber { 
   background-color: #facc15; color: #111827; padding: 6px 12px; border-radius: 8px; border: 3px solid #111827; 
   display: flex; align-items: center; gap: 8px; box-shadow: 2px 2px 0 #111827; margin-top: 10px; width: fit-content;
 }
-.IdNumber { font-family: monospace; font-size: 14px; font-weight: 900; }
+.IdNumber { font-size: 14px; font-weight: 700; }
 
 /* Template Kartu Brutalism */
 .infoContainer, .wadahPilihMapel, .cameraFrame, .recordCard, .filterContainer, .wadahKosong {
   background-color: white; border: 3px solid #111827; box-shadow: 6px 6px 0 #111827; border-radius: 16px; position: relative; z-index: 10;
 }
-.infoContainer { position: relative; padding: 20px; color: #1f2937; margin-top: 24px; z-index: 20;}
+.infoContainer { position: relative; padding: 20px; color: #1f2937; margin-top: 16px; z-index: 20;}
 .infoHeader { font-size: 13px; font-weight: 900; color: #2563eb; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 3px solid #111827; padding-bottom: 8px; }
 .labelInfo { font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 800; text-transform: uppercase; }
 .nilaiInfo { font-weight: 900; color: #111827; font-size: 16px; margin: 0; }
@@ -145,7 +144,7 @@
 /* ==========================================================================
    5. JADWAL KELAS 
    ========================================================================== */
-.contentTitle { font-size: 16px; font-weight: 900; color: #111827; margin: 0 0 20px 16px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
+.contentTitle { font-size: 16px; font-weight: 600; color: #111827; margin: 0 0 20px 16px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
 .scheduleList { display: flex; flex-direction: column; gap: 16px; padding: 0 16px; }
 .emptySchedule { text-align: center; padding: 20px; background-color: #e5e7eb; border-radius: 12px; border: 3px dashed #111827; color: #4b5563; font-size: 14px; font-weight: 800; margin: 0 16px; text-transform: uppercase; }
 .scheduleCard {cursor: pointer; background-color: #fdfbf7; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; padding: 16px; gap: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform 0.1s, box-shadow 0.1s; }

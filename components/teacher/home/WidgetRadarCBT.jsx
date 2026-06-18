@@ -44,7 +44,7 @@ export default function WidgetRadarCBT({ jadwalHariIni }) {
   return (
     <div className={styles.contentContainer}>
       <h3 className={styles.contentTitle}>
-        <FaSatelliteDish className={homeStyles.ikonMerah} /> Monitoring Pre-Test
+        Monitoring Pre-Test
       </h3>
 
       {loading ? (

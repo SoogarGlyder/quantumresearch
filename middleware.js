@@ -21,21 +21,15 @@ const getJwtSecret = () => {
 
 // ============================================================================
 // MIDDLEWARE — Next.js Route Protection
-//
-// Dieksekusi di Edge Runtime sebelum setiap request.
-// Memverifikasi JWT dari cookie dan menentukan redirect berdasarkan peran.
-//
-// Alur keputusan:
-//   1. Pengguna dengan sesi aktif, tidak boleh akses halaman login
-//   2. Pengguna tanpa sesi, tidak boleh akses halaman dalam
-//   3. Area /admin, hanya Admin, Staff Akademik, dan Kakak Asuh
-//   4. Admin murni di "/", redirect ke /admin
 // ============================================================================
 
 export async function middleware(request) {
-  const path        = request.nextUrl.pathname;
-  const token       = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
-  const isPublicPath = path === KONFIGURASI_SISTEM.PATH_LOGIN;
+  const path  = request.nextUrl.pathname;
+  const token = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
+  
+  // 👇 1. PISAHKAN DEFINISI RUTE PUBLIK & DEMO
+  const isLoginPath = path === KONFIGURASI_SISTEM.PATH_LOGIN;
+  const isDemoPath  = path === "/demo";
 
   let sesi = null;
   if (token) {
@@ -47,7 +41,13 @@ export async function middleware(request) {
     }
   }
 
-  if (isPublicPath && sesi) {
+  // 👇 2. BERIKAN JALUR VIP UNTUK DEMO (Boleh masuk dengan atau tanpa sesi)
+  if (isDemoPath) {
+    return NextResponse.next();
+  }
+
+  // 👇 3. PENGGUNA SUDAH LOGIN TAPI KE HALAMAN LOGIN -> TENDANG KE BERANDA
+  if (isLoginPath && sesi) {
     const berhakAksesAdmin =
       sesi.peran === PERAN.ADMIN.id ||
       (sesi.peran === PERAN.PENGAJAR.id &&
@@ -57,12 +57,14 @@ export async function middleware(request) {
     return NextResponse.redirect(new URL(tujuan, request.url));
   }
 
-  if (!isPublicPath && !sesi) {
+  // 👇 4. PENGGUNA BELUM LOGIN DAN BUKAN DI HALAMAN LOGIN -> TENDANG KE LOGIN
+  if (!isLoginPath && !sesi) {
     return NextResponse.redirect(
       new URL(KONFIGURASI_SISTEM.PATH_LOGIN, request.url)
     );
   }
 
+  // 👇 5. PROTEKSI AREA ADMIN
   if (sesi && path.startsWith(PERAN.ADMIN.home)) {
     const adalahAdmin        = sesi.peran === PERAN.ADMIN.id;
     const adalahStafBerwenang =
@@ -75,6 +77,7 @@ export async function middleware(request) {
     }
   }
 
+  // 👇 6. ADMIN MURNI NYASAR KE BERANDA SISWA -> KEMBALIKAN KE ADMIN
   if (sesi && path === PERAN.SISWA.home && sesi.peran === PERAN.ADMIN.id) {
     return NextResponse.redirect(new URL(PERAN.ADMIN.home, request.url));
   }

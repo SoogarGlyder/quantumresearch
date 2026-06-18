@@ -186,7 +186,6 @@ export const OPSI_KETERANGAN_ABSEN = Object.freeze([
   { label: STATUS_SESI.IZIN.label,  value: STATUS_SESI.IZIN.id },
 ]);
 
-// ✅ FIX: Typo "PAGNATION" → "PAGINATION" (3 tempat)
 export const LIMIT_DATA = Object.freeze({
   PAGINATION_DEFAULT: 20,
   PAGINATION_KELAS:    3,
@@ -233,7 +232,7 @@ export const GAMIFIKASI = Object.freeze({
   },
 
   KAMUS_LENCANA: {
-    "first_blood":      { ikon: "🩸", nama: "First Blood",         warna: "#ef4444" },
+    "first_blood":      { ikon: "🩸", nama: "First Blood",          warna: "#ef4444" },
     "burung_hantu":     { ikon: "🦉", nama: "Burung Hantu",         warna: "#8b5cf6" },
     "konsisten_30":     { ikon: "🔥", nama: "Konsisten 30 Hari",    warna: "#f97316" },
     "weekend_warrior":  { ikon: "⚔️", nama: "Pejuang Weekend",      warna: "#2563eb" },
@@ -241,7 +240,7 @@ export const GAMIFIKASI = Object.freeze({
     "master_fisika":    { ikon: "🍎", nama: "Newton Fisika",        warna: "#2563eb" },
     "master_kimia":     { ikon: "🧪", nama: "Curie Kimia",          warna: "#0891b2" },
     "master_biologi":   { ikon: "🧬", nama: "Mendel Biologi",       warna: "#16a34a" },
-    "master_inggris":   { ikon: "🇬🇧", nama: "Shakespeare English", warna: "#dc2626" },
+    "master_inggris":   { ikon: "🇬🇧", nama: "Shakespeare English",  warna: "#dc2626" },
     "kutu_buku":        { ikon: "📚", nama: "Kutu Buku",            warna: "#ca8a04" },
     "penjaga_pintu":    { ikon: "🚪", nama: "Penjaga Pintu",        warna: "#475569" },
     "penunggang_badai": { ikon: "⛈️", nama: "Penunggang Badai",     warna: "#334155" },

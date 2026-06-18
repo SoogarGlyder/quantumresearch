@@ -19,7 +19,17 @@ import {
 
 import StudentBottomNav from "./student/StudentBottomNav";
 
-export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanHariIni }) {
+export default function StudentApp({ 
+  siswa, 
+  riwayat, 
+  jadwal, 
+  statistik, 
+  latihanHariIni, 
+  klasemenDemo = null,       // Default null untuk produksi
+  kuisDemo = null,           // Default null untuk produksi
+  riwayatKuisDemo = null,    // Default null untuk produksi
+  isDemoMode = false         // Default false untuk produksi
+}) {
   const router = useRouter();
 
   const adaKonsulAktif = useMemo(() => riwayat?.some(
@@ -110,7 +120,6 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
       }
     }
 
-    //  FIX: Jika ada error validasi lokal, hilangkan layar error otomatis setelah 3 detik
     if (pesanErrorLokal) {
       setHasilScan(teksDariKamera);
       setPesanSistem(pesanErrorLokal);
@@ -128,13 +137,8 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
       
       if (laporan.sukses) { 
         router.refresh();
-        
-        //  FIX: Timer 3 Detik setelah berhasil sebelum me-reset kamera
         setTimeout(() => {
           resetScanner();
-          
-          // Cerdas mendeteksi apakah ini proses Check-Out (Selesai/Dibatalkan)
-          // Jika ya, bersihkan pilihan mapel dan guru untuk sesi berikutnya
           const isCheckOut = laporan.pesan.includes("Selesai") || 
                              laporan.pesan.includes("Check-out") || 
                              laporan.pesan.includes("dibatalkan");
@@ -146,12 +150,10 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
         }, 3000);
 
       } else {
-        //  FIX: Timer 3 Detik jika gagal scan (server menolak)
         setTimeout(() => resetScanner(), 3000);
       }
     } catch (error) {
       setPesanSistem("Gagal menghubungi server. Periksa koneksi.");
-      //  FIX: Timer 3 Detik jika internet terputus
       setTimeout(() => resetScanner(), 3000);
     } finally {
       setSedangLoading(false);
@@ -161,8 +163,8 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
   return (
     <div className={styles.mainContainer}>
       <main>
-        {tab === "home" && <TabBerandaSiswa siswa={siswa} jadwal={jadwal} riwayat={riwayat} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} latihanHariIni={latihanHariIni} />}
-        {tab === "kelas" && <TabKelasSiswa jadwal={jadwal} riwayat={riwayat} siswa={siswa} />}
+        {tab === "home" && <TabBerandaSiswa siswa={siswa} jadwal={jadwal} riwayat={riwayat} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} latihanHariIni={latihanHariIni} klasemenDemo={klasemenDemo} kuisDemo={kuisDemo}/>}
+        {tab === "kelas" && <TabKelasSiswa jadwal={jadwal} riwayat={riwayat} siswa={siswa} isDemoMode={isDemoMode} riwayatKuisDemo={riwayatKuisDemo}/>}
         
         {tab === "scan" && (
           <TabScanSiswa 

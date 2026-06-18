@@ -1,6 +1,8 @@
 .appHeader {
   background-color: #2563eb; padding-bottom: 50px; padding-left: 24px; padding-right: 24px; box-shadow: 0 4px 0 #111827; color: white; position: relative; overflow: hidden; z-index: 10;
 }
+
+.welcomeText { font-size: 14px; color: whitesmoke; margin-bottom: 12px; margin-left: 2px; font-weight: 800; text-transform: uppercase; }
 .shapeRed { position: absolute; right: -20px; width: 120px; height: 120px; background-color: #ef4444; border: 4px solid #111827; border-radius: 50%; }
 .shapeYellow { position: absolute; bottom: -40px; left: -40px; width: 100px; height: 100px; background-color: #facc15; border: 4px solid #111827; transform: rotate(45deg); border-radius: 16px; }
 .headerTitle { 
@@ -65,9 +67,6 @@
 .gelarPeringkat { font-size: 11px; font-weight: 900; color: #4b5563; background-color: rgba(255,255,255,0.6); padding: 2px 8px; border-radius: 6px; border: 2px solid #111827; display: inline-block; width: fit-content; }
 .kananPeringkat { text-align: right; }
 .waktuPeringkat { font-size: 16px; font-weight: 900; color: #111827; background-color: white; padding: 6px 12px; border: 3px solid #111827; border-radius: 12px; box-shadow: 2px 2px 0 #111827; }
-/* ==========================================================================
-   TAMBAHAN: Inline styles yang dipindahkan dari JSX files
-   ========================================================================== */
 
 /* Grid variant: 3 kolom (HeaderPengajar - stats kelas) */
 .statGrid3Col { grid-template-columns: repeat(3, 1fr); }
@@ -89,7 +88,7 @@
 .tombolAdmin:hover { background-color: #eab308; }
 .tombolAdmin:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
 
-/* Utility warna ikon — menggantikan color prop inline */
+/* Utility warna ikon */
 .ikonBiru { color: #2563eb; }
 .ikonAbu  { color: #64748b; }
 .ikonMerah { color: #ef4444; }
@@ -114,23 +113,14 @@
   background-color: #f8fafc; border: 2px solid #cbd5e1;
   box-shadow: none; opacity: 0.85; cursor: pointer;
 }
-.scheduleDateMendatang {
-  background-color: #e2e8f0; color: #4b5563; border: 2px solid #cbd5e1;
-}
-.scheduleTimeMendatang {
-  color: #64748b; border-color: #cbd5e1;
-  display: flex; align-items: center; gap: 4px;
-}
+.scheduleDateMendatang { background-color: #e2e8f0; color: #4b5563; border: 2px solid #cbd5e1; }
+.scheduleTimeMendatang { color: #64748b; border-color: #cbd5e1; display: flex; align-items: center; gap: 4px; }
 .scheduleSubjectMendatang { font-size: 16px; color: #334155; }
-.scheduleCountMendatang {
-  background-color: #94a3b8; border: 2px solid #64748b; font-size: 12px;
-}
-.emptyScheduleMendatang {
-  background-color: transparent; border: 2px dashed #cbd5e1;
-}
+.scheduleCountMendatang { background-color: #94a3b8; border: 2px solid #64748b; font-size: 12px; }
+.emptyScheduleMendatang { background-color: transparent; border: 2px dashed #cbd5e1; }
 .contentTitleMendatang { color: #4b5563; }
 
-/* WidgetRadarCBT — kartu kuis aktif (dark mode) */
+/* WidgetRadarCBT */
 .kartuKuisAktif {
   background-color: #1e293b; border: 3px solid #ef4444;
   box-shadow: 4px 4px 0 #7f1d1d; cursor: pointer;
@@ -151,9 +141,7 @@
   z-index: 99999; background-color: #f8fafc;
   overflow-y: auto; padding-bottom: 40px;
 }
-
 .statGrid4Col { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px; }
-
 .statCardModal { padding: 16px; border-radius: 12px; border: 3px solid #111827; text-align: center; box-shadow: 4px 4px 0 #111827; }
 .statCardModal h4 { margin: 0; font-size: 11px; font-weight: 900; color: #111827; }
 .statCardModal span { font-size: 24px; font-weight: 900; }
@@ -193,7 +181,7 @@
 .kiriSiswa   { flex: 1 1 auto; }
 .kananSiswa  { display: flex; align-items: center; gap: 10px; }
 
-/* Konfirmasi inline (pengganti window.confirm) */
+/* Konfirmasi inline */
 .backdropKonfirmasi {
   position: fixed; inset: 0; background: rgba(0,0,0,0.7);
   z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px;
@@ -217,7 +205,7 @@
   cursor: pointer; box-shadow: 2px 2px 0 #111827;
 }
 
-/* Notifikasi hasil aksi (pengganti alert) */
+/* Notifikasi */
 .pesanAksiArea {
   padding: 12px 16px; border-radius: 10px; border: 3px solid #111827;
   font-weight: 900; font-size: 14px; margin-bottom: 16px;
@@ -226,7 +214,7 @@
 .pesanAksiSukses { background: #dcfce3; color: #166534; }
 .pesanAksiGagal  { background: #fee2e2; color: #b91c1c; }
 
-/* Dot live indicator & animasi */
+/* Dot live indicator */
 .dotLive {
   display: inline-block; width: 10px; height: 10px;
   background: #ef4444; border-radius: 50%;
@@ -245,3 +233,104 @@
 /* Loading state */
 .loadingMonitor { padding: 40px 20px; text-align: center; border-radius: 12px; }
 .loadingMonitor h3 { margin: 0; font-weight: 900; text-transform: uppercase; }
+
+/* ==========================================================================
+   WIDGET SLIDER / CAROUSEL (INFO CONTAINER)
+   ========================================================================== */
+.sliderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 3px solid #111827;
+  padding-bottom: 12px;
+}
+
+.sliderTitle {
+  font-size: 14px;
+  font-weight: 900;
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.sliderNavGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.sliderTombolNav {
+  background-color: #facc15;
+  border: 2px solid #111827;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #111827;
+  transition: transform 0.1s, box-shadow 0.1s;
+  color: #111827;
+}
+
+.sliderTombolNav:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #111827;
+}
+
+.sliderContentArea {
+  min-height: 120px; /* Jaga tinggi tetap stabil agar layar tidak meloncat saat ganti slide */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.sliderDotGroup {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.sliderDot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #111827;
+  border-radius: 50%;
+  background-color: #e5e7eb;
+  transition: background-color 0.2s;
+}
+
+.sliderDotAktif {
+  background-color: #2563eb;
+}
+
+/* Placeholder saat data kosong */
+.wadahPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  background-color: #f3f4f6;
+  border: 3px dashed #111827;
+  border-radius: 12px;
+}
+
+.teksPlaceholder {
+  font-weight: 900;
+  color: #4b5563;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+/* Animasi pergantian slide */
+.animasiSlideMasuk {
+  animation: slideMasukKanan 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes slideMasukKanan {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}

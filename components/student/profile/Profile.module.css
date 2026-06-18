@@ -1,0 +1,35 @@
+/* ==========================================================================
+   STUDENT: PROFILE (Profil & Pengaturan)
+   ========================================================================== */
+.logoContainer { padding-top: 24px; margin-bottom: 24px; position: relative; z-index: 10; }
+.logo { background-color: white; padding: 8px 20px; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
+
+.identityContainer { width: -webkit-fill-available; display: inline-grid; align-items: flex-end; position: relative; z-index: 10; }
+.welcomeText { font-size: 14px; color: whitesmoke; margin-left: 2px; font-weight: 800; text-transform: uppercase; }
+.userName { font-size: 34px; font-weight: 900; margin: 0; color: white; -webkit-text-stroke: 1px #111827; text-shadow: 3px 3px 0 #111827; }
+
+.containerIdNumber { background-color: #facc15; color: #111827; padding: 6px 12px; border-radius: 8px; border: 3px solid #111827; display: flex; align-items: center; gap: 8px; box-shadow: 2px 2px 0 #111827; margin-top: 10px; width: fit-content; }
+.IdNumber { font-family: monospace; font-size: 14px; font-weight: 900; }
+
+.infoContainer, .wadahKosong { background-color: white; border: 3px solid #111827; box-shadow: 6px 6px 0 #111827; border-radius: 16px; position: relative; z-index: 10; }
+.infoContainer { position: relative; padding: 20px; color: #1f2937; margin-top: 24px; z-index: 20;}
+.infoHeader { font-size: 13px; font-weight: 900; color: #2563eb; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 3px solid #111827; padding-bottom: 8px; }
+.labelInfo { font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 800; text-transform: uppercase; }
+.nilaiInfo { font-weight: 900; color: #111827; font-size: 16px; margin: 0; }
+
+.bagianPengaturan { padding: 24px; margin-top: 40px; }
+
+.logoutButton { width: 100%; background-color: #ef4444; color: white; font-weight: 900; text-transform: uppercase; padding: 16px; border-radius: 12px; border: 3px solid #111827; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 4px 4px 0 #111827; cursor: pointer; transition: transform 0.1s ease, box-shadow 0.1s ease;}
+.logoutButton:active { transform: translate(4px, 4px) !important; box-shadow: 0px 0px 0 #111827 !important; }
+
+.tombolSimpanBiruBaru { background-color: #2563eb; color: white; border: 4px solid #111827; border-radius: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; box-shadow: 6px 6px 0 #111827; cursor: pointer; transition: transform 0.1s ease, box-shadow 0.1s ease;}
+.tombolSimpanBiruBaru:active:not(:disabled) { transform: translate(4px, 4px) !important; box-shadow: 0px 0px 0 #111827 !important; }
+.tombolSimpanBiruBaru:disabled { background-color: #9ca3af; cursor: not-allowed; transform: none !important; box-shadow: none !important; color: #4b5563; }
+
+/* Modal Overlay (Klasemen/Top 10) */
+.modalOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); z-index: 100; display: flex; flex-direction: column; justify-content: flex-end; max-width: 448px; margin: 0 auto; }
+.modalKonten { background-color: #fdfbf7; border-top: 4px solid #111827; border-left: 4px solid #111827; border-right: 4px solid #111827; border-radius: 24px 24px 0 0; padding: 24px; height: 85vh; overflow-y: auto; position: relative; animation: slideUpBrutal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.tombolTutupModal { position: absolute; top: 20px; right: 20px; background-color: #ef4444; border: 3px solid #111827; color: white; width: 36px; height: 36px; border-radius: 50%; font-weight: 900; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 2px 2px 0 #111827; cursor: pointer; z-index: 10; }
+.tombolTutupModal:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111827; }
+.top10Button { width: 100%; background-color: #111827; color: #facc15; border: 3px solid #111827; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; cursor: pointer; transition: transform 0.1s; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); }
+.top10Button:active { transform: scale(0.96); box-shadow: 0 0 0 rgba(0,0,0,0); }

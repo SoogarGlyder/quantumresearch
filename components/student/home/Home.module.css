@@ -1,0 +1,66 @@
+/* ==========================================================================
+   STUDENT: HOME (Beranda)
+   ========================================================================== */
+.appHeader { background-color: #2563eb; padding-bottom: 50px; padding-left: 24px; padding-right: 24px; box-shadow: 0 4px 0 #111827; color: white; position: relative; overflow: hidden; z-index: 10; }
+.shapeRed { position: absolute; right: -20px; width: 120px; height: 120px; background-color: #ef4444; border: 4px solid #111827; border-radius: 50%; }
+.shapeYellow { position: absolute; bottom: -40px; left: -40px; width: 100px; height: 100px; background-color: #facc15; border: 4px solid #111827; transform: rotate(45deg); border-radius: 16px; }
+.headerTitle { font-size: 26px; font-weight: 900; color: white; margin: 0; justify-items: center; justify-self: center; gap: 8px; text-transform: uppercase; letter-spacing: 1px; -webkit-text-stroke: 1px #111827; text-shadow: 3px 3px 0 #111827; position: relative; z-index: 2; }
+
+/* Grid Statistik */
+.statGridContainer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.statContainer { background-color: #f8fafc; border: 3px solid #111827; border-radius: 12px; padding: 12px; box-shadow: 4px 4px 0 #111827; display: flex; flex-direction: column; justify-content: center; }
+.statLabel { font-size: 11px; font-weight: 900; color: #4b5563; text-transform: uppercase; margin-bottom: 4px; }
+.statValue { font-size: 16px; font-weight: 900; color: #111827; }
+.nilaiStatBiru { color: #2563eb; }
+.nilaiStatMerah { color: #ef4444; }
+.nilaiStatHijau { color: #15803d; }
+.titleBadge { background-color: #facc15; border: 3px solid #111827; padding: 8px 12px; border-radius: 12px; font-weight: 900; color: #111827; text-align: center; box-shadow: 4px 4px 0 #111827; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Jadwal Kelas */
+.areaKlikJadwal { transition: transform 0.1s ease, box-shadow 0.1s ease; }
+.areaKlikJadwal:active { transform: translate(4px, 4px) !important; box-shadow: 0px 0px 0 #111827 !important; }
+.scheduleList { display: flex; flex-direction: column; gap: 16px; padding: 0 16px; }
+.emptySchedule { text-align: center; padding: 20px; background-color: #e5e7eb; border-radius: 12px; border: 3px dashed #111827; color: #4b5563; font-size: 14px; font-weight: 800; margin: 0 16px; text-transform: uppercase; }
+.scheduleCard {cursor: pointer; background-color: #fdfbf7; border-radius: 12px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; padding: 16px; gap: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform 0.1s, box-shadow 0.1s; }
+.scheduleCard:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 #2563eb; }
+.scheduleCardRow {display: flex; justify-content: space-between; align-items: center;}
+.scheduleSubject { letter-spacing: -0.5px; margin: 0; font-size: 32px; font-weight: 900; color: #111827; text-transform: uppercase; }
+.scheduleDate {font-size: 14px; font-weight: 900; color: #111827; background-color: #fef08a; padding: 4px 8px; border-radius: 6px; border: 2px solid #111827; text-transform: uppercase; }
+.scheduleTime {margin: 0; background-color: white; color: #ef4444; padding: 4px 8px; border-radius: 8px; font-size: 14px; font-weight: 900; border: 2px solid #111827; text-align: center; }
+.scheduleCount {min-width: fit-content; font-size: 20px; font-weight: 900; color: white; background-color: #2563eb; padding: 4px 16px; border-radius: 6px; border: 2px solid #111827; text-transform: uppercase; }
+.scheduleTeacher {display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #4b5563; background-color: #f3f4f6; padding: 8px; border-radius: 8px; border: 2px dashed #9ca3af; }
+.teacherName {color: #111827; font-weight: 900; }
+.presenceArea { padding-top: 12px; background-color: white; border-top: 3px solid #6b7280;}
+.badgesContainer { display: flex; flex-wrap: wrap; gap: 8px; }
+.presenceBadge { font-size: 12px; font-weight: 900; padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; border: 3px solid #111827; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }
+.attendBadge { background-color: #4ade80; color: #111827; }
+.ongoingBadge { background-color: #60a5fa; color: #111827; } 
+.alphaBadge { background-color: #ef4444; color: white; }
+.lateBadge { background-color: #f97316; color: white; } 
+.extraBadge { background-color: #c084fc; color: white; }
+
+/* Klasemen Leaderboard */
+.wadahKlasemen { display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
+.kartuPeringkat { display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 3px solid #111827; border-radius: 16px; box-shadow: 4px 4px 0 #111827; background-color: white; transition: transform 0.1s, box-shadow 0.1s; }
+.kartuPeringkat:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111827; }
+.juara1 { background-color: #facc15; box-shadow: 6px 6px 0 #111827; border-width: 4px; transform: scale(1.02); }
+.juara2 { background-color: #e2e8f0; box-shadow: 6px 6px 0 #111827; }
+.juara3 { background-color: #fdba74; box-shadow: 6px 6px 0 #111827; }
+.kiriPeringkat { display: flex; align-items: center; gap: 16px; }
+.angkaPeringkat { font-size: 24px; font-weight: 900; color: #111827; width: 40px; text-align: center; text-shadow: 2px 2px 0 white; }
+.juara1 .angkaPeringkat { font-size: 32px; color: white; text-shadow: 3px 3px 0 #111827; -webkit-text-stroke: 1px #111827; }
+.infoPeringkat { display: flex; flex-direction: column; }
+.namaPeringkat { font-size: 16px; font-weight: 900; color: #111827; margin: 0 0 4px 0; text-transform: uppercase; }
+.gelarPeringkat { font-size: 11px; font-weight: 900; color: #4b5563; background-color: rgba(255,255,255,0.6); padding: 2px 8px; border-radius: 6px; border: 2px solid #111827; display: inline-block; width: fit-content; }
+.kananPeringkat { text-align: right; }
+.waktuPeringkat { font-size: 16px; font-weight: 900; color: #111827; background-color: white; padding: 6px 12px; border: 3px solid #111827; border-radius: 12px; box-shadow: 2px 2px 0 #111827; }
+
+/* Arena Misi */
+.contentTitleMission { margin: 0 0 16px 16px; }
+.missionList { padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+.missionCard { background-color: white; padding: 16px; border-radius: 16px; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; }
+.missionCardHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.missionCardTitle { font-weight: 900; color: #111827; text-transform: uppercase; display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.missionCardProgress { font-size: 12px; font-weight: 900; color: #4b5563; }
+.progressTrackContainer { border: 3px solid #111827; border-radius: 8px; height: 16px; background-color: #e5e7eb; overflow: hidden; }
+.progressTrackValue { height: 100%; transition: width 0.5s ease-out; }

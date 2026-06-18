@@ -58,7 +58,7 @@ async function ambilDataDashboardPengajar(userLogin: UserLogin) {
   const sekarang  = new Date();
   const batasStaf = timeHelper.getRentangBulanStaf(sekarang);
 
-  const [jadwalPengajar, riwayatAbsensi, statsKonsulRaw] = await Promise.all([
+  const [jadwalPengajar, riwayatAbsensi, statsKonsulRaw, riwayatKonsulRaw] = await Promise.all([
     Jadwal.find({
       kodePengajar: userLogin.kodePengajar,
       tanggal: { $gte: batasStaf.awal, $lte: batasStaf.akhir },
@@ -101,6 +101,15 @@ async function ambilDataDashboardPengajar(userLogin: UserLogin) {
         },
       },
     ]).exec(),
+
+    // 👇 KUERI BARU: Ambil data array mentah sesi konsultasi untuk menyuplai Pie Chart Beranda
+    StudySession.find({
+      pengajarPendamping: userLogin._id,
+      status:             STATUS_SESI.SELESAI.id,
+      waktuMulai:         { $gte: batasStaf.awal, $lte: batasStaf.akhir },
+    })
+      .populate("siswaId", "kelas") // Menarik data kelas siswa agar distribusi kelas konsul valid
+      .lean(),
   ]);
 
   const statsKonsul =
@@ -109,9 +118,10 @@ async function ambilDataDashboardPengajar(userLogin: UserLogin) {
       : { totalMenit: 0, totalSesi: 0 };
 
   return {
-    jadwal:      serialize(jadwalPengajar),
-    absensi:     serialize(riwayatAbsensi),
-    statsKonsul: serialize(statsKonsul),
+    jadwal:        serialize(jadwalPengajar),
+    absensi:       serialize(riwayatAbsensi),
+    statsKonsul:   serialize(statsKonsul),
+    riwayatKonsul: serialize(riwayatKonsulRaw), // 👈 Data baru yang dikirim ke TeacherApp
   };
 }
 
@@ -230,7 +240,7 @@ export default async function Home() {
     return (
       <TeacherApp
         dataUser={serialize(userLogin)}
-        {...dataPengajar}
+        {...dataPengajar} // Mengalirkan jadwal, absensi, statsKonsul, dan riwayatKonsul sekaligus
       />
     );
   }

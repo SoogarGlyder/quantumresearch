@@ -8,7 +8,7 @@ import homeStyles from "@/components/teacher/home/Home.module.css";
 const AgendaHariIni = memo(({ jadwalHariIni, onPilihJadwal }) => (
   <div className={styles.contentContainer}>
     <h3 className={styles.contentTitle}>
-      <FaChalkboard className={homeStyles.ikonBiru} /> Agenda Hari Ini
+      Agenda Hari Ini
     </h3>
 
     {jadwalHariIni.length === 0 ? (

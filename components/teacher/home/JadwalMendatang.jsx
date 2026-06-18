@@ -9,7 +9,7 @@ import homeStyles from "@/components/teacher/home/Home.module.css";
 const JadwalMendatang = memo(({ jadwalMendatang, onPilihJadwal }) => (
   <div className={styles.contentContainer}>
     <h3 className={`${styles.contentTitle} ${homeStyles.contentTitleMendatang}`}>
-      <FaCalendarDays className={homeStyles.ikonAbu} /> Jadwal Mendatang
+      Jadwal Mendatang
     </h3>
 
     {jadwalMendatang.length === 0 ? (

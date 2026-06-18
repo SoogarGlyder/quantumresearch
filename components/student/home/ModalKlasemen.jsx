@@ -7,12 +7,21 @@ import { FaTrophy, FaCrown, FaMedal } from "react-icons/fa6";
 import { dapatkanKlasemenBulanIni } from "@/actions/klasemenAction";
 import styles from "@/components/App.module.css";
 
-export default function ModalKlasemen({ onClose, kelasSiswa }) {
+// 1. TAMBAHKAN klasemenDemo SEBAGAI PARAMETER (OPTIONAL)
+export default function ModalKlasemen({ onClose, kelasSiswa, klasemenDemo }) {
   const [dataKlasemen, setDataKlasemen] = useState([]);
   const [loadingKlasemen, setLoadingKlasemen] = useState(true);
   const [filterAktif, setFilterAktif] = useState("Semua Kelas");
 
   useEffect(() => {
+    // 🛡️ PRINSIP INJEKSI MURNI: Jika ada data demo dari parent, langsung gunakan!
+    if (klasemenDemo) {
+      setDataKlasemen(klasemenDemo);
+      setLoadingKlasemen(false);
+      return; 
+    }
+
+    // --- LOGIKA ASLI SERVER (Berjalan normal jika klasemenDemo kosong/undefined) ---
     let isMounted = true; 
     setLoadingKlasemen(true);
     
@@ -24,7 +33,7 @@ export default function ModalKlasemen({ onClose, kelasSiswa }) {
     });
     
     return () => { isMounted = false; };
-  }, [filterAktif]);
+  }, [filterAktif, klasemenDemo]); // 👈 Jangan lupa tambahkan klasemenDemo ke dependency array
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>

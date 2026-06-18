@@ -30,11 +30,11 @@
   --brutal-shadow: 4px 4px 0px var(--brutal-hitam);
   --brutal-shadow-hover: 6px 6px 0px var(--brutal-hitam);
 
-  /* 👇 TAMBAHAN POIN 10: Radius Terpusat agar Konsisten */
+  /* Radius Terpusat agar Konsisten */
   --brutal-radius: 12px;
   --brutal-radius-lg: 16px;
 
-  /* Hierarki Z-Index Terpusat (Poin 14) */
+  /* Hierarki Z-Index Terpusat */
   --z-base: 1;
   --z-nav: 10;
   --z-dropdown: 40;
@@ -42,8 +42,9 @@
   --z-modal: 60;
   --z-toast: 9999;
 
-  /* 👇 Mantra San Francisco / System Font Stack */
-  --font-premium: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  /* PEMAKSAAN FONT SINGLE-PURPOSE (Hanya Encode Sans & Emoji) */
+  --font-premium: var(--font-encode-sans), "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-judul: var(--font-spartan), "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 /* PERTAHANAN LAPIS KEDUA: Jika HP masih memaksa (Override Samsung/Xiaomi) */
@@ -60,7 +61,6 @@
   }
 }
 
-/* 👇 TAMBAHAN POIN 10: Selection global agar feel brutal terasa di seluruh web */
 ::selection {
   background-color: var(--brutal-biru);
   color: var(--brutal-hitam);
@@ -71,11 +71,14 @@
   padding: 0;
   margin: 0;
   -webkit-tap-highlight-color: transparent;
+  /* 👇 INI KUNCINYA: Tambahkan !important agar CSS Modules menyerah 👇 */
+  font-family: inherit !important;
 }
 
-/* 👇 INI KUNCINYA: Memaksa form element ikut font global (inheritance) */
+/* Memaksa form element ikut font global */
 input, button, select, textarea {
-  font-family: inherit;
+  /* 👇 Form element juga harus dipaksa 👇 */
+  font-family: inherit !important;
   font-size: inherit;
   color: inherit;
 }
@@ -83,9 +86,16 @@ input, button, select, textarea {
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-premium); 
+  /* 👇 Body menetapkan Encode Sans sebagai hukum dasar 👇 */
+  font-family: var(--font-premium) !important; 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 👇 Judul (h1-h6) menetapkan League Spartan sebagai hukum pengecualian 👇 */
+h1, h2, h3, h4, h5, h6, .font-spartan {
+  font-family: var(--font-judul) !important;
+  letter-spacing: -0.5px;
 }
 
 .teks-kosong {
@@ -145,18 +155,6 @@ body {
   z-index: 10000 !important;
 }
 
-/* ============================================================================
-   3. OPTIMASI PWA & MOBILE LAYOUT (iOS Notch Fix)
-   ============================================================================ */
-
-.header-aman-poni {
-  padding-top: env(safe-area-inset-top);
-}
-
-/* ============================================================================
-   4. PENGALAMAN NATIVE APP (Sembunyikan Scroll Bar)
-   ============================================================================ */
-
 ::-webkit-scrollbar {
   background-color: var(--background);
   display: none;
@@ -167,5 +165,5 @@ body {
 html {
   scrollbar-width: none;
   background-color: var(--background);
-  -ms-overflow-style: none; /* Untuk Edge lawas */
+  -ms-overflow-style: none;
 }
