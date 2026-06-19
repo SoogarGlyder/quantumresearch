@@ -46,7 +46,7 @@ export default function DemoSiswaPage() {
           kuisDemo={mockKuis as any}
           riwayatKuisDemo={mockRiwayatKuis as any}
           isDemoMode={true}
-          misiDemo={mockMisiHarian} 
+          misiDemo={mockMisiHarian as any}
         />
       </div>
 
