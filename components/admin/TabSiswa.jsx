@@ -139,7 +139,7 @@ export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false
       
       setPesanForm(laporan.pesan); 
       
-      if (laporan.sukses) { 
+      if (laporan.ok) { 
         batalEdit(); 
         if(typeof muatData === 'function') muatData(); 
         setTimeout(() => setPesanForm(""), 3000);
@@ -179,7 +179,7 @@ export default function TabSiswa({ dataSiswa = [], muatData, isKakakAsuh = false
     if (window.confirm(`Yakin menghapus siswa ${nama}? Semua riwayat belajarnya juga akan hilang!`)) { 
       try {
         const hasil = await hapusAkunSiswa(id);
-        if(hasil.sukses) {
+        if(hasil.ok) {
           if (typeof muatData === 'function') muatData(); 
         } else {
           alert("Gagal menghapus: " + hasil.pesan);

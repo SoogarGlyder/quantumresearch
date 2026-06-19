@@ -200,16 +200,16 @@ function AdminContent() {
         hasil[kunci] = hasilApi[index];
       });
 
-      if (hasil.dashboard?.sukses) { 
+      if (hasil.dashboard?.ok) { 
         setDataRiwayat(hasil.dashboard.data.riwayat || []); 
         setDataSiswa(hasil.dashboard.data.siswa || []); 
       }
-      if (hasil.jadwal?.sukses)   setDataJadwal(hasil.jadwal.data || []);
-      if (hasil.pengajar?.sukses) setDataPengajar(hasil.pengajar.data || []);
-      if (hasil.absen?.sukses)    setDataAbsenStaf(hasil.absen.data || []);
-      if (hasil.admin?.sukses)    setDataAdmin(hasil.admin.data || []);
+      if (hasil.jadwal?.ok)   setDataJadwal(hasil.jadwal.data || []);
+      if (hasil.pengajar?.ok) setDataPengajar(hasil.pengajar.data || []);
+      if (hasil.absen?.ok)    setDataAbsenStaf(hasil.absen.data || []);
+      if (hasil.admin?.ok)    setDataAdmin(hasil.admin.data || []);
 
-      if (targetTab === "SEMUA" && !hasil.dashboard?.sukses) {
+      if (targetTab === "SEMUA" && !hasil.dashboard?.ok) {
         router.push(KONFIGURASI_SISTEM.PATH_LOGIN);
       }
 

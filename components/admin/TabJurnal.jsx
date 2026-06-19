@@ -76,7 +76,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
 
     const hasil = await ambilDetailJurnal(idJadwal);
     
-    if (hasil.sukses && hasil.data) {
+    if (hasil.ok && hasil.data) {
       const { jadwal, dataSiswa: listSiswa } = hasil.data;
       setDetailJadwal(jadwal);
       setDataSiswa(listSiswa);
@@ -110,7 +110,7 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
 
     const hasil = await simpanJurnal(selectedJadwalId, payloadJurnal, dataSiswa);
     
-    if (hasil.sukses) {
+    if (hasil.ok) {
       if (typeof muatData === 'function') muatData();
       setToastMsg("✅ JURNAL BERHASIL DISIMPAN!");
     } else {
@@ -121,7 +121,15 @@ export default function TabJurnal({ dataJadwal = [], muatData, bulanAktif }) {
 
   const jadwalTersedia = useMemo(() => {
     const hariIni = timeHelper.getTglJakarta(new Date());
-    let jadwal = (dataJadwal || []).filter(j => 
+    
+    // 1. Normalisasi tanggal dari Backend (ISO string) menjadi YYYY-MM-DD
+    const jadwalDinormalisasi = (dataJadwal || []).map(j => ({
+      ...j,
+      tanggal: timeHelper.getTglJakarta(j.tanggal) || String(j.tanggal).substring(0, 10)
+    }));
+
+    // 2. Filter menggunakan data yang sudah rapi
+    let jadwal = jadwalDinormalisasi.filter(j => 
       j.tanggal >= minDate && j.tanggal <= maxDate && j.tanggal <= hariIni
     ); 
     

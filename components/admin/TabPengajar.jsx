@@ -141,7 +141,7 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
       
       setPesanForm(laporan.pesan); 
       
-      if (laporan.sukses) { 
+      if (laporan.ok) { 
         batalEdit(); 
         if(typeof muatData === 'function') muatData(); 
         setTimeout(() => setPesanForm(""), 3000);
@@ -181,7 +181,7 @@ export default function TabPengajar({ dataPengajar = [], muatData }) {
     if (window.confirm(`Hapus akun pengajar ${nama}? Akun ini tidak akan bisa login lagi.`)) { 
       try {
         const hasil = await hapusPengajar(id);
-        if(hasil.sukses) {
+        if(hasil.ok) {
           if (typeof muatData === 'function') muatData(); 
         } else {
           alert("Gagal menghapus: " + hasil.pesan);

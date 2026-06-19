@@ -181,10 +181,15 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
   // ❌ PERBAIKAN: useEffect yang membuat pagination macet sudah DIHAPUS
 
   const absenBulanIni = useMemo(() => {
-    return dataAbsenStaf.filter(a => {
-      if (!a.waktuMasuk) return false;
-      const tglStr = timeHelper.getTglJakarta(a.waktuMasuk);
-      return tglStr >= minDate && tglStr <= maxDate;
+    // Normalisasi semua tanggal masuk menjadi string pendek YYYY-MM-DD
+    const dataDinormalisasi = (dataAbsenStaf || []).map(a => ({
+      ...a,
+      waktuMasukPendek: a.waktuMasuk ? timeHelper.getTglJakarta(a.waktuMasuk) : ""
+    }));
+
+    return dataDinormalisasi.filter(a => {
+      if (!a.waktuMasukPendek) return false;
+      return a.waktuMasukPendek >= minDate && a.waktuMasukPendek <= maxDate;
     });
   }, [dataAbsenStaf, minDate, maxDate]);
 
@@ -192,7 +197,8 @@ export default function TabAbsenStaf({ dataAbsenStaf = [], dataPengajar = [], bu
     let hasil = [...absenBulanIni];
 
     if (filterTglAbsen) {
-      hasil = hasil.filter(a => timeHelper.getTglJakarta(a.waktuMasuk) === filterTglAbsen);
+      // Sekarang kita bisa membandingkan string pendek dengan string pendek
+      hasil = hasil.filter(a => a.waktuMasukPendek === filterTglAbsen);
     }
 
     if (filterNama) {

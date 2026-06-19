@@ -193,7 +193,7 @@ export default function TabKonsul({ dataRiwayat = [], dataJadwal = [], bulanAkti
     if (!konfirmasiLagi) return;
 
     const hasil = await paksaHentikanSesi(idSesi, durasi);
-    if (hasil.sukses) {
+    if (hasil.ok) {
       alert(hasil.pesan);
       router.refresh(); 
     } else {

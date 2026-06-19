@@ -157,7 +157,7 @@ export default function ModalMonitorCBT({ jadwalId, kelasTarget, onClose }) {
         <div className={styles.areaGallery}>
 
           {pesan && (
-            <div className={`${homeStyles.pesanAksiArea} ${pesan.sukses ? homeStyles.pesanAksiSukses : homeStyles.pesanAksiGagal}`}>
+            <div className={`${homeStyles.pesanAksiArea} ${pesan.ok ? homeStyles.pesanAksiSukses : homeStyles.pesanAksiGagal}`}>
               {pesan.teks}
             </div>
           )}

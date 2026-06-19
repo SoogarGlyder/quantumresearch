@@ -6,7 +6,7 @@ import { FaGripVertical, FaXmark, FaCheck, FaCloudArrowUp, FaDatabase, FaTrashCa
 import { DndContext, useDraggable, useDroppable, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
 
 import PaginationBar from "../ui/PaginationBar";
-import { DAFTAR_KELAS_BIMBEL, generateDuaMingguKerja, KAMUS_JAM_SESI } from "../../utils/jadwalHelper";
+import { DAFTAR_KELAS as DAFTAR_KELAS_BIMBEL, generateKalenderKerja as generateDuaMingguKerja, JAM_SESI as KAMUS_JAM_SESI } from "../../utils/jadwalHelper";
 
 import { OPSI_MAPEL_KELAS, OPSI_KELAS, LIMIT_DATA, CABANG_QUANTUM } from "../../utils/constants";
 import { tambahJadwal, hapusJadwal, editJadwal } from "../../actions/adminAction";
@@ -228,7 +228,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
       setIsProsesEdit(true);
       const hasil = await editJadwal(jadwalEdit._id, formEdit);
       setIsProsesEdit(false);
-      if (hasil.sukses) { if (muatData) muatData(); setModalEditTerbuka(false); } else { alert(hasil.pesan); }
+      if (hasil.ok) { if (muatData) muatData(); setModalEditTerbuka(false); } else { alert(hasil.pesan); }
     }
   };
 
@@ -241,7 +241,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
       setIsProsesEdit(true);
       const hasil = await hapusJadwal(jadwalEdit._id);
       setIsProsesEdit(false);
-      if (hasil.sukses) { if (muatData) muatData(); setModalEditTerbuka(false); } else { alert(hasil.pesan); }
+      if (hasil.ok) { if (muatData) muatData(); setModalEditTerbuka(false); } else { alert(hasil.pesan); }
     }
   };
 
@@ -275,14 +275,21 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     if (window.confirm(`Yakin ingin menghapus jadwal ${mapel} untuk kelas ${kelas}? (Jika dihapus, jadwal akan hilang dari papan catur juga)`)) { 
       try {
         const hasil = await hapusJadwal(id); 
-        if(hasil.sukses) { if (typeof muatData === 'function') muatData(); } else { alert("Gagal menghapus: " + hasil.pesan); }
+        if(hasil.ok) { if (typeof muatData === 'function') muatData(); } else { alert("Gagal menghapus: " + hasil.pesan); }
       } catch (error) { console.error("ERROR Hapus:", error); }
     } 
   };
 
   const jadwalCabangAktif = useMemo(() => {
-    if (!isSuperAdmin || !filterCabang) return dataJadwal;
-    return dataJadwal.filter(j => j.pengajarId && j.pengajarId.kodeCabang === filterCabang);
+    // 1. Normalisasi tanggal dari Backend (ISO string) menjadi YYYY-MM-DD
+    const jadwalDinormalisasi = (dataJadwal || []).map(j => ({
+      ...j,
+      tanggal: timeHelper.getTglJakarta(j.tanggal) || String(j.tanggal).substring(0, 10)
+    }));
+
+    // 2. Terapkan filter cabang pada data yang sudah dinormalisasi
+    if (!isSuperAdmin || !filterCabang) return jadwalDinormalisasi;
+    return jadwalDinormalisasi.filter(j => j.pengajarId && j.pengajarId.kodeCabang === filterCabang);
   }, [dataJadwal, isSuperAdmin, filterCabang]);
 
   const jadwalBulanIni = useMemo(() => {

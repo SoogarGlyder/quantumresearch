@@ -62,7 +62,7 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
       const laporan = await simpanAkunAdmin(idEdit, payload);
       setPesanForm(laporan.pesan); 
       
-      if (laporan.sukses) { 
+      if (laporan.ok) { 
         batalEdit(); 
         if(typeof muatData === 'function') muatData(); 
         setTimeout(() => setPesanForm(""), 3000);
@@ -99,7 +99,7 @@ export default function TabAdmin({ dataAdmin = [], muatData }) {
   const klikHapusAdmin = async (id, nama) => { 
     if (window.confirm(`⚠️ PERINGATAN! Yakin menghapus akses admin untuk ${nama}?`)) { 
       const hasil = await hapusAkunAdmin(id);
-      if(hasil.sukses) {
+      if(hasil.ok) {
         if (typeof muatData === 'function') muatData(); 
       } else {
         alert("Gagal menghapus: " + hasil.pesan);
