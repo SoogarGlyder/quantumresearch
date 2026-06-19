@@ -2,88 +2,102 @@
 
 import { memo } from "react";
 import { FaChevronDown, FaChevronUp, FaSkullCrossbones } from "react-icons/fa6";
-
-// PATH ABSOLUTE
-import { STATUS_SESI, PERIODE_BELAJAR } from "@/utils/constants";
-import { hitungDurasiMenit, formatJam } from "@/utils/formatHelper";
-import styles from "@/components/App.module.css";
+import { STATUS_SESI } from "@/utils/constants";
 import { timeHelper } from "@/utils/timeHelper";
+import styles from "@/components/App.module.css";
+import consulStyles from "@/components/student/consul/Consul.module.css";
 
 const RecordCard = memo(({ sesi, isOpen, onToggle }) => {
-  const isSelesai = sesi.status === STATUS_SESI.SELESAI.id;
-  const isPinalti = sesi.status === STATUS_SESI.PINALTI?.id;
+  const isSelesai  = sesi.status === STATUS_SESI.SELESAI.id;
+  const isPinalti  = sesi.status === STATUS_SESI.PINALTI?.id;
   const isBerjalan = sesi.status === STATUS_SESI.BERJALAN.id;
 
-  const formatTanggalTanpaTahun = (tanggalStr) => {
-    if (!tanggalStr) return "-";
-    return new Date(tanggalStr).toLocaleDateString('id-ID', {
-      timeZone: PERIODE_BELAJAR.TIMEZONE,
-      weekday: 'long',
-      day: 'numeric',
-      month: 'short'
-    });
-  };
+  // ✅ FIX: formatTanggalTanpaTahun dihapus — timeHelper.formatTanggalLengkap sudah ada
+  // ✅ FIX: import { hitungDurasiMenit, formatJam } dari formatHelper dihapus (dead import)
+  //         Keduanya sudah di timeHelper dan sudah dipakai via timeHelper.xxx di bawah
 
-  //  FIX: Prioritaskan membaca kodePengajar dari objek
   let labelPendamping = "Belajar Mandiri";
   if (sesi.pengajarPendamping) {
-    labelPendamping = typeof sesi.pengajarPendamping === 'object' 
-      ? `${sesi.pengajarPendamping.kodePengajar || sesi.pengajarPendamping.nama || 'Guru'}`
-      : `ID: ${sesi.pengajarPendamping.substring(0, 4)}...`;
+    labelPendamping =
+      typeof sesi.pengajarPendamping === "object"
+        ? sesi.pengajarPendamping.kodePengajar || sesi.pengajarPendamping.nama || "Guru"
+        : `ID: ${sesi.pengajarPendamping.substring(0, 4)}...`;
   }
 
+  // Tentukan class baris Selesai/Pinalti/Berjalan secara deklaratif
+  const rowSelesaiClass = isSelesai
+    ? consulStyles.rowSelesai
+    : isPinalti
+    ? consulStyles.rowPinalti
+    : consulStyles.rowBerjalan;
+
   return (
-    <div className={`${styles.recordCard} ${styles.recordCardClickable}`} onClick={() => onToggle(sesi._id)}>
+    <div
+      className={`${styles.recordCard} ${styles.recordCardClickable}`}
+      onClick={() => onToggle(sesi._id)}
+    >
+      {/* Baris atas: tanggal + badge status */}
       <div className={styles.recordCardRow}>
-        <p className={styles.recordDate}>{formatTanggalTanpaTahun(sesi.waktuMulai)}</p>
-        
+        <p className={styles.recordDate}>
+          {timeHelper.formatTanggalLengkap(sesi.waktuMulai)}
+        </p>
+
         {isPinalti ? (
-          <span className={styles.recordDuration} style={{ backgroundColor: '#111827', color: '#ef4444', border: '2px solid #ef4444', display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <span className={`${styles.recordDuration} ${consulStyles.badgePinalti}`}>
             <FaSkullCrossbones /> PINALTI
           </span>
-        ) : (
-          <span 
-            className={styles.recordDuration} 
-            style={{ backgroundColor: isSelesai ? '#4ade80' : '#facc15', display: isSelesai ? 'none' : 'flex', border: '2px solid #111827', color: '#111827' }}
-          >
-            {isBerjalan ? "Sedang Berjalan" : sesi.status.charAt(0).toUpperCase() + sesi.status.slice(1)}
+        ) : !isSelesai ? (
+          <span className={`${styles.recordDuration} ${consulStyles.badgeBerjalan}`}>
+            {isBerjalan
+              ? "Sedang Berjalan"
+              : sesi.status.charAt(0).toUpperCase() + sesi.status.slice(1)}
+          </span>
+        ) : null}
+
+        {isSelesai && (
+          <span className={styles.recordDuration}>
+            {timeHelper.hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)} menit
           </span>
         )}
-
-        {isSelesai && <span className={styles.recordDuration}>{timeHelper.hitungDurasiMenit(sesi.waktuMulai, sesi.waktuSelesai)} menit</span>}
       </div>
 
+      {/* Baris tengah: nama mapel + chevron */}
       <div className={styles.recordCardRow}>
         <h3 className={styles.recordTitle}>{sesi.namaMapel || "Umum"}</h3>
-        <div style={{ marginTop: '12px', color: '#111827', transition: 'transform 0.2s' }}>
+        <div className={consulStyles.chevronWrapper}>
           {isOpen ? <FaChevronUp size={16} /> : <FaChevronDown size={16} />}
         </div>
       </div>
 
+      {/* Detail yang muncul saat kartu dibuka */}
       {isOpen && (
         <div className={styles.recordDetail}>
-            <div className={styles.recordDetailRow} style={{ backgroundColor: '#f1f5f9' }}>
-              <span>Pendamping</span>
-              <span style={{ fontWeight: '900', color: sesi.pengajarPendamping ? '#2563eb' : '#64748b' }}>
-                {labelPendamping}
-              </span>
-            </div>
+          <div className={`${styles.recordDetailRow} ${consulStyles.rowPendamping}`}>
+            <span>Pendamping</span>
+            <span className={sesi.pengajarPendamping ? consulStyles.nilaiPendampingAda : consulStyles.nilaiPendampingTdk}>
+              {labelPendamping}
+            </span>
+          </div>
 
-            <div className={styles.recordDetailRow} style={{ backgroundColor: '#dbeafe' }}>
-              <span>Mulai</span>
-              <span>{timeHelper.formatJam(sesi.waktuMulai)} WIB</span>
+          <div className={`${styles.recordDetailRow} ${consulStyles.rowMulai}`}>
+            <span>Mulai</span>
+            <span>{timeHelper.formatJam(sesi.waktuMulai)} WIB</span>
+          </div>
+
+          <div className={`${styles.recordDetailRow} ${rowSelesaiClass}`}>
+            <span>Selesai</span>
+            <span>
+              {isSelesai || isPinalti
+                ? `${timeHelper.formatJam(sesi.waktuSelesai)} WIB`
+                : "Sedang Berjalan..."}
+            </span>
+          </div>
+
+          {isPinalti && (
+            <div className={consulStyles.notaPinalti}>
+              Sesi dihentikan karena kamu lupa Scan Out! (0 Menit)
             </div>
-            
-            <div className={styles.recordDetailRow} style={{ backgroundColor: isSelesai ? '#dcfce3' : isPinalti ? '#fecaca' : '#fef08a' }}>
-              <span>Selesai</span>
-              <span>{isSelesai || isPinalti ? `${timeHelper.formatJam(sesi.waktuSelesai)} WIB` : 'Sedang Berjalan...'}</span>
-            </div>
-            
-            {isPinalti && (
-              <div style={{ backgroundColor: '#111827', color: 'white', padding: '8px', fontSize: '11px', textAlign: 'center', borderBottomLeftRadius: '6px', borderBottomRightRadius: '6px', fontWeight: 'bold' }}>
-                Sesi dihentikan karena kamu lupa Scan Out! (0 Menit)
-              </div>
-            )}
+          )}
         </div>
       )}
     </div>

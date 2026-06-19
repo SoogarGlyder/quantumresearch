@@ -1,76 +1,66 @@
 "use client";
 
 import { memo } from "react";
-import { FaCheckDouble, FaAward, FaBrain } from "react-icons/fa6";
-import { PERIODE_BELAJAR } from "@/utils/constants";
+import { FaFileSignature } from "react-icons/fa6";
+import { timeHelper } from "@/utils/timeHelper";
 import styles from "@/components/App.module.css";
-
+import classStyles from "@/components/student/class/Class.module.css";
 import PaginationBar from "@/components/ui/PaginationBar";
 
-//  FIX: Tambahkan penerima kabel currentPage dan onPageChange
-const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, currentPage, onPageChange, onBukaPembahasan }) => {
-  return (
-    <div className={styles.contentContainer}>
-      <h3 className={styles.contentTitle}>
-        <FaCheckDouble color="#22c55e" /> Riwayat Pre-Test
-      </h3>
-      
-      {!dataRiwayatKuis || dataRiwayatKuis.length === 0 ? (
-        <div className={styles.emptySchedule}>
-          <h4 style={{ margin: 0}}>Belum Ada Ujian</h4>
-          <p style={{ marginTop: '4px' }}>Anda belum menyelesaikan Pre-Test CBT apa pun.</p>
-        </div>
-      ) : (
-        <>
-          <div className={styles.scheduleList}>
-            {dataRiwayatKuis.map((kuis) => (
-              <div 
-                key={kuis._id} 
-                className={styles.scheduleCard} 
-                onClick={() => onBukaPembahasan(kuis.jadwalId)}
-                style={{ cursor: 'pointer', border: '3px solid #22c55e', backgroundColor: '#f0fdf4', boxShadow: '4px 4px 0 #86efac' }}
-              >
-                <div className={styles.scheduleCardRow}>
-                  <div className={styles.scheduleDate} style={{ backgroundColor: '#dcfce3', color: '#166534', border: 'none' }}>
-                    {new Date(kuis.tanggal).toLocaleDateString('id-ID', { timeZone: PERIODE_BELAJAR.TIMEZONE, weekday: 'long', day: 'numeric', month: 'short' })}
-                  </div>
-                  <div className={styles.scheduleTime} style={{ color: '#15803d', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <FaCheckDouble /> Selesai
-                  </div>
-                </div>
+const DaftarRiwayatKuis = memo(({ dataHalIni, totalPage, currentPage, onPageChange, onBukaPembahasan }) => (
+  <div className={styles.contentContainer}>
+    <h3 className={styles.contentTitle}>Klik untuk melihat hasil & pembahasan</h3>
 
-                <div className={styles.scheduleCardRow}>
-                  <p className={styles.scheduleSubject} style={{ color: '#166534', fontWeight: '900', fontSize: '18px' }}>
-                    {kuis.mapel} - {kuis.bab}
-                  </p>
+    {!dataHalIni || dataHalIni.length === 0 ? (
+      <p className={styles.emptySchedule}>Belum ada riwayat kuis pada periode ini.</p>
+    ) : (
+      <>
+        <div className={styles.scheduleList}>
+          {/* ✅ FIX: Looping langsung ke objek kuis, tanpa destructuring {item: j} */}
+          {dataHalIni.map((kuis) => (
+            <div
+              key={kuis._id}
+              className={`${styles.scheduleCard} ${classStyles.kartuKelasKlik}`}
+              // ✅ FIX: Lempar jadwalId untuk membuka pembahasan
+              onClick={() => onBukaPembahasan(kuis.jadwalId)}
+            >
+              <div className={styles.scheduleCardRow}>
+                <div className={styles.scheduleDate}>
+                  {timeHelper.formatTanggalLengkap(kuis.tanggal)}
                 </div>
-
-                <div className={styles.scheduleCardRow}>
-                   <div style={{ backgroundColor: 'white', color: '#166534', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', border: '2px solid #22c55e' }}>
-                     LIHAT PEMBAHASAN
-                   </div>
-                   <div className={styles.scheduleCount} style={{ backgroundColor: '#22c55e', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                     <FaAward size={14} color="#facc15" /> Skor: {kuis.skor}
-                   </div>
+                {/* Menampilkan Skor */}
+                <div className={styles.scheduleTime}>
+                  Skor: <strong style={{ color: kuis.skor >= 70 ? '#059669' : '#dc2626' }}>{kuis.skor}</strong>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/*  FIX: Sambungkan kabel ke PaginationBar */}
-          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-            <PaginationBar 
-              totalPages={totalPage} 
-              currentPage={currentPage}
-              onPageChange={onPageChange}
-              style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} 
-            />
-          </div>
-        </>
-      )}
-    </div>
-  );
-});
+              <div className={styles.scheduleCardRow}>
+                <p className={styles.scheduleSubject}>{kuis.mapel}</p>
+              </div>
+
+              <div className={styles.scheduleCardRow}>
+                <div className={styles.scheduleTeacher}>
+                  <FaFileSignature className={classStyles.ikonBiru} size={14} />
+                  <span>Bab: <span className={styles.teacherName}>{kuis.bab}</span></span>
+                </div>
+              </div>
+
+            </div>
+          ))}
+        </div>
+
+        <div className={classStyles.paginasiWrapper}>
+          <PaginationBar
+            totalPages={totalPage}
+            currentPage={currentPage}
+            onPageChange={onPageChange}
+            className={classStyles.paginasiInner}
+          />
+        </div>
+      </>
+    )}
+  </div>
+));
 
 DaftarRiwayatKuis.displayName = "DaftarRiwayatKuis";
 export default DaftarRiwayatKuis;

@@ -1,69 +1,73 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 import { prosesHasilScan, ambilDaftarGuruDropdown } from "@/actions/scanAction";
 import { prosesLogout } from "@/actions/authAction";
-import { MODE_SCAN, PREFIX_BARCODE, TIPE_SESI, STATUS_SESI, KONFIGURASI_SISTEM } from "@/utils/constants";
+import {
+  MODE_SCAN, PREFIX_BARCODE, TIPE_SESI,
+  STATUS_SESI, KONFIGURASI_SISTEM,
+} from "@/utils/constants";
 import { formatHelper } from "@/utils/formatHelper";
 import styles from "@/components/App.module.css";
 
-import { 
-  TabBerandaSiswa, 
-  TabKelasSiswa, 
-  TabScanSiswa, 
-  TabKonsulSiswa, 
-  TabProfilSiswa 
+import {
+  TabBerandaSiswa,
+  TabKelasSiswa,
+  TabScanSiswa,
+  TabKonsulSiswa,
+  TabProfilSiswa,
 } from "./student";
-
 import StudentBottomNav from "./student/StudentBottomNav";
 
-export default function StudentApp({ 
-  siswa, 
-  riwayat, 
-  jadwal, 
-  statistik, 
-  latihanHariIni, 
-  klasemenDemo = [],       
-  kuisDemo = [],           
-  riwayatKuisDemo = [],    
-  isDemoMode = false,
-  misiDemo = []            
+// Durasi auto-reset scanner setelah scan berhasil atau gagal
+const TIMER_RESET_SCANNER_MS = 3000;
+
+export default function StudentApp({
+  siswa, riwayat, jadwal, statistik, latihanHariIni,
+  klasemenDemo = [], kuisDemo = null, riwayatKuisDemo = [],
+  isDemoMode = false, misiDemo = [],
 }) {
-  const router = useRouter();
+  const adaKonsulAktif = useMemo(
+    () => riwayat?.some(
+      (r) => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id
+    ),
+    [riwayat]
+  );
 
-  const adaKonsulAktif = useMemo(() => riwayat?.some(
-    r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id
-  ), [riwayat]);
+  const adaKelasAktif = useMemo(
+    () => riwayat?.some(
+      (r) => r.jenisSesi === TIPE_SESI.KELAS && r.status === STATUS_SESI.BERJALAN.id
+    ),
+    [riwayat]
+  );
 
-  const adaKelasAktif = useMemo(() => riwayat?.some(
-    r => r.jenisSesi === TIPE_SESI.KELAS && r.status === STATUS_SESI.BERJALAN.id
-  ), [riwayat]);
+  const [tab,      setTab]      = useState("home");
+  const [modeScan, setModeScan] = useState(() =>
+    adaKonsulAktif ? MODE_SCAN.KONSUL : MODE_SCAN.KELAS
+  );
 
-  const [tab, setTab] = useState("home"); 
-  const [modeScan, setModeScan] = useState(() => adaKonsulAktif ? MODE_SCAN.KONSUL : MODE_SCAN.KELAS);
-
-  const [hasilScan, setHasilScan] = useState("");
-  const [pesanSistem, setPesanSistem] = useState("");
+  const [hasilScan,    setHasilScan]    = useState("");
+  const [pesanSistem,  setPesanSistem]  = useState("");
   const [sedangLoading, setSedangLoading] = useState(false);
-  
+  const [daftarGuru,   setDaftarGuru]   = useState([]);
+
+  // Inisialisasi mapel & guru dari sesi konsul yang sedang berjalan (jika ada)
   const [mapelPilihan, setMapelPilihan] = useState(() => {
-    if (adaKonsulAktif) {
-      const sesi = riwayat.find(r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id);
-      return sesi?.namaMapel || "";
-    }
-    return "";
+    if (!adaKonsulAktif) return "";
+    const sesi = riwayat.find(
+      (r) => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id
+    );
+    return sesi?.namaMapel || "";
   });
 
   const [guruPilihan, setGuruPilihan] = useState(() => {
-    if (adaKonsulAktif) {
-      const sesi = riwayat.find(r => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id);
-      return sesi?.pengajarPendamping || ""; 
-    }
-    return "";
+    if (!adaKonsulAktif) return "";
+    const sesi = riwayat.find(
+      (r) => r.jenisSesi === TIPE_SESI.KONSUL && r.status === STATUS_SESI.BERJALAN.id
+    );
+    return sesi?.pengajarPendamping || "";
   });
-  const [daftarGuru, setDaftarGuru] = useState([]);
 
   const apakahError = formatHelper.cekPesanErrorScanner(pesanSistem);
 
@@ -71,61 +75,66 @@ export default function StudentApp({
     const muatDaftarGuru = async () => {
       try {
         const res = await ambilDaftarGuruDropdown();
-        if (res && res.ok) {
-          setDaftarGuru(res.data || []);
-        }
+        if (res?.ok) setDaftarGuru(res.data || []);
       } catch (err) {
-        console.error("Gagal memuat daftar guru pendamping:", err);
+        console.error("[StudentApp] Gagal memuat daftar guru:", err);
       }
     };
     muatDaftarGuru();
   }, []);
 
+  // Sinkronisasi mode scan dengan status sesi aktif saat tab scan dibuka
   useEffect(() => {
-    if (tab === "scan") {
-      if (adaKonsulAktif) setModeScan(MODE_SCAN.KONSUL);
-      if (adaKelasAktif) setModeScan(MODE_SCAN.KELAS);
-    }
+    if (tab !== "scan") return;
+    if (adaKonsulAktif) setModeScan(MODE_SCAN.KONSUL);
+    if (adaKelasAktif)  setModeScan(MODE_SCAN.KELAS);
   }, [tab, adaKonsulAktif, adaKelasAktif]);
 
-  const resetScanner = () => { 
-    setHasilScan(""); 
-    setPesanSistem(""); 
+  const resetScanner = () => {
+    setHasilScan("");
+    setPesanSistem("");
   };
 
-  const klikLogout = async () => { 
-    await prosesLogout(); 
-    router.push(KONFIGURASI_SISTEM.PATH_LOGIN); 
+  // ✅ Demo mode: jangan panggil prosesLogout sungguhan — halaman /demo bisa diakses
+  // tanpa sesi (lihat middleware.js), dan kita tidak ingin berisiko menghapus cookie
+  // sesi asli jika pengunjung kebetulan login di tab lain pada browser yang sama.
+  const klikLogout = async () => {
+    if (isDemoMode) {
+      window.location.href = "/";
+      return;
+    }
+    await prosesLogout();
+    window.location.href = KONFIGURASI_SISTEM.PATH_LOGIN;
   };
 
-  async function saatBarcodeTerbaca(teksDariKamera) {
+  const saatBarcodeTerbaca = async (teksDariKamera) => {
     if (sedangLoading) return;
 
-    let pesanErrorLokal = "";
     const isScanKonsul = teksDariKamera === PREFIX_BARCODE.KONSUL;
-    const isScanKelas = teksDariKamera.startsWith(PREFIX_BARCODE.KELAS);
+    const isScanKelas  = teksDariKamera.startsWith(PREFIX_BARCODE.KELAS);
 
-    if (adaKonsulAktif && isScanKonsul) {
-      setModeScan(MODE_SCAN.KONSUL); 
-    } else if (adaKelasAktif && isScanKelas) {
-      setModeScan(MODE_SCAN.KELAS); 
-    } else {
-      if (modeScan === MODE_SCAN.KELAS && !isScanKelas) { 
-        pesanErrorLokal = "Ups! Ini bukan barcode Kelas."; 
-      } else if (modeScan === MODE_SCAN.KONSUL && !isScanKonsul) { 
-        pesanErrorLokal = "Ups! Arahkan ke barcode Konsul."; 
-      } else if (modeScan === MODE_SCAN.KONSUL && (!mapelPilihan || mapelPilihan.trim() === "") && !adaKonsulAktif) { 
-        pesanErrorLokal = "Oops! Silakan pilih mapel terlebih dahulu."; 
-      } else if (modeScan === MODE_SCAN.KONSUL && (!guruPilihan || guruPilihan.trim() === "") && !adaKonsulAktif) {
-        pesanErrorLokal = "Oops! Silakan pilih guru pendamping terlebih dahulu.";
-      }
+    // Auto-switch mode jika ada sesi aktif yang cocok
+    if (adaKonsulAktif && isScanKonsul) { setModeScan(MODE_SCAN.KONSUL); }
+    else if (adaKelasAktif && isScanKelas) { setModeScan(MODE_SCAN.KELAS); }
+
+    // Validasi lokal: jenis barcode harus sesuai mode
+    let pesanErrorLokal = "";
+    if (modeScan === MODE_SCAN.KELAS && !isScanKelas) {
+      pesanErrorLokal = "Ups! Ini bukan barcode Kelas.";
+    } else if (modeScan === MODE_SCAN.KONSUL && !isScanKonsul) {
+      pesanErrorLokal = "Ups! Arahkan ke barcode Konsul.";
+    } else if (modeScan === MODE_SCAN.KONSUL && !adaKonsulAktif && !mapelPilihan?.trim()) {
+      pesanErrorLokal = "Oops! Silakan pilih mapel terlebih dahulu.";
+    } else if (modeScan === MODE_SCAN.KONSUL && !adaKonsulAktif && !guruPilihan?.trim()) {
+      pesanErrorLokal = "Oops! Silakan pilih guru pendamping terlebih dahulu.";
     }
 
+    // Error validasi lokal — reset otomatis setelah 3 detik
     if (pesanErrorLokal) {
       setHasilScan(teksDariKamera);
       setPesanSistem(pesanErrorLokal);
-      setTimeout(() => resetScanner(), 3000);
-      return; 
+      setTimeout(resetScanner, TIMER_RESET_SCANNER_MS);
+      return;
     }
 
     setSedangLoading(true);
@@ -135,83 +144,90 @@ export default function StudentApp({
     try {
       const laporan = await prosesHasilScan(teksDariKamera, mapelPilihan, guruPilihan);
       setPesanSistem(laporan.pesan);
-      
-      if (laporan.sukses) { 
-        router.refresh();
+
+      // ✅ FIX: laporan.sukses → laporan.ok (responseHelper contract)
+      if (laporan.ok) {
+        // Full reload agar riwayat sesi dari server diperbarui
+        window.location.reload();
+
+        // Setelah Check-Out: bersihkan pilihan mapel & guru untuk sesi berikutnya
+        const isCheckOut =
+          laporan.pesan.includes("Selesai") ||
+          laporan.pesan.includes("Check-out") ||
+          laporan.pesan.includes("dibatalkan");
+
         setTimeout(() => {
           resetScanner();
-          const isCheckOut = laporan.pesan.includes("Selesai") || 
-                             laporan.pesan.includes("Check-out") || 
-                             laporan.pesan.includes("dibatalkan");
-                             
           if (isCheckOut) {
-            setMapelPilihan(""); 
+            setMapelPilihan("");
             setGuruPilihan("");
           }
-        }, 3000);
-
+        }, TIMER_RESET_SCANNER_MS);
       } else {
-        setTimeout(() => resetScanner(), 3000);
+        setTimeout(resetScanner, TIMER_RESET_SCANNER_MS);
       }
-    } catch (error) {
+    } catch {
       setPesanSistem("Gagal menghubungi server. Periksa koneksi.");
-      setTimeout(() => resetScanner(), 3000);
+      setTimeout(resetScanner, TIMER_RESET_SCANNER_MS);
     } finally {
       setSedangLoading(false);
     }
-  }
+  };
 
   return (
     <div className={styles.mainContainer}>
       <main>
         {tab === "home" && (
-          <TabBerandaSiswa 
-            siswa={siswa} 
-            jadwal={jadwal} 
-            riwayat={riwayat} 
-            setTab={setTab} 
-            setModeScan={setModeScan} 
-            resetScanner={resetScanner} 
-            latihanHariIni={latihanHariIni} 
-            klasemenDemo={klasemenDemo} 
-            kuisDemo={kuisDemo} 
-            isDemoMode={isDemoMode} 
-            misiDemo={misiDemo} 
+          <TabBerandaSiswa
+            siswa={siswa}
+            jadwal={jadwal}
+            riwayat={riwayat}
+            setTab={setTab}
+            setModeScan={setModeScan}
+            resetScanner={resetScanner}
+            latihanHariIni={latihanHariIni}
+            klasemenDemo={klasemenDemo}
+            kuisDemo={kuisDemo}
+            isDemoMode={isDemoMode}
+            misiDemo={misiDemo}
           />
         )}
-        
+
         {tab === "kelas" && (
-          <TabKelasSiswa 
-            jadwal={jadwal} 
-            riwayat={riwayat} 
-            siswa={siswa} 
-            isDemoMode={isDemoMode} 
+          <TabKelasSiswa
+            jadwal={jadwal}
+            riwayat={riwayat}
+            siswa={siswa}
+            isDemoMode={isDemoMode}
             riwayatKuisDemo={riwayatKuisDemo}
           />
         )}
-        
+
         {tab === "scan" && (
-          <TabScanSiswa 
-            modeScan={modeScan} 
-            setModeScan={setModeScan} 
-            hasilScan={hasilScan} 
-            pesanSistem={pesanSistem} 
-            sedangLoading={sedangLoading} 
-            mapelPilihan={mapelPilihan} 
-            setMapelPilihan={setMapelPilihan} 
+          <TabScanSiswa
+            modeScan={modeScan}
+            setModeScan={setModeScan}
+            hasilScan={hasilScan}
+            pesanSistem={pesanSistem}
+            sedangLoading={sedangLoading}
+            mapelPilihan={mapelPilihan}
+            setMapelPilihan={setMapelPilihan}
             guruPilihan={guruPilihan}
             setGuruPilihan={setGuruPilihan}
             daftarGuru={daftarGuru}
-            saatBarcodeTerbaca={saatBarcodeTerbaca} 
-            resetScanner={resetScanner} 
-            apakahError={apakahError} 
-            adaKonsulAktif={adaKonsulAktif} 
-            adaKelasAktif={adaKelasAktif} 
+            saatBarcodeTerbaca={saatBarcodeTerbaca}
+            resetScanner={resetScanner}
+            apakahError={apakahError}
+            adaKonsulAktif={adaKonsulAktif}
+            adaKelasAktif={adaKelasAktif}
           />
         )}
-        
+
         {tab === "riwayat" && <TabKonsulSiswa riwayat={riwayat} />}
-        {tab === "profil" && <TabProfilSiswa siswa={siswa} klikLogout={klikLogout} />}
+
+        {tab === "profil" && (
+          <TabProfilSiswa siswa={siswa} klikLogout={klikLogout} />
+        )}
       </main>
 
       <StudentBottomNav tab={tab} setTab={setTab} />

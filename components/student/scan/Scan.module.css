@@ -38,3 +38,21 @@
 
 .messageLoading { background-color: #fef08a; background-image: repeating-linear-gradient(45deg, #facc15 25%, transparent 25%, transparent 50%, #facc15 50%, #facc15 75%, transparent 75%, transparent); background-size: 40px 40px; animation: brutalShimmer 1s linear infinite; border: 3px solid #111827; box-shadow: 4px 4px 0 #111827; height: 60px; display: flex; align-items: center; justify-content: center; }
 .messageProcess { background-color: white; padding: 4px 12px; border: 2px solid #111827; border-radius: 6px; color: #111827; font-weight: 900; text-transform: uppercase; margin: 0; box-shadow: 2px 2px 0 #111827; }
+/* ==========================================================================
+   TAMBAHAN: Inline styles dipindahkan dari ModeSelector
+   ========================================================================== */
+
+/* Tab button saat sesi sedang aktif — fullwidth, non-interaktif */
+.tabButtonAktifPenuh { width: 100%; cursor: default; }
+
+/* Banner peringatan sesi aktif */
+.bannerSesiAktif {
+  background-color: #fecaca;
+  border-color:     #ef4444;
+  text-align:       center;
+  margin-top:       12px;
+}
+.bannerSesiAktifTeks { color: #ef4444; font-weight: 900; text-align: center; }
+
+/* Wrapper dropdown pilih mapel + guru konsul */
+.wrapperDropdownKonsul { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }

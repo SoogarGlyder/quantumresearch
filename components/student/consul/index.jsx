@@ -1,174 +1,174 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react"; 
+import { useState, useMemo, useEffect } from "react";
 import { FaBoxOpen } from "react-icons/fa6";
-
-// PATH ABSOLUTE
-import PaginationBar from "@/components/ui/PaginationBar"; 
-import { formatHelper } from "@/utils/formatHelper"; 
+import PaginationBar from "@/components/ui/PaginationBar";
+import { formatHelper } from "@/utils/formatHelper";
 import { TIPE_SESI, STATUS_SESI, PERIODE_BELAJAR, LIMIT_DATA } from "@/utils/constants";
 import styles from "@/components/App.module.css";
+import consulStyles from "@/components/student/consul/Consul.module.css";
 
-// IMPORT TETANGGA LOKAL
 import HeaderKonsul from "./HeaderKonsul";
 import FilterKonsul from "./FilterKonsul";
-import RecordCard from "./RecordCard";
+import RecordCard   from "./RecordCard";
 
 export default function TabKonsulSiswa({ riwayat = [] }) {
+  const [page,           setPage]           = useState(1);
+  const [filterBulan,    setFilterBulan]    = useState("");
+  const [filterMapel,    setFilterMapel]    = useState("");
+  const [filterPengajar, setFilterPengajar] = useState("");
+  const [idTerbuka,      setIdTerbuka]      = useState(null);
 
-  const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_KONSUL || 10;
 
-  const [filterBulan, setFilterBulan] = useState("");
-  const [filterMapel, setFilterMapel] = useState("");
-  //  FIX: Ini adalah wadah (state) yang terlewat sehingga memicu error "not defined"
-  const [filterPengajar, setFilterPengajar] = useState(""); 
-  const [idTerbuka, setIdTerbuka] = useState(null);
+  // Reset halaman saat filter berubah
+  useEffect(() => { setPage(1); }, [filterBulan, filterMapel, filterPengajar]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [filterBulan, filterMapel, filterPengajar]);
-
+  // Label bulan untuk grouping — timezone Jakarta
   const dapatkanLabelBulan = (tanggalStr) => {
     if (!tanggalStr) return "-";
-    return new Date(tanggalStr).toLocaleDateString('id-ID', { 
-      timeZone: PERIODE_BELAJAR.TIMEZONE, 
-      month: 'long', 
-      year: 'numeric' 
+    return new Date(tanggalStr).toLocaleDateString("id-ID", {
+      timeZone: PERIODE_BELAJAR.TIMEZONE,
+      month:    "long",
+      year:     "numeric",
     });
   };
 
-  const toggleDetail = (id) => setIdTerbuka(prevId => prevId === id ? null : id);
+  const toggleDetail = (id) => setIdTerbuka((prev) => (prev === id ? null : id));
 
+  // Gabungkan konsul murni + konsul extra dari sesi kelas
   const riwayatKonsul = useMemo(() => {
-    const konsulMurni = riwayat.filter(r => r.jenisSesi === TIPE_SESI.KONSUL);
+    const konsulMurni = riwayat.filter((r) => r.jenisSesi === TIPE_SESI.KONSUL);
 
     const konsulExtra = riwayat
-      .filter(r => r.jenisSesi === TIPE_SESI.KELAS && r.konsulExtraMenit > 0 && r.waktuSelesai)
-      .map(r => {
+      .filter((r) => r.jenisSesi === TIPE_SESI.KELAS && r.konsulExtraMenit > 0 && r.waktuSelesai)
+      .map((r) => {
         const waktuSelesaiObj = new Date(r.waktuSelesai);
-        const waktuMulaiObj = new Date(waktuSelesaiObj.getTime() - r.konsulExtraMenit * 60000);
-
+        const waktuMulaiObj   = new Date(waktuSelesaiObj.getTime() - r.konsulExtraMenit * 60_000);
         return {
           ...r,
-          _id: `${r._id}_extra`, 
-          jenisSesi: TIPE_SESI.KONSUL, 
-          namaMapel: `${r.namaMapel || "Umum"} (Extra)`, 
+          _id:        `${r._id}_extra`,
+          jenisSesi:  TIPE_SESI.KONSUL,
+          namaMapel:  `${r.namaMapel || "Umum"} (Extra)`,
           waktuMulai: waktuMulaiObj.toISOString(),
-          waktuSelesai: r.waktuSelesai
+          waktuSelesai: r.waktuSelesai,
         };
       });
 
-    const gabungan = [...konsulMurni, ...konsulExtra];
-    gabungan.sort((a, b) => new Date(b.waktuMulai) - new Date(a.waktuMulai));
-
-    return gabungan;
+    return [...konsulMurni, ...konsulExtra].sort(
+      (a, b) => new Date(b.waktuMulai) - new Date(a.waktuMulai)
+    );
   }, [riwayat]);
 
-  const opsiBulan = useMemo(() => [...new Set(riwayatKonsul.map(r => dapatkanLabelBulan(r.waktuMulai)))], [riwayatKonsul]);
-  
-  const opsiMapel = useMemo(() => {
-    const mapelBersih = riwayatKonsul.map(r => {
-      const nama = r.namaMapel || "Umum";
-      return nama.replace(" (Extra)", "");
-    });
-    return [...new Set(mapelBersih)].sort(); 
-  }, [riwayatKonsul]);
+  const opsiBulan = useMemo(
+    () => [...new Set(riwayatKonsul.map((r) => dapatkanLabelBulan(r.waktuMulai)))],
+    [riwayatKonsul]
+  );
 
-  const opsiPengajar = useMemo(() => {
-    const daftarGuru = riwayatKonsul
-      .map(r => r.pengajarPendamping && typeof r.pengajarPendamping === 'object' ? r.pengajarPendamping.nama : null)
-      .filter(nama => nama !== null); 
-    return [...new Set(daftarGuru)].sort();
-  }, [riwayatKonsul]);
+  const opsiMapel = useMemo(
+    () =>
+      [...new Set(riwayatKonsul.map((r) => (r.namaMapel || "Umum").replace(" (Extra)", "")))].sort(),
+    [riwayatKonsul]
+  );
 
-  const konsulDitampilkan = useMemo(() => {
-    return riwayatKonsul.filter(r => {
-      const matchBulan = filterBulan ? dapatkanLabelBulan(r.waktuMulai) === filterBulan : true;
-      const namaMapelMurni = (r.namaMapel || "Umum").replace(" (Extra)", "");
-      const matchMapel = filterMapel ? namaMapelMurni === filterMapel : true;
-      
-      let matchPengajar = true;
-      if (filterPengajar) {
-        if (filterPengajar === "MANDIRI") {
-          matchPengajar = !r.pengajarPendamping;
-        } else {
-          const namaGuru = typeof r.pengajarPendamping === 'object' ? r.pengajarPendamping?.nama : null;
-          matchPengajar = namaGuru === filterPengajar;
+  const opsiPengajar = useMemo(
+    () =>
+      [
+        ...new Set(
+          riwayatKonsul
+            .map((r) =>
+              r.pengajarPendamping && typeof r.pengajarPendamping === "object"
+                ? r.pengajarPendamping.nama
+                : null
+            )
+            .filter(Boolean)
+        ),
+      ].sort(),
+    [riwayatKonsul]
+  );
+
+  const konsulDitampilkan = useMemo(
+    () =>
+      riwayatKonsul.filter((r) => {
+        const matchBulan = filterBulan ? dapatkanLabelBulan(r.waktuMulai) === filterBulan : true;
+        const mapelMurni = (r.namaMapel || "Umum").replace(" (Extra)", "");
+        const matchMapel = filterMapel ? mapelMurni === filterMapel : true;
+
+        let matchPengajar = true;
+        if (filterPengajar) {
+          if (filterPengajar === "MANDIRI") {
+            matchPengajar = !r.pengajarPendamping;
+          } else {
+            const namaGuru =
+              typeof r.pengajarPendamping === "object" ? r.pengajarPendamping?.nama : null;
+            matchPengajar = namaGuru === filterPengajar;
+          }
         }
-      }
-      
-      return matchBulan && matchMapel && matchPengajar;
-    });
-  }, [riwayatKonsul, filterBulan, filterMapel, filterPengajar]);
+        return matchBulan && matchMapel && matchPengajar;
+      }),
+    [riwayatKonsul, filterBulan, filterMapel, filterPengajar]
+  );
 
   const ringkasanFilter = useMemo(() => {
     let totalMenit = 0;
     let totalSesiSelesai = 0;
-
-    konsulDitampilkan.forEach(sesi => {
+    konsulDitampilkan.forEach((sesi) => {
       if (sesi.status === STATUS_SESI.SELESAI.id && sesi.waktuMulai && sesi.waktuSelesai) {
-        const mulai = new Date(sesi.waktuMulai).getTime();
-        const selesai = new Date(sesi.waktuSelesai).getTime();
-        const durasiMenit = Math.max(0, Math.round((selesai - mulai) / 60000));
-        
-        totalMenit += durasiMenit;
-        totalSesiSelesai += 1;
+        totalMenit += Math.max(
+          0,
+          Math.round((new Date(sesi.waktuSelesai) - new Date(sesi.waktuMulai)) / 60_000)
+        );
+        totalSesiSelesai++;
       }
     });
-
-    const jam = Math.floor(totalMenit / 60);
-    const menit = totalMenit % 60;
-
-    return { totalMenit, jam, menit, totalSesiSelesai };
+    return {
+      totalMenit,
+      jam:   Math.floor(totalMenit / 60),
+      menit: totalMenit % 60,
+      totalSesiSelesai,
+    };
   }, [konsulDitampilkan]);
 
-  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(konsulDitampilkan, page, ITEMS_PER_PAGE);
+  const { totalPage, dataTerpotong: dataHalIni } = formatHelper.potongDataPagination(
+    konsulDitampilkan, page, ITEMS_PER_PAGE
+  );
 
   return (
     <div className={styles.contentArea}>
-      
       <HeaderKonsul />
-      
-      <FilterKonsul 
-        filterBulan={filterBulan} 
-        setFilterBulan={setFilterBulan} 
-        opsiBulan={opsiBulan} 
-        filterMapel={filterMapel} 
-        setFilterMapel={setFilterMapel} 
-        opsiMapel={opsiMapel} 
-        filterPengajar={filterPengajar} 
-        setFilterPengajar={setFilterPengajar}
-        opsiPengajar={opsiPengajar}
+
+      <FilterKonsul
+        filterBulan={filterBulan}       setFilterBulan={setFilterBulan}       opsiBulan={opsiBulan}
+        filterMapel={filterMapel}       setFilterMapel={setFilterMapel}       opsiMapel={opsiMapel}
+        filterPengajar={filterPengajar} setFilterPengajar={setFilterPengajar} opsiPengajar={opsiPengajar}
         ringkasanFilter={ringkasanFilter}
       />
 
-      <div className={styles.containerRecord}>
+      {/* ✅ FIX: import dari Consul.module.css — bukan App.module.css */}
+      <div className={consulStyles.containerRecord}>
         {dataHalIni.length === 0 ? (
-          <div className={styles.wadahKosong} style={{ marginTop: '24px', padding: '40px', textAlign: 'center' }}>
-            <FaBoxOpen className={styles.emptyIcon} />
-            <p className={styles.emptyText}>Belum ada record konsul.</p>
+          <div className={consulStyles.wadahKosong}>
+            <FaBoxOpen className={consulStyles.emptyIcon} />
+            <p className={consulStyles.emptyText}>Belum ada record konsul.</p>
           </div>
         ) : (
-          dataHalIni.map(sesi => (
-            <RecordCard 
-              key={sesi._id} 
-              sesi={sesi} 
-              isOpen={idTerbuka === sesi._id} 
-              onToggle={toggleDetail} 
+          dataHalIni.map((sesi) => (
+            <RecordCard
+              key={sesi._id}
+              sesi={sesi}
+              isOpen={idTerbuka === sesi._id}
+              onToggle={toggleDetail}
             />
           ))
         )}
 
-        <div style={{ marginTop: '24px'}}>
-          <PaginationBar 
-            totalPages={totalPage} 
-            currentPage={page} 
-            onPageChange={setPage} 
-            style={{ justifyContent: 'space-evenly'}}
+        <div className={consulStyles.paginasiWrapper}>
+          <PaginationBar
+            totalPages={totalPage}
+            currentPage={page}
+            onPageChange={setPage}
           />
         </div>
-
       </div>
     </div>
   );

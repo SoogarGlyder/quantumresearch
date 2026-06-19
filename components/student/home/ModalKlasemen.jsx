@@ -2,110 +2,107 @@
 
 import { useState, useEffect } from "react";
 import { FaTrophy, FaCrown, FaMedal } from "react-icons/fa6";
-
-// FIX: Path Absolute
 import { dapatkanKlasemenBulanIni } from "@/actions/klasemenAction";
 import styles from "@/components/App.module.css";
+import homeStyles from "@/components/student/home/Home.module.css";
 
-// 1. TAMBAHKAN klasemenDemo SEBAGAI PARAMETER (OPTIONAL)
 export default function ModalKlasemen({ onClose, kelasSiswa, klasemenDemo }) {
-  const [dataKlasemen, setDataKlasemen] = useState([]);
+  const [dataKlasemen,   setDataKlasemen]   = useState([]);
   const [loadingKlasemen, setLoadingKlasemen] = useState(true);
-  const [filterAktif, setFilterAktif] = useState("Semua Kelas");
+  const [filterAktif,    setFilterAktif]    = useState("Semua Kelas");
 
   useEffect(() => {
-    // 🛡️ PRINSIP INJEKSI MURNI: Jika ada data demo dari parent, langsung gunakan!
+    // 🎭 Mode Demo: data sudah disuntik dari parent, jangan panggil server action.
     if (klasemenDemo) {
       setDataKlasemen(klasemenDemo);
       setLoadingKlasemen(false);
-      return; 
+      return;
     }
 
-    // --- LOGIKA ASLI SERVER (Berjalan normal jika klasemenDemo kosong/undefined) ---
-    let isMounted = true; 
+    let isMounted = true;
     setLoadingKlasemen(true);
-    
-    dapatkanKlasemenBulanIni(filterAktif).then(hasil => {
-      if (isMounted) {
-        if (hasil.sukses) setDataKlasemen(hasil.data);
-        setLoadingKlasemen(false);
-      }
+
+    dapatkanKlasemenBulanIni(filterAktif).then((hasil) => {
+      if (!isMounted) return;
+      // ✅ FIX: hasil.sukses → hasil.ok
+      if (hasil.ok) setDataKlasemen(hasil.data);
+      setLoadingKlasemen(false);
     });
-    
+
     return () => { isMounted = false; };
-  }, [filterAktif, klasemenDemo]); // 👈 Jangan lupa tambahkan klasemenDemo ke dependency array
+  }, [filterAktif, klasemenDemo]);
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalKonten} onClick={(e) => e.stopPropagation()}>
-        <button className={styles.tombolTutupModal} onClick={onClose}>X</button>
-        
-        <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#111827', textTransform: 'uppercase', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button className={styles.tombolTutupModal} onClick={onClose}>✕</button>
+
+        <h2 className={homeStyles.judulKlasemen}>
           <FaTrophy color="#facc15" /> Top 10 Ambis
         </h2>
 
-        <div style={{ display: 'flex', backgroundColor: '#e2e8f0', borderRadius: '8px', padding: '4px', marginBottom: '16px' }}>
-          <button 
+        {/* Filter Tabs */}
+        <div className={homeStyles.filterTabWrapper}>
+          <button
             onClick={() => setFilterAktif("Semua Kelas")}
-            style={{
-              flex: 1, padding: '10px 0', border: 'none', borderRadius: '6px',
-              backgroundColor: filterAktif === "Semua Kelas" ? '#ffffff' : 'transparent',
-              color: filterAktif === "Semua Kelas" ? '#2563eb' : '#64748b',
-              fontWeight: 'bold', cursor: 'pointer', 
-              boxShadow: filterAktif === "Semua Kelas" ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.2s', fontSize: '14px'
-            }}
+            className={`${homeStyles.tombolFilter} ${filterAktif === "Semua Kelas" ? homeStyles.tombolFilterAktif : homeStyles.tombolFilterNonaktif}`}
           >
             🌍 Global
           </button>
-          
-          <button 
+          <button
             onClick={() => setFilterAktif(kelasSiswa || "-")}
-            style={{
-              flex: 1, padding: '10px 0', border: 'none', borderRadius: '6px',
-              backgroundColor: filterAktif !== "Semua Kelas" ? '#ffffff' : 'transparent',
-              color: filterAktif !== "Semua Kelas" ? '#2563eb' : '#64748b',
-              fontWeight: 'bold', cursor: 'pointer', 
-              boxShadow: filterAktif !== "Semua Kelas" ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.2s', fontSize: '14px'
-            }}
+            className={`${homeStyles.tombolFilter} ${filterAktif !== "Semua Kelas" ? homeStyles.tombolFilterAktif : homeStyles.tombolFilterNonaktif}`}
           >
             🎓 Kelas Saya
           </button>
         </div>
 
         {loadingKlasemen ? (
-          <div className={styles.wadahKlasemen}>
-            {[1, 2, 3].map(i => <div key={i} className={styles.messageLoading} style={{ height: '80px', borderRadius: '16px' }}></div>)}
+          <div className={homeStyles.wadahKlasemen}>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className={`${styles.messageLoading} ${homeStyles.skeletonKlasemen}`} />
+            ))}
           </div>
         ) : dataKlasemen.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 0' }}>
-            <p style={{ fontSize: '40px', margin: '0' }}>📭</p>
-            <p className={styles.emptySchedule}>Belum ada data konsul untuk kategori ini.</p>
+          <div className={homeStyles.emptyKlasemen}>
+            <p className={homeStyles.emptyKlasemenIkon}>📭</p>
+            <p className={homeStyles.emptySchedule}>Belum ada data konsul untuk kategori ini.</p>
           </div>
         ) : (
-          <div className={styles.wadahKlasemen}>
-            {dataKlasemen.map((sis) => (
-              <div key={sis.idSiswa} className={`${styles.kartuPeringkat} ${sis.peringkat === 1 ? styles.juara1 : sis.peringkat === 2 ? styles.juara2 : sis.peringkat === 3 ? styles.juara3 : ""}`}>
-                <div className={styles.kiriPeringkat}>
-                  <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
-                    {sis.peringkat === 1 ? <FaCrown color="white" size={28} /> : 
-                     sis.peringkat === 2 ? <FaMedal color="#64748b" size={24} /> : 
-                     sis.peringkat === 3 ? <FaMedal color="#b45309" size={24} /> : 
-                     <span className={styles.angkaPeringkat}>{sis.peringkat}</span>}
+          <div className={homeStyles.wadahKlasemen}>
+            {dataKlasemen.map((sis) => {
+              const peringkatClass =
+                sis.peringkat === 1 ? homeStyles.juara1 :
+                sis.peringkat === 2 ? homeStyles.juara2 :
+                sis.peringkat === 3 ? homeStyles.juara3 : "";
+
+              return (
+                <div key={sis.idSiswa} className={`${homeStyles.kartuPeringkat} ${peringkatClass}`}>
+                  <div className={homeStyles.kiriPeringkat}>
+                    <div style={{ width: 40, display: "flex", justifyContent: "center" }}>
+                      {sis.peringkat === 1 ? <FaCrown color="white" size={28} /> :
+                       sis.peringkat === 2 ? <FaMedal color="#64748b" size={24} /> :
+                       sis.peringkat === 3 ? <FaMedal color="#b45309" size={24} /> :
+                       <span className={homeStyles.angkaPeringkat}>{sis.peringkat}</span>}
+                    </div>
+                    <div className={homeStyles.infoPeringkat}>
+                      <p className={homeStyles.namaPeringkat}>{sis.nama || "Siswa Quantum"}</p>
+                      <span
+                        className={homeStyles.gelarPeringkat}
+                        style={{ backgroundColor: "#111827", color: "white", border: "none" }}
+                      >
+                        {sis.kelas || "N/A"}
+                      </span>
+                    </div>
                   </div>
-                  <div className={styles.infoPeringkat}>
-                    <p className={styles.namaPeringkat}>{sis.nama || "Siswa Quantum"}</p>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
-                       <span className={styles.gelarPeringkat} style={{ backgroundColor: '#111827', color: 'white', border: 'none' }}>{sis.kelas || "N/A"}</span>
+                  <div className={homeStyles.kananPeringkat}>
+                    <div className={homeStyles.waktuPeringkat}>
+                      {sis.jam}j {sis.menit}m
                     </div>
                   </div>
                 </div>
-                <div className={styles.kananPeringkat}>
-                  <div className={styles.waktuPeringkat} style={{maxWidth: 'min-content', minWidth: '65px'}}>{sis.jam}j {sis.menit}m</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

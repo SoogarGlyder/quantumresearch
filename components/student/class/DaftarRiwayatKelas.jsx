@@ -2,13 +2,12 @@
 
 import { memo } from "react";
 import { FaUserTie } from "react-icons/fa6";
-import { PERIODE_BELAJAR } from "@/utils/constants";
+import { timeHelper } from "@/utils/timeHelper";
 import styles from "@/components/App.module.css";
-
+import classStyles from "@/components/student/class/Class.module.css";
 import BadgeKehadiran from "./BadgeKehadiran";
 import PaginationBar from "@/components/ui/PaginationBar";
 
-//  FIX: Tambahkan penerima kabel currentPage dan onPageChange
 const DaftarRiwayatKelas = memo(({ dataHalIni, totalPage, currentPage, onPageChange, onBukaCatatan }) => (
   <div className={styles.contentContainer}>
     <h3 className={styles.contentTitle}>Klik untuk melihat foto papan</h3>
@@ -19,14 +18,19 @@ const DaftarRiwayatKelas = memo(({ dataHalIni, totalPage, currentPage, onPageCha
       <>
         <div className={styles.scheduleList}>
           {dataHalIni.map(({ item: j, sesiTerkait }) => (
-            <div key={j._id} className={styles.scheduleCard} onClick={() => onBukaCatatan(j)} style={{ cursor: 'pointer', position: 'relative' }}>   
+            <div
+              key={j._id}
+              className={`${styles.scheduleCard} ${classStyles.kartuKelasKlik}`}
+              onClick={() => onBukaCatatan(j)}
+            >
               <div className={styles.scheduleCardRow}>
+                {/* ✅ FIX: timeHelper.formatTanggalLengkap — timezone-safe */}
                 <div className={styles.scheduleDate}>
-                  {new Date(j.tanggal).toLocaleDateString('id-ID', { timeZone: PERIODE_BELAJAR.TIMEZONE, weekday: 'long', day: 'numeric', month: 'short' })}
+                  {timeHelper.formatTanggalLengkap(j.tanggal)}
                 </div>
                 <div className={styles.scheduleTime}>{j.jamMulai} - {j.jamSelesai}</div>
               </div>
-                
+
               <div className={styles.scheduleCardRow}>
                 <p className={styles.scheduleSubject}>{j.mapel}</p>
               </div>
@@ -34,14 +38,15 @@ const DaftarRiwayatKelas = memo(({ dataHalIni, totalPage, currentPage, onPageCha
               <div className={styles.scheduleCardRow}>
                 {j.kodePengajar && (
                   <div className={styles.scheduleTeacher}>
-                    <FaUserTie color="#2563eb" size={14} /> 
+                    {/* ✅ FIX: color prop → CSS class */}
+                    <FaUserTie className={classStyles.ikonBiru} size={14} />
                     <span>Pengajar: <span className={styles.teacherName}>{j.kodePengajar}</span></span>
                   </div>
                 )}
                 {j.pertemuan && <div className={styles.scheduleCount}>P-{j.pertemuan}</div>}
               </div>
 
-              <div className={styles.presenceArea} style={{ marginTop: '2px' }}>
+              <div className={`${styles.presenceArea} ${classStyles.presenceAreaMargin}`}>
                 <div className={styles.badgesContainer}>
                   <BadgeKehadiran sesiTerkait={sesiTerkait} />
                 </div>
@@ -50,13 +55,12 @@ const DaftarRiwayatKelas = memo(({ dataHalIni, totalPage, currentPage, onPageCha
           ))}
         </div>
 
-        {/*  FIX: Sambungkan kabel ke PaginationBar */}
-        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-          <PaginationBar 
-            totalPages={totalPage} 
+        <div className={classStyles.paginasiWrapper}>
+          <PaginationBar
+            totalPages={totalPage}
             currentPage={currentPage}
             onPageChange={onPageChange}
-            style={{ justifyContent: 'space-evenly', width: '100%', margin: '0 16px'}} 
+            className={classStyles.paginasiInner}
           />
         </div>
       </>

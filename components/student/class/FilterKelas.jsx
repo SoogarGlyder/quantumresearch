@@ -2,29 +2,20 @@
 
 import { memo } from "react";
 import { FaMagnifyingGlass } from "react-icons/fa6";
+import classStyles from "@/components/student/class/Class.module.css";
 
 const FilterKelas = memo(({ searchQuery, setSearchQuery }) => (
-  <div style={{ margin: '16px', position: 'relative',marginBottom: '-4px' }}>
-    <div style={{ position: 'absolute', top: '14px', left: '16px', color: '#6b7280' }}>
+  <div className={classStyles.filterWrapper}>
+    <span className={classStyles.filterIkonCari} aria-hidden="true">
       <FaMagnifyingGlass size={18} />
-    </div>
+    </span>
     <input
       type="text"
       placeholder="Cari mapel, bab, sub-bab, atau isi jurnal..."
       value={searchQuery}
       onChange={(e) => setSearchQuery(e.target.value)}
-      style={{
-        width: '100%',
-        padding: '12px 16px 12px 42px',
-        borderRadius: '12px',
-        border: '3px solid #111827',
-        fontSize: '15px',
-        fontWeight: '900',
-        color: '#111827',
-        boxShadow: '3px 3px 0 #111827',
-        outline: 'none',
-        backgroundColor: '#ffffff'
-      }}
+      className={classStyles.filterInput}
+      aria-label="Cari riwayat kelas"
     />
   </div>
 ));

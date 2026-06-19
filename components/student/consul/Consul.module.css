@@ -26,3 +26,38 @@
 .recordCardClickable { cursor: pointer; }
 .recordDetail { margin-top: 16px; padding-top: 16px; border-top: 3px dashed #111827; display: flex; flex-direction: column; gap: 8px; animation: slideDownBrutal 0.2s ease-out forwards; transform-origin: top; }
 .recordDetailRow { display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; color: #111827; padding: 10px 16px; border: 3px solid #111827; border-radius: 8px; box-shadow: 2px 2px 0 #111827; text-transform: uppercase; }
+/* ==========================================================================
+   TAMBAHAN: Inline styles dipindahkan dari JSX
+   ========================================================================== */
+
+/* FilterKonsul — dropdown rows */
+.dropdownRow        { display: flex; gap: 8px; flex-wrap: wrap; }
+.dropdownRowSpacer  { padding-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.filterOptionFlex   { flex: 1 1 30%; min-width: 100px; }
+
+/* FilterKonsul — ringkasan total konsul */
+.ringkasanWrapper   { margin-top: 16px; background-color: #dbeafe; border: 3px solid #111827; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 4px 4px 0 #111827; width: 100%; }
+.ringkasanLabel     { margin: 0; font-size: 12px; font-weight: 900; color: #1e3a8a; text-transform: uppercase; }
+.ringkasanNilai     { margin: 4px 0 0; font-size: 20px; font-weight: 900; color: #111827; }
+.ringkasanBadge     { background-color: #1e3a8a; color: #facc15; border: 2px solid #111827; padding: 8px 12px; border-radius: 8px; font-weight: 900; font-size: 13px; box-shadow: 2px 2px 0 #111827; white-space: nowrap; }
+
+/* index.jsx — empty state */
+.wadahKosong        { margin-top: 24px; padding: 40px; text-align: center; }
+.paginasiWrapper    { margin-top: 24px; }
+
+/* RecordCard — badge variants */
+.badgePinalti       { background-color: #111827; color: #ef4444; border: 2px solid #ef4444; display: flex; gap: 4px; align-items: center; }
+.badgeBerjalan      { background-color: #facc15; border: 2px solid #111827; color: #111827; display: flex; }
+.chevronWrapper     { margin-top: 12px; color: #111827; transition: transform 0.2s; }
+
+/* RecordCard — detail row variants */
+.rowPendamping      { background-color: #f1f5f9; }
+.rowMulai           { background-color: #dbeafe; }
+.rowSelesai         { background-color: #dcfce3; }
+.rowPinalti         { background-color: #fecaca; }
+.rowBerjalan        { background-color: #fef08a; }
+.nilaiPendampingAda { font-weight: 900; color: #2563eb; }
+.nilaiPendampingTdk { font-weight: 900; color: #64748b; }
+
+/* RecordCard — nota pinalti */
+.notaPinalti        { background-color: #111827; color: white; padding: 8px; font-size: 11px; text-align: center; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; font-weight: bold; }

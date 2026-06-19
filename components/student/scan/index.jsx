@@ -1,47 +1,44 @@
 "use client";
 
 import styles from "@/components/App.module.css";
-
-// IMPORT TETANGGA (LOKAL)
 import HeaderScanner from "./HeaderScanner";
-import ModeSelector from "./ModeSelector";
-import CameraArea from "./CameraArea";
-import MessageArea from "./MessageArea";
+import ModeSelector  from "./ModeSelector";
+import CameraArea    from "./CameraArea";
+import MessageArea   from "./MessageArea";
 
-export default function TabScanner({ 
-  modeScan, setModeScan, hasilScan, pesanSistem, sedangLoading, 
-  mapelPilihan, setMapelPilihan, 
-  guruPilihan, setGuruPilihan, daftarGuru = [], //  FIX: Tambahan Props Guru
+export default function TabScanner({
+  modeScan, setModeScan, hasilScan, pesanSistem, sedangLoading,
+  mapelPilihan, setMapelPilihan,
+  guruPilihan,  setGuruPilihan, daftarGuru = [],
   saatBarcodeTerbaca, resetScanner, apakahError,
-  adaKonsulAktif, adaKelasAktif 
+  adaKonsulAktif, adaKelasAktif,
 }) {
-
   return (
     <div className={styles.contentArea}>
       <HeaderScanner />
       <div className={styles.contentContainer}>
-        
-        <ModeSelector 
+
+        <ModeSelector
           modeScan={modeScan}
           setModeScan={setModeScan}
           resetScanner={resetScanner}
           mapelPilihan={mapelPilihan}
           setMapelPilihan={setMapelPilihan}
-          guruPilihan={guruPilihan}           //  FIX: Teruskan ke Selector
-          setGuruPilihan={setGuruPilihan}     //  FIX: Teruskan ke Selector
-          daftarGuru={daftarGuru}             //  FIX: Teruskan ke Selector
+          guruPilihan={guruPilihan}
+          setGuruPilihan={setGuruPilihan}
+          daftarGuru={daftarGuru}
           adaKonsulAktif={adaKonsulAktif}
           adaKelasAktif={adaKelasAktif}
         />
-        
-        <CameraArea 
+
+        <CameraArea
           hasilScan={hasilScan}
           apakahError={apakahError}
           pesanSistem={pesanSistem}
           saatBarcodeTerbaca={saatBarcodeTerbaca}
         />
-        
-        <MessageArea 
+
+        <MessageArea
           sedangLoading={sedangLoading}
           pesanSistem={pesanSistem}
           apakahError={apakahError}

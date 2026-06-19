@@ -1,25 +1,29 @@
 "use client";
 
 import { memo } from "react";
-import styles from "@/components/App.module.css";
+import scanStyles from "@/components/student/scan/Scan.module.css";
 
 const MessageArea = memo(({ sedangLoading, pesanSistem, apakahError, resetScanner }) => {
-  const isMsgError = apakahError || 
-                     pesanSistem?.includes("⚠️") || 
-                     pesanSistem?.toLowerCase().includes("gagal") || 
-                     pesanSistem?.toLowerCase().includes("salah");
+  const isMsgError =
+    apakahError ||
+    pesanSistem?.includes("⚠️") ||
+    pesanSistem?.toLowerCase().includes("gagal") ||
+    pesanSistem?.toLowerCase().includes("salah");
 
   return (
-    <div className={styles.containerMessage}>
+    // ✅ FIX: import dari Scan.module.css — bukan App.module.css
+    <div className={scanStyles.containerMessage}>
       {sedangLoading ? (
-        <div className={`${styles.messageBox} ${styles.messageLoading}`}>
-          <p className={`${styles.messageText} ${styles.messageProcess}`}>Memproses data...</p>
+        <div className={`${scanStyles.messageBox} ${scanStyles.messageLoading}`}>
+          <p className={`${scanStyles.messageText} ${scanStyles.messageProcess}`}>
+            Memproses data...
+          </p>
         </div>
       ) : (
         pesanSistem && (
-           <div className={`${styles.messageBox} ${isMsgError ? styles.messageFail : styles.messageSuccess}`}>
-            <p className={styles.messageText}>{pesanSistem}</p>
-            <button onClick={resetScanner} className={styles.repeatButton}>
+          <div className={`${scanStyles.messageBox} ${isMsgError ? scanStyles.messageFail : scanStyles.messageSuccess}`}>
+            <p className={scanStyles.messageText}>{pesanSistem}</p>
+            <button onClick={resetScanner} className={scanStyles.repeatButton}>
               🔄 Scan Ulang
             </button>
           </div>
