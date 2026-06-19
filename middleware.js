@@ -25,11 +25,13 @@ const getJwtSecret = () => {
 
 export async function middleware(request) {
   const path  = request.nextUrl.pathname;
+
+  if (path === "/demo") {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
-  
-  // 👇 1. PISAHKAN DEFINISI RUTE PUBLIK & DEMO
   const isLoginPath = path === KONFIGURASI_SISTEM.PATH_LOGIN;
-  const isDemoPath  = path === "/demo";
 
   let sesi = null;
   if (token) {
@@ -41,12 +43,6 @@ export async function middleware(request) {
     }
   }
 
-  // 👇 2. BERIKAN JALUR VIP UNTUK DEMO (Boleh masuk dengan atau tanpa sesi)
-  if (isDemoPath) {
-    return NextResponse.next();
-  }
-
-  // 👇 3. PENGGUNA SUDAH LOGIN TAPI KE HALAMAN LOGIN -> TENDANG KE BERANDA
   if (isLoginPath && sesi) {
     const berhakAksesAdmin =
       sesi.peran === PERAN.ADMIN.id ||
@@ -57,14 +53,12 @@ export async function middleware(request) {
     return NextResponse.redirect(new URL(tujuan, request.url));
   }
 
-  // 👇 4. PENGGUNA BELUM LOGIN DAN BUKAN DI HALAMAN LOGIN -> TENDANG KE LOGIN
   if (!isLoginPath && !sesi) {
     return NextResponse.redirect(
       new URL(KONFIGURASI_SISTEM.PATH_LOGIN, request.url)
     );
   }
 
-  // 👇 5. PROTEKSI AREA ADMIN
   if (sesi && path.startsWith(PERAN.ADMIN.home)) {
     const adalahAdmin        = sesi.peran === PERAN.ADMIN.id;
     const adalahStafBerwenang =
@@ -77,7 +71,6 @@ export async function middleware(request) {
     }
   }
 
-  // 👇 6. ADMIN MURNI NYASAR KE BERANDA SISWA -> KEMBALIKAN KE ADMIN
   if (sesi && path === PERAN.SISWA.home && sesi.peran === PERAN.ADMIN.id) {
     return NextResponse.redirect(new URL(PERAN.ADMIN.home, request.url));
   }

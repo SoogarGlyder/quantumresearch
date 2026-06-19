@@ -37,32 +37,48 @@ const getTglJakarta = () => {
   return `${year}-${month}-${day}`;
 };
 
-// 1. TAMBAHKAN kuisDemo DI SINI
-export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setModeScan, resetScanner, latihanHariIni, klasemenDemo, kuisDemo }) {
+export default function TabBerandaSiswa({ 
+  siswa, jadwal, riwayat, setTab, setModeScan, resetScanner, 
+  latihanHariIni, klasemenDemo, kuisDemo, 
+  isDemoMode, misiDemo = [] 
+}) {
   const router = useRouter();
   
   const [isKlasemenOpen, setIsKlasemenOpen] = useState(false);
-  const [misiHarian, setMisiHarian] = useState([]);
-  const [loadingMisi, setLoadingMisi] = useState(true);
   const [urlMitra, setUrlMitra] = useState(null);
 
+  // =======================================================================
+  // 🛡️ INITIAL STATE (Langsung Pasang Data Demo!)
+  // =======================================================================
+  const [misiHarian, setMisiHarian] = useState(() => isDemoMode ? misiDemo : []);
+  const [loadingMisi, setLoadingMisi] = useState(() => !isDemoMode);
+  const [dataKuisLive, setDataKuisLive] = useState(() => isDemoMode ? (kuisDemo || null) : null);
+
   const [kuisAktif, setKuisAktif] = useState(null);
-  
   const [isReviewMode, setIsReviewMode] = useState(false);
   const [jawabanPastReview, setJawabanPastReview] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0); 
 
   const { streakKonsul, statsBulanIni, misiBulanan } = useStudentStats(riwayat, jadwal, siswa);
 
+  // =======================================================================
+  // 🛡️ BLOKIR API SECARA MUTLAK (Anti Loop!)
+  // =======================================================================
   useEffect(() => {
+    // KUNCI: Langsung batalkan eksekusi jika ini mode demo!
+    if (isDemoMode) return; 
+
     let isMounted = true;
     setLoadingMisi(true);
     cekDanGenerateMisiHarian().then(res => {
       if (isMounted && res.ok) setMisiHarian(res.data);
       if (isMounted) setLoadingMisi(false);
+    }).catch(() => {
+      if (isMounted) setLoadingMisi(false);
     });
+
     return () => { isMounted = false; };
-  }, []);
+  }, [isDemoMode]); 
 
   const handleKlaimMisi = async (idMisi) => {
     const hasil = await klaimHadiahMisi(idMisi);
@@ -78,19 +94,22 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
   const tglJakartaHariIni = getTglJakarta();
   
   const jadwalKuisHariIni = useMemo(() => {
-    // 2. INJEKSI PAKSA: Jika mode demo ada, pancing radar agar CBT menyala tanpa butuh jadwal
-    if (kuisDemo) return { _id: "jadwal-demo-kuis", mapel: kuisDemo.mapel, bab: kuisDemo.bab, kelasTarget: siswa.kelas };
+    // Pastikan ID kuis valid sebelum mengganti jadwal
+    if (isDemoMode && kuisDemo && kuisDemo._id) {
+      return { _id: "jadwal-demo-kuis", mapel: kuisDemo.mapel, bab: kuisDemo.bab, kelasTarget: siswa.kelas };
+    }
 
     if (!jadwal || !Array.isArray(jadwal)) return null;
     return jadwal.find(j => {
       const tglJadwal = j.tanggal?.substring(0, 10); 
       return tglJadwal === tglJakartaHariIni && j.kelasTarget === siswa.kelas;
     });
-  }, [jadwal, tglJakartaHariIni, siswa.kelas, kuisDemo]);
+  }, [jadwal, tglJakartaHariIni, siswa.kelas, kuisDemo, isDemoMode]);
   
   const riwayatSesiIni = useMemo(() => {
-    // 3. INJEKSI PAKSA: Beri status pura-pura sudah "Scan In" jika di mode demo
-    if (kuisDemo) return { waktuMulai: new Date().toISOString() };
+    if (isDemoMode && kuisDemo && kuisDemo._id) {
+      return { waktuMulai: new Date().toISOString() };
+    }
 
     if (!jadwalKuisHariIni || !riwayat || !Array.isArray(riwayat)) return null;
     const targetId = jadwalKuisHariIni._id?.toString();
@@ -106,33 +125,35 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
              r.status !== STATUS_SESI.ALPA.id &&
              r.status !== STATUS_SESI.TIDAK_HADIR.id;
     });
-  }, [jadwalKuisHariIni, riwayat, tglJakartaHariIni, kuisDemo]);
+  }, [jadwalKuisHariIni, riwayat, tglJakartaHariIni, kuisDemo, isDemoMode]);
 
-  const [dataKuisLive, setDataKuisLive] = useState(null);
-
+  // =======================================================================
+  // 🛡️ BLOKIR API KUIS (Mencegah CastError ObjectId)
+  // =======================================================================
   useEffect(() => {
-    let isMounted = true;
-    if (jadwalKuisHariIni) {
-      // 4. GUARD CLAUSE: Kalau ini Demo, pakai data kuisDemo, jangan tembak server API!
-      if (kuisDemo) {
-        setDataKuisLive(kuisDemo);
-        return;
-      }
+    // KUNCI: Jangan pernah sentuh backend jika demo aktif!
+    if (isDemoMode) return; 
+    
+    if (!jadwalKuisHariIni) return;
+    
+    // Failsafe Ekstra: Pastikan ID jadwal asli (bukan mengandung kata 'demo')
+    if (String(jadwalKuisHariIni._id).includes("demo")) return;
 
-      import("@/actions/studentAction").then((module) => {
-        module.cekKetersediaanKuis(jadwalKuisHariIni._id, siswa._id).then((res) => {
-           if (isMounted && res.ada) {
-             setDataKuisLive({
-                ...res.data,
-                mapel: jadwalKuisHariIni.mapel,
-                bab: jadwalKuisHariIni.bab
-             });
-           }
-        });
-      });
-    }
+    let isMounted = true;
+    import("@/actions/studentAction").then((module) => {
+      module.cekKetersediaanKuis(jadwalKuisHariIni._id, siswa._id).then((res) => {
+          if (isMounted && res.ada) {
+            setDataKuisLive({
+              ...res.data,
+              mapel: jadwalKuisHariIni.mapel,
+              bab: jadwalKuisHariIni.bab
+            });
+          }
+      }).catch(err => console.error("Kuis Error:", err));
+    });
+    
     return () => { isMounted = false; };
-  }, [jadwalKuisHariIni, siswa._id, refreshTrigger, kuisDemo]); 
+  }, [jadwalKuisHariIni?._id, siswa._id, refreshTrigger, isDemoMode]); 
 
   return (
     <div className={styles.contentArea}>
@@ -161,9 +182,7 @@ export default function TabBerandaSiswa({ siswa, jadwal, riwayat, setTab, setMod
           kuisHariIni={dataKuisLive} 
           riwayatSesiIni={riwayatSesiIni} 
           onBukaKuis={async (dataKuis, isReview = false) => {
-            
-            // 5. GUARD CLAUSE SAAT TOMBOL DIKLIK (Jangan fetch data review/soal dari server)
-            if (kuisDemo) {
+            if (isDemoMode) {
               setIsReviewMode(false);
               setJawabanPastReview([]);
               setKuisAktif(kuisDemo);

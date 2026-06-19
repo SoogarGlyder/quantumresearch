@@ -25,10 +25,11 @@ export default function StudentApp({
   jadwal, 
   statistik, 
   latihanHariIni, 
-  klasemenDemo = null,       // Default null untuk produksi
-  kuisDemo = null,           // Default null untuk produksi
-  riwayatKuisDemo = null,    // Default null untuk produksi
-  isDemoMode = false         // Default false untuk produksi
+  klasemenDemo = [],       
+  kuisDemo = [],           
+  riwayatKuisDemo = [],    
+  isDemoMode = false,
+  misiDemo = []            
 }) {
   const router = useRouter();
 
@@ -163,8 +164,31 @@ export default function StudentApp({
   return (
     <div className={styles.mainContainer}>
       <main>
-        {tab === "home" && <TabBerandaSiswa siswa={siswa} jadwal={jadwal} riwayat={riwayat} setTab={setTab} setModeScan={setModeScan} resetScanner={resetScanner} latihanHariIni={latihanHariIni} klasemenDemo={klasemenDemo} kuisDemo={kuisDemo}/>}
-        {tab === "kelas" && <TabKelasSiswa jadwal={jadwal} riwayat={riwayat} siswa={siswa} isDemoMode={isDemoMode} riwayatKuisDemo={riwayatKuisDemo}/>}
+        {tab === "home" && (
+          <TabBerandaSiswa 
+            siswa={siswa} 
+            jadwal={jadwal} 
+            riwayat={riwayat} 
+            setTab={setTab} 
+            setModeScan={setModeScan} 
+            resetScanner={resetScanner} 
+            latihanHariIni={latihanHariIni} 
+            klasemenDemo={klasemenDemo} 
+            kuisDemo={kuisDemo} 
+            isDemoMode={isDemoMode} 
+            misiDemo={misiDemo} 
+          />
+        )}
+        
+        {tab === "kelas" && (
+          <TabKelasSiswa 
+            jadwal={jadwal} 
+            riwayat={riwayat} 
+            siswa={siswa} 
+            isDemoMode={isDemoMode} 
+            riwayatKuisDemo={riwayatKuisDemo}
+          />
+        )}
         
         {tab === "scan" && (
           <TabScanSiswa 

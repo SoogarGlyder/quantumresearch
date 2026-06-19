@@ -1,4 +1,4 @@
-import { CABANG_QUANTUM, PERAN, STATUS_SESI, TIPE_SESI } from "@/utils/constants";
+import { CABANG_QUANTUM, PERAN, STATUS_SESI, TIPE_SESI, GAMIFIKASI } from "@/utils/constants";
 
 export function dapatkanDataDemoSiswa() {
   const now = new Date();
@@ -27,6 +27,32 @@ export function dapatkanDataDemoSiswa() {
   };
 
   const mockStatistik = { totalMenit: 0, totalSesi: 0 }; 
+
+  // =======================================================================
+  // 🎯 DATA MISI DEMO (Diambil dari constants.js)
+  // =======================================================================
+  const mockMisiHarian = [
+    { 
+      _id: "misi-demo-1", 
+      kodeMisi: GAMIFIKASI.POOL_MISI[0].kodeMisi, // HADIR_KELAS
+      judul: GAMIFIKASI.POOL_MISI[0].judul, 
+      expBonus: GAMIFIKASI.POOL_MISI[0].expBonus, 
+      progress: 1, 
+      target: GAMIFIKASI.POOL_MISI[0].target, 
+      selesai: true, 
+      diklaim: false 
+    },
+    { 
+      _id: "misi-demo-2", 
+      kodeMisi: GAMIFIKASI.POOL_MISI[1].kodeMisi, // KONSUL_30
+      judul: GAMIFIKASI.POOL_MISI[1].judul, 
+      expBonus: GAMIFIKASI.POOL_MISI[1].expBonus, 
+      progress: 15, 
+      target: GAMIFIKASI.POOL_MISI[1].target, 
+      selesai: false, 
+      diklaim: false 
+    }
+  ];
 
   // =======================================================================
   // 🗂️ DAFTAR MATA PELAJARAN UNTUK DI-LOOP (Disesuaikan dengan format JSON)
@@ -251,5 +277,5 @@ export function dapatkanDataDemoSiswa() {
     }
   ];
 
-  return { mockSiswa, mockStatistik, mockJadwal, mockRiwayat, mockLatihan, mockKlasemen, mockKuis, mockRiwayatKuis }; 
+  return { mockSiswa, mockStatistik, mockJadwal, mockRiwayat, mockLatihan, mockKlasemen, mockKuis, mockRiwayatKuis, mockMisiHarian }; 
 }

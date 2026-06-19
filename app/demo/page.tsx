@@ -14,7 +14,8 @@ export default function DemoSiswaPage() {
     mockLatihan,
     mockKlasemen,
     mockKuis,
-    mockRiwayatKuis
+    mockRiwayatKuis,
+    mockMisiHarian
   } = dapatkanDataDemoSiswa();
 
   return (
@@ -44,7 +45,8 @@ export default function DemoSiswaPage() {
           klasemenDemo={mockKlasemen as any}
           kuisDemo={mockKuis as any}
           riwayatKuisDemo={mockRiwayatKuis as any}
-          isDemoMode={true} 
+          isDemoMode={true}
+          misiDemo={mockMisiHarian} 
         />
       </div>
 
