@@ -25,7 +25,8 @@ function InnerTabKelas({ jadwal, riwayat, siswa, isDemoMode, riwayatKuisDemo }) 
   const [riwayatKuis,      setRiwayatKuis]      = useState([]);
   const [kuisAktifReview,  setKuisAktifReview]  = useState(null);
   const [jawabanPastReview, setJawabanPastReview] = useState([]);
-  const [pesanError,       setPesanError]       = useState(null);
+  // ✅ FIX: pesanError menggantikan alert()
+  const [pesanError, setPesanError] = useState(null);
 
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGINATION_KELAS || 10;
 
@@ -57,6 +58,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa, isDemoMode, riwayatKuisDemo }) 
     if (searchQuery.trim()) {
       const kws = searchQuery.toLowerCase().split(",").map((k) => k.trim()).filter(Boolean);
       hasil = jadwalSelesai.filter(({ item: j }) => {
+        // ✅ FIX: timeHelper.formatTanggalLengkap — timezone-safe
         const teksTanggal = timeHelper.formatTanggalLengkap(j.tanggal).toLowerCase();
         return kws.every(
           (kw) =>
@@ -69,6 +71,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa, isDemoMode, riwayatKuisDemo }) 
       });
     }
 
+    // Sort terbaru di atas — string YYYY-MM-DD bisa dibandingkan langsung
     return [...hasil].sort((a, b) =>
       timeHelper.getTglJakarta(b.item.tanggal).localeCompare(
         timeHelper.getTglJakarta(a.item.tanggal)
@@ -138,6 +141,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa, isDemoMode, riwayatKuisDemo }) 
       setKuisAktifReview({ jadwalId, soal: res.data.soal });
       setPesanError(null);
     } else {
+      // ✅ FIX: state pesanError — bukan alert()
       setPesanError("Gagal memuat pembahasan: " + res.pesan);
       setTimeout(() => setPesanError(null), 3000);
     }
@@ -149,6 +153,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa, isDemoMode, riwayatKuisDemo }) 
       <TabSelector activeTab={activeTab} setActiveTab={setActiveTab} />
       <FilterKelas searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
+      {/* Pesan error — menggantikan alert() */}
       {pesanError && (
         <p className={`${styles.emptySchedule} ${classStyles.filterWrapper}`}
           style={{ color: "#b91c1c", background: "#fee2e2", border: "3px solid #ef4444" }}>
@@ -168,8 +173,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa, isDemoMode, riwayatKuisDemo }) 
 
       {activeTab === "KUIS" && (
         <DaftarRiwayatKuis
-          /* ✅ FIX UTAMA: Diubah dari dataRiwayatKuis menjadi dataHalIni agar klop dengan parameter destrukturisasi */
-          dataHalIni={dataKuisHalIni} 
+          dataRiwayatKuis={dataKuisHalIni}
           totalPage={totalPageKuis}
           currentPage={page}
           onPageChange={setPage}

@@ -5,9 +5,10 @@ import { KONFIGURASI_SISTEM, PERAN, PANGKAT_PENGAJAR } from "./utils/constants";
 // ============================================================================
 // JWT SECRET
 // ============================================================================
+
 /**
  * @returns {Uint8Array}
- * @throws {Error}
+ * @throws {Error} Jika JWT_SECRET belum diset di environment variables.
  */
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
@@ -21,18 +22,31 @@ const getJwtSecret = () => {
 
 // ============================================================================
 // MIDDLEWARE — Next.js Route Protection
+//
+// Dieksekusi di Edge Runtime sebelum setiap request.
+// Memverifikasi JWT dari cookie dan menentukan redirect berdasarkan peran.
+//
+// Alur keputusan:
+//   0. Halaman /demo → publik, langsung lolos tanpa cek sesi
+//   1. Pengguna dengan sesi aktif → tidak boleh akses halaman login
+//   2. Pengguna tanpa sesi → tidak boleh akses halaman dalam
+//   3. Area /admin → hanya Admin, Staff Akademik, dan Kakak Asuh
+//   4. Admin murni di "/" → redirect ke /admin
 // ============================================================================
 
 export async function middleware(request) {
-  const path  = request.nextUrl.pathname;
+  const path = request.nextUrl.pathname;
 
+  // 0. Halaman demo bersifat publik — tidak butuh sesi, dan tidak perlu
+  //    membebani Edge Runtime dengan verifikasi JWT yang tidak relevan.
   if (path === "/demo") {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
-  const isLoginPath = path === KONFIGURASI_SISTEM.PATH_LOGIN;
+  const token       = request.cookies.get(KONFIGURASI_SISTEM.COOKIE_NAME)?.value;
+  const isPublicPath = path === KONFIGURASI_SISTEM.PATH_LOGIN;
 
+  // Verifikasi JWT di Edge Runtime — gagal verifikasi = tidak ada sesi
   let sesi = null;
   if (token) {
     try {
@@ -43,7 +57,8 @@ export async function middleware(request) {
     }
   }
 
-  if (isLoginPath && sesi) {
+  // 1. Sudah punya sesi tapi mengakses halaman login → redirect ke home
+  if (isPublicPath && sesi) {
     const berhakAksesAdmin =
       sesi.peran === PERAN.ADMIN.id ||
       (sesi.peran === PERAN.PENGAJAR.id &&
@@ -53,12 +68,14 @@ export async function middleware(request) {
     return NextResponse.redirect(new URL(tujuan, request.url));
   }
 
-  if (!isLoginPath && !sesi) {
+  // 2. Tidak punya sesi dan mengakses halaman dalam → redirect ke login
+  if (!isPublicPath && !sesi) {
     return NextResponse.redirect(
       new URL(KONFIGURASI_SISTEM.PATH_LOGIN, request.url)
     );
   }
 
+  // 3. Proteksi area /admin — hanya Admin, Staff Akademik, dan Kakak Asuh
   if (sesi && path.startsWith(PERAN.ADMIN.home)) {
     const adalahAdmin        = sesi.peran === PERAN.ADMIN.id;
     const adalahStafBerwenang =
@@ -71,6 +88,7 @@ export async function middleware(request) {
     }
   }
 
+  // 4. Admin murni tidak boleh landing di "/" (halaman siswa/pengajar)
   if (sesi && path === PERAN.SISWA.home && sesi.peran === PERAN.ADMIN.id) {
     return NextResponse.redirect(new URL(PERAN.ADMIN.home, request.url));
   }
@@ -78,6 +96,7 @@ export async function middleware(request) {
   return NextResponse.next();
 }
 
+// Matcher: jalankan middleware di semua path kecuali asset statis
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

@@ -72,6 +72,10 @@ export default function StudentApp({
   const apakahError = formatHelper.cekPesanErrorScanner(pesanSistem);
 
   useEffect(() => {
+    // 🎭 Mode Demo: tidak perlu daftar guru sungguhan — Konsul tetap berfungsi
+    // (disimulasikan) walau dropdown-nya kosong.
+    if (isDemoMode) return;
+
     const muatDaftarGuru = async () => {
       try {
         const res = await ambilDaftarGuruDropdown();
@@ -81,7 +85,7 @@ export default function StudentApp({
       }
     };
     muatDaftarGuru();
-  }, []);
+  }, [isDemoMode]);
 
   // Sinkronisasi mode scan dengan status sesi aktif saat tab scan dibuka
   useEffect(() => {
@@ -140,6 +144,20 @@ export default function StudentApp({
     setSedangLoading(true);
     setHasilScan(teksDariKamera);
     setPesanSistem("Mengirim data ke pusat...");
+
+    // 🎭 Mode Demo: JANGAN PERNAH panggil prosesHasilScan sungguhan. Halaman /demo
+    // bersifat publik (lihat middleware.js) — kalau pengunjung kebetulan login dengan
+    // sesi asli di tab lain pada browser yang sama, panggilan server di sini akan
+    // memakai sesi ASLI mereka dan bisa membuat absensi sungguhan. Simulasikan saja.
+    if (isDemoMode) {
+      setTimeout(() => {
+        const labelSesi = modeScan === MODE_SCAN.KELAS ? "Kelas" : "Konsul";
+        setPesanSistem(`✅ Simulasi Scan ${labelSesi} berhasil! (Mode Demo — data tidak dikirim ke server)`);
+        setSedangLoading(false);
+        setTimeout(resetScanner, TIMER_RESET_SCANNER_MS);
+      }, 800);
+      return;
+    }
 
     try {
       const laporan = await prosesHasilScan(teksDariKamera, mapelPilihan, guruPilihan);
@@ -226,7 +244,7 @@ export default function StudentApp({
         {tab === "riwayat" && <TabKonsulSiswa riwayat={riwayat} />}
 
         {tab === "profil" && (
-          <TabProfilSiswa siswa={siswa} klikLogout={klikLogout} />
+          <TabProfilSiswa siswa={siswa} klikLogout={klikLogout} isDemoMode={isDemoMode} />
         )}
       </main>
 

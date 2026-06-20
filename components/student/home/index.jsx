@@ -23,14 +23,8 @@ export default function TabBerandaSiswa({
   siswa, jadwal, riwayat, setTab, setModeScan, resetScanner, latihanHariIni,
   klasemenDemo, kuisDemo, isDemoMode = false, misiDemo = [],
 }) {
-  // 🛡️ ANTI-HYDRATION ERROR: Tunda render UI sensitif sampai Client siap
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   const [isKlasemenOpen, setIsKlasemenOpen] = useState(false);
-  
+  // 🎭 Mode Demo: pasang data misi demo langsung, tanpa loading state
   const [misiHarian,     setMisiHarian]     = useState(() => (isDemoMode ? misiDemo : []));
   const [loadingMisi,    setLoadingMisi]    = useState(() => !isDemoMode);
   const [urlMitra,       setUrlMitra]       = useState(null);
@@ -38,28 +32,29 @@ export default function TabBerandaSiswa({
   const [isReviewMode,   setIsReviewMode]   = useState(false);
   const [jawabanPastReview, setJawabanPastReview] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
+  // Pesan untuk klaim misi — menggantikan alert()
   const [pesanKlaim, setPesanKlaim]         = useState(null);
+  // Pesan untuk error buka kuis — menggantikan alert()
   const [pesanKuis,  setPesanKuis]          = useState(null);
 
   const { streakKonsul, statsBulanIni, misiBulanan } = useStudentStats(riwayat, jadwal, siswa);
 
   useEffect(() => {
+    // 🎭 Mode Demo: misiDemo sudah dipasang sebagai initial state, jangan panggil server action.
     if (isDemoMode) return;
 
-    let isMountedLokal = true;
+    let isMounted = true;
     setLoadingMisi(true);
     cekDanGenerateMisiHarian().then((res) => {
-      if (isMountedLokal && res.ok) setMisiHarian(res.data);
-      if (isMountedLokal) setLoadingMisi(false);
-    }).catch(() => {
-      if (isMountedLokal) setLoadingMisi(false);
+      if (isMounted && res.ok) setMisiHarian(res.data);
+      if (isMounted) setLoadingMisi(false);
     });
-    return () => { isMountedLokal = false; };
+    return () => { isMounted = false; };
   }, [isDemoMode]);
 
   const handleKlaimMisi = async (idMisi) => {
     const hasil = await klaimHadiahMisi(idMisi);
+    // ✅ FIX: hasil.sukses → hasil.ok
     if (hasil.ok) {
       setMisiHarian((prev) =>
         prev.map((m) => (m._id === idMisi ? { ...m, diklaim: true } : m))
@@ -76,24 +71,29 @@ export default function TabBerandaSiswa({
     [jadwal, riwayat]
   );
 
+  // ✅ FIX: Pakai timeHelper.getTglJakarta — bukan fungsi lokal
   const tglJakartaHariIni = timeHelper.getTglJakarta();
 
   const jadwalKuisHariIni = useMemo(() => {
+    // 🎭 Mode Demo: bungkus kuisDemo dalam objek "jadwal" minimal agar QuizHariIni mau render.
     if (isDemoMode && kuisDemo?._id) {
       return { _id: "jadwal-demo-kuis", mapel: kuisDemo.mapel, bab: kuisDemo.bab, kelasTarget: siswa.kelas };
     }
 
     if (!Array.isArray(jadwal)) return null;
     return jadwal.find((j) => {
+      // ✅ FIX: Pakai timeHelper.getTglJakarta(j.tanggal) — bukan substring(0,10)
+      // Setelah serialize(), tanggal Jakarta tersimpan sebagai UTC ISO string.
+      // substring(0,10) mengambil tanggal UTC bukan Jakarta → bisa salah 1 hari.
       const tglJadwal = timeHelper.getTglJakarta(j.tanggal);
       return tglJadwal === tglJakartaHariIni && j.kelasTarget === siswa.kelas;
     });
   }, [jadwal, tglJakartaHariIni, siswa.kelas, isDemoMode, kuisDemo]);
 
   const riwayatSesiIni = useMemo(() => {
+    // 🎭 Mode Demo: anggap siswa "sudah scan masuk" agar tombol kuis tidak terkunci.
     if (isDemoMode && kuisDemo?._id) {
-      // 🛡️ Mencegah new Date() saat SSR
-      return { waktuMulai: kuisDemo.waktuMulai || "2026-06-01T08:00:00+07:00" };
+      return { waktuMulai: new Date().toISOString() };
     }
 
     if (!jadwalKuisHariIni || !Array.isArray(riwayat)) return null;
@@ -116,27 +116,31 @@ export default function TabBerandaSiswa({
     });
   }, [jadwalKuisHariIni, riwayat, tglJakartaHariIni, isDemoMode, kuisDemo]);
 
+  // 🎭 Mode Demo: pasang kuisDemo langsung sebagai data live, tanpa fetch ke server.
   const [dataKuisLive, setDataKuisLive] = useState(() => (isDemoMode ? (kuisDemo || null) : null));
 
   useEffect(() => {
+    // 🎭 Mode Demo: dataKuisLive sudah dipasang sebagai initial state — jangan sentuh server.
     if (isDemoMode) return;
 
-    let isMountedLokal = true;
+    let isMounted = true;
     if (!jadwalKuisHariIni) return;
+    // Failsafe tambahan: pastikan ID jadwal asli (bukan stand-in demo)
     if (String(jadwalKuisHariIni._id).includes("demo")) return;
 
     import("@/actions/studentAction").then((module) => {
       module.cekKetersediaanKuis(jadwalKuisHariIni._id, siswa._id).then((res) => {
-        if (isMountedLokal && res.ok && res.data?.ada) {
+        if (isMounted && res.ok && res.data?.ada) {
           setDataKuisLive({ ...res.data, mapel: jadwalKuisHariIni.mapel, bab: jadwalKuisHariIni.bab });
         }
-      }).catch(err => console.error(err));
+      });
     });
 
-    return () => { isMountedLokal = false; };
+    return () => { isMounted = false; };
   }, [jadwalKuisHariIni, siswa._id, refreshTrigger, isDemoMode]);
 
   const handleBukaKuis = async (dataKuis, isReview = false) => {
+    // 🎭 Mode Demo: tampilkan kuisDemo langsung, tidak ada panggilan server / mode review.
     if (isDemoMode) {
       setIsReviewMode(false);
       setJawabanPastReview([]);
@@ -167,8 +171,6 @@ export default function TabBerandaSiswa({
       }
     }
   };
-
-  if (!isMounted) return null; 
 
   return (
     <div className={styles.contentArea}>

@@ -9,7 +9,7 @@ import styles from "@/components/App.module.css";
 import profileStyles from "@/components/student/profile/Profile.module.css";
 import ProfilView from "./ProfilView";
 
-export default function ProfilCard({ siswa }) {
+export default function ProfilCard({ siswa, isDemoMode = false }) {
   const router = useRouter();
 
   const [isEditing,    setIsEditing]    = useState(false);
@@ -41,6 +41,19 @@ export default function ProfilCard({ siswa }) {
 
     setLoading(true);
     setPesan({ teks: "Menyimpan perubahan...", tipe: "info" });
+
+    // 🎭 Mode Demo: JANGAN PERNAH panggil updateProfilSiswa sungguhan. siswa._id di
+    // demo adalah ID palsu ("demo-siswa-001") — memanggil server hanya akan gagal
+    // dengan pesan error yang membingungkan, dan tetap membebani server tanpa guna.
+    if (isDemoMode) {
+      setTimeout(() => {
+        setPesan({ teks: "Simulasi berhasil disimpan! (Mode Demo — tidak benar-benar tersimpan)", tipe: "sukses" });
+        setIsEditing(false);
+        setPasswordEdit("");
+        setLoading(false);
+      }, 600);
+      return;
+    }
 
     try {
       const hasil = await updateProfilSiswa(siswa._id, {
