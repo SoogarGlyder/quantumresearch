@@ -4,7 +4,7 @@
 export const PERIODE_BELAJAR = Object.freeze({
   ID: "Tahun Ajaran 2025/2026", // 👈 Diubah agar sesuai dengan 1 tahun
   MULAI: "2025-06-29",          // 👈 Pagar Awal (29 Juni 2025)
-  AKHIR: "2026-06-28",          // 👈 Pagar Akhir (28 Juni 2026)
+  AKHIR: "2027-06-28",          // 👈 Pagar Akhir (28 Juni 2026)
   TIMEZONE: "Asia/Jakarta",
   UTC_OFFSET: -7,
   ISO_OFFSET: "+07:00",
