@@ -40,6 +40,16 @@ export default async function Home() {
 
   if (!karcis) redirect(KONFIGURASI_SISTEM.PATH_LOGIN);
 
+  // ==========================================================================
+  // PERBAIKAN: PENGECEKAN FORMAT TOKEN (AUTO-LOGOUT JIKA JWT/SALAH FORMAT)
+  // ==========================================================================
+  const isObjectIdValid = /^[0-9a-fA-F]{24}$/.test(karcis);
+  
+  if (!isObjectIdValid) {
+    redirect(`${KONFIGURASI_SISTEM.PATH_LOGIN}?${LABEL_SISTEM.REDIRECT_CLEAR}`);
+  }
+  // ==========================================================================
+
   const userLogin = await User.findById(karcis).select("-password").lean() as any;
   
   if (!userLogin) {
