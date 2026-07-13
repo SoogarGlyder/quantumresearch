@@ -125,8 +125,8 @@ const userSchema = new mongoose.Schema(
 // INDEXES
 // ============================================================================
 // Lookup user tunggal (login, profil)
-userSchema.index({ username: 1 },      { unique: true });
-userSchema.index({ nomorPeserta: 1 },  { unique: true });
+// userSchema.index({ username: 1 },      { unique: true });
+// userSchema.index({ nomorPeserta: 1 },  { unique: true });
 
 // Filter & listing per cabang
 userSchema.index({ kodeCabang: 1, peran: 1 });
