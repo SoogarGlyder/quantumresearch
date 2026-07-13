@@ -175,7 +175,7 @@ export const OPSI_MAPEL_KELAS = Object.freeze([
   "Penalaran Umum (PU)", "Pemahaman Bacaan dan Menulis (PBM)",
   "Pengetahuan dan Pemahaman Umum (PPU)", "Pengetahuan Kuantitatif (PK)",
   "Literasi dalam Bahasa Indonesia (LBI)", "Literasi dalam Bahasa Inggris (LBE)",
-  "Penalaran Matematika (PM)",
+  "Penalaran Matematika (PM)", "Umum",
 ]);
 
 export const OPSI_MAPEL_KONSUL = Object.freeze([...OPSI_MAPEL_KELAS]);
