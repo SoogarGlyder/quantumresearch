@@ -168,7 +168,7 @@ export const OPSI_KELAS = Object.freeze([
 ]);
 
 export const OPSI_MAPEL_KELAS = Object.freeze([
-  "Matematika",
+  "Matematika", "Matematika Lanjut",
   "IPA", "Fisika", "Kimia", "Biologi",
   "IPS", "Ekonomi", "Geografi", "Sosiologi", "Sejarah",
   "Bahasa Indonesia", "Bahasa Inggris",
