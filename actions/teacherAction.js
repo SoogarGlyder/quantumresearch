@@ -13,7 +13,7 @@ import { timeHelper } from "../utils/timeHelper";
 import { guardPengajar } from "../utils/guardHelper";
 import {
   PERAN, STATUS_USER, KONFIGURASI_MEDIA, PESAN_SISTEM,
-  TIPE_SESI, LABEL_SISTEM,
+  TIPE_SESI, LABEL_SISTEM, PANGKAT_PENGAJAR, KONFIGURASI_SISTEM, CABANG_QUANTUM
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
@@ -29,6 +29,18 @@ import mongoose from "mongoose";
 function isValidCloudinary(url) {
   if (!url || typeof url !== "string") return false;
   return url.includes(KONFIGURASI_MEDIA.DOMAIN_RESMI);
+}
+
+async function pastikanOtoritas(roleWajib = [PERAN.PENGAJAR.id, PERAN.ADMIN.id]) {
+  const sesi = await authHelper.ambilSesi();
+  if (!sesi || !sesi.userId) return null;
+
+  if (roleWajib.includes(PERAN.ADMIN.id) && sesi.peran === PERAN.PENGAJAR.id && sesi.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK) {
+    return { userId: sesi.userId, peran: sesi.peran }; 
+  }
+
+  if (!roleWajib.includes(sesi.peran)) return null;
+  return { userId: sesi.userId, peran: sesi.peran };
 }
 
 // ============================================================================
@@ -152,7 +164,6 @@ export async function simpanJurnalPengajar(idJadwal, dataJurnal, arrayNilaiSiswa
           bab:         babClean,
           subBab:      validationHelper.trimInput(dataJurnal.subBab),
           galeriPapan: galeriBersih,
-          // fotoBersama harus dari Cloudinary — kosongkan jika tidak valid
           fotoBersama: isValidCloudinary(dataJurnal.fotoBersama)
             ? dataJurnal.fotoBersama
             : null,
@@ -249,7 +260,7 @@ export async function getStatusKuisLive(idJadwal) {
       })
         .select("siswaId")
         .lean(),
-      HasilKuis.find({ jadwalId: idJadwal }).select("siswaId nilai").lean(),
+      HasilKuis.find({ jadwalId: idJadwal }).select("siswaId nilai skorAkhir").lean(), // Added skorAkhir check for legacy support
     ]);
 
     const dataLive = siswaKelas.map((siswa) => {
@@ -257,7 +268,7 @@ export async function getStatusKuisLive(idJadwal) {
       const hasil      = riwayatKuis.find((h) => h.siswaId.toString() === idSiswaStr);
 
       if (hasil) {
-        return { id: idSiswaStr, nama: siswa.nama, status: "SELESAI",      skor: hasil.nilai, pelanggaran: 0 };
+        return { id: idSiswaStr, nama: siswa.nama, status: "SELESAI",      skor: hasil.nilai || hasil.skorAkhir, pelanggaran: 0 };
       }
 
       const sudahAbsen = sesiHariIni.some((s) => s.siswaId.toString() === idSiswaStr);
@@ -392,5 +403,163 @@ export async function forceSubmitUjianSiswa(idJadwal, idSiswa, namaSiswa) {
   } catch (error) {
     console.error("[ERROR forceSubmitUjianSiswa]:", error);
     return responseHelper.error("Gagal menutup paksa ujian.");
+  }
+}
+
+// ============================================================================
+// 6. ADMIN ACTIONS (MANAGEMENT PENGAJAR)
+// ============================================================================
+export async function ambilSemuaPengajar() {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const pengajar = await User.find({ peran: PERAN.PENGAJAR.id })
+      .select("_id nama kodePengajar username noHp").sort({ nama: 1 }).lean();
+      
+    const dataBersih = pengajar.map(p => ({ ...p, _id: p._id.toString(), kodePengajar: p.kodePengajar || "-" }));
+    return responseHelper.success("Data pengajar dimuat.", serialize(dataBersih));
+  } catch (error) {
+    return responseHelper.error("Gagal memuat data pengajar.");
+  }
+}
+
+export async function tambahPengajarBaru(formData) {
+  try {
+    await connectToDatabase();
+    const sesiAdmin = await authHelper.ambilSesi(); 
+    if (!sesiAdmin || sesiAdmin.peran !== PERAN.ADMIN.id) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const username = validationHelper.sanitize ? validationHelper.sanitize(formData.username).toLowerCase() : validationHelper.trimInput(formData.username).toLowerCase();
+    const kodePengajar = validationHelper.sanitize ? validationHelper.sanitize(formData.kodePengajar).toUpperCase() : validationHelper.trimInput(formData.kodePengajar).toUpperCase();
+
+    const exist = await User.exists({ $or: [{ username }, { kodePengajar }] });
+    if (exist) return responseHelper.error("Username/Kode sudah terdaftar.");
+
+    const hashed = await authHelper.buatHash(formData.password || KONFIGURASI_SISTEM.DEFAULT_PASSWORD);
+
+    let payloadBaru = {
+      ...formData, username, kodePengajar, password: hashed, peran: PERAN.PENGAJAR.id, status: STATUS_USER.AKTIF
+    };
+
+    if (sesiAdmin.kodeCabang && sesiAdmin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
+      payloadBaru.kodeCabang = sesiAdmin.kodeCabang;
+    }
+
+    await User.create(payloadBaru);
+
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success(PESAN_SISTEM.SUKSES_SIMPAN);
+  } catch (error) {
+    return responseHelper.error(PESAN_SISTEM.GAGAL_SIMPAN);
+  }
+}
+
+export async function hapusPengajar(idPengajar) {
+  try {
+    await connectToDatabase();
+    if (!(await pastikanOtoritas([PERAN.ADMIN.id]))) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    await User.deleteOne({ _id: idPengajar }); 
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success("Pengajar dihapus.");
+  } catch (error) {
+    return responseHelper.error("Gagal hapus pengajar.");
+  }
+}
+
+export async function editPengajar(idPengajar, dataBaru) {
+  try {
+    await connectToDatabase();
+    const auth = await pastikanOtoritas([PERAN.ADMIN.id]);
+    if (!auth) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    const dataUpdate = { ...dataBaru };
+    delete dataUpdate.isKakakAsuh; 
+    
+    if (dataUpdate.pangkat) {
+      const statusWaliKelas = dataUpdate.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH;
+      dataUpdate.isKakakAsuh = statusWaliKelas;
+      if (!statusWaliKelas) dataUpdate.kelasAsuh = [];
+    }
+
+    if (dataBaru.password?.trim()) {
+      dataUpdate.password = await authHelper.buatHash(dataBaru.password);
+    } else {
+      delete dataUpdate.password;
+    }
+
+    if (dataUpdate.username) dataUpdate.username = validationHelper.sanitize ? validationHelper.sanitize(dataUpdate.username).toLowerCase() : validationHelper.trimInput(dataUpdate.username).toLowerCase();
+    if (dataUpdate.kodePengajar) dataUpdate.kodePengajar = validationHelper.sanitize ? validationHelper.sanitize(dataUpdate.kodePengajar).toUpperCase() : validationHelper.trimInput(dataUpdate.kodePengajar).toUpperCase();
+
+    const hasil = await User.updateOne({ _id: idPengajar }, { $set: dataUpdate });
+    if (hasil.matchedCount === 0) return responseHelper.error("Data pengajar tidak ditemukan.");
+
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success("✅ Data pengajar berhasil diperbarui.");
+  } catch (error) {
+    console.error("[CRITICAL ERROR editPengajar]:", error);
+    return responseHelper.error("Gagal mengupdate data pengajar. Silakan cek koneksi database.");
+  }
+}
+
+export async function prosesBulkTambahPengajar(dataArray) {
+  try {
+    await connectToDatabase();
+    const sesiAdmin = await authHelper.ambilSesi(); 
+    if (!sesiAdmin || sesiAdmin.peran !== PERAN.ADMIN.id) return responseHelper.error(PESAN_SISTEM.AKSES_DITOLAK);
+
+    let suksesCount = 0;
+    let laporan = [];
+
+    const uNames = dataArray.map(i => (i.username || i.kodePengajar)?.toLowerCase()).filter(Boolean);
+    const kodes = dataArray.map(i => i.kodePengajar?.toUpperCase()).filter(Boolean);
+    
+    const existing = await User.find({ 
+      $or: [{ username: { $in: uNames } }, { kodePengajar: { $in: kodes } }] 
+    }).select("username kodePengajar").lean();
+    
+    const setU = new Set(existing.map(e => e.username));
+    const setK = new Set(existing.map(e => e.kodePengajar));
+
+    for (let [index, item] of dataArray.entries()) {
+      try {
+        if (!item.nama || !item.kodePengajar) {
+          laporan.push(`Baris ${index + 1}: Nama & Kode Pengajar wajib diisi.`);
+          continue;
+        }
+
+        const usernameTarget = item.username || item.kodePengajar;
+        const username = validationHelper.sanitize ? validationHelper.sanitize(usernameTarget).toLowerCase() : validationHelper.trimInput(usernameTarget).toLowerCase();
+        const kodePengajar = validationHelper.sanitize ? validationHelper.sanitize(item.kodePengajar).toUpperCase() : validationHelper.trimInput(item.kodePengajar).toUpperCase();
+
+        if (setU.has(username) || setK.has(kodePengajar)) {
+          laporan.push(`Baris ${index + 1} (${item.nama}): Username '${username}' atau Kode '${kodePengajar}' sudah dipakai.`);
+          continue;
+        }
+
+        const pwd = item.password || KONFIGURASI_SISTEM.DEFAULT_PASSWORD;
+        const hashed = await authHelper.buatHash(pwd);
+
+        let payloadBaru = {
+          nama: item.nama, nomorPeserta: item.nomorPeserta || "", username, kodePengajar,
+          noHp: item.noHp || "", password: hashed, peran: PERAN.PENGAJAR.id, status: STATUS_USER.AKTIF
+        };
+
+        if (sesiAdmin.kodeCabang && sesiAdmin.kodeCabang !== CABANG_QUANTUM.PUSAT.id) {
+          payloadBaru.kodeCabang = sesiAdmin.kodeCabang;
+        }
+
+        await User.create(payloadBaru);
+        suksesCount++;
+      } catch (err) {
+        laporan.push(`Baris ${index + 1} (${item.nama}): Gagal menyimpan (${err.message}).`);
+      }
+    }
+
+    revalidatePath(PERAN.ADMIN.home);
+    return responseHelper.success(`Selesai: ${suksesCount} berhasil terdaftar, ${laporan.length} gagal.`, { laporan });
+  } catch (error) {
+    return responseHelper.error("Gagal melakukan upload massal.", error);
   }
 }
