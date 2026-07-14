@@ -102,7 +102,10 @@ export default async function Home() {
     const [jadwalPengajar, riwayatAbsensi, statsKonsulRaw] = await Promise.all([
       Jadwal.find({ 
         kodePengajar: userLogin.kodePengajar,
-        tanggal: { $gte: strMinStaf, $lte: strMaxStaf }
+        $or: [
+          { tanggal: { $gte: strMinStaf, $lte: strMaxStaf } },
+          { tanggal: { $gte: minDateStafObj, $lte: maxDateStafObj } }
+        ]
       })
         .sort({ tanggal: 1 })
         .lean(),
@@ -192,7 +195,10 @@ export default async function Home() {
       .lean(),
     Jadwal.find({ 
       kelasTarget: userLogin.kelas,
-      tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR } 
+      $or: [
+        { tanggal: { $gte: PERIODE_BELAJAR.MULAI, $lte: PERIODE_BELAJAR.AKHIR } },
+        { tanggal: { $gte: awalSemester, $lte: akhirSemester } }
+      ]
     })
       .populate({ path: "pengajarId", select: "kodeCabang" }) 
       .sort({ tanggal: 1 })
