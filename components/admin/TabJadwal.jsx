@@ -280,8 +280,19 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   };
 
   const jadwalCabangAktif = useMemo(() => {
-    if (!isSuperAdmin || !filterCabang) return dataJadwal;
-    return dataJadwal.filter(j => j.pengajarId && j.pengajarId.kodeCabang === filterCabang);
+    // 1. Seragamkan semua format tanggal menjadi YYYY-MM-DD
+    let jadwalSanitized = dataJadwal.map(j => {
+      let tglPasti = j.tanggal;
+      // Jika teks tanggal mengandung huruf 'T' (penanda ISODate), potong dan ambil bagian depannya saja
+      if (typeof tglPasti === 'string' && tglPasti.includes('T')) {
+        tglPasti = tglPasti.split('T')[0];
+      }
+      return { ...j, tanggal: tglPasti };
+    });
+
+    // 2. Lanjutkan filter cabang menggunakan data yang sudah rapi
+    if (!isSuperAdmin || !filterCabang) return jadwalSanitized;
+    return jadwalSanitized.filter(j => j.pengajarId && j.pengajarId.kodeCabang === filterCabang);
   }, [dataJadwal, isSuperAdmin, filterCabang]);
 
   const jadwalBulanIni = useMemo(() => {
