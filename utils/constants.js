@@ -174,23 +174,25 @@ export const OPSI_KELAS = Object.freeze([
 ]);
 
 export const OPSI_MAPEL_KELAS = Object.freeze([
-  "Matematika", "IPA", "Fisika", "Kimia", "Biologi",
+  "Matematika", "Matematika Lanjut",
+  "IPA", "Fisika", "Kimia", "Biologi",
   "IPS", "Ekonomi", "Geografi", "Sosiologi", "Sejarah",
   "Bahasa Indonesia", "Bahasa Inggris",
   "Penalaran Umum (PU)", "Pemahaman Bacaan dan Menulis (PBM)",
   "Pengetahuan dan Pemahaman Umum (PPU)", "Pengetahuan Kuantitatif (PK)",
   "Literasi dalam Bahasa Indonesia (LBI)", "Literasi dalam Bahasa Inggris (LBE)",
-  "Penalaran Matematika (PM)"
+  "Penalaran Matematika (PM)", "Umum",
 ]);
 
 export const OPSI_MAPEL_KONSUL = Object.freeze([
-  "Matematika", "IPA", "Fisika", "Kimia", "Biologi",
+  "Matematika", "Matematika Lanjut",
+  "IPA", "Fisika", "Kimia", "Biologi",
   "IPS", "Ekonomi", "Geografi", "Sosiologi", "Sejarah",
   "Bahasa Indonesia", "Bahasa Inggris",
   "Penalaran Umum (PU)", "Pemahaman Bacaan dan Menulis (PBM)",
   "Pengetahuan dan Pemahaman Umum (PPU)", "Pengetahuan Kuantitatif (PK)",
   "Literasi dalam Bahasa Indonesia (LBI)", "Literasi dalam Bahasa Inggris (LBE)",
-  "Penalaran Matematika (PM)"
+  "Penalaran Matematika (PM)", "Umum",
 ]);
 
 export const OPSI_KETERANGAN_ABSEN = Object.freeze([
