@@ -16,7 +16,7 @@ export const PERIODE_BELAJAR = Object.freeze({
 });
 
 export const EVENT_PENTING = Object.freeze({
-  TANGGAL_UTBK: "2026-04-21T00:00:00+07:00",
+  TANGGAL_UTBK: "2026-10-26T00:00:00+07:00",
   TANGGAL_LIBUR: [
     // --- 2025 ---
     "2025-08-17", // Hari Kemerdekaan RI
