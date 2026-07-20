@@ -166,10 +166,15 @@ export const MODE_SCAN = Object.freeze({
 // 10. MASTER DATA DROPDOWN
 // ============================================================================
 export const OPSI_KELAS = Object.freeze([
-  "7 SMP", "8 SMP", "9 SMP",
-  "10 SMA", "11 IPA SMA", "11 IPS SMA",
-  "12 IPA SMA", "12 IPS SMA",
-  "Alumni / Gap Year",
+  "7-1 SMP", "7-2 SMP",
+  "8-1 SMP", "8-2 SMP", 
+  "9-1 SMP", "9-2 SMP",
+  "10-1 SMA", "10-2 SMA",
+  "11-1 IPA SMA", "11-2 IPA SMA",
+  "11-1 IPS SMA", "11-2 IPS SMA",
+  "12-1 IPA SMA", "12-2 IPA SMA",
+  "12-1 IPS SMA", "12-2 IPS SMA",
+  "12 SMA", "Alumni / Gap Year",
   "OSN MAT", "OSN IPA", "OSN IPS" // 👈 Tiga kelas baru ditambahkan di sini
 ]);
 
