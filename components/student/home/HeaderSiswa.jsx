@@ -82,7 +82,7 @@ const HeaderSiswa = memo(({ siswa, statsBulanIni, streakKonsul, onBukaKlasemen }
             <div className={styles.statContainer}>
               {(siswa.kelas?.includes("12") || siswa.kelas?.toLowerCase().includes("alumni")) ? (
                 <>
-                  <span className={styles.statLabel}>⏳ UTBK 2026</span>
+                  <span className={styles.statLabel}>⏳ TKA 2026</span>
                   <span className={`${styles.statValue} ${styles.nilaiStatMerah}`}>H-{statsBulanIni.selisihHariUTBK}</span>
                 </>
               ) : (
