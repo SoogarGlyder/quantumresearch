@@ -1,7 +1,8 @@
 "use client";
 
-import { memo, Suspense, useState } from "react";
-import { FaBookOpen, FaPen, FaUserTie } from "react-icons/fa6";
+import { memo, Suspense, useState, useMemo } from "react";
+// 🚀 Tambahkan FaSearch untuk ikon pencarian
+import { FaBookOpen, FaPen, FaUserTie, FaSearch } from "react-icons/fa6"; 
 import { potongDataPagination } from "@/utils/formatHelper";
 import PaginationBar from "@/components/ui/PaginationBar";
 import { LIMIT_DATA } from "@/utils/constants"; 
@@ -26,10 +27,37 @@ const formatNamaKreator = (namaRaw) => {
 
 const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
   const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState(""); // 🚀 State untuk kata kunci pencarian
+
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_BAHAN || 3; 
 
   const daftarLatihan = Array.isArray(latihanHariIni) ? latihanHariIni : (latihanHariIni ? [latihanHariIni] : []);
-  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(daftarLatihan, page, ITEMS_PER_PAGE);
+
+  // 🚀 LOGIKA FILTER: Menyaring data berdasarkan judul atau nama kreator
+  const filteredLatihan = useMemo(() => {
+    // Jika tidak ada pencarian, kembalikan semua data
+    if (!searchQuery.trim()) return daftarLatihan;
+    
+    // Ubah pencarian ke huruf kecil agar tidak sensitif terhadap huruf besar/kecil (case-insensitive)
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    
+    return daftarLatihan.filter((latihan) => {
+      const judulMatch = latihan?.judul?.toLowerCase().includes(lowerCaseQuery);
+      const namaMatch = latihan?.namaPembuat?.toLowerCase().includes(lowerCaseQuery);
+      
+      // Kembalikan true jika judul ATAU nama pembuat cocok
+      return judulMatch || namaMatch;
+    });
+  }, [daftarLatihan, searchQuery]);
+
+  // 🚀 Gunakan `filteredLatihan` (data yang sudah disaring) ke dalam pagination
+  const { totalPage, dataTerpotong: dataHalIni } = potongDataPagination(filteredLatihan, page, ITEMS_PER_PAGE);
+
+  // 🚀 Fungsi yang dipanggil saat pengguna mengetik di kolom pencarian
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setPage(1); // Kembali ke halaman 1 setiap kali mencari sesuatu yang baru
+  };
 
   return (
     <div className={styles.contentContainer}>
@@ -37,6 +65,26 @@ const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
         <FaBookOpen color="#2563eb" /> Bahan Belajar
       </h3>
       
+      {/* 🚀 UI INPUT PENCARIAN */}
+      <div style={{ marginBottom: '16px', position: 'relative' }}>
+        <FaSearch style={{ position: 'absolute', top: '50%', left: '12px', transform: 'translateY(-50%)', color: '#64748b' }} />
+        <input
+          type="text"
+          placeholder="Cari judul materi atau nama kreator..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          style={{
+            width: '100%',
+            padding: '10px 12px 10px 40px', // padding kiri dibuat besar (40px) untuk memberi ruang bagi ikon FaSearch
+            borderRadius: '8px',
+            border: '2px solid #cbd5e1',
+            outline: 'none',
+            fontSize: '14px',
+            color: '#1e293b'
+          }}
+        />
+      </div>
+
       <div className={styles.missionList} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {dataHalIni.length > 0 ? (
           <>
@@ -75,7 +123,9 @@ const InnerLatihanHariIni = memo(({ latihanHariIni = [], setUrlMitra }) => {
           </>
         ) : (
           <p className={styles.emptySchedule} style={{ backgroundColor: '#f8fafc', border: '2px dashed #cbd5e1', color: '#64748b' }}>
-            Tidak ada bahan belajar tambahan untuk hari ini. Ayo Konsul!
+            {searchQuery 
+              ? `Pencarian "${searchQuery}" tidak ditemukan.` 
+              : "Tidak ada bahan belajar tambahan untuk hari ini. Ayo Konsul!"}
           </p>
         )}
       </div>
