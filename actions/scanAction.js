@@ -23,13 +23,13 @@ import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
 
 // ============================================================================
-// 1. GEOFENCING LOGIC
+// 1. GEOFENCING LOGIC (Validasi Lokasi GPS)
 // ============================================================================
 function isLokasiValid(lokasi) {
   if (!lokasi?.lat || !lokasi?.lng) return false;
 
   const { LAT, LNG, RADIUS_METER } = PERIODE_BELAJAR.LOKASI_HQ;
-  const R = 6371e3; 
+  const R = 6371e3; // Radius bumi dalam meter
   const φ1 = (lokasi.lat * Math.PI) / 180;
   const φ2 = (LAT * Math.PI) / 180;
   const Δφ = ((LAT - lokasi.lat) * Math.PI) / 180;
@@ -44,7 +44,7 @@ function isLokasiValid(lokasi) {
 }
 
 // ============================================================================
-// 2. EXTRA ACTION: AMBIL DAFTAR GURU (SUDAH DIFILTER BERDASARKAN CABANG SISWA)
+// 2. AMBIL DAFTAR GURU (Filter Berdasarkan Cabang Siswa)
 // ============================================================================
 export async function ambilDaftarGuruDropdown() {
   try {
@@ -54,7 +54,7 @@ export async function ambilDaftarGuruDropdown() {
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
-    // 2. Tarik data profil siswa untuk membaca kodeCabang-nya
+    // 2. Tarik data profil siswa untuk membaca kodeCabang miliknya
     const siswa = await User.findById(userId).select("kodeCabang").lean();
     if (!siswa) return responseHelper.error("Siswa tidak ditemukan.");
 
@@ -64,7 +64,7 @@ export async function ambilDaftarGuruDropdown() {
       status: STATUS_USER.AKTIF 
     };
 
-    //  FIX: Jika siswa memiliki cabang, kunci agar hanya memuat guru dari cabang yang sama
+    // 4. Jika siswa memiliki cabang, kunci agar hanya memuat guru dari cabang yang sama
     if (siswa.kodeCabang) {
       queryPengajar.kodeCabang = siswa.kodeCabang;
     }
@@ -74,7 +74,7 @@ export async function ambilDaftarGuruDropdown() {
       .sort({ nama: 1 })
       .lean();
 
-    // Mapping ID menjadi string agar aman dikirim lintas komponen Next.js
+    // Mapping ID menjadi string agar aman dikirim lintas komponen Next.js (Server ke Client)
     const dataAman = daftarGuru.map(guru => ({
       _id: guru._id.toString(),
       nama: guru.nama
@@ -88,7 +88,7 @@ export async function ambilDaftarGuruDropdown() {
 }
 
 // ============================================================================
-// 3. CORE SCAN LOGIC (SISWA)
+// 3. CORE SCAN LOGIC (SISWA) - Check-in & Check-out
 // ============================================================================
 export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lokasi) {
   try {
@@ -108,6 +108,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
     let jenisQR = null;
     let jadwalIdDariQR = null;
 
+    // Deteksi jenis barcode yang discan
     if (teksQR.startsWith(PREFIX_BARCODE.KELAS)) {
       jenisQR = TIPE_SESI.KELAS;
       jadwalIdDariQR = teksQR.replace(PREFIX_BARCODE.KELAS, "");
@@ -119,17 +120,25 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
     let sesiAktif = null;
 
+    // ✅ PERBAIKAN LOGIKA: Kunci pencarian berdasarkan jenisSesi agar KELAS dan KONSUL tidak bentrok
     if (jenisQR === TIPE_SESI.KELAS) {
       if (!jadwalIdDariQR || jadwalIdDariQR.length !== 24) {
         return responseHelper.error("⚠️ Format barcode kelas tidak valid.");
       }
-      sesiAktif = await StudySession.findOne({ siswaId: userId, jadwalId: jadwalIdDariQR });
+      sesiAktif = await StudySession.findOne({ 
+        siswaId: userId, 
+        jadwalId: jadwalIdDariQR,
+        jenisSesi: TIPE_SESI.KELAS // Pengunci penting agar tidak membaca sesi konsul
+      });
     } else {
       sesiAktif = await StudySession.findOne({
-        siswaId: userId, jenisSesi: TIPE_SESI.KONSUL, status: STATUS_SESI.BERJALAN.id
+        siswaId: userId, 
+        jenisSesi: TIPE_SESI.KONSUL, 
+        status: STATUS_SESI.BERJALAN.id
       });
     }
 
+    // Penanganan jika ada sesi aktif dari hari sebelumnya yang belum ditutup
     if (sesiAktif) {
       const tglSesiLama = timeHelper.getTglJakarta(sesiAktif.waktuMulai);
       if (tglSesiLama !== tglHariIni) {
@@ -148,6 +157,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
     if (sesiAktif) {
       const durasiMenit = Math.floor((sekarang - sesiAktif.waktuMulai) / 60000);
 
+      // 1. Check-out untuk sesi KELAS
       if (sesiAktif.jenisSesi === TIPE_SESI.KELAS) {
         const minBelajar = KONFIGURASI_SISTEM.MIN_DURASI_BELAJAR_SAH; 
         if (durasiMenit < minBelajar) {
@@ -161,7 +171,6 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
         if (jadwal && jadwal.jamSelesai) {
           const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
-          // Sabuk pengaman agar tidak NaN jika jam di database kosong/salah format
           if (!isNaN(waktuSelesaiJadwal.getTime())) {
              if (sekarang > waktuSelesaiJadwal) {
                const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
@@ -175,6 +184,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         sesiAktif.konsulExtraMenit = menitExtra;
         await sesiAktif.save();
 
+        // Pencatatan waktu ekstra untuk pengajar yang mengajar kelas tersebut
         if (menitExtra > 0 && jadwal?.pengajarId) {
           const { awal, akhir } = timeHelper.getRentangHari(sekarang);
           
@@ -215,6 +225,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
           }
         }
 
+        // Kalkulasi hadiah EXP & Lencana Kelas
         let expDapat = GAMIFIKASI.EXP.HADIR_KELAS;
         if (menitExtra >= 30) {
           expDapat += Math.floor(menitExtra / 30) * GAMIFIKASI.EXP.KONSUL_PER_30_MENIT;
@@ -248,6 +259,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         return responseHelper.success(pesanAkhir);
       }
 
+      // 2. Check-out untuk sesi KONSUL
       if (sesiAktif.jenisSesi === TIPE_SESI.KONSUL) {
         const minKonsul = KONFIGURASI_SISTEM.MIN_DURASI_KONSUL_SAH;
         if (durasiMenit < minKonsul) {
@@ -288,6 +300,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
     }
 
     // --- LOGIKA MASUK SISWA (Check-In) ---
+    // 1. Check-in untuk sesi KELAS
     if (jenisQR === TIPE_SESI.KELAS) {
       const jadwal = await Jadwal.findById(jadwalIdDariQR)
         .select("tanggal kelasTarget mapel jamMulai jamSelesai pengajarId")
@@ -313,7 +326,6 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
       let telat = sekarang > waktuMulaiJadwal ? Math.floor((sekarang - waktuMulaiJadwal) / 60000) : 0;
 
-      //FIX: Kata 'Thermal' diubah menjadi 'sekarang'
       await StudySession.create({
         siswaId: userId, jenisSesi: TIPE_SESI.KELAS, namaMapel: jadwal.mapel,
         jadwalId: jadwal._id, terlambatMenit: telat, status: STATUS_SESI.BERJALAN.id, waktuMulai: sekarang
@@ -331,6 +343,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
       return responseHelper.success(`Check-in Berhasil! ${telat > 0 ? '(Terlambat '+telat+'m)' : 'Tepat Waktu!'}${pesanTambahan}`);
     }
 
+    // 2. Check-in untuk sesi KONSUL
     if (jenisQR === TIPE_SESI.KONSUL) {
       if (!mapelPilihan) return responseHelper.error("Pilih Mata Pelajaran konsul dahulu!");
       
@@ -366,7 +379,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 }
 
 // ============================================================================
-// 4. CORE SCAN LOGIC (STAFF/PENGAJAR)
+// 4. CORE SCAN LOGIC (STAFF/PENGAJAR) - Clock-In & Clock-Out
 // ============================================================================
 export async function absenPengajarAction(teksQR, lokasi) {
   try {
@@ -418,7 +431,7 @@ export async function absenPengajarAction(teksQR, lokasi) {
 }
 
 // ============================================================================
-// 5. GAMIFICATION INTERNAL HELPER
+// 5. GAMIFICATION INTERNAL HELPER (Perbarui Progres Misi)
 // ============================================================================
 function updateMisiSiswa(siswa, tanggalSekarang, aksi) {
   let adaUpdate = 0;
