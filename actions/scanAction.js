@@ -5,7 +5,6 @@ import User from "../models/User";
 import StudySession from "../models/StudySession";
 import Jadwal from "../models/Jadwal";
 import AbsensiPengajar from "../models/AbsensiPengajar"; 
-import MisiSiswa from "../models/MisiSiswa";
 import { authHelper } from "../utils/authHelper";
 import { responseHelper } from "../utils/responseHelper";
 import { timeHelper } from "../utils/timeHelper";
@@ -18,9 +17,10 @@ import {
   STATUS_USER, 
   PERIODE_BELAJAR, 
   PESAN_SISTEM, 
-  GAMIFIKASI 
+  GAMIFIKASI
 } from "../utils/constants";
 import { revalidatePath } from "next/cache";
+import mongoose from "mongoose";
 
 // ============================================================================
 // 1. GEOFENCING LOGIC (Validasi Lokasi GPS)
@@ -50,17 +50,21 @@ export async function ambilDaftarGuruDropdown() {
   try {
     await connectToDatabase();
     
+    // 1. Ambil sesi token siswa yang sedang membuka scanner
     const { userId } = await authHelper.ambilSesi();
     if (!userId) return responseHelper.error(PESAN_SISTEM.SESI_HABIS);
 
+    // 2. Tarik data profil siswa untuk membaca kodeCabang miliknya
     const siswa = await User.findById(userId).select("kodeCabang").lean();
     if (!siswa) return responseHelper.error("Siswa tidak ditemukan.");
 
+    // 3. Bangun query dasar pencarian pengajar aktif
     let queryPengajar = {
       peran: PERAN.PENGAJAR.id,
       status: STATUS_USER.AKTIF 
     };
 
+    // 4. Jika siswa memiliki cabang, kunci agar hanya memuat guru dari cabang yang sama
     if (siswa.kodeCabang) {
       queryPengajar.kodeCabang = siswa.kodeCabang;
     }
@@ -70,6 +74,7 @@ export async function ambilDaftarGuruDropdown() {
       .sort({ nama: 1 })
       .lean();
 
+    // Mapping ID menjadi string agar aman dikirim lintas komponen Next.js (Server ke Client)
     const dataAman = daftarGuru.map(guru => ({
       _id: guru._id.toString(),
       nama: guru.nama
@@ -83,7 +88,7 @@ export async function ambilDaftarGuruDropdown() {
 }
 
 // ============================================================================
-// 3. CORE SCAN LOGIC (SISWA) - Check-in & Check-out (DIPERBAIKI TOTAL)
+// 3. CORE SCAN LOGIC (SISWA) - Check-in & Check-out
 // ============================================================================
 export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lokasi) {
   try {
@@ -99,11 +104,11 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
     const sekarang = new Date();
     const tglHariIni = timeHelper.getTglJakarta(sekarang);
-    const { awal, akhir } = timeHelper.getRentangHari(sekarang); // Rentang jam hari ini
 
     let jenisQR = null;
     let jadwalIdDariQR = null;
 
+    // Deteksi jenis barcode yang discan
     if (teksQR.startsWith(PREFIX_BARCODE.KELAS)) {
       jenisQR = TIPE_SESI.KELAS;
       jadwalIdDariQR = teksQR.replace(PREFIX_BARCODE.KELAS, "");
@@ -113,29 +118,27 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
     if (!jenisQR) return responseHelper.error("⚠️ Barcode tidak valid atau tidak dikenali.");
 
-    // 🚀 PERBAIKAN 1: Cari sesi aktif berdasarkan jenisSesi KHUSUS hari ini
-    // (Abaikan jadwalId agar bila guru mengganti QR, siswa tetap bisa check-out dari kelasnya)
     let sesiAktif = null;
+
+    // ✅ PERBAIKAN LOGIKA: Kunci pencarian berdasarkan jenisSesi agar KELAS dan KONSUL tidak bentrok
     if (jenisQR === TIPE_SESI.KELAS) {
       if (!jadwalIdDariQR || jadwalIdDariQR.length !== 24) {
         return responseHelper.error("⚠️ Format barcode kelas tidak valid.");
       }
       sesiAktif = await StudySession.findOne({ 
         siswaId: userId, 
-        jenisSesi: TIPE_SESI.KELAS,
-        status: STATUS_SESI.BERJALAN.id,
-        waktuMulai: { $gte: awal, $lte: akhir }
-      }).sort({ waktuMulai: -1 });
+        jadwalId: jadwalIdDariQR,
+        jenisSesi: TIPE_SESI.KELAS // Pengunci penting agar tidak membaca sesi konsul
+      });
     } else {
       sesiAktif = await StudySession.findOne({
         siswaId: userId, 
         jenisSesi: TIPE_SESI.KONSUL, 
-        status: STATUS_SESI.BERJALAN.id,
-        waktuMulai: { $gte: awal, $lte: akhir }
-      }).sort({ waktuMulai: -1 });
+        status: STATUS_SESI.BERJALAN.id
+      });
     }
 
-    // Penanganan jika ada sesi dari hari sebelumnya yang menggantung
+    // Penanganan jika ada sesi aktif dari hari sebelumnya yang belum ditutup
     if (sesiAktif) {
       const tglSesiLama = timeHelper.getTglJakarta(sesiAktif.waktuMulai);
       if (tglSesiLama !== tglHariIni) {
@@ -146,13 +149,11 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         }
         sesiAktif = null; 
       } else if (sesiAktif.waktuSelesai) {
-        return responseHelper.success(`✅ Anda sudah melakukan Check-out untuk sesi ${jenisQR.toLowerCase()} ini.`);
+        return responseHelper.success("✅ Anda sudah melakukan Check-out untuk kelas ini.");
       }
     }
 
-    // ============================================================
-    // LOGIKA CHECK-OUT (PULANG / SELESAI SESI)
-    // ============================================================
+    // --- LOGIKA PULANG SISWA (Check-Out) ---
     if (sesiAktif) {
       const durasiMenit = Math.floor((sekarang - sesiAktif.waktuMulai) / 60000);
 
@@ -164,19 +165,17 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         }
 
         let menitExtra = 0;
-        const jadwal = await Jadwal.findOne({ 
-          kelasTarget: siswa.kelas, 
-          tanggal: {
-            $gte: new Date(`${tglHariIni}T00:00:00${PERIODE_BELAJAR.ISO_OFFSET}`),
-            $lte: new Date(`${tglHariIni}T23:59:59${PERIODE_BELAJAR.ISO_OFFSET}`),
-          } 
-        }).select("jamSelesai pengajarId _id").lean();
+        const jadwal = await Jadwal.findOne({ kelasTarget: siswa.kelas, tanggal: tglHariIni })
+          .select("jamSelesai pengajarId")
+          .lean();
 
         if (jadwal && jadwal.jamSelesai) {
           const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
-          if (!isNaN(waktuSelesaiJadwal.getTime()) && sekarang > waktuSelesaiJadwal) {
-            const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
-            if (hitungExtra > 15) menitExtra = hitungExtra;
+          if (!isNaN(waktuSelesaiJadwal.getTime())) {
+             if (sekarang > waktuSelesaiJadwal) {
+               const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
+               if (hitungExtra > 15) menitExtra = hitungExtra;
+             }
           }
         }
 
@@ -185,21 +184,30 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         sesiAktif.konsulExtraMenit = menitExtra;
         await sesiAktif.save();
 
-        // Catat ekstra konsul ke guru pengajar
+        // Pencatatan waktu ekstra untuk pengajar yang mengajar kelas tersebut
         if (menitExtra > 0 && jadwal?.pengajarId) {
+          const { awal, akhir } = timeHelper.getRentangHari(sekarang);
+          
           const updateRecord = await AbsensiPengajar.updateOne(
             { 
               pengajarId: jadwal.pengajarId, 
               waktuMasuk: { $gte: awal, $lte: akhir },
               "riwayatEkstraKelas.jadwalId": jadwal._id 
             },
-            { $max: { "riwayatEkstraKelas.$.menitEkstra": menitExtra } }
+            { 
+              $max: { "riwayatEkstraKelas.$.menitEkstra": menitExtra } 
+            }
           );
 
           if (updateRecord.matchedCount === 0) {
             await AbsensiPengajar.updateOne(
-              { pengajarId: jadwal.pengajarId, waktuMasuk: { $gte: awal, $lte: akhir } },
-              { $push: { riwayatEkstraKelas: { jadwalId: jadwal._id, menitEkstra: menitExtra } } }
+              { 
+                pengajarId: jadwal.pengajarId, 
+                waktuMasuk: { $gte: awal, $lte: akhir } 
+              },
+              { 
+                $push: { riwayatEkstraKelas: { jadwalId: jadwal._id, menitEkstra: menitExtra } } 
+              }
             );
           }
 
@@ -208,13 +216,16 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
             waktuMasuk: { $gte: awal, $lte: akhir }
           }).select("riwayatEkstraKelas").lean();
 
-          if (absenGuru && absenGuru.riwayatEkstraKelas) {
+          if (absenGuru) {
             const totalHarian = absenGuru.riwayatEkstraKelas.reduce((sum, item) => sum + item.menitEkstra, 0);
-            await AbsensiPengajar.updateOne({ _id: absenGuru._id }, { $set: { totalMenitEkstraHarian: totalHarian } });
+            await AbsensiPengajar.updateOne(
+              { _id: absenGuru._id },
+              { $set: { totalMenitEkstraHarian: totalHarian } }
+            );
           }
         }
 
-        // Kalkulasi hadiah EXP & Lencana
+        // Kalkulasi hadiah EXP & Lencana Kelas
         let expDapat = GAMIFIKASI.EXP.HADIR_KELAS;
         if (menitExtra >= 30) {
           expDapat += Math.floor(menitExtra / 30) * GAMIFIKASI.EXP.KONSUL_PER_30_MENIT;
@@ -288,9 +299,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
       }
     }
 
-    // ============================================================
-    // LOGIKA CHECK-IN (MASUK SESI BARU) & FALLBACK POST-CLASS
-    // ============================================================
+    // --- LOGIKA MASUK SISWA (Check-In) ---
     // 1. Check-in untuk sesi KELAS
     if (jenisQR === TIPE_SESI.KELAS) {
       const jadwal = await Jadwal.findById(jadwalIdDariQR)
@@ -304,24 +313,22 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
          return responseHelper.error("⛔ Akses Ditolak! Ini adalah QR jadwal dari cabang lain.");
       }
 
-      const tglJadwal = timeHelper.getTglJakarta(jadwal.tanggal);
-      if (tglJadwal !== tglHariIni) return responseHelper.error("⚠️ Barcode kedaluwarsa.");
+      if (jadwal.tanggal !== tglHariIni) return responseHelper.error("⚠️ Barcode kedaluwarsa.");
       if (jadwal.kelasTarget !== siswa.kelas) return responseHelper.error(`⚠️ Khusus kelas ${jadwal.kelasTarget}.`);
 
       const waktuMulaiJadwal = new Date(`${tglHariIni}T${jadwal.jamMulai}:00+07:00`);
       const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00+07:00`);
 
       const windowScanStart = new Date(waktuMulaiJadwal.getTime() - KONFIGURASI_SISTEM.WINDOW_SCAN_MASUK_MENIT * 60000);
+      
       if (sekarang < windowScanStart) return responseHelper.error(`Scan dibuka ${KONFIGURASI_SISTEM.WINDOW_SCAN_MASUK_MENIT}m sebelum kelas.`);
 
-      // 🚀 PERBAIKAN 2 (SOLUSI PINTAR): Jika siswa baru scan SETELAH jam kelas berakhir!
-      // (Misal: Siswa lupa check-in saat datang, atau Check-out gagal karena ganti QR. Kita tidak akan menolak mereka!)
+      // 🚀 PERBAIKAN PENTING: Jika siswa baru scan SETELAH kelas berakhir, langsung anggap Hadir + Bonus Konsul!
       if (sekarang > waktuSelesaiJadwal) {
         let menitExtra = 0;
         const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60000);
         if (hitungExtra > 15) menitExtra = hitungExtra;
 
-        // Langsung buat sesi dengan status SELESAI (Hadir + Ekstra Konsul sekaligus)
         await StudySession.create({
           siswaId: userId, 
           jenisSesi: TIPE_SESI.KELAS, 
@@ -334,21 +341,30 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
           konsulExtraMenit: menitExtra
         });
 
-        // Catat jam bimbingan ekstra untuk pengajar
+        // Pencatatan waktu ekstra untuk pengajar yang mengajar kelas tersebut
         if (menitExtra > 0 && jadwal?.pengajarId) {
+          const { awal, akhir } = timeHelper.getRentangHari(sekarang);
+          
           const updateRecord = await AbsensiPengajar.updateOne(
             { 
               pengajarId: jadwal.pengajarId, 
               waktuMasuk: { $gte: awal, $lte: akhir },
               "riwayatEkstraKelas.jadwalId": jadwal._id 
             },
-            { $max: { "riwayatEkstraKelas.$.menitEkstra": menitExtra } }
+            { 
+              $max: { "riwayatEkstraKelas.$.menitEkstra": menitExtra } 
+            }
           );
 
           if (updateRecord.matchedCount === 0) {
             await AbsensiPengajar.updateOne(
-              { pengajarId: jadwal.pengajarId, waktuMasuk: { $gte: awal, $lte: akhir } },
-              { $push: { riwayatEkstraKelas: { jadwalId: jadwal._id, menitEkstra: menitExtra } } }
+              { 
+                pengajarId: jadwal.pengajarId, 
+                waktuMasuk: { $gte: awal, $lte: akhir } 
+              },
+              { 
+                $push: { riwayatEkstraKelas: { jadwalId: jadwal._id, menitEkstra: menitExtra } } 
+              }
             );
           }
 
@@ -357,13 +373,16 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
             waktuMasuk: { $gte: awal, $lte: akhir }
           }).select("riwayatEkstraKelas").lean();
 
-          if (absenGuru && absenGuru.riwayatEkstraKelas) {
+          if (absenGuru) {
             const totalHarian = absenGuru.riwayatEkstraKelas.reduce((sum, item) => sum + item.menitEkstra, 0);
-            await AbsensiPengajar.updateOne({ _id: absenGuru._id }, { $set: { totalMenitEkstraHarian: totalHarian } });
+            await AbsensiPengajar.updateOne(
+              { _id: absenGuru._id },
+              { $set: { totalMenitEkstraHarian: totalHarian } }
+            );
           }
         }
 
-        // Hitung hadiah EXP & Lencana
+        // Kalkulasi hadiah EXP & Lencana Kelas
         let expDapat = GAMIFIKASI.EXP.HADIR_KELAS;
         if (menitExtra >= 30) {
           expDapat += Math.floor(menitExtra / 30) * GAMIFIKASI.EXP.KONSUL_PER_30_MENIT;
@@ -397,7 +416,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         return responseHelper.success(pesanAkhir);
       }
 
-      // --- LOGIKA CHECK-IN NORMAL (Sebelum / Saat Kelas Berlangsung) ---
+      // --- LOGIKA NORMAL: Check-in tepat waktu atau sedikit terlambat saat kelas berlangsung ---
       let telat = sekarang > waktuMulaiJadwal ? Math.floor((sekarang - waktuMulaiJadwal) / 60000) : 0;
 
       await StudySession.create({
