@@ -21,6 +21,7 @@ import { revalidatePath } from "next/cache";
 // ============================================================================
 
 /**
+ * Memeriksa apakah koordinat GPS pengguna berada di dalam radius markas (HQ).
  * @param {{ lat: number, lng: number }|null} lokasi
  * @returns {boolean}
  */
@@ -28,9 +29,9 @@ function isLokasiValid(lokasi) {
   if (!lokasi?.lat || !lokasi?.lng) return false;
 
   const { LAT, LNG, RADIUS_METER } = PERIODE_BELAJAR.LOKASI_HQ;
-  const R  = 6_371_000;
+  const R  = 6_371_000; // Radius bumi dalam meter
   const φ1 = (lokasi.lat * Math.PI) / 180;
-  const φ2 = (LAT       * Math.PI) / 180;
+  const φ2 = (LAT        * Math.PI) / 180;
   const Δφ = ((LAT       - lokasi.lat) * Math.PI) / 180;
   const Δλ = ((LNG       - lokasi.lng) * Math.PI) / 180;
 
@@ -43,6 +44,7 @@ function isLokasiValid(lokasi) {
 }
 
 /**
+ * Memperbarui progres misi harian siswa berdasarkan aktivitas absensi.
  * @param {string} userId
  * @param {string} tanggalStr
  * @param {{ jenis: string, durasi?: number, jam?: number }} aksi
@@ -72,7 +74,7 @@ async function updateMisiSiswa(userId, tanggalStr, aksi) {
     } else if (aksi.jenis === "KONSUL" && misi.kodeMisi.startsWith("KONSUL_")) {
       if (misi.kodeMisi === "KONSUL_30"    && aksi.durasi >= 30)  tercapai = true;
       if (misi.kodeMisi === "KONSUL_60"    && aksi.durasi >= 60)  tercapai = true;
-      if (misi.kodeMisi === "KONSUL_MALAM" && aksi.jam   >= 18)   tercapai = true;
+      if (misi.kodeMisi === "KONSUL_MALAM" && aksi.jam    >= 18)   tercapai = true;
       if (tercapai) misi.progress = misi.target;
     } else if (aksi.jenis === "DATANG_AWAL" && misi.kodeMisi === "DATANG_AWAL") {
       misi.progress = 1;
@@ -87,7 +89,7 @@ async function updateMisiSiswa(userId, tanggalStr, aksi) {
 }
 
 // ============================================================================
-// 2. ACTIONS
+// 2. ACTIONS: DAFTAR GURU PENDAMPING
 // ============================================================================
 export async function ambilDaftarGuruDropdown() {
   try {
@@ -116,6 +118,9 @@ export async function ambilDaftarGuruDropdown() {
   }
 }
 
+// ============================================================================
+// 3. CORE SCAN LOGIC (SISWA) - DIPERBAIKI TOTAL
+// ============================================================================
 export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lokasi) {
   try {
     await connectToDatabase();
@@ -128,10 +133,11 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
       return responseHelper.error("Akun dinonaktifkan atau tidak ditemukan.");
     }
 
-    const sekarang  = new Date();
+    const sekarang   = new Date();
     const tglHariIni = timeHelper.getTglJakarta(sekarang);
+    const { awal, akhir } = timeHelper.getRentangHari(sekarang); // Rentang 00:00 - 23:59 hari ini
 
-    let jenisQR       = null;
+    let jenisQR        = null;
     let jadwalIdDariQR = null;
 
     if (teksQR.startsWith(PREFIX_BARCODE.KELAS)) {
@@ -143,47 +149,55 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
     if (!jenisQR) return responseHelper.error("⚠️ Barcode tidak valid atau tidak dikenali.");
 
+    // 🚀 PERBAIKAN 1: Isolasi Pencarian Sesi Aktif Khusus Hari Ini & Sesuai Tipe QR
     let sesiAktif = null;
     if (jenisQR === TIPE_SESI.KELAS) {
       if (!jadwalIdDariQR || jadwalIdDariQR.length !== 24) {
         return responseHelper.error("⚠️ Format barcode kelas tidak valid.");
       }
+      // Hanya cari sesi KELAS untuk jadwal ini pada hari ini, ambil yang paling baru
       sesiAktif = await StudySession.findOne({
         siswaId:  sesi.userId,
         jadwalId: jadwalIdDariQR,
-      });
+        jenisSesi: TIPE_SESI.KELAS,
+        waktuMulai: { $gte: awal, $lte: akhir }
+      }).sort({ waktuMulai: -1 });
     } else {
+      // Hanya cari sesi KONSUL yang masih BERJALAN pada hari ini
       sesiAktif = await StudySession.findOne({
-        siswaId:  sesi.userId,
+        siswaId:   sesi.userId,
         jenisSesi: TIPE_SESI.KONSUL,
-        status:   STATUS_SESI.BERJALAN.id,
-      });
+        status:    STATUS_SESI.BERJALAN.id,
+        waktuMulai: { $gte: awal, $lte: akhir }
+      }).sort({ waktuMulai: -1 });
     }
 
+    // Pembersihan sesi gantung lintas hari (Sabuk Pengaman Tambahan)
     if (sesiAktif) {
       const tglSesiLama = timeHelper.getTglJakarta(sesiAktif.waktuMulai);
       if (tglSesiLama !== tglHariIni) {
         if (!sesiAktif.waktuSelesai) {
-          sesiAktif.status      = STATUS_SESI.SELESAI.id;
+          sesiAktif.status       = STATUS_SESI.SELESAI.id;
           sesiAktif.waktuSelesai = sesiAktif.waktuMulai;
           await sesiAktif.save();
         }
         sesiAktif = null;
       } else if (sesiAktif.waktuSelesai) {
-        return responseHelper.success("✅ Anda sudah melakukan Check-out untuk kelas ini.");
+        return responseHelper.success(`✅ Anda sudah melakukan Check-out untuk sesi ${jenisQR.toLowerCase()} ini.`);
       }
     }
 
     // ============================================================
-    // LOGIKA CHECK-OUT
+    // LOGIKA CHECK-OUT (PULANG / SELESAI SESI)
     // ============================================================
     if (sesiAktif) {
       const durasiMenit = Math.floor((sekarang - sesiAktif.waktuMulai) / 60_000);
 
+      // A. Check-Out Kelas Reguler (Dengan Bonus Menit Konsul)
       if (sesiAktif.jenisSesi === TIPE_SESI.KELAS) {
         if (durasiMenit < KONFIGURASI_SISTEM.MIN_DURASI_BELAJAR_SAH) {
           return responseHelper.error(
-            `Belum ${KONFIGURASI_SISTEM.MIN_DURASI_BELAJAR_SAH} menit. Mohon tunggu.`
+            `Belum ${KONFIGURASI_SISTEM.MIN_DURASI_BELAJAR_SAH} menit. Mohon tunggu sebelum check-out.`
           );
         }
 
@@ -202,6 +216,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
           const waktuSelesaiJadwal = new Date(
             `${tglHariIni}T${jadwal.jamSelesai}:00${PERIODE_BELAJAR.ISO_OFFSET}`
           );
+          // Menghitung bonus konsul ekstra jika scan out melebihi jam selesai kelas
           if (!isNaN(waktuSelesaiJadwal.getTime()) && sekarang > waktuSelesaiJadwal) {
             const hitungExtra = Math.floor((sekarang - waktuSelesaiJadwal) / 60_000);
             if (hitungExtra > 15) menitExtra = hitungExtra;
@@ -209,13 +224,12 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         }
 
         sesiAktif.status           = STATUS_SESI.SELESAI.id;
-        sesiAktif.waktuSelesai      = sekarang;
-        sesiAktif.konsulExtraMenit  = menitExtra;
+        sesiAktif.waktuSelesai     = sekarang;
+        sesiAktif.konsulExtraMenit = menitExtra;
         await sesiAktif.save();
 
+        // Pencatatan Ekstra Menit untuk Guru Pengajar
         if (menitExtra > 0 && jadwal?.pengajarId) {
-          const { awal, akhir } = timeHelper.getRentangHari(sekarang);
-
           const updateRecord = await AbsensiPengajar.updateOne(
             {
               pengajarId: jadwal.pengajarId,
@@ -239,7 +253,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
             .select("riwayatEkstraKelas")
             .lean();
 
-          if (absenGuru) {
+          if (absenGuru && absenGuru.riwayatEkstraKelas) {
             const totalHarian = absenGuru.riwayatEkstraKelas.reduce(
               (sum, item) => sum + item.menitEkstra,
               0
@@ -251,6 +265,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
           }
         }
 
+        // Kalkulasi EXP & Lencana
         let expDapat = GAMIFIKASI.EXP.HADIR_KELAS;
         if (menitExtra >= 30) {
           expDapat += Math.floor(menitExtra / 30) * GAMIFIKASI.EXP.KONSUL_PER_30_MENIT;
@@ -277,10 +292,11 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
         revalidatePath("/", "layout");
         return responseHelper.success(
-          `Check-out Berhasil! +${expDapat} EXP${menitExtra > 0 ? ` (Ekstra ${menitExtra}m)` : ""}`
+          `Check-out Kelas Berhasil! ✨ +${expDapat} EXP${menitExtra > 0 ? ` (Ekstra Konsul ${menitExtra}m)` : ""}`
         );
       }
 
+      // B. Check-Out Sesi Konsul
       if (sesiAktif.jenisSesi === TIPE_SESI.KONSUL) {
         if (durasiMenit < KONFIGURASI_SISTEM.MIN_DURASI_KONSUL_SAH) {
           await StudySession.deleteOne({ _id: sesiAktif._id });
@@ -288,7 +304,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
           return responseHelper.success("Sesi Konsul dibatalkan (durasi < 5 menit).");
         }
 
-        sesiAktif.status      = STATUS_SESI.SELESAI.id;
+        sesiAktif.status       = STATUS_SESI.SELESAI.id;
         sesiAktif.waktuSelesai = sekarang;
         await sesiAktif.save();
 
@@ -307,12 +323,12 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         });
 
         revalidatePath("/", "layout");
-        return responseHelper.success(`Sesi Konsul Selesai! +${expDapat} EXP`);
+        return responseHelper.success(`Sesi Konsul Selesai! ✨ +${expDapat} EXP`);
       }
     }
 
     // ============================================================
-    // LOGIKA CHECK-IN
+    // LOGIKA CHECK-IN (MASUK SESI BARU)
     // ============================================================
     if (jenisQR === TIPE_SESI.KELAS) {
       const jadwal = await Jadwal.findById(jadwalIdDariQR)
@@ -339,9 +355,9 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         return responseHelper.error(`⚠️ QR ini khusus kelas ${jadwal.kelasTarget}.`);
       }
 
-      const waktuMulaiJadwal  = new Date(`${tglHariIni}T${jadwal.jamMulai}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
+      const waktuMulaiJadwal   = new Date(`${tglHariIni}T${jadwal.jamMulai}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
       const waktuSelesaiJadwal = new Date(`${tglHariIni}T${jadwal.jamSelesai}:00${PERIODE_BELAJAR.ISO_OFFSET}`);
-      const windowScanStart   = new Date(
+      const windowScanStart    = new Date(
         waktuMulaiJadwal.getTime() - KONFIGURASI_SISTEM.WINDOW_SCAN_MASUK_MENIT * 60_000
       );
 
@@ -350,8 +366,12 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
           `Scan dibuka ${KONFIGURASI_SISTEM.WINDOW_SCAN_MASUK_MENIT} menit sebelum kelas dimulai.`
         );
       }
+
+      // 🚀 PERBAIKAN 2: Edukasi jelas bila scan masuk setelah kelas bubar
       if (sekarang > waktuSelesaiJadwal) {
-        return responseHelper.error("Gagal! Sesi kelas sudah berakhir.");
+        return responseHelper.error(
+          "⛔ Gagal Check-Out! Sistem tidak menemukan data Check-In Anda sebelumnya di kelas ini. Apakah Anda lupa scan barcode saat kelas dimulai tadi?"
+        );
       }
 
       const telat = sekarang > waktuMulaiJadwal
@@ -359,14 +379,14 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         : 0;
 
       await StudySession.create({
-        siswaId:       sesi.userId,
-        namaSiswa:     siswa.nama,
-        jenisSesi:     TIPE_SESI.KELAS,
-        namaMapel:     jadwal.mapel,
-        jadwalId:      jadwal._id,
+        siswaId:        sesi.userId,
+        namaSiswa:      siswa.nama,
+        jenisSesi:      TIPE_SESI.KELAS,
+        namaMapel:      jadwal.mapel,
+        jadwalId:       jadwal._id,
         terlambatMenit: telat,
-        status:        STATUS_SESI.BERJALAN.id,
-        waktuMulai:    sekarang,
+        status:         STATUS_SESI.BERJALAN.id,
+        waktuMulai:     sekarang,
       });
 
       if (sekarang.getHours() < 15) {
@@ -408,6 +428,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
       return responseHelper.success(`Sesi Konsul ${mapelPilihan} dimulai.`);
     }
 
+    return responseHelper.error("⚠️ Tindakan tidak dikenali.");
   } catch (error) {
     console.error("[ERROR prosesHasilScan]:", error);
     return responseHelper.error("Terjadi gangguan sistem absensi.");
@@ -415,7 +436,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 }
 
 // ============================================================================
-// 3. ABSENSI PENGAJAR
+// 4. ACTIONS: ABSENSI PENGAJAR / STAF
 // ============================================================================
 export async function absenPengajarAction(teksQR, lokasi) {
   try {
@@ -430,7 +451,7 @@ export async function absenPengajarAction(teksQR, lokasi) {
       return responseHelper.error("⚠️ Barcode Staf tidak valid.");
     }
 
-    const sekarang       = new Date();
+    const sekarang        = new Date();
     const { awal, akhir } = timeHelper.getRentangHari(sekarang);
 
     const absenHariIni = await AbsensiPengajar.findOne({
@@ -454,9 +475,9 @@ export async function absenPengajarAction(teksQR, lokasi) {
 
     const guru = await User.findById(sesi.userId).select("nama").lean();
     const dataAbsenBaru = {
-      pengajarId:  sesi.userId,
+      pengajarId:   sesi.userId,
       namaPengajar: guru?.nama ?? "Staf",
-      waktuMasuk:  sekarang,
+      waktuMasuk:   sekarang,
     };
     if (lokasi) dataAbsenBaru.lokasiScanMasuk = lokasi;
 
