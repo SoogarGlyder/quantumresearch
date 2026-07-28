@@ -5,6 +5,7 @@ import Jadwal from "../models/Jadwal";
 import Quiz from "../models/Quiz";
 import StudySession from "../models/StudySession"; 
 import HasilKuis from "../models/HasilKuis"; 
+import BankSoal from "../models/BankSoal"; // FIX: Wajib di-import agar Mongoose mengenali model saat deep populate
 import mongoose from "mongoose";
 
 // Alat pencuci data agar aman dikirim ke Client Component (Mencegah error "Only plain objects")
@@ -50,7 +51,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
   try {
     await connectDB();
     
-    //MULAI TRANSAKSI: Semua Berhasil atau Semua Batal (All or Nothing)
+    // MULAI TRANSAKSI: Semua Berhasil atau Semua Batal (All or Nothing)
     session = await mongoose.startSession();
     session.startTransaction();
 
@@ -108,8 +109,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
 
     const skorAkhir = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
 
-    //SIMPAN KE DATABASE SECARA PARALEL (Di Dalam Transaksi)
-    // Perhatikan penambahan argumen { session }
+    // SIMPAN KE DATABASE SECARA PARALEL (Di Dalam Transaksi)
     await Promise.all([
       HasilKuis.create([{
         jadwalId: new mongoose.Types.ObjectId(jadwalId),
@@ -127,7 +127,7 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
       )
     ]);
 
-    //TRANSAKSI BERHASIL: Kunci dan simpan perubahan permanen!
+    // TRANSAKSI BERHASIL: Kunci dan simpan perubahan permanen!
     await session.commitTransaction();
     session.endSession();
 
@@ -164,7 +164,7 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
         _id: kuis._id.toString(),
         jumlahSoal: kuis.soal.length, 
         durasi: kuis.durasi || 10,
-        isSudahDikerjakan: !!riwayat, 
+        isSudahDikerjakan: !riwayat, 
         skor: riwayat ? riwayat.skorAkhir : null,
       }
     };
@@ -212,15 +212,23 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
 };
 
 // ============================================================================
-// 5. RIWAYAT KUIS (N+1 EXTERMINATOR)
+// 5. RIWAYAT KUIS (N+1 EXTERMINATOR + DEEP POPULATE JUDUL)
 // ============================================================================
 export const getRiwayatKuisSiswa = async (siswaId) => {
   try {
     await connectDB();
     
     const riwayat = await HasilKuis.find({ siswaId })
-      .populate("jadwalId", "mapel bab tanggal")
-      .populate("quizId", "soal")
+      .populate("jadwalId", "mapel bab subBab materi tanggal")
+      // FIX: Nested populate untuk mengambil judul dari tabel BankSoal
+      .populate({
+        path: "quizId",
+        select: "soal sumberBankSoalId",
+        populate: {
+          path: "sumberBankSoalId",
+          select: "judul"
+        }
+      })
       .sort({ dikumpulkanPada: -1 })
       .lean();
 
@@ -229,6 +237,8 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
       jadwalId: r.jadwalId ? r.jadwalId._id.toString() : "-",
       mapel: r.jadwalId?.mapel || "Kuis CBT",
       bab: r.jadwalId?.bab || "Ujian",
+      // FIX: Ambil judul dari BankSoal -> fallback ke subBab Jadwal -> fallback ke materi -> fallback ke teks default
+      judul: r.quizId?.sumberBankSoalId?.judul || r.jadwalId?.subBab || r.jadwalId?.materi || "Latihan CBT",
       tanggal: r.jadwalId?.tanggal || r.dikumpulkanPada,
       skor: r.skorAkhir || 0,
       jumlahSoal: r.quizId?.soal?.length || r.detailJawaban?.length || 0
