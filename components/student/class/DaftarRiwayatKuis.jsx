@@ -12,13 +12,13 @@ const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, currentPage, onPag
   return (
     <div className={styles.contentContainer}>
       <h3 className={styles.contentTitle}>
-        <FaCheckDouble color="#22c55e" /> Riwayat Pre-Test
+        <FaCheckDouble color="#22c55e" /> Riwayat Quiz
       </h3>
       
       {!dataRiwayatKuis || dataRiwayatKuis.length === 0 ? (
         <div className={styles.emptySchedule}>
           <h4 style={{ margin: 0}}>Belum Ada Ujian</h4>
-          <p style={{ marginTop: '4px' }}>Anda belum menyelesaikan Pre-Test CBT apa pun.</p>
+          <p style={{ marginTop: '4px' }}>Anda belum menyelesaikan Quiz CBT apa pun.</p>
         </div>
       ) : (
         <>
@@ -41,7 +41,7 @@ const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, currentPage, onPag
 
                 <div className={styles.scheduleCardRow}>
                   <p className={styles.scheduleSubject} style={{ color: '#166534', fontWeight: '900', fontSize: '18px' }}>
-                    {kuis.mapel} - {kuis.bab}
+                    {kuis.mapel} - {kuis.bab} - {kuis.judul}
                   </p>
                 </div>
 
