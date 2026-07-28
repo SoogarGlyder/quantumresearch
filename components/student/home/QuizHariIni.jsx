@@ -35,9 +35,8 @@ const QuizHariIni = memo(({ kuisHariIni, riwayatSesiIni, onBukaKuis }) => {
                   <FaGamepad size={18} />
                 </div>
                 <div>
-                  {/* FIX: Hanya menampilkan Judul Kuis saja */}
                   <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 'bold', color: isSudahScanIn ? '#111827' : '#475569' }}>
-                    {kuisHariIni.judul || kuisHariIni.bab || "Pre-Test CBT"}
+                    {kuisHariIni.mapel} - {kuisHariIni.bab || "Pre-Test"}
                   </h4>
                   <span style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     Jumlah Soal: {kuisHariIni.jumlahSoal || 0} Butir
