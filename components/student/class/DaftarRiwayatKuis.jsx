@@ -41,7 +41,7 @@ const DaftarRiwayatKuis = memo(({ dataRiwayatKuis, totalPage, currentPage, onPag
 
                 <div className={styles.scheduleCardRow}>
                   <p className={styles.scheduleSubject} style={{ color: '#166534', fontWeight: '900', fontSize: '18px' }}>
-                    {kuis.mapel} - {kuis.bab} - {kuis.judul}
+                    {kuis.judul}
                   </p>
                 </div>
 
