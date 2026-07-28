@@ -145,15 +145,20 @@ export const kumpulkanUjianSiswa = async ({ jadwalId, siswaId, nama, jawabanSisw
 };
 
 // ============================================================================
-// 3. CEK KETERSEDIAAN KUIS (DIET DATA)
+// 3. CEK KETERSEDIAAN KUIS (DIET DATA + DEEP POPULATE JUDUL)
 // ============================================================================
 export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
   try {
     await connectDB();
     
-    const [kuis, riwayat] = await Promise.all([
-      Quiz.findOne({ jadwalId, isAktif: true }).select("_id durasi soal").lean(),
-      HasilKuis.findOne({ jadwalId, siswaId }).select("skorAkhir").lean()
+    // FIX: Tarik juga data Jadwal dan BankSoal agar judul, mapel, & bab ikut terkirim ke frontend
+    const [kuis, riwayat, jadwal] = await Promise.all([
+      Quiz.findOne({ jadwalId, isAktif: true })
+        .select("_id durasi soal sumberBankSoalId")
+        .populate("sumberBankSoalId", "judul") // <-- Ambil judul dari BankSoal
+        .lean(),
+      HasilKuis.findOne({ jadwalId, siswaId }).select("skorAkhir").lean(),
+      Jadwal.findById(jadwalId).select("mapel bab subBab materi").lean() // <-- Ambil mapel & bab
     ]);
     
     if (!kuis || !kuis.soal) return { ada: false };
@@ -162,13 +167,21 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
       ada: true,
       data: {
         _id: kuis._id.toString(),
+        jadwalId: jadwalId.toString(),
+        // FIX 1: Lengkapi identitas kuis agar bisa dimuat oleh UI QuizHariIni
+        mapel: jadwal?.mapel || "Kuis CBT",
+        bab: jadwal?.bab || "Pre-Test",
+        judul: kuis.sumberBankSoalId?.judul || jadwal?.subBab || jadwal?.materi || "Pre-Test CBT",
+        
         jumlahSoal: kuis.soal.length, 
         durasi: kuis.durasi || 10,
-        isSudahDikerjakan: !riwayat, 
+        // FIX 2: Gunakan !! (double bang) agar logika TIDAK terbalik
+        isSudahDikerjakan: !!riwayat, 
         skor: riwayat ? riwayat.skorAkhir : null,
       }
     };
   } catch (error) {
+    console.error("Error cekKetersediaanKuis:", error);
     return { ada: false };
   }
 };
