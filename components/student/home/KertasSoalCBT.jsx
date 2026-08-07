@@ -15,8 +15,7 @@ const renderLaTeX = (htmlString) => {
   return { __html: rendered };
 };
 
-//HELPER BARU: Mendeteksi apakah teks opsi benar-benar kosong
-// (Menangani kasus editor teks yang kadang menyisakan <p></p> kosong)
+// HELPER BARU: Mendeteksi apakah teks opsi benar-benar kosong
 const isOpsiKosong = (teks) => {
   if (!teks) return true;
   const t = teks.trim();
@@ -26,6 +25,9 @@ const isOpsiKosong = (teks) => {
   }
   return false;
 };
+
+// 🚀 SOLUSI TABEL: Variabel penyuntik gaya khusus untuk elemen tabel di dalam Rich Text
+const tabelFixClasses = "[&_table]:w-full [&_table]:border-collapse [&_table]:my-4 [&_td]:border-2 [&_td]:border-[#111827] [&_td]:p-2 [&_td]:align-top [&_th]:border-2 [&_th]:border-[#111827] [&_th]:p-2 [&_th]:bg-gray-100 [&_th]:text-left";
 
 const KertasSoalCBT = memo(({ 
   soalSekarang, soalAktif, isReviewMode, jawabanSiswa, 
@@ -53,7 +55,10 @@ const KertasSoalCBT = memo(({
         {soalSekarang.gambar && (
           <img src={soalSekarang.gambar} alt="Soal" className={styles.soalImage} style={{ pointerEvents: isReviewMode ? 'auto' : 'none' }} />
         )}
-        <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pertanyaan)} className={styles.soalText} />
+        <div 
+          dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pertanyaan)} 
+          className={`${styles.soalText} ${tabelFixClasses}`} 
+        />
       </div>
 
       {/* OPSI JAWABAN */}
@@ -61,7 +66,6 @@ const KertasSoalCBT = memo(({
         
         {/* 1. PILIHAN GANDA BIASA */}
         {tipeSoalAktif === "PG" && daftarOpsi.map((item, index) => {
-          //FIX: Jika teks kosong, jangan tampilkan opsinya
           if (isOpsiKosong(item.teks)) return null;
 
           const abjad = item.label;
@@ -84,14 +88,16 @@ const KertasSoalCBT = memo(({
               <span className={styles.opsiHuruf} style={{ background: bgHuruf, color: textHuruf }}>
                 {isKunciBenar ? <FaCheck size={16}/> : (isSalahPilih ? <FaCross size={16}/> : abjad)}
               </span>
-              <div dangerouslySetInnerHTML={renderLaTeX(item.teks)} className={styles.opsiText} />
+              <div 
+                dangerouslySetInnerHTML={renderLaTeX(item.teks)} 
+                className={`${styles.opsiText} ${tabelFixClasses}`} 
+              />
             </div>
           );
         })}
 
         {/* 2. PILIHAN GANDA KOMPLEKS */}
         {tipeSoalAktif === "PG_KOMPLEKS" && daftarOpsi.map((item, index) => {
-          //FIX: Jika teks kosong, jangan tampilkan opsinya
           if (isOpsiKosong(item.teks)) return null;
 
           const abjad = item.label;
@@ -116,7 +122,10 @@ const KertasSoalCBT = memo(({
               <span style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0, color: textHuruf }}>
                  {isSelected || isKunciBenar ? <FaSquareCheck size={26} /> : <FaRegSquare size={26} />}
               </span>
-              <div dangerouslySetInnerHTML={renderLaTeX(item.teks)} className={styles.opsiText} />
+              <div 
+                dangerouslySetInnerHTML={renderLaTeX(item.teks)} 
+                className={`${styles.opsiText} ${tabelFixClasses}`} 
+              />
             </div>
           );
         })}
@@ -176,7 +185,11 @@ const KertasSoalCBT = memo(({
       {isReviewMode && soalSekarang.pembahasan && (
         <div className={styles.pembahasanBox}>
           <span className={styles.pembahasanBadge}>💡 PEMBAHASAN:</span>
-          <div dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pembahasan)} className={styles.soalText} style={{ lineHeight: '1.6' }} />
+          <div 
+            dangerouslySetInnerHTML={renderLaTeX(soalSekarang.pembahasan)} 
+            className={`${styles.soalText} ${tabelFixClasses}`} 
+            style={{ lineHeight: '1.6' }} 
+          />
         </div>
       )}
     </div>
