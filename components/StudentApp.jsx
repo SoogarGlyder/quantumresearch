@@ -129,7 +129,7 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
       if (laporan.sukses) { 
         router.refresh();
         
-        //  FIX: Timer 3 Detik setelah berhasil sebelum me-reset kamera
+        //  FIX: Timer 3 Detik ditahan bersama state loading agar kamera tidak spam scan ulang
         setTimeout(() => {
           resetScanner();
           
@@ -143,19 +143,25 @@ export default function StudentApp({ siswa, riwayat, jadwal, statistik, latihanH
             setMapelPilihan(""); 
             setGuruPilihan("");
           }
+          setSedangLoading(false); // Buka kunci loading SETELAH 3 detik
         }, 3000);
 
       } else {
         //  FIX: Timer 3 Detik jika gagal scan (server menolak)
-        setTimeout(() => resetScanner(), 3000);
+        setTimeout(() => {
+          resetScanner();
+          setSedangLoading(false);
+        }, 3000);
       }
     } catch (error) {
       setPesanSistem("Gagal menghubungi server. Periksa koneksi.");
       //  FIX: Timer 3 Detik jika internet terputus
-      setTimeout(() => resetScanner(), 3000);
-    } finally {
-      setSedangLoading(false);
-    }
+      setTimeout(() => {
+        resetScanner();
+        setSedangLoading(false);
+      }, 3000);
+    } 
+    // HAPUS blok finally agar setSedangLoading(false) tidak dieksekusi instan mendahului timeout
   }
 
   return (
