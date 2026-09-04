@@ -120,7 +120,7 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
 
     let sesiAktif = null;
 
-    // ✅ PERBAIKAN LOGIKA: Kunci pencarian berdasarkan jenisSesi agar KELAS dan KONSUL tidak bentrok
+    // ✅ PERBAIKAN LOGIKA: Ambil urutan terbaru untuk antisipasi duplikasi data
     if (jenisQR === TIPE_SESI.KELAS) {
       if (!jadwalIdDariQR || jadwalIdDariQR.length !== 24) {
         return responseHelper.error("⚠️ Format barcode kelas tidak valid.");
@@ -128,8 +128,8 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
       sesiAktif = await StudySession.findOne({ 
         siswaId: userId, 
         jadwalId: jadwalIdDariQR,
-        jenisSesi: TIPE_SESI.KELAS // Pengunci penting agar tidak membaca sesi konsul
-      });
+        jenisSesi: TIPE_SESI.KELAS
+      }).sort({ waktuMulai: -1 }); // Ambil yang paling terakhir diciptakan
     } else {
       sesiAktif = await StudySession.findOne({
         siswaId: userId, 
@@ -183,6 +183,24 @@ export async function prosesHasilScan(teksQR, mapelPilihan, pengajarPilihan, lok
         sesiAktif.waktuSelesai = sekarang;
         sesiAktif.konsulExtraMenit = menitExtra;
         await sesiAktif.save();
+
+        // ✅ PERBAIKAN: SAPU BERSIH DATA GANDA
+        // Jika karena spam-scan sebelumnya siswa punya sesi KELAS ganda yang nyangkut, selesaikan semuanya
+        await StudySession.updateMany(
+          {
+            siswaId: userId,
+            jadwalId: jadwalIdDariQR,
+            jenisSesi: TIPE_SESI.KELAS,
+            status: STATUS_SESI.BERJALAN.id
+          },
+          {
+            $set: {
+              status: STATUS_SESI.SELESAI.id,
+              waktuSelesai: sekarang,
+              konsulExtraMenit: menitExtra
+            }
+          }
+        );
 
         // Pencatatan waktu ekstra untuk pengajar yang mengajar kelas tersebut
         if (menitExtra > 0 && jadwal?.pengajarId) {
