@@ -11,7 +11,7 @@ import mongoose from "mongoose";
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 1. AMBIL DATA KUIS SISWA (ANTI-CHEAT + JS SANITIZATION FIX)
+// 1. AMBIL DATA KUIS SISWA (ROBUST FIND & SAFE SUBTEST MAPPING)
 // ============================================================================
 export const getKuisSiswa = async (jadwalId) => {
   try {
@@ -19,49 +19,48 @@ export const getKuisSiswa = async (jadwalId) => {
 
     const [jadwalData, dataKuis] = await Promise.all([
       Jadwal.findById(jadwalId).select('mapel kelasTarget').lean(),
-      Quiz.findOne({ jadwalId, isAktif: true }).lean() // Ambil utuh tanpa Mongoose select yang rapuh
+      Quiz.findOne({ jadwalId }).lean() // Cari langsung berdasarkan jadwalId tanpa filter isAktif
     ]);
 
     if (!dataKuis) {
-      return { sukses: false, pesan: "Soal ujian belum tersedia." };
+      return { sukses: false, pesan: "Soal ujian belum tersedia di server." };
     }
 
     const isTryOutMode = dataKuis.jenisUjian === "TRYOUT";
 
     if (isTryOutMode) {
       if (!dataKuis.daftarSubtes || dataKuis.daftarSubtes.length === 0) {
-        return { sukses: false, pesan: "Soal Try Out belum tersedia." };
+        return { sukses: false, pesan: "Bundel subtes Try Out kosong." };
       }
     } else {
       if (!dataKuis.soal || dataKuis.soal.length === 0) {
-        return { sukses: false, pesan: "Soal Kuis belum tersedia." };
+        return { sukses: false, pesan: "Soal kuis kosong." };
       }
     }
 
-    // 🚀 AMAN: Sanitasi kunci jawaban & pembahasan secara manual di JavaScript
+    // Mapping aman: memastikan struktur subtes & soal terkirim utuh ke frontend siswa
     const sanitizedSubtes = (dataKuis.daftarSubtes || []).map(sub => ({
-      judulSubtes: sub.judulSubtes,
-      durasi: sub.durasi,
+      judulSubtes: sub.judulSubtes || "Subtes",
+      durasi: Number(sub.durasi) || 10,
       soal: (sub.soal || []).map(s => ({
-        _id: s._id,
+        _id: s._id || new mongoose.Types.ObjectId(),
         tipeSoal: s.tipeSoal || "PG",
-        pertanyaan: s.pertanyaan,
+        pertanyaan: s.pertanyaan || "",
         gambar: s.gambar || "",
         opsi: s.opsi || [],
-        bobotExp: s.bobotExp || 20,
-        jumlahOpsi: s.jumlahOpsi || 5
-        // kunciJawaban & pembahasan sengaja dibuang agar tidak bisa dibaca inspect element siswa!
+        bobotExp: Number(s.bobotExp) || 20,
+        jumlahOpsi: Number(s.jumlahOpsi) || 5
       }))
     }));
 
     const sanitizedSoal = (dataKuis.soal || []).map(s => ({
-      _id: s._id,
+      _id: s._id || new mongoose.Types.ObjectId(),
       tipeSoal: s.tipeSoal || "PG",
-      pertanyaan: s.pertanyaan,
+      pertanyaan: s.pertanyaan || "",
       gambar: s.gambar || "",
       opsi: s.opsi || [],
-      bobotExp: s.bobotExp || 20,
-      jumlahOpsi: s.jumlahOpsi || 5
+      bobotExp: Number(s.bobotExp) || 20,
+      jumlahOpsi: Number(s.jumlahOpsi) || 5
     }));
 
     let totalSoal = 0;
@@ -72,7 +71,7 @@ export const getKuisSiswa = async (jadwalId) => {
       totalDurasi = sanitizedSubtes.reduce((acc, sub) => acc + (sub.durasi || 0), 0);
     } else {
       totalSoal = sanitizedSoal.length;
-      totalDurasi = dataKuis.durasi || 10;
+      totalDurasi = Number(dataKuis.durasi) || 10;
     }
 
     return serialize({ 
@@ -90,7 +89,7 @@ export const getKuisSiswa = async (jadwalId) => {
 
   } catch (error) {
     console.error("[ERROR getKuisSiswa]:", error); 
-    return { sukses: false, pesan: "Terjadi kesalahan server saat memuat soal." };
+    return { sukses: false, pesan: "Terjadi kesalahan server saat memuat soal: " + error.message };
   }
 };
 
@@ -246,9 +245,7 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
     await connectDB();
     
     const [kuis, riwayat, jadwal] = await Promise.all([
-      Quiz.findOne({ jadwalId, isAktif: true })
-        .populate("sumberBankSoalId", "judul")
-        .lean(),
+      Quiz.findOne({ jadwalId }).lean(),
       HasilKuis.findOne({ jadwalId, siswaId }).select("skorAkhir statusPengerjaan subtesAktifIndex").lean(),
       Jadwal.findById(jadwalId).select("mapel bab subBab materi").lean()
     ]);
@@ -278,14 +275,11 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
         _id: kuis._id.toString(),
         jadwalId: jadwalId.toString(),
         jenisUjian: kuis.jenisUjian || "KUIS",
-        
         mapel: jadwal?.mapel || "Kuis CBT",
         bab: jadwal?.bab || "Pre-Test",
         judul: kuis.sumberBankSoalId?.judul || jadwal?.subBab || jadwal?.materi || "Pre-Test CBT",
-        
         jumlahSoal: totalSoal,
         durasi: totalDurasi,
-        
         isSudahDikerjakan: isSelesaiTotal, 
         statusPengerjaan: riwayat?.statusPengerjaan || null,
         subtesAktifIndex: riwayat?.subtesAktifIndex || 0,
