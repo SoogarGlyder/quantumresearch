@@ -5,13 +5,13 @@ import Jadwal from "../models/Jadwal";
 import Quiz from "../models/Quiz";
 import StudySession from "../models/StudySession"; 
 import HasilKuis from "../models/HasilKuis"; 
-import BankSoal from "../models/BankSoal"; // Wajib di-import agar Mongoose mengenali model
+import BankSoal from "../models/BankSoal"; 
 import mongoose from "mongoose";
 
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 1. AMBIL DATA KUIS (ANTI-CHEAT + PARALLEL)
+// 1. AMBIL DATA KUIS SISWA (ANTI-CHEAT + JS SANITIZATION FIX)
 // ============================================================================
 export const getKuisSiswa = async (jadwalId) => {
   try {
@@ -19,26 +19,59 @@ export const getKuisSiswa = async (jadwalId) => {
 
     const [jadwalData, dataKuis] = await Promise.all([
       Jadwal.findById(jadwalId).select('mapel kelasTarget').lean(),
-      Quiz.findOne({ jadwalId, isAktif: true })
-          .select('-soal.kunciJawaban -soal.pembahasan -daftarSubtes.soal.kunciJawaban -daftarSubtes.soal.pembahasan')
-          .lean()
+      Quiz.findOne({ jadwalId, isAktif: true }).lean() // Ambil utuh tanpa Mongoose select yang rapuh
     ]);
 
-    if (!dataKuis || (!dataKuis.soal?.length && !dataKuis.daftarSubtes?.length)) {
+    if (!dataKuis) {
       return { sukses: false, pesan: "Soal ujian belum tersedia." };
     }
 
     const isTryOutMode = dataKuis.jenisUjian === "TRYOUT";
 
-    // 🚀 FIX: Kalkulator Total Soal & Durasi Try Out
+    if (isTryOutMode) {
+      if (!dataKuis.daftarSubtes || dataKuis.daftarSubtes.length === 0) {
+        return { sukses: false, pesan: "Soal Try Out belum tersedia." };
+      }
+    } else {
+      if (!dataKuis.soal || dataKuis.soal.length === 0) {
+        return { sukses: false, pesan: "Soal Kuis belum tersedia." };
+      }
+    }
+
+    // 🚀 AMAN: Sanitasi kunci jawaban & pembahasan secara manual di JavaScript
+    const sanitizedSubtes = (dataKuis.daftarSubtes || []).map(sub => ({
+      judulSubtes: sub.judulSubtes,
+      durasi: sub.durasi,
+      soal: (sub.soal || []).map(s => ({
+        _id: s._id,
+        tipeSoal: s.tipeSoal || "PG",
+        pertanyaan: s.pertanyaan,
+        gambar: s.gambar || "",
+        opsi: s.opsi || [],
+        bobotExp: s.bobotExp || 20,
+        jumlahOpsi: s.jumlahOpsi || 5
+        // kunciJawaban & pembahasan sengaja dibuang agar tidak bisa dibaca inspect element siswa!
+      }))
+    }));
+
+    const sanitizedSoal = (dataKuis.soal || []).map(s => ({
+      _id: s._id,
+      tipeSoal: s.tipeSoal || "PG",
+      pertanyaan: s.pertanyaan,
+      gambar: s.gambar || "",
+      opsi: s.opsi || [],
+      bobotExp: s.bobotExp || 20,
+      jumlahOpsi: s.jumlahOpsi || 5
+    }));
+
     let totalSoal = 0;
     let totalDurasi = 0;
     
-    if (isTryOutMode && dataKuis.daftarSubtes) {
-      totalSoal = dataKuis.daftarSubtes.reduce((acc, sub) => acc + (sub.soal?.length || 0), 0);
-      totalDurasi = dataKuis.daftarSubtes.reduce((acc, sub) => acc + (sub.durasi || 0), 0);
+    if (isTryOutMode) {
+      totalSoal = sanitizedSubtes.reduce((acc, sub) => acc + (sub.soal?.length || 0), 0);
+      totalDurasi = sanitizedSubtes.reduce((acc, sub) => acc + (sub.durasi || 0), 0);
     } else {
-      totalSoal = dataKuis.soal?.length || 0;
+      totalSoal = sanitizedSoal.length;
       totalDurasi = dataKuis.durasi || 10;
     }
 
@@ -48,10 +81,10 @@ export const getKuisSiswa = async (jadwalId) => {
         mapel: jadwalData?.mapel || "Kuis CBT",
         kelas: jadwalData?.kelasTarget || "-",
         jenisUjian: dataKuis.jenisUjian || "KUIS",
-        jumlahSoal: totalSoal, // <-- Nilai sudah akurat
-        durasi: totalDurasi,   // <-- Nilai sudah akurat
-        soal: isTryOutMode ? [] : dataKuis.soal,
-        daftarSubtes: isTryOutMode ? dataKuis.daftarSubtes : []
+        jumlahSoal: totalSoal,
+        durasi: totalDurasi,
+        soal: isTryOutMode ? [] : sanitizedSoal,
+        daftarSubtes: isTryOutMode ? sanitizedSubtes : []
       } 
     });
 
@@ -206,7 +239,7 @@ export const kumpulkanUjianSiswa = async ({
 };
 
 // ============================================================================
-// 3. CEK KETERSEDIAAN KUIS (DIET DATA + DEEP POPULATE JUDUL)
+// 3. CEK KETERSEDIAAN KUIS
 // ============================================================================
 export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
   try {
@@ -214,7 +247,6 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
     
     const [kuis, riwayat, jadwal] = await Promise.all([
       Quiz.findOne({ jadwalId, isAktif: true })
-        .select("_id durasi soal jenisUjian daftarSubtes sumberBankSoalId")
         .populate("sumberBankSoalId", "judul")
         .lean(),
       HasilKuis.findOne({ jadwalId, siswaId }).select("skorAkhir statusPengerjaan subtesAktifIndex").lean(),
@@ -227,7 +259,6 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
     if (isTryOutMode && (!kuis.daftarSubtes || kuis.daftarSubtes.length === 0)) return { ada: false };
     if (!isTryOutMode && (!kuis.soal || kuis.soal.length === 0)) return { ada: false };
 
-    // 🚀 FIX: Kalkulator Total Soal & Durasi Try Out di Halaman Scanner
     let totalSoal = 0;
     let totalDurasi = 0;
     
@@ -252,8 +283,8 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
         bab: jadwal?.bab || "Pre-Test",
         judul: kuis.sumberBankSoalId?.judul || jadwal?.subBab || jadwal?.materi || "Pre-Test CBT",
         
-        jumlahSoal: totalSoal,     // <-- Sudah diperbaiki!
-        durasi: totalDurasi,       // <-- Sudah diperbaiki!
+        jumlahSoal: totalSoal,
+        durasi: totalDurasi,
         
         isSudahDikerjakan: isSelesaiTotal, 
         statusPengerjaan: riwayat?.statusPengerjaan || null,
@@ -321,7 +352,7 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
 };
 
 // ============================================================================
-// 5. RIWAYAT KUIS (N+1 EXTERMINATOR + DEEP POPULATE JUDUL)
+// 5. RIWAYAT KUIS SISWA
 // ============================================================================
 export const getRiwayatKuisSiswa = async (siswaId) => {
   try {
