@@ -19,7 +19,7 @@ export const getKuisSiswa = async (jadwalId) => {
 
     const [jadwalData, dataKuis] = await Promise.all([
       Jadwal.findById(jadwalId).select('mapel kelasTarget').lean(),
-      Quiz.findOne({ jadwalId }).lean() // Cari langsung berdasarkan jadwalId tanpa filter isAktif
+      Quiz.findOne({ jadwalId }).lean()
     ]);
 
     if (!dataKuis) {
@@ -38,7 +38,6 @@ export const getKuisSiswa = async (jadwalId) => {
       }
     }
 
-    // Mapping aman: memastikan struktur subtes & soal terkirim utuh ke frontend siswa
     const sanitizedSubtes = (dataKuis.daftarSubtes || []).map(sub => ({
       judulSubtes: sub.judulSubtes || "Subtes",
       durasi: Number(sub.durasi) || 10,
@@ -129,7 +128,6 @@ export const kumpulkanUjianSiswa = async ({
     let totalExpMaksimal = 0;
     const detailJawabanData = []; 
 
-    // PROSES GRADING
     jawabanSiswa.forEach((jawaban, index) => {
       const soalDb = soalAsli[index];
       if (soalDb) {
@@ -162,7 +160,6 @@ export const kumpulkanUjianSiswa = async ({
 
     const skorSaatIni = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
 
-    // LOGIKA PENYIMPANAN BERDASARKAN MODE UJIAN
     if (isTryOutMode) {
       const dataSubtes = {
         judulSubtes: judulSubtes || `Subtes ${subtesAktifIndex + 1}`,
@@ -238,7 +235,7 @@ export const kumpulkanUjianSiswa = async ({
 };
 
 // ============================================================================
-// 3. CEK KETERSEDIAAN KUIS
+// 3. CEK KETERSEDIAAN KUIS (KINI DILENGKAPI DATA SOAL & SUBTES) 🔥
 // ============================================================================
 export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
   try {
@@ -256,20 +253,44 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
     if (isTryOutMode && (!kuis.daftarSubtes || kuis.daftarSubtes.length === 0)) return { ada: false };
     if (!isTryOutMode && (!kuis.soal || kuis.soal.length === 0)) return { ada: false };
 
+    const sanitizedSubtes = (kuis.daftarSubtes || []).map(sub => ({
+      judulSubtes: sub.judulSubtes || "Subtes",
+      durasi: Number(sub.durasi) || 10,
+      soal: (sub.soal || []).map(s => ({
+        _id: s._id || new mongoose.Types.ObjectId(),
+        tipeSoal: s.tipeSoal || "PG",
+        pertanyaan: s.pertanyaan || "",
+        gambar: s.gambar || "",
+        opsi: s.opsi || [],
+        bobotExp: Number(s.bobotExp) || 20,
+        jumlahOpsi: Number(s.jumlahOpsi) || 5
+      }))
+    }));
+
+    const sanitizedSoal = (kuis.soal || []).map(s => ({
+      _id: s._id || new mongoose.Types.ObjectId(),
+      tipeSoal: s.tipeSoal || "PG",
+      pertanyaan: s.pertanyaan || "",
+      gambar: s.gambar || "",
+      opsi: s.opsi || [],
+      bobotExp: Number(s.bobotExp) || 20,
+      jumlahOpsi: Number(s.jumlahOpsi) || 5
+    }));
+
     let totalSoal = 0;
     let totalDurasi = 0;
     
     if (isTryOutMode) {
-      totalSoal = kuis.daftarSubtes.reduce((acc, sub) => acc + (sub.soal?.length || 0), 0);
-      totalDurasi = kuis.daftarSubtes.reduce((acc, sub) => acc + (sub.durasi || 0), 0);
+      totalSoal = sanitizedSubtes.reduce((acc, sub) => acc + (sub.soal?.length || 0), 0);
+      totalDurasi = sanitizedSubtes.reduce((acc, sub) => acc + (sub.durasi || 0), 0);
     } else {
-      totalSoal = kuis.soal.length;
-      totalDurasi = kuis.durasi || 10;
+      totalSoal = sanitizedSoal.length;
+      totalDurasi = Number(kuis.durasi) || 10;
     }
 
     const isSelesaiTotal = riwayat ? riwayat.statusPengerjaan === "SELESAI" : false;
 
-    return {
+    return serialize({
       ada: true,
       data: {
         _id: kuis._id.toString(),
@@ -280,12 +301,14 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
         judul: kuis.sumberBankSoalId?.judul || jadwal?.subBab || jadwal?.materi || "Pre-Test CBT",
         jumlahSoal: totalSoal,
         durasi: totalDurasi,
+        soal: isTryOutMode ? [] : sanitizedSoal,
+        daftarSubtes: isTryOutMode ? sanitizedSubtes : [],
         isSudahDikerjakan: isSelesaiTotal, 
         statusPengerjaan: riwayat?.statusPengerjaan || null,
         subtesAktifIndex: riwayat?.subtesAktifIndex || 0,
         skor: riwayat ? riwayat.skorAkhir : null,
       }
-    };
+    });
   } catch (error) {
     console.error("Error cekKetersediaanKuis:", error);
     return { ada: false };
