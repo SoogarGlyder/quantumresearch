@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { FaXmark, FaCheckDouble, FaChevronLeft, FaChevronRight, FaClock, FaExpand, FaTriangleExclamation, FaWifi } from "react-icons/fa6";
+import { FaXmark, FaCheckDouble, FaChevronLeft, FaChevronRight, FaClock, FaExpand, FaTriangleExclamation, FaWifi, FaMugHot } from "react-icons/fa6";
 import styles from "@/components/App.module.css";
 import { useCbtEngine } from "./useCbtEngine";
 import KertasSoalCBT from "./KertasSoalCBT";
@@ -10,16 +10,19 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
   const containerRef = useRef(null); 
   const scrollAreaRef = useRef(null);
 
-  const daftarSoal = kuis?.soal || [];
-  const totalSoal = daftarSoal.length;
-  const namaMapel = kuis?.mapel || "Ujian CBT";
-
   const {
     soalAktif, setSoalAktif, jawabanSiswa, sisaDetik,
     isSubmitting, isUjianMulai, setIsUjianMulai,
     pelanggaran, showPeringatan, setShowPeringatan, koneksiTerputus,
+    isTryOutMode, isLayarJeda, subtesAktifIndex, daftarSubtes, daftarSoal, lanjutSubtesBerikutnya,
     handlePilihJawaban, handleToggleKompleks, handleInputIsian, handleKumpulJawaban, eksekusiSubmit
   } = useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast, onClose });
+
+  const totalSoal = daftarSoal.length;
+  // Dinamis: Jika Try Out, ambil judul dari Subtes aktif. Jika kuis, dari mapel jadwal.
+  const namaMapel = isTryOutMode && daftarSubtes.length > 0 
+    ? daftarSubtes[subtesAktifIndex].judulSubtes 
+    : (kuis?.mapel || "Ujian CBT");
 
   //HELPER: Cek kebenaran jawaban untuk Palet Warna
   const cekJawabanBenar = (index) => {
@@ -64,7 +67,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
   };
 
   // EMPTY STATE
-  if (totalSoal === 0) {
+  if (totalSoal === 0 && !isLayarJeda) {
     return (
       <div className={`${styles.cbtFixedOverlay} ${styles.cbtBgLight}`}>
         <div className={styles.cbtPromptCard} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', maxHeight: '90vh' }}>
@@ -100,7 +103,37 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
   }
 
   const isSoalTerakhir = soalAktif === totalSoal - 1;
+  const isTryOutTanggung = isTryOutMode && subtesAktifIndex < daftarSubtes.length - 1;
 
+  // 🚀 LAYAR JEDA (MUNCUL SAAT TRANSISI SUBTES TRY OUT)
+  if (isLayarJeda) {
+    const nextSubtes = daftarSubtes[subtesAktifIndex + 1];
+    return (
+      <div className={`${styles.cbtFixedOverlay} ${styles.cbtBgLight}`} style={{ backgroundColor: '#fef3c7' }}>
+        <div className={styles.cbtPromptCard} style={{ border: '4px solid #111827', boxShadow: '8px 8px 0 #111827', background: 'white' }}>
+          <FaMugHot size={60} color="#2563eb" style={{ marginBottom: '20px' }} />
+          <h2 className={styles.cbtTitle} style={{ fontSize: '32px' }}>SUBTES SELESAI</h2>
+          <p className={styles.cbtDesc} style={{ fontSize: '18px', color: '#4b5563' }}>
+            Jawaban Anda telah diamankan. Tarik napas sejenak sebelum melanjutkan ke pertempuran berikutnya.
+          </p>
+          
+          <div style={{ background: '#f1f5f9', border: '3px solid #111827', padding: '15px', borderRadius: '8px', margin: '20px 0', textAlign: 'left' }}>
+            <p style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '14px' }}>SELANJUTNYA:</p>
+            <h3 style={{ margin: '5px 0 0', fontSize: '22px', color: '#2563eb', fontWeight: '900' }}>
+              {nextSubtes?.judulSubtes.toUpperCase()}
+            </h3>
+            <p style={{ margin: '5px 0 0', fontWeight: 'bold' }}>⏱️ {nextSubtes?.durasi} Menit • 📝 {nextSubtes?.soal.length} Soal</p>
+          </div>
+
+          <button onClick={lanjutSubtesBerikutnya} className={`${styles.cbtBtn} ${styles.cbtBtnPrimary}`} style={{ width: '100%', fontSize: '18px', padding: '15px' }}>
+            MULAI SUBTES {subtesAktifIndex + 2} <FaChevronRight style={{ marginLeft: '10px' }} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // RENDER UTAMA CBT
   return (
     <div ref={containerRef} className={`${styles.cbtFixedOverlay} ${styles.cbtBgLight}`} style={{ flexDirection: 'column', padding: 0 }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', position: 'relative' }}>
@@ -133,7 +166,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
         <div className={`${styles.cbtHeader} ${isReviewMode ? styles.cbtHeaderReview : styles.cbtHeaderNormal}`}>
           <div>
             <h3 className={styles.galleryTitle} style={{ color: '#111827' }}>
-              {isReviewMode ? `REVIEW | ${namaMapel}` : `CBT | ${namaMapel}`}
+              {isReviewMode ? `REVIEW | ${namaMapel}` : (isTryOutMode ? `TRY OUT | ${namaMapel}` : `CBT | ${namaMapel}`)}
             </h3>
             {!isReviewMode && (
               <span className={`${styles.cbtTimer} ${sisaDetik < 300 ? styles.cbtTimerDanger : styles.cbtTimerSafe}`}>
@@ -146,7 +179,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
           </div>
           <button className={styles.galleryButton} onClick={() => {
             if (isReviewMode) onClose();
-            else if (window.confirm("Keluar ujian? Waktu tersimpan aman.")) onClose();
+            else if (window.confirm("Keluar ujian? Waktu & jawaban tersimpan aman.")) onClose();
           }} style={{ border: '3px solid #111827', background: 'white' }}>
             <FaXmark size={20} color="#111827" />
           </button>
@@ -157,7 +190,9 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
           {/* PALET NOMOR SOAL */}
           <div className={styles.paletContainer}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h4 style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '13px' }}>PALET SOAL</h4>
+              <h4 style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '13px' }}>
+                {isTryOutMode ? `PALET SOAL SUBTES ${subtesAktifIndex + 1}` : 'PALET SOAL'}
+              </h4>
             </div>
 
             <div className={styles.paletScroll}>
@@ -173,7 +208,6 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
                 const isAktif = soalAktif === index;
                 let bgWarna = 'white'; let textWarna = '#111827'; let bayangan = '2px 2px 0 #111827';
 
-                //FIX: Penentuan warna menggunakan fungsi helper yang tangguh
                 if (isReviewMode) {
                   const isBenar = cekJawabanBenar(index);
                   if (isBenar) bgWarna = '#4ade80';
@@ -217,7 +251,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
               
               {!isReviewMode && isSoalTerakhir ? (
                 <button onClick={handleKumpulJawaban} disabled={isSubmitting} className={`${styles.cbtBtn} ${styles.cbtBtnSuccess}`}>
-                  {isSubmitting ? "MENGIRIM..." : <><FaCheckDouble /> KUMPULKAN</>}
+                  {isSubmitting ? "MENGIRIM..." : (isTryOutTanggung ? <><FaCheckDouble /> KUMPULKAN SUBTES</> : <><FaCheckDouble /> KUMPULKAN</>)}
                 </button>
               ) : (
                 <button onClick={() => {
