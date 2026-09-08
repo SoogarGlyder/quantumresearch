@@ -6,16 +6,19 @@ import { kumpulkanUjianSiswa } from "@/actions/studentAction";
 export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast, onClose }) {
   const storageKey = `q_cbt_${jadwalId}_${siswa?._id}`;
   
+  // 🚀 NORMALISASI DATA: Menangani format kuis baik langsung maupun terbungkus { sukses, data }
+  const kuisData = kuis?.data || kuis;
+
   // 🚀 LOGIKA ESTAFET: Deteksi Mode Try Out
-  const isTryOutMode = kuis?.jenisUjian === "TRYOUT";
-  const daftarSubtes = kuis?.daftarSubtes || [];
+  const isTryOutMode = kuisData?.jenisUjian === "TRYOUT";
+  const daftarSubtes = kuisData?.daftarSubtes || [];
   
   const [subtesAktifIndex, setSubtesAktifIndex] = useState(0);
   const [isLayarJeda, setIsLayarJeda] = useState(false);
 
-  // Ambil durasi dan daftar soal secara dinamis (tergantung mode dan indeks subtes)
-  const durasiMenit = isTryOutMode ? (daftarSubtes[subtesAktifIndex]?.durasi || 10) : (kuis?.durasi || 10);
-  const daftarSoal = isTryOutMode ? (daftarSubtes[subtesAktifIndex]?.soal || []) : (kuis?.soal || []);
+  // Ambil durasi dan daftar soal secara dinamis dari data yang sudah dinormalisasi
+  const durasiMenit = isTryOutMode ? (daftarSubtes[subtesAktifIndex]?.durasi || 10) : (kuisData?.durasi || 10);
+  const daftarSoal = isTryOutMode ? (daftarSubtes[subtesAktifIndex]?.soal || []) : (kuisData?.soal || []);
   
   const [soalAktif, setSoalAktif] = useState(0);
   const [jawabanSiswa, setJawabanSiswa] = useState({});
@@ -61,7 +64,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
           console.error("Gagal membaca memori CBT"); 
         }
       } else {
-        // Jika tidak ada save-an, set timer awal
         setSisaDetik(durasiMenit * 60);
       }
       setIsDataLoaded(true);
@@ -69,7 +71,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReviewMode, storageKey, jawabanPast]);
 
-  // Auto-Save ke Local Storage (Termasuk posisi subtes untuk Try Out)
+  // Auto-Save ke Local Storage
   useEffect(() => {
     if (isDataLoaded && !isReviewMode && isUjianMulai) {
       const stateToSave = { 
@@ -83,7 +85,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     }
   }, [jawabanSiswa, sisaDetik, isDataLoaded, pelanggaran, storageKey, isReviewMode, isUjianMulai, subtesAktifIndex, isLayarJeda]);
 
-  // Sistem Anti-Cheat (Tidak berubah)
+  // Sistem Anti-Cheat
   useEffect(() => {
     if (isReviewMode || !isUjianMulai || isSubmitting || isLayarJeda) return;
     
@@ -129,7 +131,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     };
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [koneksiTerputus, isSubmitting, isReviewMode]);
 
   // Countdown Timer
@@ -153,7 +154,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDataLoaded, isUjianMulai, koneksiTerputus, isReviewMode, isLayarJeda, isTryOutMode, subtesAktifIndex]);
 
-  // Handler Pilihan Jawaban
   const handlePilihJawaban = useCallback((nomorSoal, opsiPilihan) => {
     if (isReviewMode) return; 
     setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: opsiPilihan }));
@@ -176,11 +176,9 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: text }));
   }, [isReviewMode]);
 
-  // 🚀 EKSEKUSI SUBMIT (Mendukung Pengumpulan Parsial Try Out)
   const eksekusiSubmit = async () => {
     setIsSubmitting(true); setKoneksiTerputus(false); clearInterval(timerRef.current);
     
-    // Tentukan apakah ini kumpul total atau kumpul subtes (parsial)
     const isPartialSubmit = isTryOutMode && subtesAktifIndex < daftarSubtes.length - 1;
     
     if (!isPartialSubmit && document.fullscreenElement) {
@@ -200,7 +198,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
         siswaId: siswa._id, 
         nama: siswa.nama, 
         jawabanSiswa: arrayJawaban,
-        // Payload khusus Backend baru (nanti kita buat di sesi selanjutnya)
         isPartialSubmit,
         subtesAktifIndex,
         judulSubtes: isTryOutMode ? daftarSubtes[subtesAktifIndex].judulSubtes : null
@@ -208,11 +205,9 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       
       if (res.sukses) {
         if (isPartialSubmit) {
-          // Jika sukses simpan subtes, masuki fase jeda
           setIsLayarJeda(true);
           setIsSubmitting(false);
         } else {
-          // Ujian benar-benar berakhir
           localStorage.removeItem(storageKey);
           alert(`✅ UJIAN SELESAI!\n🎯 Nilai Anda: ${res.skor}\n🌟 Anda mendapatkan +${res.exp} EXP!`);
           onClose(); 
@@ -235,7 +230,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     if (window.confirm(pesanConfirm)) eksekusiSubmit();
   };
 
-  // 🚀 FUNGSI BARU: Lanjut ke Subtes Berikutnya setelah Jeda
   const lanjutSubtesBerikutnya = () => {
     const nextIndex = subtesAktifIndex + 1;
     setSubtesAktifIndex(nextIndex);
