@@ -6,15 +6,13 @@ const hasilKuisSchema = new mongoose.Schema({
   siswaId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
   
   namaSiswa: { type: String, required: true },
-  
-  // 🚀 STATUS PENGERJAAN: Untuk mendeteksi apakah siswa sedang berada di "Layar Jeda"
-  statusPengerjaan: { type: String, enum: ["BERJALAN", "SELESAI"], default: "SELESAI" },
-  subtesAktifIndex: { type: Number, default: 0 }, // Menyimpan indeks subtes terakhir yang belum di-submit
-  
-  // Total Akumulasi Skor Keseluruhan
   skorAkhir: { type: Number, required: true },
   
-  // [MODE KUIS LAMA] Detail jawaban tunggal
+  // 🚀 STATUS PENGERJAAN & CHECKPOINT (KHUSUS TRY OUT)
+  statusPengerjaan: { type: String, enum: ["BERJALAN", "SELESAI"], default: "SELESAI" },
+  subtesAktifIndex: { type: Number, default: 0 }, 
+  
+  // [MODE KUIS REGULER LAMA]
   detailJawaban: [{
     _id: false,
     kunciJawaban: { type: [String], default: [] },
@@ -22,7 +20,7 @@ const hasilKuisSchema = new mongoose.Schema({
     isBenar: { type: Boolean, default: false }
   }],
 
-  // 🚀 [MODE TRY OUT BARU] Rapor per Subtes (Sangat berguna untuk analitik kelemahan siswa)
+  // 🚀 [MODE TRY OUT ESTAFET BARU] - Untuk Dashboard Rapor Siswa
   riwayatSubtes: [{
     _id: false,
     judulSubtes: { type: String },
@@ -38,6 +36,7 @@ const hasilKuisSchema = new mongoose.Schema({
   dikumpulkanPada: { type: Date, default: Date.now }
 }, { timestamps: true });
 
+// COMPOUND INDEX
 hasilKuisSchema.index({ jadwalId: 1, skorAkhir: -1 }); 
 hasilKuisSchema.index({ siswaId: 1, createdAt: -1 }); 
 
