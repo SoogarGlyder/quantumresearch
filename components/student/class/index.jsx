@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, Suspense } from "react";
-//  FIX: useSearchParams dan router Next.js dihapus
+// FIX: useSearchParams dan router Next.js dihapus
 
 import { potongDataPagination } from "@/utils/formatHelper"; 
 import { pilahJadwalSiswa } from "@/utils/kalkulatorData";
@@ -16,6 +16,10 @@ import ModalGaleri from "./ModalGaleri";
 
 import DaftarRiwayatKuis from "./DaftarRiwayatKuis";
 import ModalUjianCBT from "../home/ModalUjianCBT"; 
+
+// 🚀 IMPOR MODAL RAPOR TRY OUT BARU
+import ModalRaporTryOut from "../home/ModalRaporTryOut";
+
 import { getRiwayatKuisSiswa, getPembahasanKuis } from "@/actions/studentAction";
 
 function InnerTabKelas({ jadwal, riwayat, siswa }) {
@@ -23,13 +27,16 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
   const [galeriAktif, setGaleriAktif] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   
-  //  FIX: Jantung Pagination beralih ke RAM (0 Lag)
+  // FIX: Jantung Pagination beralih ke RAM (0 Lag)
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = LIMIT_DATA?.PAGNATION_KELAS || 10;
   
   const [riwayatKuis, setRiwayatKuis] = useState([]);
   const [kuisAktifReview, setKuisAktifReview] = useState(null);
   const [jawabanPastReview, setJawabanPastReview] = useState([]);
+  
+  // 🚀 STATE BARU KHUSUS UNTUK DATA RAPOR TRY OUT
+  const [tryOutReviewAktif, setTryOutReviewAktif] = useState(null);
   
   useEffect(() => {
     if (siswa?._id) {
@@ -39,7 +46,7 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
     }
   }, [siswa]);
 
-  //  FIX: Reset halaman ke 1 menjadi instan tanpa URL
+  // FIX: Reset halaman ke 1 menjadi instan tanpa URL
   useEffect(() => {
     setPage(1);
   }, [searchQuery, activeTab]);
@@ -108,9 +115,17 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
   const handleBukaPembahasan = async (jadwalId) => {
     if (!siswa) return alert("Data siswa tidak ditemukan.");
     const res = await getPembahasanKuis(jadwalId, siswa._id);
+    
     if (res.sukses) {
-      setJawabanPastReview(res.data.jawabanSiswa);
-      setKuisAktifReview({ jadwalId, soal: res.data.soal });
+      // 🚀 PENYORTIRAN PINTU MASUK
+      if (res.data.jenisUjian === "TRYOUT") {
+        // Mode Try Out: Buka Rapor Mini
+        setTryOutReviewAktif({ jadwalId, ...res.data });
+      } else {
+        // Mode Reguler Kuis Harian: Langsung terjun ke soal
+        setJawabanPastReview(res.data.jawabanSiswa);
+        setKuisAktifReview({ jadwalId, soal: res.data.soal });
+      }
     } else {
       alert("Gagal memuat pembahasan: " + res.pesan);
     }
@@ -127,8 +142,8 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
         <DaftarRiwayatKelas 
           dataHalIni={dataKelasHalIni} 
           totalPage={totalPageKelas}
-          currentPage={page}        //  FIX: Kirim kabel
-          onPageChange={setPage}    //  FIX: Kirim kabel
+          currentPage={page}        // FIX: Kirim kabel
+          onPageChange={setPage}    // FIX: Kirim kabel
           onBukaCatatan={klikBukaCatatan} 
         />
       )}
@@ -137,19 +152,30 @@ function InnerTabKelas({ jadwal, riwayat, siswa }) {
         <DaftarRiwayatKuis 
           dataRiwayatKuis={dataKuisHalIni} 
           totalPage={totalPageKuis}
-          currentPage={page}        //  FIX: Kirim kabel
-          onPageChange={setPage}    //  FIX: Kirim kabel
+          currentPage={page}        // FIX: Kirim kabel
+          onPageChange={setPage}    // FIX: Kirim kabel
           onBukaPembahasan={handleBukaPembahasan} 
         />
       )}
 
       <ModalGaleri galeriAktif={galeriAktif} onClose={() => setGaleriAktif(null)} />
 
-      {kuisAktifReview && siswa && (
+      {/* RENDER MODAL KUIS HARIAN REGULER (LANGSUNG SOAL) */}
+      {kuisAktifReview && siswa && !tryOutReviewAktif && (
         <ModalUjianCBT 
           jadwalId={kuisAktifReview.jadwalId} kuis={kuisAktifReview} siswa={siswa}
           isReviewMode={true} jawabanPast={jawabanPastReview} 
           onClose={() => { setKuisAktifReview(null); setJawabanPastReview([]); }} 
+        />
+      )}
+
+      {/* 🚀 RENDER MODAL RAPOR TRY OUT (DASHBOARD MINI) */}
+      {tryOutReviewAktif && siswa && (
+        <ModalRaporTryOut 
+          dataReview={tryOutReviewAktif}
+          jadwalId={tryOutReviewAktif.jadwalId}
+          siswa={siswa}
+          onClose={() => setTryOutReviewAktif(null)}
         />
       )}
     </>
