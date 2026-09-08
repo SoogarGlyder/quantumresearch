@@ -121,7 +121,6 @@ export async function hapusBankSoal(idBankSoal) {
 // BAGIAN 2: PENERAPAN KE JADWAL (MENDUKUNG TRY OUT BUNDLE!)
 // ============================================================================
 
-// 🚀 FUNGSI BARU (DITINGKATKAN): Kini bisa membungkus beberapa bank soal sekaligus!
 export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPengajar, jenisUjian = "KUIS", daftarSubtesId = []) {
   try {
     await connectToDatabase();
@@ -134,14 +133,12 @@ export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPeng
     };
 
     if (jenisUjian === "TRYOUT") {
-      // MODE: TRY OUT (Bundel Estafet)
       if (!daftarSubtesId || daftarSubtesId.length === 0) {
         throw new Error("Try Out butuh setidaknya 1 subtes dari Bank Soal.");
       }
 
       const hasilRakitSubtes = [];
       
-      // Ambil seluruh master bank soal yang di-request secara parallel untuk ngebut!
       const promises = daftarSubtesId.map(id => BankSoal.findById(id).select("judul durasi soal").lean());
       const daftarMaster = await Promise.all(promises);
 
@@ -151,32 +148,32 @@ export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPeng
         
         hasilRakitSubtes.push({
           judulSubtes: master.judul,
-          durasi: master.durasi || 10,
-          soal: master.soal
+          durasi: Number(master.durasi) || 10,
+          soal: master.soal || []
         });
       }
 
       dataCopy.daftarSubtes = hasilRakitSubtes;
-      // Opsional: Boleh mengosongkan atau memakai ID subtes pertama sebagai sumber perwakilan
+      dataCopy.soal = [];
+      dataCopy.durasi = 0;
       dataCopy.sumberBankSoalId = daftarSubtesId[0]; 
 
     } else {
-      // MODE: KUIS HARIAN LAMA (Tetap Utuh!)
       if (!idBankSoalUtama) throw new Error("ID Bank Soal Utama wajib ada untuk mode KUIS.");
       
       const master = await BankSoal.findById(idBankSoalUtama).select("soal durasi").lean();
       if (!master) throw new Error("Master soal tidak ditemukan.");
 
       dataCopy.sumberBankSoalId = idBankSoalUtama;
-      dataCopy.durasi = master.durasi;
-      dataCopy.soal = master.soal;
+      dataCopy.durasi = master.durasi || 10;
+      dataCopy.soal = master.soal || [];
+      dataCopy.daftarSubtes = [];
     }
 
-    // Replace jika sudah ada jadwal yang sama, atau buat baru (Upsert)
     await Quiz.findOneAndUpdate(
       { jadwalId: idJadwal },
       { $set: dataCopy },
-      { upsert: true } 
+      { upsert: true, new: true }
     ).lean();
 
     revalidatePath("/");
@@ -210,8 +207,6 @@ export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
     await connectToDatabase();
     const pId = mongoose.Types.ObjectId.isValid(pembuatId) ? new mongoose.Types.ObjectId(pembuatId) : null;
 
-    // Catatan: Ini adalah simpan Kuis manual yang lama (tanpa lewat Bank Soal)
-    // Tetap dipertahankan agar tidak ada tombol/fitur lawas yang crash
     await Quiz.findOneAndUpdate(
       { jadwalId },
       { 
@@ -220,7 +215,8 @@ export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
           pembuatId: pId,
           durasi: durasi || 10,
           isAktif: true,
-          jenisUjian: "KUIS"
+          jenisUjian: "KUIS",
+          daftarSubtes: []
         }
       },
       { upsert: true }
@@ -249,7 +245,6 @@ export async function getRiwayatKuisPengajar(pembuatId) {
   try {
     await connectToDatabase();
     
-    // 🚀 PERBAIKAN: Hitung jumlah soal juga dari daftarSubtes jika jenisnya TRYOUT
     const kuisPengajar = await Quiz.find({ pembuatId, isAktif: true })
       .populate('jadwalId', 'mapel kelasTarget tanggal')
       .select('jadwalId soal durasi daftarSubtes jenisUjian updatedAt')
