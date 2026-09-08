@@ -10,18 +10,33 @@ const quizSchema = new mongoose.Schema({
   pembuatId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   isAktif: { type: Boolean, default: true },
   
-  // FIX: Penanda Pemisah Mode Ujian
+  // 🚀 PENANDA MODE UJIAN
   jenisUjian: { type: String, enum: ["KUIS", "TRYOUT"], default: "KUIS" },
   
-  // [MODE KUIS LAMA] Tetap dipertahankan agar kelas reguler tidak error
+  // [MODE KUIS REGULER LAMA] - Tetap dipertahankan agar tidak error
   durasi: { type: Number, default: 10 },
-  soal: [{ /* ... skema soal lama tetap utuh di sini ... */ }],
+  soal: [
+    {
+      tipeSoal: { type: String, default: "PG" }, 
+      pertanyaan: { type: String, required: true },
+      gambar: { type: String, default: "" }, 
+      opsi: [{
+        _id: false, 
+        label: { type: String }, 
+        teks: { type: String }
+      }],
+      kunciJawaban: { type: [String], required: true }, 
+      bobotExp: { type: Number, default: 20 },
+      jumlahOpsi: { type: Number, default: 5 }, 
+      pembahasan: { type: String, default: "" } 
+    }
+  ],
 
-  // 🚀 [MODE TRY OUT BARU] Wadah untuk Estafet Subtes
+  // 🚀 [MODE TRY OUT ESTAFET BARU]
   daftarSubtes: [
     {
-      judulSubtes: { type: String, required: true }, // Misal: "Penalaran Umum"
-      durasi: { type: Number, required: true }, // Durasi spesifik per subtes
+      judulSubtes: { type: String, required: true }, 
+      durasi: { type: Number, required: true }, 
       soal: [
         {
           tipeSoal: { type: String, default: "PG" }, 
@@ -42,5 +57,7 @@ const quizSchema = new mongoose.Schema({
   ]
 }, { timestamps: true });
 
+// COMPOUND INDEX
 quizSchema.index({ pembuatId: 1, isAktif: 1 });
+
 export default mongoose.models.Quiz || mongoose.model("Quiz", quizSchema);
