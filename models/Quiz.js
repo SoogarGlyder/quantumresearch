@@ -9,32 +9,38 @@ const quizSchema = new mongoose.Schema({
   sumberBankSoalId: { type: mongoose.Schema.Types.ObjectId, ref: "BankSoal" },
   pembuatId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   isAktif: { type: Boolean, default: true },
+  
+  // FIX: Penanda Pemisah Mode Ujian
+  jenisUjian: { type: String, enum: ["KUIS", "TRYOUT"], default: "KUIS" },
+  
+  // [MODE KUIS LAMA] Tetap dipertahankan agar kelas reguler tidak error
   durasi: { type: Number, default: 10 },
-  soal: [
+  soal: [{ /* ... skema soal lama tetap utuh di sini ... */ }],
+
+  // 🚀 [MODE TRY OUT BARU] Wadah untuk Estafet Subtes
+  daftarSubtes: [
     {
-      tipeSoal: { type: String, default: "PG" }, 
-      pertanyaan: { type: String, required: true },
-      gambar: { type: String, default: "" }, 
-      
-      //FIX FASE 2: Opsi ketat (Array of Objects)
-      opsi: [{
-        _id: false, // Mematikan auto-ID Mongoose agar hemat memori
-        label: { type: String }, 
-        teks: { type: String }
-      }],
-      
-      //FIX FASE 2: Kunci Jawaban ketat (Array of Strings)
-      kunciJawaban: { type: [String], required: true }, 
-      
-      bobotExp: { type: Number, default: 20 },
-      jumlahOpsi: { type: Number, default: 5 }, 
-      pembahasan: { type: String, default: "" } 
+      judulSubtes: { type: String, required: true }, // Misal: "Penalaran Umum"
+      durasi: { type: Number, required: true }, // Durasi spesifik per subtes
+      soal: [
+        {
+          tipeSoal: { type: String, default: "PG" }, 
+          pertanyaan: { type: String, required: true },
+          gambar: { type: String, default: "" }, 
+          opsi: [{
+            _id: false, 
+            label: { type: String }, 
+            teks: { type: String }
+          }],
+          kunciJawaban: { type: [String], required: true }, 
+          bobotExp: { type: Number, default: 20 },
+          jumlahOpsi: { type: Number, default: 5 }, 
+          pembahasan: { type: String, default: "" } 
+        }
+      ]
     }
   ]
-  //FIX FASE 3: Array hasilPengerjaan RESMI DIHAPUS dari sini!
 }, { timestamps: true });
 
-// COMPOUND INDEX
 quizSchema.index({ pembuatId: 1, isAktif: 1 });
-
 export default mongoose.models.Quiz || mongoose.model("Quiz", quizSchema);
