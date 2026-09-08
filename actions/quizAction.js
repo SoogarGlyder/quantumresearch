@@ -27,39 +27,34 @@ export async function ambilSemuaBankSoal(pembuatId) {
     let query = {};
     
     // 1. SUPER ADMIN PUSAT (GOD MODE MUTLAK)
-    // Bisa melihat SEMUA soal dari seluruh cabang di muka bumi.
     if (userLogin.peran === PERAN.ADMIN.id && userLogin.kodeCabang === CABANG_QUANTUM.PUSAT.id) {
       query = {}; 
     } 
     // 2. ADMIN CABANG / STAFF AKADEMIK / KAKAK ASUH
-    // Bisa melihat soal buatan cabang sendiri ATAU soal resmi dari Pusat.
     else if (userLogin.peran === PERAN.ADMIN.id || (userLogin.peran === PERAN.PENGAJAR.id && (userLogin.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK || userLogin.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH))) {
       const guruCabang = await User.find({ kodeCabang: userLogin.kodeCabang }).select("_id").lean();
       const daftarIdGuru = guruCabang.map(g => g._id);
       
       query = {
         $or: [
-          { pembuatId: { $in: daftarIdGuru } }, // Akses soal buatan lokal cabangnya
-          { isOfficial: true }                  //KUNCI MASTER: Akses soal resmi dari Pusat
+          { pembuatId: { $in: daftarIdGuru } }, 
+          { isOfficial: true }                  
         ]
       };
     } 
     // 3. GURU BIASA
-    // Hanya bisa melihat soal buatannya sendiri ATAU soal resmi dari Pusat
     else {
       query = {
         $or: [
           { pembuatId: userLogin._id },
-          { isOfficial: true } //Guru juga berhak memakai soal Pusat untuk kuisnya
+          { isOfficial: true } 
         ]
       };
     }
 
     const data = await BankSoal.find(query)
-      //Pastikan isOfficial ikut di-select agar UI bisa memberikan badge (Pusat/Lokal)
       .select("judul durasi pembuatId isOfficial createdAt soal") 
       .populate("pembuatId", "nama kodeCabang") 
-      //Urutkan: Soal Official dari Pusat muncul paling atas, baru soal terbaru
       .sort({ isOfficial: -1, createdAt: -1 }) 
       .lean(); 
 
@@ -123,25 +118,61 @@ export async function hapusBankSoal(idBankSoal) {
 }
 
 // ============================================================================
-// BAGIAN 2: PENERAPAN KE JADWAL
+// BAGIAN 2: PENERAPAN KE JADWAL (MENDUKUNG TRY OUT BUNDLE!)
 // ============================================================================
 
-export async function terapkanBankSoalKeJadwal(idBankSoal, idJadwal, idPengajar) {
+// 🚀 FUNGSI BARU (DITINGKATKAN): Kini bisa membungkus beberapa bank soal sekaligus!
+export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPengajar, jenisUjian = "KUIS", daftarSubtesId = []) {
   try {
     await connectToDatabase();
 
-    const master = await BankSoal.findById(idBankSoal).select("soal durasi").lean();
-    if (!master) throw new Error("Master soal tidak ditemukan.");
-
-    const dataCopy = {
+    let dataCopy = {
       jadwalId: idJadwal,
-      sumberBankSoalId: idBankSoal,
       pembuatId: idPengajar,
-      durasi: master.durasi,
-      soal: master.soal, 
-      isAktif: true
+      isAktif: true,
+      jenisUjian // "KUIS" atau "TRYOUT"
     };
 
+    if (jenisUjian === "TRYOUT") {
+      // MODE: TRY OUT (Bundel Estafet)
+      if (!daftarSubtesId || daftarSubtesId.length === 0) {
+        throw new Error("Try Out butuh setidaknya 1 subtes dari Bank Soal.");
+      }
+
+      const hasilRakitSubtes = [];
+      
+      // Ambil seluruh master bank soal yang di-request secara parallel untuk ngebut!
+      const promises = daftarSubtesId.map(id => BankSoal.findById(id).select("judul durasi soal").lean());
+      const daftarMaster = await Promise.all(promises);
+
+      for (let i = 0; i < daftarMaster.length; i++) {
+        const master = daftarMaster[i];
+        if (!master) throw new Error(`Master soal subtes ke-${i+1} tidak ditemukan atau telah dihapus.`);
+        
+        hasilRakitSubtes.push({
+          judulSubtes: master.judul,
+          durasi: master.durasi || 10,
+          soal: master.soal
+        });
+      }
+
+      dataCopy.daftarSubtes = hasilRakitSubtes;
+      // Opsional: Boleh mengosongkan atau memakai ID subtes pertama sebagai sumber perwakilan
+      dataCopy.sumberBankSoalId = daftarSubtesId[0]; 
+
+    } else {
+      // MODE: KUIS HARIAN LAMA (Tetap Utuh!)
+      if (!idBankSoalUtama) throw new Error("ID Bank Soal Utama wajib ada untuk mode KUIS.");
+      
+      const master = await BankSoal.findById(idBankSoalUtama).select("soal durasi").lean();
+      if (!master) throw new Error("Master soal tidak ditemukan.");
+
+      dataCopy.sumberBankSoalId = idBankSoalUtama;
+      dataCopy.durasi = master.durasi;
+      dataCopy.soal = master.soal;
+    }
+
+    // Replace jika sudah ada jadwal yang sama, atau buat baru (Upsert)
     await Quiz.findOneAndUpdate(
       { jadwalId: idJadwal },
       { $set: dataCopy },
@@ -149,9 +180,9 @@ export async function terapkanBankSoalKeJadwal(idBankSoal, idJadwal, idPengajar)
     ).lean();
 
     revalidatePath("/");
-    return { sukses: true, pesan: "Soal berhasil diterapkan!" };
+    return { sukses: true, pesan: jenisUjian === "TRYOUT" ? "Bundel Try Out berhasil diterapkan!" : "Soal berhasil diterapkan!" };
   } catch (error) {
-    return { sukses: false, pesan: "Gagal menerapkan soal: " + error.message };
+    return { sukses: false, pesan: "Gagal menerapkan: " + error.message };
   }
 }
 
@@ -159,7 +190,6 @@ export async function hapusQuizDariJadwal(idJadwal) {
   try {
     await connectToDatabase();
     
-    // Perbaikan ke model HasilKuis sesuai migrasi kita!
     const ModelHasilKuis = mongoose.models.HasilKuis || mongoose.model("HasilKuis");
     const adaHasil = await ModelHasilKuis.exists({ jadwalId: idJadwal });
     
@@ -169,9 +199,9 @@ export async function hapusQuizDariJadwal(idJadwal) {
 
     await Quiz.deleteOne({ jadwalId: idJadwal });
     revalidatePath("/");
-    return { sukses: true, pesan: "Kuis berhasil dilepas." };
+    return { sukses: true, pesan: "Kuis / Try Out berhasil dilepas." };
   } catch (error) {
-    return { sukses: false, pesan: "Gagal melepas kuis." };
+    return { sukses: false, pesan: "Gagal melepas ujian." };
   }
 }
 
@@ -180,6 +210,8 @@ export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
     await connectToDatabase();
     const pId = mongoose.Types.ObjectId.isValid(pembuatId) ? new mongoose.Types.ObjectId(pembuatId) : null;
 
+    // Catatan: Ini adalah simpan Kuis manual yang lama (tanpa lewat Bank Soal)
+    // Tetap dipertahankan agar tidak ada tombol/fitur lawas yang crash
     await Quiz.findOneAndUpdate(
       { jadwalId },
       { 
@@ -187,7 +219,8 @@ export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
           soal: dataSoal,
           pembuatId: pId,
           durasi: durasi || 10,
-          isAktif: true
+          isAktif: true,
+          jenisUjian: "KUIS"
         }
       },
       { upsert: true }
@@ -216,22 +249,36 @@ export async function getRiwayatKuisPengajar(pembuatId) {
   try {
     await connectToDatabase();
     
+    // 🚀 PERBAIKAN: Hitung jumlah soal juga dari daftarSubtes jika jenisnya TRYOUT
     const kuisPengajar = await Quiz.find({ pembuatId, isAktif: true })
       .populate('jadwalId', 'mapel kelasTarget tanggal')
-      .select('jadwalId soal durasi updatedAt')
+      .select('jadwalId soal durasi daftarSubtes jenisUjian updatedAt')
       .sort({ updatedAt: -1 })
       .lean();
 
     const dataBersih = kuisPengajar
       .filter(k => k.jadwalId) 
-      .map(k => ({
-        jadwalId: k.jadwalId._id.toString(),
-        mapel: k.jadwalId.mapel,
-        kelas: k.jadwalId.kelasTarget,
-        tanggal: k.jadwalId.tanggal,
-        jumlahSoal: k.soal?.length || 0,
-        durasi: k.durasi || 10
-      }));
+      .map(k => {
+        let jmlSoal = 0;
+        let waktu = 0;
+
+        if (k.jenisUjian === "TRYOUT" && k.daftarSubtes) {
+          jmlSoal = k.daftarSubtes.reduce((acc, sub) => acc + (sub.soal?.length || 0), 0);
+          waktu = k.daftarSubtes.reduce((acc, sub) => acc + (sub.durasi || 0), 0);
+        } else {
+          jmlSoal = k.soal?.length || 0;
+          waktu = k.durasi || 10;
+        }
+
+        return {
+          jadwalId: k.jadwalId._id.toString(),
+          mapel: k.jenisUjian === "TRYOUT" ? "Try Out UTBK" : k.jadwalId.mapel,
+          kelas: k.jadwalId.kelasTarget,
+          tanggal: k.jadwalId.tanggal,
+          jumlahSoal: jmlSoal,
+          durasi: waktu
+        };
+      });
 
     return { sukses: true, data: dataBersih };
   } catch (error) {
