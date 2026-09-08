@@ -11,10 +11,6 @@ import { PERAN, CABANG_QUANTUM, PANGKAT_PENGAJAR } from "../utils/constants";
 
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
-// ============================================================================
-// BAGIAN 1: MANAJEMEN BANK SOAL (MASTER TEMPLATE) - MULTI-TENANT FIX!
-// ============================================================================
-
 export async function ambilSemuaBankSoal(pembuatId) {
   try {
     await connectToDatabase();
@@ -25,25 +21,18 @@ export async function ambilSemuaBankSoal(pembuatId) {
     if (!userLogin) return [];
 
     let query = {};
-    
-    // 1. SUPER ADMIN PUSAT (GOD MODE MUTLAK)
     if (userLogin.peran === PERAN.ADMIN.id && userLogin.kodeCabang === CABANG_QUANTUM.PUSAT.id) {
       query = {}; 
-    } 
-    // 2. ADMIN CABANG / STAFF AKADEMIK / KAKAK ASUH
-    else if (userLogin.peran === PERAN.ADMIN.id || (userLogin.peran === PERAN.PENGAJAR.id && (userLogin.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK || userLogin.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH))) {
+    } else if (userLogin.peran === PERAN.ADMIN.id || (userLogin.peran === PERAN.PENGAJAR.id && (userLogin.pangkat === PANGKAT_PENGAJAR.STAFF_AKADEMIK || userLogin.pangkat === PANGKAT_PENGAJAR.KAKAK_ASUH))) {
       const guruCabang = await User.find({ kodeCabang: userLogin.kodeCabang }).select("_id").lean();
       const daftarIdGuru = guruCabang.map(g => g._id);
-      
       query = {
         $or: [
           { pembuatId: { $in: daftarIdGuru } }, 
           { isOfficial: true }                  
         ]
       };
-    } 
-    // 3. GURU BIASA
-    else {
+    } else {
       query = {
         $or: [
           { pembuatId: userLogin._id },
@@ -118,36 +107,35 @@ export async function hapusBankSoal(idBankSoal) {
 }
 
 // ============================================================================
-// BAGIAN 2: PENERAPAN KE JADWAL (MENDUKUNG TRY OUT BUNDLE!)
+// PENERAPAN KE JADWAL (ROBUST TRY OUT BUNDLE)
 // ============================================================================
-
 export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPengajar, jenisUjian = "KUIS", daftarSubtesId = []) {
   try {
     await connectToDatabase();
 
     let dataCopy = {
       jadwalId: idJadwal,
-      pembuatId: idPengajar,
+      pembuatId: idPengajar ? new mongoose.Types.ObjectId(idPengajar) : undefined,
       isAktif: true,
-      jenisUjian // "KUIS" atau "TRYOUT"
+      jenisUjian: jenisUjian || "KUIS"
     };
 
     if (jenisUjian === "TRYOUT") {
       if (!daftarSubtesId || daftarSubtesId.length === 0) {
-        throw new Error("Try Out butuh setidaknya 1 subtes dari Bank Soal.");
+        return { sukses: false, pesan: "Try Out butuh setidaknya 1 subtes dari Bank Soal." };
       }
 
       const hasilRakitSubtes = [];
       
-      const promises = daftarSubtesId.map(id => BankSoal.findById(id).select("judul durasi soal").lean());
-      const daftarMaster = await Promise.all(promises);
-
-      for (let i = 0; i < daftarMaster.length; i++) {
-        const master = daftarMaster[i];
-        if (!master) throw new Error(`Master soal subtes ke-${i+1} tidak ditemukan atau telah dihapus.`);
+      for (let i = 0; i < daftarSubtesId.length; i++) {
+        const id = daftarSubtesId[i];
+        const master = await BankSoal.findById(id).lean();
+        if (!master) {
+          return { sukses: false, pesan: `Master soal subtes ke-${i+1} tidak ditemukan.` };
+        }
         
         hasilRakitSubtes.push({
-          judulSubtes: master.judul,
+          judulSubtes: master.judul || `Subtes ${i+1}`,
           durasi: Number(master.durasi) || 10,
           soal: master.soal || []
         });
@@ -156,16 +144,16 @@ export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPeng
       dataCopy.daftarSubtes = hasilRakitSubtes;
       dataCopy.soal = [];
       dataCopy.durasi = 0;
-      dataCopy.sumberBankSoalId = daftarSubtesId[0]; 
+      dataCopy.sumberBankSoalId = new mongoose.Types.ObjectId(daftarSubtesId[0]); 
 
     } else {
-      if (!idBankSoalUtama) throw new Error("ID Bank Soal Utama wajib ada untuk mode KUIS.");
+      if (!idBankSoalUtama) return { sukses: false, pesan: "ID Bank Soal Utama wajib ada untuk mode KUIS." };
       
-      const master = await BankSoal.findById(idBankSoalUtama).select("soal durasi").lean();
-      if (!master) throw new Error("Master soal tidak ditemukan.");
+      const master = await BankSoal.findById(idBankSoalUtama).lean();
+      if (!master) return { sukses: false, pesan: "Master soal tidak ditemukan." };
 
-      dataCopy.sumberBankSoalId = idBankSoalUtama;
-      dataCopy.durasi = master.durasi || 10;
+      dataCopy.sumberBankSoalId = new mongoose.Types.ObjectId(idBankSoalUtama);
+      dataCopy.durasi = Number(master.durasi) || 10;
       dataCopy.soal = master.soal || [];
       dataCopy.daftarSubtes = [];
     }
@@ -179,6 +167,7 @@ export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPeng
     revalidatePath("/");
     return { sukses: true, pesan: jenisUjian === "TRYOUT" ? "Bundel Try Out berhasil diterapkan!" : "Soal berhasil diterapkan!" };
   } catch (error) {
+    console.error("Error terapkanBankSoalKeJadwal:", error);
     return { sukses: false, pesan: "Gagal menerapkan: " + error.message };
   }
 }
@@ -186,7 +175,6 @@ export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPeng
 export async function hapusQuizDariJadwal(idJadwal) {
   try {
     await connectToDatabase();
-    
     const ModelHasilKuis = mongoose.models.HasilKuis || mongoose.model("HasilKuis");
     const adaHasil = await ModelHasilKuis.exists({ jadwalId: idJadwal });
     
@@ -196,7 +184,7 @@ export async function hapusQuizDariJadwal(idJadwal) {
 
     await Quiz.deleteOne({ jadwalId: idJadwal });
     revalidatePath("/");
-    return { sukses: true, pesan: "Kuis / Try Out berhasil dilepas." };
+    return { sukses: true, pesan: "Ujian berhasil dilepas." };
   } catch (error) {
     return { sukses: false, pesan: "Gagal melepas ujian." };
   }
@@ -244,7 +232,6 @@ export async function ambilKuisByJadwal(jadwalId) {
 export async function getRiwayatKuisPengajar(pembuatId) {
   try {
     await connectToDatabase();
-    
     const kuisPengajar = await Quiz.find({ pembuatId, isAktif: true })
       .populate('jadwalId', 'mapel kelasTarget tanggal')
       .select('jadwalId soal durasi daftarSubtes jenisUjian updatedAt')
