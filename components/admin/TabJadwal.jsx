@@ -120,6 +120,10 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   const [isMemprosesKuis, setIsMemprosesKuis] = useState(false);
   const [isMemuatKuis, setIsMemuatKuis] = useState(false);
 
+  // 🚀 STATE BARU KHUSUS TRY OUT ESTAFET
+  const [modeUjian, setModeUjian] = useState("KUIS"); // "KUIS" atau "TRYOUT"
+  const [keranjangTryOut, setKeranjangTryOut] = useState([]); // Array data subtes terpilih
+
   const [mapelAktifMelayang, setMapelAktifMelayang] = useState(null);
   const [isMenyimpan, setIsMenyimpan] = useState(false);
 
@@ -192,18 +196,39 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   }, [isKakakAsuh]);
 
   const bukaPanelBankSoal = async () => {
-    setModalEditTerbuka(false); setIsModalBankOpen(true); setLoadingBank(true);
+    // 🚀 RESET state Keranjang saat membuka panel baru
+    setModeUjian("KUIS");
+    setKeranjangTryOut([]);
+    setModalEditTerbuka(false); 
+    setIsModalBankOpen(true); 
+    setLoadingBank(true);
     const data = await ambilSemuaBankSoal(adminId);
-    setListBankSoal(data || []); setLoadingBank(false);
+    setListBankSoal(data || []); 
+    setLoadingBank(false);
   };
 
-  const handlePilihBankSoal = async (idBankSoal) => {
-    if (!window.confirm("Yakin ingin menerapkan paket soal ini ke jadwal kelas ini?")) return;
-    setIsMemprosesKuis(true);
-    const res = await terapkanBankSoalKeJadwal(idBankSoal, jadwalEdit._id, adminId);
-    if (res.sukses) { alert("✅ " + res.pesan); setIsModalBankOpen(false); setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'siap'})); } 
-    else { alert("❌ " + res.pesan); }
-    setIsMemprosesKuis(false);
+  // 🚀 FUNGSI BARU PENERAPAN SOAL (KUIS & TRY OUT)
+  const eksekusiTerapkanSoal = async (idBankSoalTunggal = null) => {
+    if (modeUjian === "KUIS") {
+      if (!window.confirm("Yakin ingin menerapkan paket soal ini ke jadwal kelas ini?")) return;
+      setIsMemprosesKuis(true);
+      const res = await terapkanBankSoalKeJadwal(idBankSoalTunggal, jadwalEdit._id, adminId, "KUIS", []);
+      if (res.sukses) { alert("✅ " + res.pesan); setIsModalBankOpen(false); setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'siap'})); } 
+      else { alert("❌ " + res.pesan); }
+      setIsMemprosesKuis(false);
+    } else {
+      // MODE TRY OUT ESTAFET
+      if (keranjangTryOut.length === 0) return alert("⚠️ Pilih minimal 1 subtes dari Bank Soal!");
+      if (!window.confirm(`Yakin ingin menerapkan bundel Try Out dengan ${keranjangTryOut.length} subtes ini?`)) return;
+      
+      setIsMemprosesKuis(true);
+      const daftarSubtesId = keranjangTryOut.map(b => b._id);
+      // Untuk Try Out, parameter pertama dibuat null
+      const res = await terapkanBankSoalKeJadwal(null, jadwalEdit._id, adminId, "TRYOUT", daftarSubtesId);
+      if (res.sukses) { alert("✅ " + res.pesan); setIsModalBankOpen(false); setDaftarStatusKuis(prev => ({...prev, [jadwalEdit._id]: 'siap'})); } 
+      else { alert("❌ " + res.pesan); }
+      setIsMemprosesKuis(false);
+    }
   };
 
   const handleLepasKuis = async () => {
@@ -280,17 +305,14 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
   };
 
   const jadwalCabangAktif = useMemo(() => {
-    // 1. Seragamkan semua format tanggal menjadi YYYY-MM-DD
     let jadwalSanitized = dataJadwal.map(j => {
       let tglPasti = j.tanggal;
-      // Jika teks tanggal mengandung huruf 'T' (penanda ISODate), potong dan ambil bagian depannya saja
       if (typeof tglPasti === 'string' && tglPasti.includes('T')) {
         tglPasti = tglPasti.split('T')[0];
       }
       return { ...j, tanggal: tglPasti };
     });
 
-    // 2. Lanjutkan filter cabang menggunakan data yang sudah rapi
     if (!isSuperAdmin || !filterCabang) return jadwalSanitized;
     return jadwalSanitized.filter(j => j.pengajarId && j.pengajarId.kodeCabang === filterCabang);
   }, [dataJadwal, isSuperAdmin, filterCabang]);
@@ -317,7 +339,6 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
     return jadwalHariItu.map(j => ({ ...j, statusKuis: daftarStatusKuis[j._id] }));
   };
 
-// ==================== BAGIAN 2 (Sambungkan persis di bawah Bagian 1) ====================
   // ============================================================================
   // RENDER UI
   // ============================================================================
@@ -531,7 +552,7 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
             {tipeEdit === 'permanen' && (
               <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f8fafc', border: '2px dashed #94a3b8', borderRadius: '8px', textAlign: 'center' }}>
                 <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>
-                  {isMemuatKuis ? "⏳ Memeriksa status kuis..." : (daftarStatusKuis[jadwalEdit._id] === 'siap' ? "✅ Kuis untuk kelas ini sudah disiapkan." : "⚠️ Kuis untuk kelas ini belum ada.")}
+                  {isMemuatKuis ? "⏳ Memeriksa status kuis..." : (daftarStatusKuis[jadwalEdit._id] === 'siap' ? "✅ Kuis / Try Out untuk kelas ini sudah disiapkan." : "⚠️ Kuis untuk kelas ini belum ada.")}
                 </p>
                 {daftarStatusKuis[jadwalEdit._id] === 'siap' ? (
                   <button onClick={handleLepasKuis} disabled={isMemprosesKuis || isMemuatKuis} style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', color: 'white', border: '3px solid #7f1d1d', borderRadius: '8px', fontWeight: '900', fontSize: '14px', cursor: (isMemprosesKuis || isMemuatKuis) ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '3px 3px 0 #7f1d1d' }}>
@@ -560,39 +581,101 @@ export default function TabJadwal({ dataJadwal = [], muatData, bulanAktif, admin
         </div>
       )}
 
-      {/* OVERLAY MODAL PILIH BANK SOAL */}
+      {/* 🚀 OVERLAY MODAL PILIH BANK SOAL (DENGAN DUKUNGAN TRY OUT) */}
       {isModalBankOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '4px solid #111827', width: '100%', maxWidth: '600px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '8px 8px 0 #111827' }}>
+          <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '4px solid #111827', width: '100%', maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '8px 8px 0 #111827' }}>
+            
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #111827', paddingBottom: '16px', marginBottom: '16px' }}>
-              <h2 style={{ margin: '0 0 12px 0', fontWeight: '900', color: '#111827' }}>PILIH PAKET SOAL</h2>
+              <h2 style={{ margin: '0', fontWeight: '900', color: '#111827' }}>PILIH PAKET SOAL</h2>
               <button onClick={() => setIsModalBankOpen(false)} style={{ background: 'white', border: '3px solid #111827', borderRadius: '8px', padding: '6px', cursor: 'pointer', boxShadow: '2px 2px 0 #ef4444' }}><FaXmark size={20} color="#ef4444" /></button>
             </div>
+
+            {/* TOGGLE MODE UJIAN */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              <button 
+                onClick={() => setModeUjian("KUIS")} 
+                style={{ flex: 1, padding: '12px', background: modeUjian === "KUIS" ? '#2563eb' : 'white', color: modeUjian === "KUIS" ? 'white' : '#475569', fontWeight: '900', borderRadius: '8px', border: '3px solid #111827', boxShadow: modeUjian === "KUIS" ? 'none' : '3px 3px 0 #cbd5e1', cursor: 'pointer' }}
+              >
+                Kuis Harian Reguler
+              </button>
+              <button 
+                onClick={() => setModeUjian("TRYOUT")} 
+                style={{ flex: 1, padding: '12px', background: modeUjian === "TRYOUT" ? '#9333ea' : 'white', color: modeUjian === "TRYOUT" ? 'white' : '#475569', fontWeight: '900', borderRadius: '8px', border: '3px solid #111827', boxShadow: modeUjian === "TRYOUT" ? 'none' : '3px 3px 0 #cbd5e1', cursor: 'pointer' }}
+              >
+                🚀 Try Out Estafet
+              </button>
+            </div>
+
+            {/* LIST BANK SOAL */}
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {loadingBank ? (
                 <p style={{ textAlign: 'center', fontWeight: 'bold' }}>Memuat Bank Soal...</p>
               ) : listBankSoal.length === 0 ? (
                 <p style={{ textAlign: 'center', fontWeight: 'bold', color: '#64748b' }}>Belum ada Master Soal. Silakan buat di Tab Bank Soal terlebih dahulu.</p>
               ) : (
-                listBankSoal.map((bank) => (
-                  <div key={bank._id} style={{ background: 'white', border: '3px solid #111827', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', boxShadow: '4px 4px 0 #cbd5e1' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <h4 style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '16px' }}>{bank.judul || "Tanpa Judul"}</h4>
-                        {bank.isOfficial ? (<span style={{ background: '#facc15', color: '#713f12', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #713f12' }}>👑 PUSAT</span>) : (<span style={{ background: '#e2e8f0', color: '#334155', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #334155' }}>🏠 LOKAL</span>)}
+                listBankSoal.map((bank) => {
+                  const isInCart = keranjangTryOut.some(b => b._id === bank._id);
+                  const cartIndex = keranjangTryOut.findIndex(b => b._id === bank._id);
+
+                  return (
+                    <div key={bank._id} style={{ background: isInCart ? '#fdf4ff' : 'white', border: '3px solid #111827', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', boxShadow: '4px 4px 0 #cbd5e1' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <h4 style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '16px' }}>{bank.judul || "Tanpa Judul"}</h4>
+                          {bank.isOfficial ? (<span style={{ background: '#facc15', color: '#713f12', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #713f12' }}>👑 PUSAT</span>) : (<span style={{ background: '#e2e8f0', color: '#334155', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', border: '1px solid #334155' }}>🏠 LOKAL</span>)}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>{bank.soal?.length || 0} Soal • {bank.durasi || 10} Menit</p>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#94a3b8' }}>Dibuat oleh: {bank.pembuatId?.nama || "Sistem"}</p>
                       </div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>{bank.soal?.length || 0} Soal • {bank.durasi || 10} Menit</p>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#94a3b8' }}>Dibuat oleh: {bank.pembuatId?.nama || "Sistem"}</p>
+
+                      {modeUjian === "KUIS" ? (
+                        <button onClick={() => eksekusiTerapkanSoal(bank._id)} disabled={isMemprosesKuis} style={{ padding: '10px 16px', background: '#22c55e', color: '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMemprosesKuis ? 'wait' : 'pointer' }}>
+                          {isMemprosesKuis ? "..." : "TERAPKAN"}
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => {
+                            if (isInCart) setKeranjangTryOut(prev => prev.filter(b => b._id !== bank._id));
+                            else setKeranjangTryOut(prev => [...prev, bank]);
+                          }} 
+                          disabled={isMemprosesKuis} 
+                          style={{ padding: '10px 16px', background: isInCart ? '#ef4444' : '#facc15', color: isInCart ? 'white' : '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMemprosesKuis ? 'wait' : 'pointer' }}
+                        >
+                          {isInCart ? `Batal (Ke-${cartIndex + 1})` : "+ Pilih"}
+                        </button>
+                      )}
                     </div>
-                    <button onClick={() => handlePilihBankSoal(bank._id)} disabled={isMemprosesKuis} style={{ padding: '10px 16px', background: '#22c55e', color: '#111827', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', cursor: isMemprosesKuis ? 'wait' : 'pointer' }}>{isMemprosesKuis ? "..." : "TERAPKAN"}</button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
+
+            {/* FOOTER KERANJANG TRY OUT (Hanya Muncul Saat Mode Try Out) */}
+            {modeUjian === "TRYOUT" && (
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '4px solid #111827' }}>
+                <div style={{ background: '#fdf4ff', border: '3px solid #111827', padding: '12px', borderRadius: '8px', marginBottom: '12px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontWeight: '900', fontSize: '14px', color: '#9333ea' }}>📦 KERANJANG TRY OUT ({keranjangTryOut.length} Subtes)</p>
+                  {keranjangTryOut.length > 0 ? (
+                    <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', fontWeight: 'bold', color: '#111827' }}>
+                      {keranjangTryOut.map((b, i) => <li key={b._id}>{b.judul} ({b.durasi} menit)</li>)}
+                    </ol>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>Belum ada subtes yang dipilih. Centang soal di atas.</p>
+                  )}
+                </div>
+                <button 
+                  onClick={() => eksekusiTerapkanSoal(null)} 
+                  disabled={keranjangTryOut.length === 0 || isMemprosesKuis} 
+                  style={{ width: '100%', padding: '12px', background: keranjangTryOut.length > 0 ? '#9333ea' : '#e2e8f0', color: keranjangTryOut.length > 0 ? 'white' : '#94a3b8', border: '3px solid #111827', borderRadius: '8px', fontWeight: '900', fontSize: '16px', cursor: (keranjangTryOut.length === 0 || isMemprosesKuis) ? 'not-allowed' : 'pointer', boxShadow: keranjangTryOut.length > 0 ? '4px 4px 0 #111827' : 'none' }}
+                >
+                  {isMemprosesKuis ? "MEMPROSES..." : "TERAPKAN BUNDEL TRY OUT"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
-
     </div>
   );
 }
