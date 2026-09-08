@@ -8,7 +8,6 @@ import HasilKuis from "../models/HasilKuis";
 import BankSoal from "../models/BankSoal"; // Wajib di-import agar Mongoose mengenali model
 import mongoose from "mongoose";
 
-// Alat pencuci data agar aman dikirim ke Client Component
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
@@ -20,7 +19,6 @@ export const getKuisSiswa = async (jadwalId) => {
 
     const [jadwalData, dataKuis] = await Promise.all([
       Jadwal.findById(jadwalId).select('mapel kelasTarget').lean(),
-      // 🚀 PERBAIKAN: Sembunyikan juga kunci & pembahasan untuk mode Try Out (daftarSubtes)
       Quiz.findOne({ jadwalId, isAktif: true })
           .select('-soal.kunciJawaban -soal.pembahasan -daftarSubtes.soal.kunciJawaban -daftarSubtes.soal.pembahasan')
           .lean()
@@ -32,15 +30,26 @@ export const getKuisSiswa = async (jadwalId) => {
 
     const isTryOutMode = dataKuis.jenisUjian === "TRYOUT";
 
+    // 🚀 FIX: Kalkulator Total Soal & Durasi Try Out
+    let totalSoal = 0;
+    let totalDurasi = 0;
+    
+    if (isTryOutMode && dataKuis.daftarSubtes) {
+      totalSoal = dataKuis.daftarSubtes.reduce((acc, sub) => acc + (sub.soal?.length || 0), 0);
+      totalDurasi = dataKuis.daftarSubtes.reduce((acc, sub) => acc + (sub.durasi || 0), 0);
+    } else {
+      totalSoal = dataKuis.soal?.length || 0;
+      totalDurasi = dataKuis.durasi || 10;
+    }
+
     return serialize({ 
       sukses: true, 
       data: {
         mapel: jadwalData?.mapel || "Kuis CBT",
         kelas: jadwalData?.kelasTarget || "-",
         jenisUjian: dataKuis.jenisUjian || "KUIS",
-        // Kirim sesuai mode yang aktif
-        jumlahSoal: isTryOutMode ? 0 : (dataKuis.soal?.length || 0),
-        durasi: isTryOutMode ? 0 : (dataKuis.durasi || 10),
+        jumlahSoal: totalSoal, // <-- Nilai sudah akurat
+        durasi: totalDurasi,   // <-- Nilai sudah akurat
         soal: isTryOutMode ? [] : dataKuis.soal,
         daftarSubtes: isTryOutMode ? dataKuis.daftarSubtes : []
       } 
@@ -66,7 +75,6 @@ export const kumpulkanUjianSiswa = async ({
     session = await mongoose.startSession();
     session.startTransaction();
 
-    // 🚀 PERBAIKAN: Tarik data HasilKuis untuk mengecek Checkpoint
     let riwayatHasil = await HasilKuis.findOne({ jadwalId, siswaId }).session(session);
     
     if (riwayatHasil && riwayatHasil.statusPengerjaan === "SELESAI") {
@@ -75,7 +83,6 @@ export const kumpulkanUjianSiswa = async ({
       return { sukses: false, pesan: "Anda sudah menyelesaikan ujian ini sepenuhnya." };
     }
 
-    // Tarik soal untuk grading
     const dataKuis = await Quiz.findOne({ jadwalId }).select("_id jenisUjian soal daftarSubtes").session(session).lean();
     if (!dataKuis) {
       await session.abortTransaction();
@@ -84,7 +91,6 @@ export const kumpulkanUjianSiswa = async ({
     }
 
     const isTryOutMode = dataKuis.jenisUjian === "TRYOUT";
-    // Tentukan soal mana yang akan di-grading saat ini
     const soalAsli = isTryOutMode ? (dataKuis.daftarSubtes[subtesAktifIndex]?.soal || []) : dataKuis.soal;
     
     let expDidapat = 0;
@@ -124,7 +130,7 @@ export const kumpulkanUjianSiswa = async ({
 
     const skorSaatIni = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
 
-    // 🚀 LOGIKA PENYIMPANAN BERDASARKAN MODE UJIAN
+    // LOGIKA PENYIMPANAN BERDASARKAN MODE UJIAN
     if (isTryOutMode) {
       const dataSubtes = {
         judulSubtes: judulSubtes || `Subtes ${subtesAktifIndex + 1}`,
@@ -133,7 +139,6 @@ export const kumpulkanUjianSiswa = async ({
       };
 
       if (riwayatHasil) {
-        // UPDATE (Lanjut Try Out): Idempoten, timpa index yang sama jika spam click
         if (riwayatHasil.riwayatSubtes.length > subtesAktifIndex) {
           riwayatHasil.riwayatSubtes[subtesAktifIndex] = dataSubtes;
         } else {
@@ -142,7 +147,6 @@ export const kumpulkanUjianSiswa = async ({
         
         riwayatHasil.subtesAktifIndex = isPartialSubmit ? subtesAktifIndex + 1 : subtesAktifIndex;
         
-        // Jika kumpul akhir, kalkulasi rata-rata skor
         if (!isPartialSubmit) {
           riwayatHasil.statusPengerjaan = "SELESAI";
           const totalSkorTryout = riwayatHasil.riwayatSubtes.reduce((acc, curr) => acc + curr.skorSubtes, 0);
@@ -151,18 +155,16 @@ export const kumpulkanUjianSiswa = async ({
         
         await riwayatHasil.save({ session });
       } else {
-        // CREATE (Pertama kali mulai Try Out)
         riwayatHasil = new HasilKuis({
           jadwalId, quizId: dataKuis._id, siswaId, namaSiswa: nama,
           statusPengerjaan: isPartialSubmit ? "BERJALAN" : "SELESAI",
           subtesAktifIndex: isPartialSubmit ? subtesAktifIndex + 1 : subtesAktifIndex,
-          skorAkhir: isPartialSubmit ? 0 : skorSaatIni, // Sementara 0 jika masih parsial
+          skorAkhir: isPartialSubmit ? 0 : skorSaatIni,
           riwayatSubtes: [dataSubtes]
         });
         await riwayatHasil.save({ session });
       }
 
-      // Update nilai di Jurnal Absensi Kelas (Hanya jika benar-benar selesai)
       if (!isPartialSubmit) {
         await StudySession.updateOne(
           { siswaId, jadwalId },
@@ -176,7 +178,6 @@ export const kumpulkanUjianSiswa = async ({
       return { sukses: true, skor: isPartialSubmit ? skorSaatIni : riwayatHasil.skorAkhir, exp: expDidapat };
 
     } else {
-      // LOGIKA KUIS REGULER LAMA (Tetap Utuh & Aman)
       await Promise.all([
         HasilKuis.create([{
           jadwalId, quizId: dataKuis._id, siswaId, namaSiswa: nama,
@@ -223,11 +224,21 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
     if (!kuis) return { ada: false };
     const isTryOutMode = kuis.jenisUjian === "TRYOUT";
 
-    // Validasi isi soal
     if (isTryOutMode && (!kuis.daftarSubtes || kuis.daftarSubtes.length === 0)) return { ada: false };
     if (!isTryOutMode && (!kuis.soal || kuis.soal.length === 0)) return { ada: false };
 
-    // 🚀 PENGAMANAN: Cek apakah status pengerjaan sudah final
+    // 🚀 FIX: Kalkulator Total Soal & Durasi Try Out di Halaman Scanner
+    let totalSoal = 0;
+    let totalDurasi = 0;
+    
+    if (isTryOutMode) {
+      totalSoal = kuis.daftarSubtes.reduce((acc, sub) => acc + (sub.soal?.length || 0), 0);
+      totalDurasi = kuis.daftarSubtes.reduce((acc, sub) => acc + (sub.durasi || 0), 0);
+    } else {
+      totalSoal = kuis.soal.length;
+      totalDurasi = kuis.durasi || 10;
+    }
+
     const isSelesaiTotal = riwayat ? riwayat.statusPengerjaan === "SELESAI" : false;
 
     return {
@@ -241,10 +252,9 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
         bab: jadwal?.bab || "Pre-Test",
         judul: kuis.sumberBankSoalId?.judul || jadwal?.subBab || jadwal?.materi || "Pre-Test CBT",
         
-        jumlahSoal: isTryOutMode ? 0 : kuis.soal.length, 
-        durasi: isTryOutMode ? 0 : (kuis.durasi || 10),
+        jumlahSoal: totalSoal,     // <-- Sudah diperbaiki!
+        durasi: totalDurasi,       // <-- Sudah diperbaiki!
         
-        // Mode Lanjutkan Try Out
         isSudahDikerjakan: isSelesaiTotal, 
         statusPengerjaan: riwayat?.statusPengerjaan || null,
         subtesAktifIndex: riwayat?.subtesAktifIndex || 0,
@@ -317,42 +327,57 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
   try {
     await connectDB();
     
-    // Hanya tarik riwayat yang status pengerjaannya sudah benar-benar SELESAI
     const riwayat = await HasilKuis.find({ siswaId, statusPengerjaan: "SELESAI" })
-      .populate("jadwalId", "mapel bab subBab materi tanggal")
+      .populate("jadwalId", "mapel bab subBab materi tanggal jamMulai kelasTarget")
       .populate({
         path: "quizId",
-        select: "soal jenisUjian daftarSubtes sumberBankSoalId",
+        select: "durasi jenisUjian soal daftarSubtes sumberBankSoalId",
         populate: {
           path: "sumberBankSoalId",
           select: "judul"
         }
       })
-      .sort({ dikumpulkanPada: -1 })
+      .sort({ createdAt: -1 })
       .lean();
 
-    const dataFinal = riwayat.map(r => {
+    if (!riwayat || riwayat.length === 0) return { sukses: true, data: [] };
+
+    const formattedData = riwayat.map(r => {
       const isTryOutMode = r.quizId?.jenisUjian === "TRYOUT";
       let totalSoalTryOut = 0;
+      let totalDurasiTryOut = 0;
+      
       if (isTryOutMode && r.quizId?.daftarSubtes) {
         totalSoalTryOut = r.quizId.daftarSubtes.reduce((acc, curr) => acc + (curr.soal?.length || 0), 0);
+        totalDurasiTryOut = r.quizId.daftarSubtes.reduce((acc, curr) => acc + (curr.durasi || 0), 0);
       }
 
+      const totalDurasiReal = isTryOutMode ? totalDurasiTryOut : (r.quizId?.durasi || 10);
+      
       return {
-        _id: r._id.toString(),
-        jadwalId: r.jadwalId ? r.jadwalId._id.toString() : "-",
-        mapel: isTryOutMode ? "Try Out UTBK" : (r.jadwalId?.mapel || "Kuis CBT"),
-        bab: isTryOutMode ? "Simulasi" : (r.jadwalId?.bab || "Ujian"),
-        judul: r.quizId?.sumberBankSoalId?.judul || r.jadwalId?.subBab || r.jadwalId?.materi || (isTryOutMode ? "Try Out Estafet" : "Latihan CBT"),
-        tanggal: r.jadwalId?.tanggal || r.dikumpulkanPada,
-        skor: r.skorAkhir || 0,
-        jumlahSoal: isTryOutMode ? totalSoalTryOut : (r.quizId?.soal?.length || r.detailJawaban?.length || 0)
+        _id: r._id,
+        jadwalId: r.jadwalId?._id,
+        jenisUjian: r.quizId?.jenisUjian || "KUIS",
+        mapel: r.jadwalId?.mapel || "Kuis CBT",
+        bab: r.jadwalId?.bab || "Pre-Test",
+        
+        judul: r.quizId?.sumberBankSoalId?.judul || r.jadwalId?.subBab || r.jadwalId?.materi || "CBT Module",
+        
+        tanggal: r.jadwalId?.tanggal,
+        jamMulai: r.jadwalId?.jamMulai,
+        kelasTarget: r.jadwalId?.kelasTarget,
+        
+        jumlahSoal: isTryOutMode ? totalSoalTryOut : (r.quizId?.soal?.length || r.detailJawaban?.length || 0),
+        durasi: totalDurasiReal,
+        
+        skorAkhir: Math.round(r.skorAkhir || 0),
+        waktuPengumpulan: r.updatedAt || r.createdAt
       };
     });
 
-    return serialize({ sukses: true, data: dataFinal });
+    return serialize({ sukses: true, data: formattedData });
   } catch (error) {
     console.error("Error getRiwayatKuisSiswa:", error);
-    return { sukses: false, data: [] };
+    return { sukses: false, pesan: "Gagal memuat riwayat." };
   }
 };
