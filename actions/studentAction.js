@@ -11,7 +11,7 @@ import mongoose from "mongoose";
 const serialize = (data) => JSON.parse(JSON.stringify(data));
 
 // ============================================================================
-// 1. AMBIL DATA KUIS SISWA (ROBUST FIND & SAFE SUBTEST MAPPING)
+// 1. AMBIL DATA KUIS SISWA (ROBUST FIND & LIMITASI SUBTES)
 // ============================================================================
 export const getKuisSiswa = async (jadwalId) => {
   try {
@@ -27,10 +27,16 @@ export const getKuisSiswa = async (jadwalId) => {
     }
 
     const isTryOutMode = dataKuis.jenisUjian === "TRYOUT";
+    let subtesSumber = dataKuis.daftarSubtes || [];
 
     if (isTryOutMode) {
-      if (!dataKuis.daftarSubtes || dataKuis.daftarSubtes.length === 0) {
+      if (subtesSumber.length === 0) {
         return { sukses: false, pesan: "Bundel subtes Try Out kosong." };
+      }
+      
+      // LOGIKA PEMBATASAN SUBTES (Misal: Kerjakan 2 dari 5 subtes yang tersedia)
+      if (dataKuis.jumlahSubtesDikerjakan > 0 && dataKuis.jumlahSubtesDikerjakan < subtesSumber.length) {
+        subtesSumber = subtesSumber.slice(0, dataKuis.jumlahSubtesDikerjakan);
       }
     } else {
       if (!dataKuis.soal || dataKuis.soal.length === 0) {
@@ -38,7 +44,7 @@ export const getKuisSiswa = async (jadwalId) => {
       }
     }
 
-    const sanitizedSubtes = (dataKuis.daftarSubtes || []).map(sub => ({
+    const sanitizedSubtes = subtesSumber.map(sub => ({
       judulSubtes: sub.judulSubtes || "Subtes",
       durasi: Number(sub.durasi) || 10,
       soal: (sub.soal || []).map(s => ({
@@ -93,7 +99,7 @@ export const getKuisSiswa = async (jadwalId) => {
 };
 
 // ============================================================================
-// 2. KUMPULKAN UJIAN (GRADING & AUTO-SYNC JURNAL) - DENGAN TRANSACTION 🔥
+// 2. KUMPULKAN UJIAN (DENGAN KOMPATIBILITAS DATA LAMA)
 // ============================================================================
 export const kumpulkanUjianSiswa = async ({ 
   jadwalId, siswaId, nama, jawabanSiswa, 
@@ -108,7 +114,11 @@ export const kumpulkanUjianSiswa = async ({
 
     let riwayatHasil = await HasilKuis.findOne({ jadwalId, siswaId }).session(session);
     
-    if (riwayatHasil && riwayatHasil.statusPengerjaan === "SELESAI") {
+    // KOMPATIBILITAS MUNDUR: Cek apakah riwayat lama sudah pernah dikerjakan
+    const isSelesaiLama = riwayatHasil && riwayatHasil.statusPengerjaan === "SELESAI";
+    const isSelesaiTanpaStatus = riwayatHasil && !riwayatHasil.statusPengerjaan && (riwayatHasil.skorAkhir !== undefined || riwayatHasil.detailJawaban);
+
+    if (isSelesaiLama || isSelesaiTanpaStatus) {
       await session.abortTransaction();
       session.endSession();
       return { sukses: false, pesan: "Anda sudah menyelesaikan ujian ini sepenuhnya." };
@@ -168,9 +178,10 @@ export const kumpulkanUjianSiswa = async ({
       };
 
       if (riwayatHasil) {
-        if (riwayatHasil.riwayatSubtes.length > subtesAktifIndex) {
+        if (riwayatHasil.riwayatSubtes && riwayatHasil.riwayatSubtes.length > subtesAktifIndex) {
           riwayatHasil.riwayatSubtes[subtesAktifIndex] = dataSubtes;
         } else {
+          riwayatHasil.riwayatSubtes = riwayatHasil.riwayatSubtes || [];
           riwayatHasil.riwayatSubtes.push(dataSubtes);
         }
         
@@ -235,7 +246,7 @@ export const kumpulkanUjianSiswa = async ({
 };
 
 // ============================================================================
-// 3. CEK KETERSEDIAAN KUIS (KINI DILENGKAPI DATA SOAL & SUBTES) 🔥
+// 3. CEK KETERSEDIAAN KUIS (DENGAN KOMPATIBILITAS RIWAYAT LAMA)
 // ============================================================================
 export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
   try {
@@ -243,17 +254,24 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
     
     const [kuis, riwayat, jadwal] = await Promise.all([
       Quiz.findOne({ jadwalId }).lean(),
-      HasilKuis.findOne({ jadwalId, siswaId }).select("skorAkhir statusPengerjaan subtesAktifIndex").lean(),
+      HasilKuis.findOne({ jadwalId, siswaId }).lean(), // Tanpa select spesifik agar kompatibel dengan data lawas
       Jadwal.findById(jadwalId).select("mapel bab subBab materi").lean()
     ]);
     
     if (!kuis) return { ada: false };
     const isTryOutMode = kuis.jenisUjian === "TRYOUT";
+    let subtesSumber = kuis.daftarSubtes || [];
 
-    if (isTryOutMode && (!kuis.daftarSubtes || kuis.daftarSubtes.length === 0)) return { ada: false };
-    if (!isTryOutMode && (!kuis.soal || kuis.soal.length === 0)) return { ada: false };
+    if (isTryOutMode) {
+      if (subtesSumber.length === 0) return { ada: false };
+      if (kuis.jumlahSubtesDikerjakan > 0 && kuis.jumlahSubtesDikerjakan < subtesSumber.length) {
+        subtesSumber = subtesSumber.slice(0, kuis.jumlahSubtesDikerjakan);
+      }
+    } else {
+      if (!kuis.soal || kuis.soal.length === 0) return { ada: false };
+    }
 
-    const sanitizedSubtes = (kuis.daftarSubtes || []).map(sub => ({
+    const sanitizedSubtes = subtesSumber.map(sub => ({
       judulSubtes: sub.judulSubtes || "Subtes",
       durasi: Number(sub.durasi) || 10,
       soal: (sub.soal || []).map(s => ({
@@ -288,7 +306,8 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
       totalDurasi = Number(kuis.durasi) || 10;
     }
 
-    const isSelesaiTotal = riwayat ? riwayat.statusPengerjaan === "SELESAI" : false;
+    // KOMPATIBILITAS MUNDUR: Jika riwayat ada tapi statusPengerjaan kosong/undefined, anggap SELESAI
+    const isSelesaiTotal = riwayat ? (riwayat.statusPengerjaan === "SELESAI" || !riwayat.statusPengerjaan) : false;
 
     return serialize({
       ada: true,
@@ -304,7 +323,7 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
         soal: isTryOutMode ? [] : sanitizedSoal,
         daftarSubtes: isTryOutMode ? sanitizedSubtes : [],
         isSudahDikerjakan: isSelesaiTotal, 
-        statusPengerjaan: riwayat?.statusPengerjaan || null,
+        statusPengerjaan: riwayat?.statusPengerjaan || (riwayat ? "SELESAI" : null),
         subtesAktifIndex: riwayat?.subtesAktifIndex || 0,
         skor: riwayat ? riwayat.skorAkhir : null,
       }
@@ -316,32 +335,42 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
 };
 
 // ============================================================================
-// 4. AMBIL PEMBAHASAN (Untuk Mode Review)
+// 4. AMBIL PEMBAHASAN (DENGAN KOMPATIBILITAS RIWAYAT LAMA)
 // ============================================================================
 export const getPembahasanKuis = async (jadwalId, siswaId) => {
   try {
     await connectDB();
     
     const [dataKuis, riwayatHasil] = await Promise.all([
-       Quiz.findOne({ jadwalId }).select("soal jenisUjian daftarSubtes").lean(),
-       HasilKuis.findOne({ jadwalId, siswaId }).select("detailJawaban riwayatSubtes statusPengerjaan").lean()
+       Quiz.findOne({ jadwalId }).select("soal jenisUjian daftarSubtes jumlahSubtesDikerjakan").lean(),
+       HasilKuis.findOne({ jadwalId, siswaId }).lean()
     ]);
 
-    if (!riwayatHasil || riwayatHasil.statusPengerjaan !== "SELESAI") {
+    // KOMPATIBILITAS MUNDUR: Izinkan akses jika status "SELESAI" atau kosong (riwayat lama)
+    const isAllowed = riwayatHasil && (riwayatHasil.statusPengerjaan === "SELESAI" || !riwayatHasil.statusPengerjaan);
+
+    if (!isAllowed) {
       return { sukses: false, pesan: "Akses ditolak. Riwayat pengerjaan belum selesai atau tidak ditemukan." };
     }
     
     const isTryOutMode = dataKuis?.jenisUjian === "TRYOUT";
 
     if (isTryOutMode) {
-      if (!dataKuis.daftarSubtes || dataKuis.daftarSubtes.length === 0) {
+      let subtesSumber = dataKuis.daftarSubtes || [];
+      if (subtesSumber.length === 0) {
         return { sukses: false, pesan: "Soal asli Try Out telah dihapus." };
       }
+
+      // Pastikan tampilan pembahasan juga terlimit sesuai kuota yang dikerjakan
+      if (dataKuis.jumlahSubtesDikerjakan > 0 && dataKuis.jumlahSubtesDikerjakan < subtesSumber.length) {
+        subtesSumber = subtesSumber.slice(0, dataKuis.jumlahSubtesDikerjakan);
+      }
+
       return serialize({ 
         sukses: true, 
         data: { 
           jenisUjian: "TRYOUT",
-          daftarSubtes: dataKuis.daftarSubtes,
+          daftarSubtes: subtesSumber,
           riwayatSubtes: riwayatHasil.riwayatSubtes || []
         } 
       });
@@ -349,10 +378,13 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
       if (!dataKuis || !dataKuis.soal) {
         return { sukses: false, pesan: "Soal asli Kuis telah dihapus." };
       }
-      const jawabanSiswaEkstrak = riwayatHasil.detailJawaban.map(d => {
-        if (d.jawabanSiswa.length > 1) return d.jawabanSiswa; 
-        return d.jawabanSiswa[0] || ""; 
+      
+      // Fallback aman untuk mapping jawaban siswa versi lama
+      const jawabanSiswaEkstrak = (riwayatHasil.detailJawaban || []).map(d => {
+        if (d.jawabanSiswa && d.jawabanSiswa.length > 1) return d.jawabanSiswa; 
+        return d.jawabanSiswa?.[0] || ""; 
       });
+      
       return serialize({ 
         sukses: true, 
         data: { 
@@ -369,17 +401,25 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
 };
 
 // ============================================================================
-// 5. RIWAYAT KUIS SISWA
+// 5. RIWAYAT KUIS SISWA (DENGAN KOMPATIBILITAS RIWAYAT LAMA)
 // ============================================================================
 export const getRiwayatKuisSiswa = async (siswaId) => {
   try {
     await connectDB();
     
-    const riwayat = await HasilKuis.find({ siswaId, statusPengerjaan: "SELESAI" })
+    // Tarik semua riwayat yang statusnya SELESAI atau yang statusPengerjaannya belum terekam
+    const riwayat = await HasilKuis.find({ 
+      siswaId, 
+      $or: [
+        { statusPengerjaan: "SELESAI" },
+        { statusPengerjaan: { $exists: false } },
+        { statusPengerjaan: null }
+      ]
+    })
       .populate("jadwalId", "mapel bab subBab materi tanggal jamMulai kelasTarget")
       .populate({
         path: "quizId",
-        select: "durasi jenisUjian soal daftarSubtes sumberBankSoalId",
+        select: "durasi jenisUjian soal daftarSubtes sumberBankSoalId jumlahSubtesDikerjakan",
         populate: {
           path: "sumberBankSoalId",
           select: "judul"
@@ -396,8 +436,12 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
       let totalDurasiTryOut = 0;
       
       if (isTryOutMode && r.quizId?.daftarSubtes) {
-        totalSoalTryOut = r.quizId.daftarSubtes.reduce((acc, curr) => acc + (curr.soal?.length || 0), 0);
-        totalDurasiTryOut = r.quizId.daftarSubtes.reduce((acc, curr) => acc + (curr.durasi || 0), 0);
+        let subtesAktif = r.quizId.daftarSubtes;
+        if (r.quizId.jumlahSubtesDikerjakan > 0 && r.quizId.jumlahSubtesDikerjakan < subtesAktif.length) {
+          subtesAktif = subtesAktif.slice(0, r.quizId.jumlahSubtesDikerjakan);
+        }
+        totalSoalTryOut = subtesAktif.reduce((acc, curr) => acc + (curr.soal?.length || 0), 0);
+        totalDurasiTryOut = subtesAktif.reduce((acc, curr) => acc + (curr.durasi || 0), 0);
       }
 
       const totalDurasiReal = isTryOutMode ? totalDurasiTryOut : (r.quizId?.durasi || 10);
