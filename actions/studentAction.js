@@ -34,7 +34,6 @@ export const getKuisSiswa = async (jadwalId) => {
         return { sukses: false, pesan: "Bundel subtes Try Out kosong." };
       }
       
-      // LOGIKA PEMBATASAN SUBTES (Misal: Kerjakan 2 dari 5 subtes yang tersedia)
       if (dataKuis.jumlahSubtesDikerjakan > 0 && dataKuis.jumlahSubtesDikerjakan < subtesSumber.length) {
         subtesSumber = subtesSumber.slice(0, dataKuis.jumlahSubtesDikerjakan);
       }
@@ -94,12 +93,12 @@ export const getKuisSiswa = async (jadwalId) => {
 
   } catch (error) {
     console.error("[ERROR getKuisSiswa]:", error); 
-    return { sukses: false, pesan: "Terjadi kesalahan server saat memuat soal: " + error.message };
+    return { sukses: false, pesan: "Terjadi kesalahan server saat memuat soal." };
   }
 };
 
 // ============================================================================
-// 2. KUMPULKAN UJIAN (DENGAN KOMPATIBILITAS DATA LAMA)
+// 2. KUMPULKAN UJIAN (BYPASS MONGOOSE STRICT MODE 🔥)
 // ============================================================================
 export const kumpulkanUjianSiswa = async ({ 
   jadwalId, siswaId, nama, jawabanSiswa, 
@@ -112,11 +111,10 @@ export const kumpulkanUjianSiswa = async ({
     session = await mongoose.startSession();
     session.startTransaction();
 
-    let riwayatHasil = await HasilKuis.findOne({ jadwalId, siswaId }).session(session);
+    let riwayatHasil = await HasilKuis.findOne({ jadwalId, siswaId }).session(session).lean();
     
-    // KOMPATIBILITAS MUNDUR: Cek apakah riwayat lama sudah pernah dikerjakan
     const isSelesaiLama = riwayatHasil && riwayatHasil.statusPengerjaan === "SELESAI";
-    const isSelesaiTanpaStatus = riwayatHasil && !riwayatHasil.statusPengerjaan && (riwayatHasil.skorAkhir !== undefined || riwayatHasil.detailJawaban);
+    const isSelesaiTanpaStatus = riwayatHasil && !riwayatHasil.statusPengerjaan && (riwayatHasil.skorAkhir !== undefined || riwayatHasil.skor !== undefined || riwayatHasil.detailJawaban);
 
     if (isSelesaiLama || isSelesaiTanpaStatus) {
       await session.abortTransaction();
@@ -169,7 +167,9 @@ export const kumpulkanUjianSiswa = async ({
     });
 
     const skorSaatIni = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
+    let finalSkor = skorSaatIni;
 
+    // 🚀 MENGGUNAKAN UPDATEONE STRICT: FALSE AGAR SCHEMA LAMA TETAP BISA MENERIMA DATA BARU
     if (isTryOutMode) {
       const dataSubtes = {
         judulSubtes: judulSubtes || `Subtes ${subtesAktifIndex + 1}`,
@@ -177,63 +177,70 @@ export const kumpulkanUjianSiswa = async ({
         detailJawaban: detailJawabanData
       };
 
+      const payloadUpdate = {
+        quizId: dataKuis._id,
+        namaSiswa: nama,
+        statusPengerjaan: isPartialSubmit ? "BERJALAN" : "SELESAI",
+        subtesAktifIndex: isPartialSubmit ? subtesAktifIndex + 1 : subtesAktifIndex,
+      };
+
       if (riwayatHasil) {
-        if (riwayatHasil.riwayatSubtes && riwayatHasil.riwayatSubtes.length > subtesAktifIndex) {
-          riwayatHasil.riwayatSubtes[subtesAktifIndex] = dataSubtes;
+        let riwayatBaru = riwayatHasil.riwayatSubtes || [];
+        if (riwayatBaru.length > subtesAktifIndex) {
+          riwayatBaru[subtesAktifIndex] = dataSubtes;
         } else {
-          riwayatHasil.riwayatSubtes = riwayatHasil.riwayatSubtes || [];
-          riwayatHasil.riwayatSubtes.push(dataSubtes);
+          riwayatBaru.push(dataSubtes);
         }
-        
-        riwayatHasil.subtesAktifIndex = isPartialSubmit ? subtesAktifIndex + 1 : subtesAktifIndex;
+        payloadUpdate.riwayatSubtes = riwayatBaru;
         
         if (!isPartialSubmit) {
-          riwayatHasil.statusPengerjaan = "SELESAI";
-          const totalSkorTryout = riwayatHasil.riwayatSubtes.reduce((acc, curr) => acc + curr.skorSubtes, 0);
-          riwayatHasil.skorAkhir = Math.round(totalSkorTryout / riwayatHasil.riwayatSubtes.length);
+          const totalSkorTryout = riwayatBaru.reduce((acc, curr) => acc + curr.skorSubtes, 0);
+          finalSkor = Math.round(totalSkorTryout / riwayatBaru.length);
+          payloadUpdate.skorAkhir = finalSkor;
+          payloadUpdate.skor = finalSkor; // Backup untuk UI Lama
         }
-        
-        await riwayatHasil.save({ session });
       } else {
-        riwayatHasil = new HasilKuis({
-          jadwalId, quizId: dataKuis._id, siswaId, namaSiswa: nama,
-          statusPengerjaan: isPartialSubmit ? "BERJALAN" : "SELESAI",
-          subtesAktifIndex: isPartialSubmit ? subtesAktifIndex + 1 : subtesAktifIndex,
-          skorAkhir: isPartialSubmit ? 0 : skorSaatIni,
-          riwayatSubtes: [dataSubtes]
-        });
-        await riwayatHasil.save({ session });
+        payloadUpdate.riwayatSubtes = [dataSubtes];
+        payloadUpdate.skorAkhir = isPartialSubmit ? 0 : skorSaatIni;
+        payloadUpdate.skor = isPartialSubmit ? 0 : skorSaatIni; // Backup untuk UI Lama
       }
+
+      await HasilKuis.updateOne(
+        { jadwalId, siswaId },
+        { $set: payloadUpdate },
+        { upsert: true, strict: false, session }
+      );
 
       if (!isPartialSubmit) {
         await StudySession.updateOne(
-          { siswaId, jadwalId },
-          { $set: { nilaiTest: riwayatHasil.skorAkhir } },
-          { session }
+          { siswaId, jadwalId }, { $set: { nilaiTest: finalSkor } }, { session }
         );
       }
 
-      await session.commitTransaction();
-      session.endSession();
-      return { sukses: true, skor: isPartialSubmit ? skorSaatIni : riwayatHasil.skorAkhir, exp: expDidapat };
-
     } else {
       await Promise.all([
-        HasilKuis.create([{
-          jadwalId, quizId: dataKuis._id, siswaId, namaSiswa: nama,
-          statusPengerjaan: "SELESAI", skorAkhir: skorSaatIni,
-          detailJawaban: detailJawabanData
-        }], { session }),
-        
+        HasilKuis.updateOne(
+          { jadwalId, siswaId },
+          { 
+            $set: {
+              quizId: dataKuis._id, namaSiswa: nama,
+              statusPengerjaan: "SELESAI", 
+              skorAkhir: skorSaatIni,
+              skor: skorSaatIni, // Backup untuk UI Lama
+              detailJawaban: detailJawabanData
+            }
+          },
+          { upsert: true, strict: false, session }
+        ),
         StudySession.updateOne(
           { siswaId, jadwalId }, { $set: { nilaiTest: skorSaatIni } }, { session }
         )
       ]);
-
-      await session.commitTransaction();
-      session.endSession();
-      return { sukses: true, skor: skorSaatIni, exp: expDidapat };
     }
+
+    await session.commitTransaction();
+    session.endSession();
+    return { sukses: true, skor: finalSkor, exp: expDidapat };
 
   } catch (error) {
     if (session) {
@@ -246,7 +253,7 @@ export const kumpulkanUjianSiswa = async ({
 };
 
 // ============================================================================
-// 3. CEK KETERSEDIAAN KUIS (DENGAN KOMPATIBILITAS RIWAYAT LAMA)
+// 3. CEK KETERSEDIAAN KUIS (DENGAN KOMPATIBILITAS SKOR UI LAMA)
 // ============================================================================
 export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
   try {
@@ -254,7 +261,7 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
     
     const [kuis, riwayat, jadwal] = await Promise.all([
       Quiz.findOne({ jadwalId }).lean(),
-      HasilKuis.findOne({ jadwalId, siswaId }).lean(), // Tanpa select spesifik agar kompatibel dengan data lawas
+      HasilKuis.findOne({ jadwalId, siswaId }).lean(), 
       Jadwal.findById(jadwalId).select("mapel bab subBab materi").lean()
     ]);
     
@@ -306,8 +313,10 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
       totalDurasi = Number(kuis.durasi) || 10;
     }
 
-    // KOMPATIBILITAS MUNDUR: Jika riwayat ada tapi statusPengerjaan kosong/undefined, anggap SELESAI
     const isSelesaiTotal = riwayat ? (riwayat.statusPengerjaan === "SELESAI" || !riwayat.statusPengerjaan) : false;
+    
+    // 🚀 Ambil nilai skor dari field mana pun yang tersedia di DB Lama/Baru
+    const nilaiTerekam = riwayat ? (riwayat.skorAkhir ?? riwayat.skor ?? riwayat.nilai ?? null) : null;
 
     return serialize({
       ada: true,
@@ -325,7 +334,8 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
         isSudahDikerjakan: isSelesaiTotal, 
         statusPengerjaan: riwayat?.statusPengerjaan || (riwayat ? "SELESAI" : null),
         subtesAktifIndex: riwayat?.subtesAktifIndex || 0,
-        skor: riwayat ? riwayat.skorAkhir : null,
+        skor: nilaiTerekam, 
+        skorAkhir: nilaiTerekam // Dua-duanya di-return agar komponen UI pasti membaca salah satunya
       }
     });
   } catch (error) {
@@ -335,7 +345,7 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
 };
 
 // ============================================================================
-// 4. AMBIL PEMBAHASAN (DENGAN KOMPATIBILITAS RIWAYAT LAMA)
+// 4. AMBIL PEMBAHASAN 
 // ============================================================================
 export const getPembahasanKuis = async (jadwalId, siswaId) => {
   try {
@@ -346,7 +356,6 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
        HasilKuis.findOne({ jadwalId, siswaId }).lean()
     ]);
 
-    // KOMPATIBILITAS MUNDUR: Izinkan akses jika status "SELESAI" atau kosong (riwayat lama)
     const isAllowed = riwayatHasil && (riwayatHasil.statusPengerjaan === "SELESAI" || !riwayatHasil.statusPengerjaan);
 
     if (!isAllowed) {
@@ -361,7 +370,6 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
         return { sukses: false, pesan: "Soal asli Try Out telah dihapus." };
       }
 
-      // Pastikan tampilan pembahasan juga terlimit sesuai kuota yang dikerjakan
       if (dataKuis.jumlahSubtesDikerjakan > 0 && dataKuis.jumlahSubtesDikerjakan < subtesSumber.length) {
         subtesSumber = subtesSumber.slice(0, dataKuis.jumlahSubtesDikerjakan);
       }
@@ -379,7 +387,6 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
         return { sukses: false, pesan: "Soal asli Kuis telah dihapus." };
       }
       
-      // Fallback aman untuk mapping jawaban siswa versi lama
       const jawabanSiswaEkstrak = (riwayatHasil.detailJawaban || []).map(d => {
         if (d.jawabanSiswa && d.jawabanSiswa.length > 1) return d.jawabanSiswa; 
         return d.jawabanSiswa?.[0] || ""; 
@@ -401,13 +408,12 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
 };
 
 // ============================================================================
-// 5. RIWAYAT KUIS SISWA (DENGAN KOMPATIBILITAS RIWAYAT LAMA)
+// 5. RIWAYAT KUIS SISWA (OUTPUT DOUBLE SKOR UNTUK UI LAMA & BARU)
 // ============================================================================
 export const getRiwayatKuisSiswa = async (siswaId) => {
   try {
     await connectDB();
     
-    // Tarik semua riwayat yang statusnya SELESAI atau yang statusPengerjaannya belum terekam
     const riwayat = await HasilKuis.find({ 
       siswaId, 
       $or: [
@@ -446,6 +452,9 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
 
       const totalDurasiReal = isTryOutMode ? totalDurasiTryOut : (r.quizId?.durasi || 10);
       
+      // 🚀 SATUKAN SEMUA KEMUNGKINAN NAMA FIELD SKOR DARI DATABASE
+      const skorDiDapat = Math.round(r.skorAkhir ?? r.skor ?? r.nilai ?? 0);
+      
       return {
         _id: r._id,
         jadwalId: r.jadwalId?._id,
@@ -462,7 +471,9 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
         jumlahSoal: isTryOutMode ? totalSoalTryOut : (r.quizId?.soal?.length || r.detailJawaban?.length || 0),
         durasi: totalDurasiReal,
         
-        skorAkhir: Math.round(r.skorAkhir || 0),
+        skor: skorDiDapat,       // Untuk komponen UI yang panggil {data.skor}
+        skorAkhir: skorDiDapat,  // Untuk komponen UI yang panggil {data.skorAkhir}
+        
         waktuPengumpulan: r.updatedAt || r.createdAt
       };
     });
