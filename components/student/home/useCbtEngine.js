@@ -5,18 +5,20 @@ import { kumpulkanUjianSiswa } from "@/actions/studentAction";
 
 export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast, onClose }) {
   const storageKey = `q_cbt_${jadwalId}_${siswa?._id}`;
+  const breakStorageKey = `q_break_${jadwalId}_${siswa?._id}`;
   
-  // 🚀 NORMALISASI DATA: Menangani format kuis baik langsung maupun terbungkus { sukses, data }
   const kuisData = kuis?.data || kuis;
-
-  // 🚀 LOGIKA ESTAFET: Deteksi Mode Try Out
   const isTryOutMode = kuisData?.jenisUjian === "TRYOUT";
   const daftarSubtes = kuisData?.daftarSubtes || [];
   
   const [subtesAktifIndex, setSubtesAktifIndex] = useState(0);
   const [isLayarJeda, setIsLayarJeda] = useState(false);
 
-  // Ambil durasi dan daftar soal secara dinamis dari data yang sudah dinormalisasi
+  // 🚀 State Jeda Panjang (Long Break) Berbasis Timestamp Server/Lokal
+  const [isLongBreak, setIsLongBreak] = useState(false);
+  const [longBreakEndsAt, setLongBreakEndsAt] = useState(null);
+  const [sisaBreakDetik, setSisaBreakDetik] = useState(0);
+
   const durasiMenit = isTryOutMode ? (daftarSubtes[subtesAktifIndex]?.durasi || 10) : (kuisData?.durasi || 10);
   const daftarSoal = isTryOutMode ? (daftarSubtes[subtesAktifIndex]?.soal || []) : (kuisData?.soal || []);
   
@@ -33,13 +35,13 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   const [koneksiTerputus, setKoneksiTerputus] = useState(false);
   
   const timerRef = useRef(null);
+  const breakTimerRef = useRef(null);
 
-  // Sinkronisasi Ref agar fungsi submit selalu mendapat data terbaru dari state
   useEffect(() => {
     jawabanSiswaRef.current = jawabanSiswa;
   }, [jawabanSiswa]);
 
-  // Muat Data Review / Lokal
+  // Muat Data Review, State Lokal, & Pemulihan Timestamp Jeda Panjang
   useEffect(() => {
     if (isReviewMode && jawabanPast) {
       const pastObj = {};
@@ -50,60 +52,92 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       setIsUjianMulai(true);
       setIsDataLoaded(true);
     } else if (!isReviewMode) {
+      // Cek apakah ada jeda panjang (long break) yang sedang aktif
+      const savedBreakEnd = localStorage.getItem(breakStorageKey);
+      if (savedBreakEnd) {
+        const breakEndTimestamp = Number(savedBreakEnd);
+        const sisa = Math.floor((breakEndTimestamp - Date.now()) / 1000);
+        if (sisa > 0) {
+          setIsLongBreak(true);
+          setLongBreakEndsAt(breakEndTimestamp);
+          setSisaBreakDetik(sisa);
+        } else {
+          localStorage.removeItem(breakStorageKey);
+        }
+      }
+
       const savedState = localStorage.getItem(storageKey);
       if (savedState) {
         try {
           const parsed = JSON.parse(savedState);
-          // 🚀 PENGAMANAN TRY OUT: Pulihkan posisi subtes terakhir siswa
           if (parsed.subtesAktifIndex !== undefined) setSubtesAktifIndex(parsed.subtesAktifIndex);
           if (parsed.isLayarJeda !== undefined) setIsLayarJeda(parsed.isLayarJeda);
           if (parsed.jawaban) setJawabanSiswa(parsed.jawaban);
           if (parsed.waktu > 0) setSisaDetik(parsed.waktu);
           if (parsed.pelanggaran) setPelanggaran(parsed.pelanggaran);
-        } catch (error) { 
-          console.error("Gagal membaca memori CBT"); 
+        } catch (error) {  
+          console.error("Gagal membaca memori CBT");  
         }
       } else {
         setSisaDetik(durasiMenit * 60);
       }
       setIsDataLoaded(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReviewMode, storageKey, jawabanPast]);
+  }, [isReviewMode, storageKey, breakStorageKey, jawabanPast, durasiMenit]);
 
   // Auto-Save ke Local Storage
   useEffect(() => {
-    if (isDataLoaded && !isReviewMode && isUjianMulai) {
-      const stateToSave = { 
-        jawaban: jawabanSiswa, 
-        waktu: sisaDetik, 
+    if (isDataLoaded && !isReviewMode && isUjianMulai && !isLongBreak) {
+      const stateToSave = {  
+        jawaban: jawabanSiswa,  
+        waktu: sisaDetik,  
         pelanggaran,
         subtesAktifIndex,
         isLayarJeda
       };
       localStorage.setItem(storageKey, JSON.stringify(stateToSave));
     }
-  }, [jawabanSiswa, sisaDetik, isDataLoaded, pelanggaran, storageKey, isReviewMode, isUjianMulai, subtesAktifIndex, isLayarJeda]);
+  }, [jawabanSiswa, sisaDetik, isDataLoaded, pelanggaran, storageKey, isReviewMode, isUjianMulai, subtesAktifIndex, isLayarJeda, isLongBreak]);
+
+  // 🚀 Timer Hitung Mundur Jeda Panjang (Long Break) Berbasis Target Timestamp
+  useEffect(() => {
+    if (!isLongBreak || !longBreakEndsAt) return;
+
+    breakTimerRef.current = setInterval(() => {
+      const sisa = Math.floor((longBreakEndsAt - Date.now()) / 1000);
+      if (sisa <= 0) {
+        clearInterval(breakTimerRef.current);
+        setIsLongBreak(false);
+        setLongBreakEndsAt(null);
+        setSisaBreakDetik(0);
+        localStorage.removeItem(breakStorageKey);
+      } else {
+        setSisaBreakDetik(sisa);
+      }
+    }, 1000);
+
+    return () => clearInterval(breakTimerRef.current);
+  }, [isLongBreak, longBreakEndsAt, breakStorageKey]);
 
   // Sistem Anti-Cheat
   useEffect(() => {
-    if (isReviewMode || !isUjianMulai || isSubmitting || isLayarJeda) return;
+    if (isReviewMode || !isUjianMulai || isSubmitting || isLayarJeda || isLongBreak) return;
     
     const handleContextMenu = (e) => e.preventDefault();
-    const handleCopy = (e) => { 
-      e.preventDefault(); 
-      alert("⚠️ Tindakan menyalin dilarang selama ujian!"); 
+    const handleCopy = (e) => {  
+      e.preventDefault();  
+      alert("⚠️ Tindakan menyalin dilarang selama ujian!");  
     };
     
     const handleVisibilityChange = () => {
       if (document.hidden && !koneksiTerputus) {
         setPelanggaran((prev) => {
           const pBaru = prev + 1;
-          if (pBaru >= 3) { 
-            alert("❌ PELANGGARAN MAKSIMAL! Ujian otomatis dihentikan."); 
-            eksekusiSubmit(); 
-          } else { 
-            setShowPeringatan(true); 
+          if (pBaru >= 3) {  
+            alert("❌ PELANGGARAN MAKSIMAL! Ujian otomatis dihentikan.");  
+            eksekusiSubmit();  
+          } else {  
+            setShowPeringatan(true);  
           }
           return pBaru;
         });
@@ -119,40 +153,38 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       document.removeEventListener("copy", handleCopy);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUjianMulai, isSubmitting, koneksiTerputus, isReviewMode, isLayarJeda]);
+  }, [isUjianMulai, isSubmitting, koneksiTerputus, isReviewMode, isLayarJeda, isLongBreak]);
 
   // Deteksi Koneksi Internet Terputus
   useEffect(() => {
     const handleOnline = () => {
       if (koneksiTerputus && isSubmitting && !isReviewMode) {
-        setKoneksiTerputus(false); eksekusiSubmit(); 
+        setKoneksiTerputus(false); eksekusiSubmit();  
       }
     };
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [koneksiTerputus, isSubmitting, isReviewMode]);
 
-  // Countdown Timer
+  // Countdown Timer Ujian
   useEffect(() => {
-    if (isDataLoaded && isUjianMulai && !koneksiTerputus && !isReviewMode && !isLayarJeda) {
+    if (isDataLoaded && isUjianMulai && !koneksiTerputus && !isReviewMode && !isLayarJeda && !isLongBreak) {
       timerRef.current = setInterval(() => {
         setSisaDetik((prev) => {
-          if (prev <= 1) { 
-            clearInterval(timerRef.current); 
-            alert(isTryOutMode && subtesAktifIndex < daftarSubtes.length - 1 
-              ? "WAKTU HABIS! Menyimpan subtes ini..." 
-              : "WAKTU HABIS! Jawaban otomatis dikumpulkan."); 
-            eksekusiSubmit(); 
-            return 0; 
+          if (prev <= 1) {  
+            clearInterval(timerRef.current);  
+            alert(isTryOutMode && subtesAktifIndex < daftarSubtes.length - 1  
+              ? "WAKTU HABIS! Menyimpan subtes ini..."  
+              : "WAKTU HABIS! Jawaban otomatis dikumpulkan.");  
+            eksekusiSubmit();  
+            return 0;  
           }
           return prev - 1;
         });
       }, 1000);
     }
     return () => clearInterval(timerRef.current);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDataLoaded, isUjianMulai, koneksiTerputus, isReviewMode, isLayarJeda, isTryOutMode, subtesAktifIndex]);
+  }, [isDataLoaded, isUjianMulai, koneksiTerputus, isReviewMode, isLayarJeda, isLongBreak, isTryOutMode, subtesAktifIndex, daftarSubtes.length]);
 
   const handlePilihJawaban = useCallback((nomorSoal, opsiPilihan) => {
     if (isReviewMode) return; 
@@ -186,17 +218,17 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     }
 
     const jawabanFinal = jawabanSiswaRef.current;
-    const arrayJawaban = daftarSoal.map((_, index) => 
+    const arrayJawaban = daftarSoal.map((_, index) =>  
       jawabanFinal[index] !== undefined ? jawabanFinal[index] : ""
     );
     
     try {
       if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error("Offline");
       
-      const res = await kumpulkanUjianSiswa({ 
-        jadwalId, 
-        siswaId: siswa._id, 
-        nama: siswa.nama, 
+      const res = await kumpulkanUjianSiswa({  
+        jadwalId,  
+        siswaId: siswa._id,  
+        nama: siswa.nama,  
         jawabanSiswa: arrayJawaban,
         isPartialSubmit,
         subtesAktifIndex,
@@ -205,26 +237,41 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       
       if (res.sukses) {
         if (isPartialSubmit) {
-          setIsLayarJeda(true);
+          // 🚀 Deteksi Jeda Panjang: Misal setelah subtes ke-3 (indeks 2) selesai (B.Indo, B.Ing, Mat)
+          const isBatasSubtesWajib = subtesAktifIndex === 2; 
+          
+          if (isBatasSubtesWajib) {
+            const durasiBreakMs = 60 * 60 * 1000; // 1 Jam istirahat
+            const breakEndTimestamp = Date.now() + durasiBreakMs;
+            
+            localStorage.setItem(breakStorageKey, breakEndTimestamp);
+            setLongBreakEndsAt(breakEndTimestamp);
+            setSisaBreakDetik(60 * 60);
+            setIsLongBreak(true);
+          } else {
+            setIsLayarJeda(true);
+          }
+          
           setIsSubmitting(false);
         } else {
           localStorage.removeItem(storageKey);
+          localStorage.removeItem(breakStorageKey);
           alert(`✅ UJIAN SELESAI!\n🎯 Nilai Anda: ${res.skor}\n🌟 Anda mendapatkan +${res.exp} EXP!`);
-          onClose(); 
+          onClose();  
         }
-      } else { 
-        alert("❌ Gagal: " + res.pesan); 
-        setIsSubmitting(false); 
+      } else {  
+        alert("❌ Gagal: " + res.pesan);  
+        setIsSubmitting(false);  
       }
-    } catch (err) { 
-      setKoneksiTerputus(true); 
+    } catch (err) {  
+      setKoneksiTerputus(true);  
     }
   };
 
   const handleKumpulJawaban = () => {
     if (isReviewMode) return;
-    const pesanConfirm = (isTryOutMode && subtesAktifIndex < daftarSubtes.length - 1) 
-      ? "Kumpulkan subtes ini dan lanjut ke jeda? (Jawaban tidak bisa diubah lagi)" 
+    const pesanConfirm = (isTryOutMode && subtesAktifIndex < daftarSubtes.length - 1)  
+      ? "Kumpulkan subtes ini dan lanjut ke sesi berikutnya? (Jawaban tidak bisa diubah lagi)"  
       : "Yakin ingin menyelesaikan seluruh ujian sekarang?";
       
     if (window.confirm(pesanConfirm)) eksekusiSubmit();
@@ -244,6 +291,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     isSubmitting, isUjianMulai, setIsUjianMulai,
     pelanggaran, showPeringatan, setShowPeringatan, koneksiTerputus,
     isTryOutMode, isLayarJeda, subtesAktifIndex, daftarSubtes, daftarSoal, lanjutSubtesBerikutnya,
+    isLongBreak, sisaBreakDetik,
     handlePilihJawaban, handleToggleKompleks, handleInputIsian, handleKumpulJawaban, eksekusiSubmit
   };
 }
