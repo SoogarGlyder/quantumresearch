@@ -15,16 +15,15 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     isSubmitting, isUjianMulai, setIsUjianMulai,
     pelanggaran, showPeringatan, setShowPeringatan, koneksiTerputus,
     isTryOutMode, isLayarJeda, subtesAktifIndex, daftarSubtes, daftarSoal, lanjutSubtesBerikutnya,
+    isLongBreak, sisaBreakDetik,
     handlePilihJawaban, handleToggleKompleks, handleInputIsian, handleKumpulJawaban, eksekusiSubmit
   } = useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast, onClose });
 
   const totalSoal = daftarSoal.length;
-  // Dinamis: Jika Try Out, ambil judul dari Subtes aktif. Jika kuis, dari mapel jadwal.
   const namaMapel = isTryOutMode && daftarSubtes.length > 0 
     ? daftarSubtes[subtesAktifIndex].judulSubtes 
     : (kuis?.mapel || "Ujian CBT");
 
-  //HELPER: Cek kebenaran jawaban untuk Palet Warna
   const cekJawabanBenar = (index) => {
     const soal = daftarSoal[index];
     const jwb = jawabanSiswa[index];
@@ -58,6 +57,13 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     return `${m}:${s}`;
   };
 
+  const formatWaktuBreak = (totalDetik) => {
+    const j = Math.floor(totalDetik / 3600).toString().padStart(2, "0");
+    const m = Math.floor((totalDetik % 3600) / 60).toString().padStart(2, "0");
+    const s = (totalDetik % 60).toString().padStart(2, "0");
+    return j !== "00" ? `${j}:${m}:${s}` : `${m}:${s}`;
+  };
+
   const handleMulaiUjianFullscreen = async () => {
     try {
       if (containerRef.current?.requestFullscreen) await containerRef.current.requestFullscreen();
@@ -66,8 +72,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     setIsUjianMulai(true);
   };
 
-  // EMPTY STATE
-  if (totalSoal === 0 && !isLayarJeda) {
+  if (totalSoal === 0 && !isLayarJeda && !isLongBreak) {
     return (
       <div className={`${styles.cbtFixedOverlay} ${styles.cbtBgLight}`}>
         <div className={styles.cbtPromptCard} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', maxHeight: '90vh' }}>
@@ -78,7 +83,6 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     );
   }
 
-  // LAYAR PERINGATAN AWAL (FULLSCREEN PROMPT)
   if (!isUjianMulai && !isReviewMode) {
     return (
       <div className={`${styles.cbtFixedOverlay} ${styles.cbtBgDark}`}>
@@ -105,7 +109,52 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
   const isSoalTerakhir = soalAktif === totalSoal - 1;
   const isTryOutTanggung = isTryOutMode && subtesAktifIndex < daftarSubtes.length - 1;
 
-  // 🚀 LAYAR JEDA (MUNCUL SAAT TRANSISI SUBTES TRY OUT)
+  // 🚀 LAYAR JEDA PANJANG (LONG BREAK SCREEN 1 JAM)
+  if (isLongBreak) {
+    const nextSubtes = daftarSubtes[subtesAktifIndex + 1];
+    return (
+      <div className={`${styles.cbtFixedOverlay} ${styles.cbtBgLight}`} style={{ backgroundColor: '#1e293b' }}>
+        <div className={styles.cbtPromptCard} style={{ border: '4px solid #111827', boxShadow: '8px 8px 0 #111827', background: 'white', textAlign: 'center', maxWidth: '500px' }}>
+          <div style={{ background: '#dbeafe', display: 'inline-flex', padding: '20px', borderRadius: '50%', border: '3px solid #111827', marginBottom: '15px' }}>
+            <FaClock size={40} color="#2563eb" />
+          </div>
+          <h2 className={styles.cbtTitle} style={{ fontSize: '28px', color: '#111827' }}>JEDA ISTIRAHAT PANJANG</h2>
+          <p className={styles.cbtDesc} style={{ fontSize: '15px', color: '#4b5563', marginBottom: '20px' }}>
+            Sesi subtes wajib telah selesai! Nikmati waktu istirahat panjang Anda. Sesi pilihan akan terbuka otomatis saat waktu habis.
+          </p>
+          
+          <div style={{ background: '#fef3c7', border: '3px solid #111827', padding: '20px', borderRadius: '12px', marginBottom: '25px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '900', color: '#b45309', display: 'block', marginBottom: '5px' }}>SISA WAKTU ISTIRAHAT</span>
+            <span style={{ fontSize: '42px', fontWeight: '900', color: '#111827', fontFamily: 'monospace' }}>
+              {formatWaktuBreak(sisaBreakDetik)}
+            </span>
+          </div>
+
+          <div style={{ background: '#f1f5f9', border: '2px dashed #111827', padding: '12px', borderRadius: '8px', textAlign: 'left', marginBottom: '20px' }}>
+            <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>BERIKUTNYA:</p>
+            <p style={{ margin: '4px 0 0', fontWeight: '900', color: '#111827', fontSize: '16px' }}>{nextSubtes?.judulSubtes || "Subtes Pilihan"}</p>
+          </div>
+
+          <button 
+            disabled={sisaBreakDetik > 0} 
+            onClick={lanjutSubtesBerikutnya} 
+            className={`${styles.cbtBtn} ${styles.cbtBtnPrimary}`} 
+            style={{ 
+              width: '100%', 
+              fontSize: '16px', 
+              padding: '14px',
+              opacity: sisaBreakDetik > 0 ? 0.6 : 1,
+              cursor: sisaBreakDetik > 0 ? 'not-allowed' : 'pointer',
+              background: sisaBreakDetik > 0 ? '#94a3b8' : '#2563eb'
+            }}>
+            {sisaBreakDetik > 0 ? "MENUNGGU WAKTU HABIS..." : "MULAI SESI BERIKUTNYA"} <FaChevronRight style={{ marginLeft: '8px' }} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 🚀 LAYAR JEDA ANTAR SUBTES BIASA
   if (isLayarJeda) {
     const nextSubtes = daftarSubtes[subtesAktifIndex + 1];
     return (
@@ -133,12 +182,10 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     );
   }
 
-  // RENDER UTAMA CBT
   return (
     <div ref={containerRef} className={`${styles.cbtFixedOverlay} ${styles.cbtBgLight}`} style={{ flexDirection: 'column', padding: 0 }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', position: 'relative' }}>
         
-        {/* OVERLAY PERINGATAN PELANGGARAN */}
         {showPeringatan && !isReviewMode && (
           <div className={`${styles.cbtFixedOverlay} ${styles.cbtBgDarker}`} style={{ zIndex: 999999 }}>
             <div className={`${styles.cbtPromptCard} ${styles.cbtPromptCardDanger}`}>
@@ -150,7 +197,6 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
           </div>
         )}
 
-        {/* OVERLAY KONEKSI OFFLINE */}
         {koneksiTerputus && !isReviewMode && (
           <div className={`${styles.cbtFixedOverlay} ${styles.cbtBgOffline}`} style={{ zIndex: 999999 }}>
             <div className={`${styles.cbtPromptCard} ${styles.cbtPromptCardOffline}`}>
@@ -162,7 +208,6 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
           </div>
         )}
 
-        {/* HEADER APLIKASI UJIAN */}
         <div className={`${styles.cbtHeader} ${isReviewMode ? styles.cbtHeaderReview : styles.cbtHeaderNormal}`}>
           <div>
             <h3 className={styles.galleryTitle} style={{ color: '#111827' }}>
@@ -187,7 +232,6 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
 
         <div ref={scrollAreaRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
           
-          {/* PALET NOMOR SOAL */}
           <div className={styles.paletContainer}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h4 style={{ margin: 0, fontWeight: '900', color: '#111827', fontSize: '13px' }}>
@@ -229,7 +273,6 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
             </div>
           </div>
 
-          {/* AREA KERTAS SOAL & TOMBOL NAVIGASI BAWAH */}
           <div className={styles.kertasSoalArea} style={{ userSelect: isReviewMode ? 'auto' : 'none' }}>
             
             <KertasSoalCBT 
@@ -242,7 +285,6 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
               handleInputIsian={handleInputIsian} 
             />
 
-            {/* NAVIGASI KIRI-KANAN */}
             <div className={styles.cbtBtnGroup} style={{ marginTop: 'auto', paddingBottom: '20px' }}>
               <button onClick={() => setSoalAktif(prev => Math.max(0, prev - 1))} disabled={soalAktif === 0}
                 className={`${styles.cbtBtn} ${soalAktif === 0 ? styles.cbtBtnSecondary : styles.cbtBtnBatal}`}>
