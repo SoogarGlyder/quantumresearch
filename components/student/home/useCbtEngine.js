@@ -41,7 +41,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     jawabanSiswaRef.current = jawabanSiswa;
   }, [jawabanSiswa]);
 
-  // Muat Data Review, State Lokal, & Pemulihan Timestamp Jeda Panjang
+  // Muat Data Review, State Lokal, & Pemulihan Timestamp Jeda Panjang (Hanya saat mount awal)
   useEffect(() => {
     if (isReviewMode && jawabanPast) {
       const pastObj = {};
@@ -82,7 +82,8 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       }
       setIsDataLoaded(true);
     }
-  }, [isReviewMode, storageKey, breakStorageKey, jawabanPast, durasiMenit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReviewMode, storageKey, breakStorageKey, jawabanPast]); // 🚀 durasiMenit dihapus untuk mencegah loop/glitch saat ganti subtes
 
   // Auto-Save ke Local Storage
   useEffect(() => {
@@ -236,7 +237,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       
       if (res.sukses) {
         if (isPartialSubmit) {
-          // 🚀 Deteksi Jeda Panjang Secara Dinamis dari Data Quiz
           const batasWajib = Number(kuisData?.batasSubtesWajib) || 0;
           const isBatasSubtesWajib = batasWajib > 0 && (subtesAktifIndex === batasWajib - 1); 
           
