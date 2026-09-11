@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { FaXmark, FaCheckDouble, FaChevronLeft, FaChevronRight, FaClock, FaExpand, FaTriangleExclamation, FaWifi, FaMugHot } from "react-icons/fa6";
+import { FaXmark, FaCheckDouble, FaChevronLeft, FaChevronRight, FaClock, FaExpand, FaTriangleExclamation, FaWifi, FaMugHot, FaCheck } from "react-icons/fa6";
 import styles from "@/components/App.module.css";
 import { useCbtEngine } from "./useCbtEngine";
 import KertasSoalCBT from "./KertasSoalCBT";
@@ -16,12 +16,13 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     pelanggaran, showPeringatan, setShowPeringatan, koneksiTerputus,
     isTryOutMode, isLayarJeda, subtesAktifIndex, daftarSubtes, daftarSoal, lanjutSubtesBerikutnya,
     isLongBreak, sisaBreakDetik,
+    isMemilihPilihan, kolamPilihanList, pilihanTerpilih, jumlahPilihanHarusDipilih, togglePilihElective, konfirmasiPilihanElective,
     handlePilihJawaban, handleToggleKompleks, handleInputIsian, handleKumpulJawaban, eksekusiSubmit
   } = useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast, onClose });
 
   const totalSoal = daftarSoal.length;
   const namaMapel = isTryOutMode && daftarSubtes.length > 0 
-    ? daftarSubtes[subtesAktifIndex].judulSubtes 
+    ? daftarSubtes[subtesAktifIndex]?.judulSubtes || "Subtes"
     : (kuis?.mapel || "Ujian CBT");
 
   const cekJawabanBenar = (index) => {
@@ -72,7 +73,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
     setIsUjianMulai(true);
   };
 
-  if (totalSoal === 0 && !isLayarJeda && !isLongBreak) {
+  if (totalSoal === 0 && !isLayarJeda && !isLongBreak && !isMemilihPilihan) {
     return (
       <div className={`${styles.cbtFixedOverlay} ${styles.cbtBgLight}`}>
         <div className={styles.cbtPromptCard} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', maxHeight: '90vh' }}>
@@ -109,7 +110,53 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
   const isSoalTerakhir = soalAktif === totalSoal - 1;
   const isTryOutTanggung = isTryOutMode && subtesAktifIndex < daftarSubtes.length - 1;
 
-  // 🚀 LAYAR JEDA PANJANG (LONG BREAK SCREEN 1 JAM)
+  // 🚀 LAYAR PEMILIHAN SUBTES PILIHAN (ELECTIVE PICKER)
+  if (isMemilihPilihan) {
+    return (
+      <div className={`${styles.cbtFixedOverlay} ${styles.cbtBgLight}`} style={{ backgroundColor: '#f8fafc' }}>
+        <div className={styles.cbtPromptCard} style={{ border: '4px solid #111827', boxShadow: '8px 8px 0 #111827', background: 'white', maxWidth: '600px', width: '90%', textAlign: 'left' }}>
+          <h2 className={styles.cbtTitle} style={{ fontSize: '24px', color: '#111827', marginBottom: '8px' }}>PILIH SUBTES PEMINATAN</h2>
+          <p className={styles.cbtDesc} style={{ fontSize: '14px', color: '#4b5563', marginBottom: '20px' }}>
+            Sesi wajib telah selesai! Silakan pilih <b>{jumlahPilihanHarusDipilih} subtes pilihan</b> dari daftar berikut sebelum melanjutkan ke sesi istirahat panjang.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '25px', maxHeight: '300px', overflowY: 'auto' }}>
+            {kolamPilihanList.map((sub, idx) => {
+              const isSelected = pilihanTerpilih.some(item => item.judulSubtes === sub.judulSubtes);
+              return (
+                <div key={idx} onClick={() => togglePilihElective(sub)}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '14px 18px', borderRadius: '8px', cursor: 'pointer',
+                    border: '3px solid #111827',
+                    background: isSelected ? '#dbeafe' : 'white',
+                    boxShadow: isSelected ? '3px 3px 0 #111827' : '2px 2px 0 #111827',
+                    transition: 'all 0.1s ease'
+                  }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#111827' }}>{sub.judulSubtes}</h4>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>⏱️ {sub.durasi} Menit • 📝 {sub.soal.length} Soal</span>
+                  </div>
+                  <div style={{
+                    width: '24px', height: '24px', borderRadius: '4px', border: '3px solid #111827',
+                    background: isSelected ? '#2563eb' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {isSelected && <FaCheck size={14} color="white" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <button onClick={konfirmasiPilihanElective} className={`${styles.cbtBtn} ${styles.cbtBtnPrimary}`} style={{ width: '100%', fontSize: '16px', padding: '14px' }}>
+            KONFIRMASI PILIHAN & MULAI JEDA <FaChevronRight style={{ marginLeft: '8px' }} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 🚀 LAYAR JEDA PANJANG (LONG BREAK SCREEN)
   if (isLongBreak) {
     const nextSubtes = daftarSubtes[subtesAktifIndex + 1];
     return (
@@ -120,7 +167,7 @@ export default function ModalUjianCBT({ jadwalId, kuis, siswa, isReviewMode = fa
           </div>
           <h2 className={styles.cbtTitle} style={{ fontSize: '28px', color: '#111827' }}>JEDA ISTIRAHAT PANJANG</h2>
           <p className={styles.cbtDesc} style={{ fontSize: '15px', color: '#4b5563', marginBottom: '20px' }}>
-            Sesi subtes wajib telah selesai! Nikmati waktu istirahat panjang Anda. Sesi pilihan akan terbuka otomatis saat waktu habis.
+            Sesi subtes wajib & pemilihan telah selesai! Sesi pilihan akan terbuka otomatis saat waktu istirahat habis.
           </p>
           
           <div style={{ background: '#fef3c7', border: '3px solid #111827', padding: '20px', borderRadius: '12px', marginBottom: '25px' }}>
