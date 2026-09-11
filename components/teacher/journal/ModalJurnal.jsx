@@ -60,9 +60,11 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   const [loadingBank, setLoadingBank] = useState(false);
   const [isMemprosesKuis, setIsMemprosesKuis] = useState(false);
 
-  // 🚀 STATE BARU KHUSUS TRY OUT ESTAFET
+  // STATE TRY OUT ESTAFET & PENGATURAN JEDA/WAJIB
   const [modeUjian, setModeUjian] = useState("KUIS"); // "KUIS" atau "TRYOUT"
   const [keranjangTryOut, setKeranjangTryOut] = useState([]); // Array subtes
+  const [batasSubtesWajib, setBatasSubtesWajib] = useState(3);
+  const [durasiBreakMenit, setDurasiBreakMenit] = useState(60);
 
   const tanggalJadwalMurni = getSafeTanggalJakarta(jadwalTerpilih?.tanggal);
   
@@ -148,7 +150,6 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   };
 
   const bukaPanelBankSoal = async () => {
-    // Reset status sebelum modal terbuka
     setModeUjian("KUIS");
     setKeranjangTryOut([]);
     setIsModalBankOpen(true);
@@ -158,7 +159,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
     setLoadingBank(false);
   };
 
-  // 🚀 LOGIKA BARU PENERAPAN SOAL (KUIS & TRY OUT)
+  // LOGIKA PENERAPAN SOAL (KUIS & TRY OUT)
   const eksekusiTerapkanSoal = async (idBankSoalTunggal = null) => {
     if (modeUjian === "KUIS") {
       if (!window.confirm("Yakin ingin menerapkan paket soal ini ke kelas ini?")) return;
@@ -181,7 +182,17 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
       setIsMemprosesKuis(true);
       const daftarSubtesId = keranjangTryOut.map(b => b._id);
       
-      const res = await terapkanBankSoalKeJadwal(null, jadwalTerpilih._id, jadwalTerpilih.pengajarId, "TRYOUT", daftarSubtesId);
+      const res = await terapkanBankSoalKeJadwal(
+        null, 
+        jadwalTerpilih._id, 
+        jadwalTerpilih.pengajarId, 
+        "TRYOUT", 
+        daftarSubtesId, 
+        keranjangTryOut.length, 
+        Number(batasSubtesWajib) || 3, 
+        Number(durasiBreakMenit) || 60
+      );
+
       if (res.sukses) {
         alert("✅ " + res.pesan);
         setIsModalBankOpen(false);
@@ -208,7 +219,6 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
     setIsMemprosesKuis(false);
   };
 
-  // Helper untuk tampilan text status kuis aktif di jurnal
   const teksStatusUjianAktif = dataKuisAktif?.jenisUjian === "TRYOUT" 
     ? `Try Out Estafet (${dataKuisAktif.daftarSubtes?.length || 0} Subtes)` 
     : `Terpasang ${dataKuisAktif?.soal?.length || 0} Soal (${dataKuisAktif?.durasi || 10} Menit)`;
@@ -260,10 +270,9 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
               </div>
 
               {isMasaDepan ? (
-                // MASA DEPAN
                 <div style={{ padding: '24px', backgroundColor: 'white', border: '4px dashed #94a3b8', borderRadius: '16px', textAlign: 'center' }}>
                   <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#334155', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Fase Persiapan Kelas</h3>
-                  <p style={{ fontSize: '14px', color: '#64748b', fontWeight: 'bold', margin: '0 0 24px 0' }}>Kelas ini belum dimulai. Anda dapat mempersiapkan Pre-Test/Try Out besok.</p>
+                  <p style={{ fontSize: '14px', color: '#64748b', fontWeight: 'bold', margin: '0 0 24px 0' }}>Kelas ini belum dimulai. Anda dapat mempersiapkan Pre-Test/Try Out.</p>
 
                   <button 
                     type="button" 
@@ -284,9 +293,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                   )}
                 </div>
               ) : (
-                // HARI INI & LALU
                 <>
-                  {/* PANEL TOMBOL BANK SOAL */}
                   <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ padding: '16px', border: '3px solid #111827', borderRadius: '12px', backgroundColor: dataKuisAktif ? '#dcfce3' : '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
@@ -400,10 +407,8 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                                   onChange={(e) => ubahCatatanSiswa(idx, e.target.value)}
                                   className={styles.scheduleOption} 
                                   style={{ width: '100%', padding: '10px', backgroundColor: '#fff', boxShadow: 'none', border: '2px solid #111827', fontSize: '13px', touchAction: 'manipulation' }} 
-                                />
-                              )}
-                              
-                            </div>
+                                )}
+                              </div>
                           );
                         })
                       )}
@@ -426,7 +431,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
         </div>
       </div>
 
-      {/* 🚀 OVERLAY MODAL PILIH BANK SOAL (DENGAN DUKUNGAN TRY OUT) */}
+      {/* OVERLAY MODAL PILIH BANK SOAL */}
       {isModalBankOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '4px solid #111827', width: '100%', maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '8px 8px 0 #111827' }}>
@@ -495,6 +500,33 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
             {/* FOOTER KERANJANG TRY OUT */}
             {modeUjian === "TRYOUT" && (
               <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '4px solid #111827' }}>
+                
+                {/* SETTING PENGATURAN TRY OUT (BATAS WAJIB & DURASI JEDA) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <div style={{ background: 'white', border: '2px solid #111827', padding: '10px', borderRadius: '8px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#475569', display: 'block', marginBottom: '4px' }}>SUBTES WAJIB:</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max={Math.max(1, keranjangTryOut.length)} 
+                      value={batasSubtesWajib} 
+                      onChange={(e) => setBatasSubtesWajib(e.target.value)}
+                      style={{ width: '100%', padding: '6px', border: '2px solid #111827', borderRadius: '6px', fontWeight: '900', fontSize: '14px', outline: 'none' }}
+                    />
+                  </div>
+                  <div style={{ background: 'white', border: '2px solid #111827', padding: '10px', borderRadius: '8px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#475569', display: 'block', marginBottom: '4px' }}>DURASI JEDA (MENIT):</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="180" 
+                      value={durasiBreakMenit} 
+                      onChange={(e) => setDurasiBreakMenit(e.target.value)}
+                      style={{ width: '100%', padding: '6px', border: '2px solid #111827', borderRadius: '6px', fontWeight: '900', fontSize: '14px', outline: 'none' }}
+                    />
+                  </div>
+                </div>
+
                 <div style={{ background: '#fdf4ff', border: '3px solid #111827', padding: '12px', borderRadius: '8px', marginBottom: '12px' }}>
                   <p style={{ margin: '0 0 8px 0', fontWeight: '900', fontSize: '14px', color: '#9333ea' }}>📦 KERANJANG TRY OUT ({keranjangTryOut.length} Subtes)</p>
                   {keranjangTryOut.length > 0 ? (
