@@ -122,7 +122,7 @@ export const kumpulkanUjianSiswa = async ({
       return { sukses: false, pesan: "Anda sudah menyelesaikan ujian ini sepenuhnya." };
     }
 
-    const dataKuis = await Quiz.findOne({ jadwalId }).select("_id jenisUjian soal daftarSubtes").session(session).lean();
+    const dataKuis = await Quiz.findOne({ jadwalId }).select("_id jenisUjian soal daftarSubtes jumlahSubtesDikerjakan").session(session).lean();
     if (!dataKuis) {
       await session.abortTransaction();
       session.endSession();
@@ -130,7 +130,13 @@ export const kumpulkanUjianSiswa = async ({
     }
 
     const isTryOutMode = dataKuis.jenisUjian === "TRYOUT";
-    const soalAsli = isTryOutMode ? (dataKuis.daftarSubtes[subtesAktifIndex]?.soal || []) : dataKuis.soal;
+    let subtesAktifList = dataKuis.daftarSubtes || [];
+    
+    if (isTryOutMode && dataKuis.jumlahSubtesDikerjakan > 0 && dataKuis.jumlahSubtesDikerjakan < subtesAktifList.length) {
+      subtesAktifList = subtesAktifList.slice(0, dataKuis.jumlahSubtesDikerjakan);
+    }
+
+    const soalAsli = isTryOutMode ? (subtesAktifList[subtesAktifIndex]?.soal || []) : dataKuis.soal;
     
     let expDidapat = 0;
     let totalExpMaksimal = 0;
@@ -169,7 +175,6 @@ export const kumpulkanUjianSiswa = async ({
     const skorSaatIni = totalExpMaksimal > 0 ? Math.round((expDidapat / totalExpMaksimal) * 100) : 0;
     let finalSkor = skorSaatIni;
 
-    // 🚀 MENGGUNAKAN UPDATEONE STRICT: FALSE AGAR SCHEMA LAMA TETAP BISA MENERIMA DATA BARU
     if (isTryOutMode) {
       const dataSubtes = {
         judulSubtes: judulSubtes || `Subtes ${subtesAktifIndex + 1}`,
@@ -197,12 +202,12 @@ export const kumpulkanUjianSiswa = async ({
           const totalSkorTryout = riwayatBaru.reduce((acc, curr) => acc + curr.skorSubtes, 0);
           finalSkor = Math.round(totalSkorTryout / riwayatBaru.length);
           payloadUpdate.skorAkhir = finalSkor;
-          payloadUpdate.skor = finalSkor; // Backup untuk UI Lama
+          payloadUpdate.skor = finalSkor; 
         }
       } else {
         payloadUpdate.riwayatSubtes = [dataSubtes];
         payloadUpdate.skorAkhir = isPartialSubmit ? 0 : skorSaatIni;
-        payloadUpdate.skor = isPartialSubmit ? 0 : skorSaatIni; // Backup untuk UI Lama
+        payloadUpdate.skor = isPartialSubmit ? 0 : skorSaatIni; 
       }
 
       await HasilKuis.updateOne(
@@ -226,7 +231,7 @@ export const kumpulkanUjianSiswa = async ({
               quizId: dataKuis._id, namaSiswa: nama,
               statusPengerjaan: "SELESAI", 
               skorAkhir: skorSaatIni,
-              skor: skorSaatIni, // Backup untuk UI Lama
+              skor: skorSaatIni, 
               detailJawaban: detailJawabanData
             }
           },
@@ -314,8 +319,6 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
     }
 
     const isSelesaiTotal = riwayat ? (riwayat.statusPengerjaan === "SELESAI" || !riwayat.statusPengerjaan) : false;
-    
-    // 🚀 Ambil nilai skor dari field mana pun yang tersedia di DB Lama/Baru
     const nilaiTerekam = riwayat ? (riwayat.skorAkhir ?? riwayat.skor ?? riwayat.nilai ?? null) : null;
 
     return serialize({
@@ -335,7 +338,7 @@ export const cekKetersediaanKuis = async (jadwalId, siswaId) => {
         statusPengerjaan: riwayat?.statusPengerjaan || (riwayat ? "SELESAI" : null),
         subtesAktifIndex: riwayat?.subtesAktifIndex || 0,
         skor: nilaiTerekam, 
-        skorAkhir: nilaiTerekam // Dua-duanya di-return agar komponen UI pasti membaca salah satunya
+        skorAkhir: nilaiTerekam 
       }
     });
   } catch (error) {
@@ -408,7 +411,7 @@ export const getPembahasanKuis = async (jadwalId, siswaId) => {
 };
 
 // ============================================================================
-// 5. RIWAYAT KUIS SISWA (OUTPUT DOUBLE SKOR UNTUK UI LAMA & BARU)
+// 5. RIWAYAT KUIS SISWA
 // ============================================================================
 export const getRiwayatKuisSiswa = async (siswaId) => {
   try {
@@ -451,8 +454,6 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
       }
 
       const totalDurasiReal = isTryOutMode ? totalDurasiTryOut : (r.quizId?.durasi || 10);
-      
-      // 🚀 SATUKAN SEMUA KEMUNGKINAN NAMA FIELD SKOR DARI DATABASE
       const skorDiDapat = Math.round(r.skorAkhir ?? r.skor ?? r.nilai ?? 0);
       
       return {
@@ -461,19 +462,14 @@ export const getRiwayatKuisSiswa = async (siswaId) => {
         jenisUjian: r.quizId?.jenisUjian || "KUIS",
         mapel: r.jadwalId?.mapel || "Kuis CBT",
         bab: r.jadwalId?.bab || "Pre-Test",
-        
         judul: r.quizId?.sumberBankSoalId?.judul || r.jadwalId?.subBab || r.jadwalId?.materi || "CBT Module",
-        
         tanggal: r.jadwalId?.tanggal,
         jamMulai: r.jadwalId?.jamMulai,
         kelasTarget: r.jadwalId?.kelasTarget,
-        
         jumlahSoal: isTryOutMode ? totalSoalTryOut : (r.quizId?.soal?.length || r.detailJawaban?.length || 0),
         durasi: totalDurasiReal,
-        
-        skor: skorDiDapat,       // Untuk komponen UI yang panggil {data.skor}
-        skorAkhir: skorDiDapat,  // Untuk komponen UI yang panggil {data.skorAkhir}
-        
+        skor: skorDiDapat,       
+        skorAkhir: skorDiDapat,  
         waktuPengumpulan: r.updatedAt || r.createdAt
       };
     });
