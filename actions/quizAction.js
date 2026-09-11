@@ -107,9 +107,18 @@ export async function hapusBankSoal(idBankSoal) {
 }
 
 // ============================================================================
-// PENERAPAN KE JADWAL (ROBUST TRY OUT BUNDLE + LIMITASI KUOTA SUBTES)
+// PENERAPAN KE JADWAL (ROBUST TRY OUT BUNDLE + LIMITASI KUOTA & JEDA DINAMIS)
 // ============================================================================
-export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPengajar, jenisUjian = "KUIS", daftarSubtesId = [], jumlahSubtesDikerjakan = 0) {
+export async function terapkanBankSoalKeJadwal(
+  idBankSoalUtama, 
+  idJadwal, 
+  idPengajar, 
+  jenisUjian = "KUIS", 
+  daftarSubtesId = [], 
+  jumlahSubtesDikerjakan = 5,
+  batasSubtesWajib = 3,
+  durasiBreakMenit = 60
+) {
   try {
     await connectToDatabase();
 
@@ -118,7 +127,9 @@ export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPeng
       pembuatId: idPengajar ? new mongoose.Types.ObjectId(idPengajar) : undefined,
       isAktif: true,
       jenisUjian: jenisUjian || "KUIS",
-      jumlahSubtesDikerjakan: Number(jumlahSubtesDikerjakan) || 0 // 🚀 FITUR KUOTA AKTIF
+      jumlahSubtesDikerjakan: Number(jumlahSubtesDikerjakan) || 0,
+      batasSubtesWajib: Number(batasSubtesWajib) || 3,
+      durasiBreakMenit: Number(durasiBreakMenit) || 60
     };
 
     if (jenisUjian === "TRYOUT") {
@@ -162,7 +173,7 @@ export async function terapkanBankSoalKeJadwal(idBankSoalUtama, idJadwal, idPeng
     await Quiz.findOneAndUpdate(
       { jadwalId: idJadwal },
       { $set: dataCopy },
-      { upsert: true, new: true, strict: false } // 🚀 STRICT FALSE AGAR DATABASE MENERIMA STRUKTUR BARU
+      { upsert: true, new: true, strict: false }
     ).lean();
 
     revalidatePath("/");
