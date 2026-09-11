@@ -60,10 +60,11 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   const [loadingBank, setLoadingBank] = useState(false);
   const [isMemprosesKuis, setIsMemprosesKuis] = useState(false);
 
-  // STATE TRY OUT ESTAFET & PENGATURAN JEDA/WAJIB
+  // STATE TRY OUT ESTAFET & PENGATURAN LENGKAP
   const [modeUjian, setModeUjian] = useState("KUIS"); // "KUIS" atau "TRYOUT"
   const [keranjangTryOut, setKeranjangTryOut] = useState([]); // Array subtes
   const [batasSubtesWajib, setBatasSubtesWajib] = useState(3);
+  const [jumlahSubtesDikerjakan, setJumlahSubtesDikerjakan] = useState(5); // 🚀 Total subtes yang wajib + dipilih siswa
   const [durasiBreakMenit, setDurasiBreakMenit] = useState(60);
 
   const tanggalJadwalMurni = getSafeTanggalJakarta(jadwalTerpilih?.tanggal);
@@ -188,7 +189,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
         jadwalTerpilih.pengajarId, 
         "TRYOUT", 
         daftarSubtesId, 
-        keranjangTryOut.length, 
+        Number(jumlahSubtesDikerjakan) || keranjangTryOut.length, // 🚀 Total subtes dikerjakan siswa
         Number(batasSubtesWajib) || 3, 
         Number(durasiBreakMenit) || 60
       );
@@ -502,28 +503,39 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
             {modeUjian === "TRYOUT" && (
               <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '4px solid #111827' }}>
                 
-                {/* SETTING PENGATURAN TRY OUT (BATAS WAJIB & DURASI JEDA) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                  <div style={{ background: 'white', border: '2px solid #111827', padding: '10px', borderRadius: '8px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#475569', display: 'block', marginBottom: '4px' }}>SUBTES WAJIB:</label>
+                {/* SETTING PENGATURAN TRY OUT LENGKAP */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                  <div style={{ background: 'white', border: '2px solid #111827', padding: '8px', borderRadius: '8px' }}>
+                    <label style={{ fontSize: '10px', fontWeight: '900', color: '#475569', display: 'block', marginBottom: '4px' }}>SUBTES WAJIB:</label>
                     <input 
                       type="number" 
                       min="1" 
                       max={Math.max(1, keranjangTryOut.length)} 
                       value={batasSubtesWajib} 
                       onChange={(e) => setBatasSubtesWajib(e.target.value)}
-                      style={{ width: '100%', padding: '6px', border: '2px solid #111827', borderRadius: '6px', fontWeight: '900', fontSize: '14px', outline: 'none' }}
+                      style={{ width: '100%', padding: '6px', border: '2px solid #111827', borderRadius: '6px', fontWeight: '900', fontSize: '13px', outline: 'none' }}
                     />
                   </div>
-                  <div style={{ background: 'white', border: '2px solid #111827', padding: '10px', borderRadius: '8px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#475569', display: 'block', marginBottom: '4px' }}>DURASI JEDA (MENIT):</label>
+                  <div style={{ background: 'white', border: '2px solid #111827', padding: '8px', borderRadius: '8px' }}>
+                    <label style={{ fontSize: '10px', fontWeight: '900', color: '#475569', display: 'block', marginBottom: '4px' }}>TOTAL DIKERJAKAN:</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max={Math.max(1, keranjangTryOut.length)} 
+                      value={jumlahSubtesDikerjakan} 
+                      onChange={(e) => setJumlahSubtesDikerjakan(e.target.value)}
+                      style={{ width: '100%', padding: '6px', border: '2px solid #111827', borderRadius: '6px', fontWeight: '900', fontSize: '13px', outline: 'none' }}
+                    />
+                  </div>
+                  <div style={{ background: 'white', border: '2px solid #111827', padding: '8px', borderRadius: '8px' }}>
+                    <label style={{ fontSize: '10px', fontWeight: '900', color: '#475569', display: 'block', marginBottom: '4px' }}>JEDA (MENIT):</label>
                     <input 
                       type="number" 
                       min="1" 
                       max="180" 
                       value={durasiBreakMenit} 
                       onChange={(e) => setDurasiBreakMenit(e.target.value)}
-                      style={{ width: '100%', padding: '6px', border: '2px solid #111827', borderRadius: '6px', fontWeight: '900', fontSize: '14px', outline: 'none' }}
+                      style={{ width: '100%', padding: '6px', border: '2px solid #111827', borderRadius: '6px', fontWeight: '900', fontSize: '13px', outline: 'none' }}
                     />
                   </div>
                 </div>
@@ -532,12 +544,27 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                   <p style={{ margin: '0 0 8px 0', fontWeight: '900', fontSize: '14px', color: '#9333ea' }}>📦 KERANJANG TRY OUT ({keranjangTryOut.length} Subtes)</p>
                   {keranjangTryOut.length > 0 ? (
                     <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', fontWeight: 'bold', color: '#111827' }}>
-                      {keranjangTryOut.map((b) => <li key={b._id}>{b.judul} ({b.durasi} menit)</li>)}
+                      {keranjangTryOut.map((b, idx) => {
+                        const isWajib = idx < Number(batasSubtesWajib);
+                        return (
+                          <li key={b._id} style={{ marginBottom: '4px', color: isWajib ? '#1e3a8a' : '#9333ea' }}>
+                            <span>{b.judul} ({b.durasi} mnt)</span>
+                            <span style={{ 
+                              marginLeft: '6px', fontSize: '9px', padding: '2px 5px', fontWeight: '900',
+                              background: isWajib ? '#dbeafe' : '#f3e8ff', color: isWajib ? '#1d4ed8' : '#7e22ce',
+                              border: '1.5px solid #111827', borderRadius: '4px' 
+                            }}>
+                              {isWajib ? 'WAJIB' : 'PILIHAN'}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ol>
                   ) : (
                     <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>Belum ada subtes. Centang soal di atas.</p>
                   )}
                 </div>
+
                 <button 
                   onClick={() => eksekusiTerapkanSoal(null)} 
                   disabled={keranjangTryOut.length === 0 || isMemprosesKuis} 
