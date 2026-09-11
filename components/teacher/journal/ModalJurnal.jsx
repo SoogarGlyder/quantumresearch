@@ -151,12 +151,31 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   };
 
   const bukaPanelBankSoal = async () => {
-    setModeUjian("KUIS");
-    setKeranjangTryOut([]);
-    setIsModalBankOpen(true);
     setLoadingBank(true);
     const data = await ambilSemuaBankSoal(jadwalTerpilih.pengajarId);
     setListBankSoal(data || []);
+
+    if (dataKuisAktif && dataKuisAktif.jenisUjian === "TRYOUT" && dataKuisAktif.daftarSubtes) {
+      setModeUjian("TRYOUT");
+      
+      const matchedCart = [];
+      dataKuisAktif.daftarSubtes.forEach(sub => {
+        const found = data.find(b => b.judul === sub.judulSubtes);
+        if (found && !matchedCart.some(m => m._id === found._id)) {
+          matchedCart.push(found);
+        }
+      });
+      
+      setKeranjangTryOut(matchedCart);
+      if (dataKuisAktif.batasSubtesWajib) setBatasSubtesWajib(dataKuisAktif.batasSubtesWajib);
+      if (dataKuisAktif.jumlahSubtesDikerjakan) setJumlahSubtesDikerjakan(dataKuisAktif.jumlahSubtesDikerjakan);
+      if (dataKuisAktif.durasiBreakMenit) setDurasiBreakMenit(dataKuisAktif.durasiBreakMenit);
+    } else {
+      setModeUjian("KUIS");
+      setKeranjangTryOut([]);
+    }
+
+    setIsModalBankOpen(true);
     setLoadingBank(false);
   };
 
