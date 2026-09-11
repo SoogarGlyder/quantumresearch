@@ -12,7 +12,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   const isTryOutMode = kuisData?.jenisUjian === "TRYOUT";
   const semuaSubtesMaster = kuisData?.daftarSubtes || [];
   
-  // 🚀 Tentukan Batas Wajib (Default 3 jika pengajar tidak setting)
+  // 🚀 Tentukan Batas Wajib & Total Subtes Dikerjakan
   const batasWajib = Number(kuisData?.batasSubtesWajib) || 3;
   const totalSubtesDikerjakanSiswa = Number(kuisData?.jumlahSubtesDikerjakan) || semuaSubtesMaster.length;
   const jumlahPilihanHarusDipilih = Math.max(0, totalSubtesDikerjakanSiswa - batasWajib);
@@ -204,7 +204,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
         setSisaDetik((prev) => {
           if (prev <= 1) {  
             clearInterval(timerRef.current);  
-            alert(isTryOutMode && subtesAktifIndex < daftarSubtesAktif.length - 1  
+            alert(isTryOutMode && subtesAktifIndex < totalSubtesDikerjakanSiswa - 1  
               ? "WAKTU HABIS! Menyimpan subtes ini..."  
               : "WAKTU HABIS! Jawaban otomatis dikumpulkan.");  
             eksekusiSubmit();  
@@ -215,7 +215,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       }, 1000);
     }
     return () => clearInterval(timerRef.current);
-  }, [isDataLoaded, isUjianMulai, koneksiTerputus, isReviewMode, isLayarJeda, isLongBreak, isMemilihPilihan, isTryOutMode, subtesAktifIndex, daftarSubtesAktif.length]);
+  }, [isDataLoaded, isUjianMulai, koneksiTerputus, isReviewMode, isLayarJeda, isLongBreak, isMemilihPilihan, isTryOutMode, subtesAktifIndex, totalSubtesDikerjakanSiswa]);
 
   const handlePilihJawaban = useCallback((nomorSoal, opsiPilihan) => {
     if (isReviewMode) return; 
@@ -263,7 +263,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     localStorage.setItem(electiveStorageKey, JSON.stringify(pilihanTerpilih));
     setIsMemilihPilihan(false);
 
-    // Setelah konfirmasi pilihan, picu Jeda Panjang (Long Break) 1 Jam sebelum mulai subtes pilihan
+    // Setelah konfirmasi pilihan, picu Jeda Panjang (Long Break) sebelum mulai subtes pilihan
     const menitBreak = Number(kuisData?.durasiBreakMenit) || 60;
     const durasiBreakMs = menitBreak * 60 * 1000; 
     const breakEndTimestamp = Date.now() + durasiBreakMs;
@@ -277,7 +277,8 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   const eksekusiSubmit = async () => {
     setIsSubmitting(true); setKoneksiTerputus(false); clearInterval(timerRef.current);
     
-    const isPartialSubmit = isTryOutMode && subtesAktifIndex < daftarSubtesAktif.length - 1;
+    // 🚀 Perbaikan: Gunakan totalSubtesDikerjakanSiswa untuk memastikan seluruh sesi (wajib + pilihan) terpenuhi
+    const isPartialSubmit = isTryOutMode && subtesAktifIndex < totalSubtesDikerjakanSiswa - 1;
     
     if (!isPartialSubmit && document.fullscreenElement) {
       document.exitFullscreen().catch(e=>e);
@@ -298,13 +299,13 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
         jawabanSiswa: arrayJawaban,
         isPartialSubmit,
         subtesAktifIndex,
-        judulSubtes: isTryOutMode ? daftarSubtesAktif[subtesAktifIndex].judulSubtes : null
+        judulSubtes: isTryOutMode ? daftarSubtesAktif[subtesAktifIndex]?.judulSubtes : null
       });
       
       if (res.sukses) {
         if (isPartialSubmit) {
           // Cek apakah ini akhir dari Subtes Wajib
-          const isSelesaiWajib = (subtesAktifIndex === batasWajib - 1); 
+          const isSelesaiWajib = (subtesAktifIndex === batasWajib - 1);  
           
           if (isSelesaiWajib && jumlahPilihanHarusDipilih > 0 && pilihanTerpilih.length === 0) {
             // Tampilkan Layar Pilih Mapel Pilihan
@@ -343,7 +344,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
 
   const handleKumpulJawaban = () => {
     if (isReviewMode) return;
-    const pesanConfirm = (isTryOutMode && subtesAktifIndex < daftarSubtesAktif.length - 1)  
+    const pesanConfirm = (isTryOutMode && subtesAktifIndex < totalSubtesDikerjakanSiswa - 1)  
       ? "Kumpulkan subtes ini dan lanjut ke sesi berikutnya? (Jawaban tidak bisa diubah lagi)"  
       : "Yakin ingin menyelesaikan seluruh ujian sekarang?";
       
