@@ -64,7 +64,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
   const [modeUjian, setModeUjian] = useState("KUIS"); // "KUIS" atau "TRYOUT"
   const [keranjangTryOut, setKeranjangTryOut] = useState([]); // Array subtes
   const [batasSubtesWajib, setBatasSubtesWajib] = useState(3);
-  const [jumlahSubtesDikerjakan, setJumlahSubtesDikerjakan] = useState(5); // 🚀 Total subtes yang wajib + dipilih siswa
+  const [jumlahSubtesDikerjakan, setJumlahSubtesDikerjakan] = useState(5); // Total subtes yang harus dikerjakan (Wajib + Pilihan)
   const [durasiBreakMenit, setDurasiBreakMenit] = useState(60);
 
   const tanggalJadwalMurni = getSafeTanggalJakarta(jadwalTerpilih?.tanggal);
@@ -189,7 +189,7 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
         jadwalTerpilih.pengajarId, 
         "TRYOUT", 
         daftarSubtesId, 
-        Number(jumlahSubtesDikerjakan) || keranjangTryOut.length, // 🚀 Total subtes dikerjakan siswa
+        Number(jumlahSubtesDikerjakan) || keranjangTryOut.length, 
         Number(batasSubtesWajib) || 3, 
         Number(durasiBreakMenit) || 60
       );
