@@ -176,7 +176,7 @@ export async function terapkanBankSoalKeJadwal(
       { upsert: true, new: true, strict: false }
     ).lean();
 
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     return { sukses: true, pesan: jenisUjian === "TRYOUT" ? "Bundel Try Out berhasil diterapkan!" : "Soal berhasil diterapkan!" };
   } catch (error) {
     console.error("Error terapkanBankSoalKeJadwal:", error);
@@ -195,7 +195,7 @@ export async function hapusQuizDariJadwal(idJadwal) {
     }
 
     await Quiz.deleteOne({ jadwalId: idJadwal });
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     return { sukses: true, pesan: "Ujian berhasil dilepas." };
   } catch (error) {
     return { sukses: false, pesan: "Gagal melepas ujian." };
@@ -223,7 +223,7 @@ export async function simpanKuis(jadwalId, pembuatId, dataSoal, durasi) {
     );
 
     revalidatePath("/admin"); 
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     return { sukses: true, pesan: "Kuis Berhasil Dipublikasikan!" };
   } catch (error) {
     return { sukses: false, pesan: "Gagal: " + error.message };
