@@ -14,7 +14,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   const [subtesAktifIndex, setSubtesAktifIndex] = useState(0);
   const [isLayarJeda, setIsLayarJeda] = useState(false);
 
-  // 🚀 State Jeda Panjang (Long Break) Berbasis Timestamp Server/Lokal
+  // State Jeda Panjang (Long Break) Berbasis Timestamp Server/Lokal
   const [isLongBreak, setIsLongBreak] = useState(false);
   const [longBreakEndsAt, setLongBreakEndsAt] = useState(null);
   const [sisaBreakDetik, setSisaBreakDetik] = useState(0);
@@ -52,7 +52,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       setIsUjianMulai(true);
       setIsDataLoaded(true);
     } else if (!isReviewMode) {
-      // Cek apakah ada jeda panjang (long break) yang sedang aktif
       const savedBreakEnd = localStorage.getItem(breakStorageKey);
       if (savedBreakEnd) {
         const breakEndTimestamp = Number(savedBreakEnd);
@@ -99,7 +98,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     }
   }, [jawabanSiswa, sisaDetik, isDataLoaded, pelanggaran, storageKey, isReviewMode, isUjianMulai, subtesAktifIndex, isLayarJeda, isLongBreak]);
 
-  // 🚀 Timer Hitung Mundur Jeda Panjang (Long Break) Berbasis Target Timestamp
+  // Timer Hitung Mundur Jeda Panjang (Long Break) Berbasis Target Timestamp
   useEffect(() => {
     if (!isLongBreak || !longBreakEndsAt) return;
 
@@ -237,16 +236,18 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       
       if (res.sukses) {
         if (isPartialSubmit) {
-          // 🚀 Deteksi Jeda Panjang: Misal setelah subtes ke-3 (indeks 2) selesai (B.Indo, B.Ing, Mat)
-          const isBatasSubtesWajib = subtesAktifIndex === 2; 
+          // 🚀 Deteksi Jeda Panjang Secara Dinamis dari Data Quiz
+          const batasWajib = Number(kuisData?.batasSubtesWajib) || 0;
+          const isBatasSubtesWajib = batasWajib > 0 && (subtesAktifIndex === batasWajib - 1); 
           
           if (isBatasSubtesWajib) {
-            const durasiBreakMs = 60 * 60 * 1000; // 1 Jam istirahat
+            const menitBreak = Number(kuisData?.durasiBreakMenit) || 60;
+            const durasiBreakMs = menitBreak * 60 * 1000; 
             const breakEndTimestamp = Date.now() + durasiBreakMs;
             
             localStorage.setItem(breakStorageKey, breakEndTimestamp);
             setLongBreakEndsAt(breakEndTimestamp);
-            setSisaBreakDetik(60 * 60);
+            setSisaBreakDetik(menitBreak * 60);
             setIsLongBreak(true);
           } else {
             setIsLayarJeda(true);
