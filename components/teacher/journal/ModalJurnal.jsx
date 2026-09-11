@@ -407,8 +407,9 @@ export default function ModalJurnal({ jadwalTerpilih, hariIni, onClose }) {
                                   onChange={(e) => ubahCatatanSiswa(idx, e.target.value)}
                                   className={styles.scheduleOption} 
                                   style={{ width: '100%', padding: '10px', backgroundColor: '#fff', boxShadow: 'none', border: '2px solid #111827', fontSize: '13px', touchAction: 'manipulation' }} 
-                                )}
-                              </div>
+                                />
+                              )}
+                            </div>
                           );
                         })
                       )}
