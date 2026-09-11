@@ -17,7 +17,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   const totalSubtesDikerjakanSiswa = Number(kuisData?.jumlahSubtesDikerjakan) || semuaSubtesMaster.length;
   const jumlahPilihanHarusDipilih = Math.max(0, totalSubtesDikerjakanSiswa - batasWajib);
 
-  // Pisahkan Subtes Wajib dan Kolam Pilihan (Pool)
+  // Pisahkan Subtes Wajib dan Kolam Pilihan (Pool) secara dinamis dari master soal
   const subtesWajibList = semuaSubtesMaster.slice(0, batasWajib);
   const kolamPilihanList = semuaSubtesMaster.slice(batasWajib);
 
@@ -81,17 +81,27 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       }
       setDaftarSubtesAktif(activeSubtes);
 
-      // 2. Pulihkan Jeda Panjang (Long Break)
+      // 2. Pulihkan Jeda Panjang (Long Break) dengan validasi durasi terbaru dari pengajar
       const savedBreakEnd = localStorage.getItem(breakStorageKey);
+      const savedBreakDuration = localStorage.getItem(breakStorageKey + "_duration");
+      const currentBreakMinutes = Number(kuisData?.durasiBreakMenit) || 60;
+
       if (savedBreakEnd) {
-        const breakEndTimestamp = Number(savedBreakEnd);
-        const sisa = Math.floor((breakEndTimestamp - Date.now()) / 1000);
-        if (sisa > 0) {
-          setIsLongBreak(true);
-          setLongBreakEndsAt(breakEndTimestamp);
-          setSisaBreakDetik(sisa);
-        } else {
+        if (savedBreakDuration && Number(savedBreakDuration) !== currentBreakMinutes) {
+          // Jika pengajar mengubah durasi jeda, reset cache jeda lama agar mengikuti aturan baru
           localStorage.removeItem(breakStorageKey);
+          localStorage.removeItem(breakStorageKey + "_duration");
+        } else {
+          const breakEndTimestamp = Number(savedBreakEnd);
+          const sisa = Math.floor((breakEndTimestamp - Date.now()) / 1000);
+          if (sisa > 0) {
+            setIsLongBreak(true);
+            setLongBreakEndsAt(breakEndTimestamp);
+            setSisaBreakDetik(sisa);
+          } else {
+            localStorage.removeItem(breakStorageKey);
+            localStorage.removeItem(breakStorageKey + "_duration");
+          }
         }
       }
 
@@ -142,6 +152,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
         setLongBreakEndsAt(null);
         setSisaBreakDetik(0);
         localStorage.removeItem(breakStorageKey);
+        localStorage.removeItem(breakStorageKey + "_duration");
       } else {
         setSisaBreakDetik(sisa);
       }
@@ -263,12 +274,13 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     localStorage.setItem(electiveStorageKey, JSON.stringify(pilihanTerpilih));
     setIsMemilihPilihan(false);
 
-    // Setelah konfirmasi pilihan, picu Jeda Panjang (Long Break) sebelum mulai subtes pilihan
+    // Setelah konfirmasi pilihan, picu Jeda Panjang (Long Break) sesuai durasi terbaru dari pengajar
     const menitBreak = Number(kuisData?.durasiBreakMenit) || 60;
     const durasiBreakMs = menitBreak * 60 * 1000; 
     const breakEndTimestamp = Date.now() + durasiBreakMs;
     
     localStorage.setItem(breakStorageKey, breakEndTimestamp);
+    localStorage.setItem(breakStorageKey + "_duration", menitBreak);
     setLongBreakEndsAt(breakEndTimestamp);
     setSisaBreakDetik(menitBreak * 60);
     setIsLongBreak(true);
@@ -277,7 +289,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   const eksekusiSubmit = async () => {
     setIsSubmitting(true); setKoneksiTerputus(false); clearInterval(timerRef.current);
     
-    // 🚀 Perbaikan: Gunakan totalSubtesDikerjakanSiswa untuk memastikan seluruh sesi (wajib + pilihan) terpenuhi
     const isPartialSubmit = isTryOutMode && subtesAktifIndex < totalSubtesDikerjakanSiswa - 1;
     
     if (!isPartialSubmit && document.fullscreenElement) {
@@ -304,7 +315,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       
       if (res.sukses) {
         if (isPartialSubmit) {
-          // Cek apakah ini akhir dari Subtes Wajib
           const isSelesaiWajib = (subtesAktifIndex === batasWajib - 1);  
           
           if (isSelesaiWajib && jumlahPilihanHarusDipilih > 0 && pilihanTerpilih.length === 0) {
@@ -317,6 +327,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
             const breakEndTimestamp = Date.now() + durasiBreakMs;
             
             localStorage.setItem(breakStorageKey, breakEndTimestamp);
+            localStorage.setItem(breakStorageKey + "_duration", menitBreak);
             setLongBreakEndsAt(breakEndTimestamp);
             setSisaBreakDetik(menitBreak * 60);
             setIsLongBreak(true);
@@ -329,6 +340,7 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
         } else {
           localStorage.removeItem(storageKey);
           localStorage.removeItem(breakStorageKey);
+          localStorage.removeItem(breakStorageKey + "_duration");
           localStorage.removeItem(electiveStorageKey);
           alert(`✅ UJIAN SELESAI!\n🎯 Nilai Anda: ${res.skor}\n🌟 Anda mendapatkan +${res.exp} EXP!`);
           onClose();  
