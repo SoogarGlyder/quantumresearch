@@ -12,31 +12,30 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
   const isTryOutMode = kuisData?.jenisUjian === "TRYOUT";
   const semuaSubtesMaster = kuisData?.daftarSubtes || [];
   
-  // 🚀 Tentukan Batas Wajib & Total Subtes Dikerjakan
   const batasWajib = Number(kuisData?.batasSubtesWajib) || 3;
   const totalSubtesDikerjakanSiswa = Number(kuisData?.jumlahSubtesDikerjakan) || semuaSubtesMaster.length;
   const jumlahPilihanHarusDipilih = Math.max(0, totalSubtesDikerjakanSiswa - batasWajib);
 
-  // Pisahkan Subtes Wajib dan Kolam Pilihan (Pool) secara dinamis dari master soal
   const subtesWajibList = semuaSubtesMaster.slice(0, batasWajib);
   const kolamPilihanList = semuaSubtesMaster.slice(batasWajib);
 
   const [subtesAktifIndex, setSubtesAktifIndex] = useState(0);
   const [isLayarJeda, setIsLayarJeda] = useState(false);
   
-  // State Pemilihan Mapel Pilihan (Elective Picker)
   const [isMemilihPilihan, setIsMemilihPilihan] = useState(false);
   const [pilihanTerpilih, setPilihanTerpilih] = useState([]);
 
-  // State Jeda Panjang (Long Break)
   const [isLongBreak, setIsLongBreak] = useState(false);
   const [longBreakEndsAt, setLongBreakEndsAt] = useState(null);
   const [sisaBreakDetik, setSisaBreakDetik] = useState(0);
 
-  // Daftar Subtes Aktif Gabungan (Wajib + Pilihan yang dipilih siswa)
   const [daftarSubtesAktif, setDaftarSubtesAktif] = useState(subtesWajibList);
 
-  const durasiMenit = isTryOutMode ? (daftarSubtesAktif[subtesAktifIndex]?.durasi || 10) : (kuisData?.durasi || 10);
+  // 🚀 Tentukan durasi aktif dengan aman (Kuis tunggal membaca kuisData.durasi)
+  const durasiMenit = isTryOutMode 
+    ? (daftarSubtesAktif[subtesAktifIndex]?.durasi || 10) 
+    : (Number(kuisData?.durasi) || 10);
+
   const daftarSoal = isTryOutMode ? (daftarSubtesAktif[subtesAktifIndex]?.soal || []) : (kuisData?.soal || []);
   
   const [soalAktif, setSoalAktif] = useState(0);
@@ -58,7 +57,18 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     jawabanSiswaRef.current = jawabanSiswa;
   }, [jawabanSiswa]);
 
-  // Muat Data Review & State Lokal (Termasuk Pilihan Elective yang tersimpan)
+  // 🚀 Sinkronisasi durasi secara reaktif saat kuisData berhasil dimuat dari server
+  useEffect(() => {
+    if (kuisData && !isReviewMode && !isDataLoaded) {
+      const savedState = localStorage.getItem(storageKey);
+      if (!savedState) {
+        const durasiBaru = isTryOutMode ? (daftarSubtesAktif[0]?.durasi || 10) : (Number(kuisData?.durasi) || 10);
+        setSisaDetik(durasiBaru * 60);
+      }
+    }
+  }, [kuisData, isTryOutMode, daftarSubtesAktif, storageKey, isReviewMode, isDataLoaded]);
+
+  // Muat Data Review & State Lokal
   useEffect(() => {
     if (isReviewMode && jawabanPast) {
       const pastObj = {};
@@ -69,7 +79,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       setIsUjianMulai(true);
       setIsDataLoaded(true);
     } else if (!isReviewMode) {
-      // 1. Pulihkan pilihan subtes elective jika sudah pernah dipilih
       const savedElectives = localStorage.getItem(electiveStorageKey);
       let activeSubtes = subtesWajibList;
       if (savedElectives) {
@@ -81,14 +90,12 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
       }
       setDaftarSubtesAktif(activeSubtes);
 
-      // 2. Pulihkan Jeda Panjang (Long Break) dengan validasi durasi terbaru dari pengajar
       const savedBreakEnd = localStorage.getItem(breakStorageKey);
       const savedBreakDuration = localStorage.getItem(breakStorageKey + "_duration");
       const currentBreakMinutes = Number(kuisData?.durasiBreakMenit) || 60;
 
       if (savedBreakEnd) {
         if (savedBreakDuration && Number(savedBreakDuration) !== currentBreakMinutes) {
-          // Jika pengajar mengubah durasi jeda, reset cache jeda lama agar mengikuti aturan baru
           localStorage.removeItem(breakStorageKey);
           localStorage.removeItem(breakStorageKey + "_duration");
         } else {
@@ -105,7 +112,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
         }
       }
 
-      // 3. Pulihkan State CBT Siswa
       const savedState = localStorage.getItem(storageKey);
       if (savedState) {
         try {
@@ -119,7 +125,8 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
           console.error("Gagal membaca memori CBT");  
         }
       } else {
-        setSisaDetik((activeSubtes[0]?.durasi || 10) * 60);
+        const durasiAwal = isTryOutMode ? (activeSubtes[0]?.durasi || 10) : (Number(kuisData?.durasi) || 10);
+        setSisaDetik(durasiAwal * 60);
       }
       setIsDataLoaded(true);
     }
@@ -250,7 +257,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     setJawabanSiswa((prev) => ({ ...prev, [nomorSoal]: text }));
   }, [isReviewMode]);
 
-  // Handle Pemilihan Subtes Pilihan oleh Siswa
   const togglePilihElective = (subtesItem) => {
     if (pilihanTerpilih.some(item => item.judulSubtes === subtesItem.judulSubtes)) {
       setPilihanTerpilih(prev => prev.filter(item => item.judulSubtes !== subtesItem.judulSubtes));
@@ -274,7 +280,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
     localStorage.setItem(electiveStorageKey, JSON.stringify(pilihanTerpilih));
     setIsMemilihPilihan(false);
 
-    // Setelah konfirmasi pilihan, picu Jeda Panjang (Long Break) sesuai durasi terbaru dari pengajar
     const menitBreak = Number(kuisData?.durasiBreakMenit) || 60;
     const durasiBreakMs = menitBreak * 60 * 1000; 
     const breakEndTimestamp = Date.now() + durasiBreakMs;
@@ -318,10 +323,8 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
           const isSelesaiWajib = (subtesAktifIndex === batasWajib - 1);  
           
           if (isSelesaiWajib && jumlahPilihanHarusDipilih > 0 && pilihanTerpilih.length === 0) {
-            // Tampilkan Layar Pilih Mapel Pilihan
             setIsMemilihPilihan(true);
           } else if (isSelesaiWajib) {
-            // Langsung Long Break jika pilihan sudah pernah ditentukan sebelumnya
             const menitBreak = Number(kuisData?.durasiBreakMenit) || 60;
             const durasiBreakMs = menitBreak * 60 * 1000; 
             const breakEndTimestamp = Date.now() + durasiBreakMs;
@@ -332,7 +335,6 @@ export function useCbtEngine({ jadwalId, kuis, siswa, isReviewMode, jawabanPast,
             setSisaBreakDetik(menitBreak * 60);
             setIsLongBreak(true);
           } else {
-            // Jeda antar subtes biasa
             setIsLayarJeda(true);
           }
           
